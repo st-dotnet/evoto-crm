@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
 import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
@@ -19,21 +18,32 @@ import { DialogClose } from "@radix-ui/react-dialog";
 interface IModalPersonProps {
   open: boolean;
   onOpenChange: () => void;
+  person: Person | null;
 }
 
 interface IModalPersonType {
   id: number;
-  name: string
+  name: string;
 }
 
-const initialValues = {
-  id: 0,
+interface Person {
+  id?: number;
+  first_name: string;
+  last_name: string;
+  mobile: string;
+  email: string;
+  gst: string;
+  person_type: string;
+  person_type_id?: string;
+  status?: string;
+}
+
+const initialValues: Omit<Person, "person_type"> = {
   first_name: "",
   last_name: "",
   mobile: "",
   email: "",
-  test: "",
-  // gst: "",
+  gst: "",
   person_type_id: "",
 };
 
@@ -49,25 +59,23 @@ const savePersonSchema = Yup.object().shape({
   mobile: Yup.string()
     .min(10, "Minimum 10 symbols")
     .max(13, "Maximum 13 symbols")
-    .required("Last Name is required"),
+    .required("Mobile is required"),
   email: Yup.string()
     .email("Wrong email format")
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols"),
     // .required("Email is required"),
-    test: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  // gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
+  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   person_type_id: Yup.string().required("Person Type is required"),
 });
 
-const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
+const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const from = "/parties/persons";
-  const [personTypes, setPersonTypes] = useState([]);
+  const [personTypes, setPersonTypes] = useState<IModalPersonType[]>([]);
 
   useEffect(() => {
-    // Fetch person types from the API
     const fetchPersonTypes = async () => {
       try {
         const response = await axios.get(
@@ -78,31 +86,34 @@ const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
         console.error("Error fetching person types:", error);
       }
     };
-
     fetchPersonTypes();
   }, []);
-
 
   const formik = useFormik({
     initialValues,
     validationSchema: savePersonSchema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
-
       try {
-        const postData: any = {
+        const postData = {
           first_name: values.first_name,
           last_name: values.last_name,
           mobile: values.mobile,
           email: values.email,
-          test: values.test,
-          // gst: values.gst,
+          gst: values.gst,
           person_type_id: values.person_type_id,
         };
-        await axios.post(
-          `${import.meta.env.VITE_APP_API_URL}/persons/`,
-          postData,
-        );
+        if (person?.id) {
+          await axios.put(
+            `${import.meta.env.VITE_APP_API_URL}/persons/${person.id}`,
+            postData,
+          );
+        } else {
+          await axios.post(
+            `${import.meta.env.VITE_APP_API_URL}/persons/`,
+            postData,
+          );
+        }
         onOpenChange();
         navigate(from, { replace: true });
       } catch (error) {
@@ -113,12 +124,32 @@ const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
       }
     },
   });
+
+  useEffect(() => {
+    if (open && person) {
+      formik.resetForm({
+        values: {
+          first_name: person.first_name || "",
+          last_name: person.last_name || "",
+          mobile: person.mobile || "",
+          email: person.email || "",
+          gst: person.gst || "",
+          person_type_id: person.person_type_id || "",
+        },
+      });
+    } else if (open) {
+      formik.resetForm();
+    }
+  }, [open, person]);
+
   return (
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="container-fixed max-w-[600px] p-0 [&>button]:hidden">
           <DialogHeader className="modal-header">
-            <DialogTitle className="modal-title">Person</DialogTitle>
+            <DialogTitle className="modal-title">
+              {person ? "Edit Person" : "Add Person"}
+            </DialogTitle>
             <DialogDescription></DialogDescription>
             <DialogClose></DialogClose>
           </DialogHeader>
@@ -244,30 +275,30 @@ const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">test</label>
+                  <label className="form-label text-gray-900">GST</label>
                   <label className="input">
                     <input
                       type="text"
-                      placeholder="test"
+                      placeholder="GST"
                       autoComplete="off"
-                      {...formik.getFieldProps("test")}
+                      {...formik.getFieldProps("gst")}
                       className={clsx(
                         "form-control bg-transparent",
                         {
-                          "is-invalid": formik.touched.test && formik.errors.test,
+                          "is-invalid": formik.touched.gst && formik.errors.gst,
                         },
                         {
-                          "is-valid": formik.touched.test && !formik.errors.test,
+                          "is-valid": formik.touched.gst && !formik.errors.gst,
                         },
                       )}
                     />
                   </label>
-                  {formik.touched.test && formik.errors.test && (
+                  {formik.touched.gst && formik.errors.gst && (
                     <span role="alert" className="text-danger text-xs mt-1">
-                      {formik.errors.test}
+                      {formik.errors.gst}
                     </span>
                   )}
-                </div> 
+                </div>
                 <div className="flex flex-col gap-1">
                   <label className="form-label text-gray-900">
                     Person Type
@@ -279,13 +310,11 @@ const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
                         "select",
                         {
                           "is-invalid":
-                            formik.touched.person_type_id &&
-                            formik.errors.person_type_id,
+                            formik.touched.person_type_id && formik.errors.person_type_id,
                         },
                         {
                           "is-valid":
-                            formik.touched.person_type_id &&
-                            !formik.errors.person_type_id,
+                            formik.touched.person_type_id && !formik.errors.person_type_id,
                         },
                       )}
                     >
@@ -298,11 +327,50 @@ const ModalPerson = ({ open, onOpenChange }: IModalPersonProps) => {
                     </select>
                   </label>
                   {formik.touched.person_type_id && formik.errors.person_type_id && (
-                      <span role="alert" className="text-danger text-xs mt-1">
-                        {formik.errors.person_type_id}
-                      </span>
-                    )}
+                    <span role="alert" className="text-danger text-xs mt-1">
+                      {formik.errors.person_type_id}
+                    </span>
+                  )}
                 </div>
+                {(() => {
+                  const selectedType = personTypes.find(
+                    (t) => String(t.id) === String(formik.values.person_type_id)
+                  );
+
+                  if (selectedType?.id === 4) { 
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <label className="form-label text-gray-900">Status</label>
+                        <label>
+                          <select
+                            {...formik.getFieldProps("status")}
+                            className={clsx(
+                              "select",
+                              {
+                                "is-invalid": formik.touched.status && formik.errors.status,
+                              },
+                              {
+                                "is-valid": formik.touched.status && !formik.errors.status,
+                              },
+                            )}
+                          >
+                            <option value="NEW">NEW</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Quote Given">Quote Given</option>
+                            <option value="Win">Win</option>
+                            <option value="Lose">Lose</option>
+                          </select>
+                        </label>
+                        {formik.touched.status && formik.errors.status && (
+                          <span role="alert" className="text-danger text-xs mt-1">
+                            {formik.errors.status}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-col gap-1">
                   <hr></hr>
                   <button

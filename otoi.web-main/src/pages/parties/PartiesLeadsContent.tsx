@@ -3,6 +3,8 @@ import {
   Person,
   QueryApiResponse,
 } from "../parties/blocks/persons/person-models";
+import { ModalPerson } from "./blocks/persons";
+import { ActivityForm } from "./ActivityForm";
 
 import {
   DataGrid,
@@ -12,6 +14,14 @@ import {
   DataGridRowSelectAll,
   DataGridRowSelect,
 } from "@/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
+
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
   Select,
@@ -23,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -34,13 +45,24 @@ interface IPartiesLeadContentProps {
   refreshStatus: number;
 }
 
-const PartiesLeadContent = ({
-  refreshStatus,
-}: IPartiesLeadContentProps) => {
+interface ActivityLead {
+  id: number;
+  status?: string;
+  address?: string;
+  created_at?: string;
+  activity_type?: string;
+}
 
+const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
-  const [refreshKey, setRefreshKey] = useState(0); // Unique key to trigger DataGrid reload
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [personModalOpen, setPersonModalOpen] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [selectedLeadForActivity, setSelectedLeadForActivity] = useState<ActivityLead | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -55,13 +77,12 @@ const PartiesLeadContent = ({
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        console.log("Enter pressed for search");
-        column.setFilterValue(inputValue); // Apply the filter only on Enter
+        column.setFilterValue(inputValue);
       }
     };
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(event.target.value); // Update local state
+      setInputValue(event.target.value);
     };
 
     return (
@@ -69,10 +90,21 @@ const PartiesLeadContent = ({
         placeholder="Filter..."
         value={inputValue}
         onChange={handleChange}
-        onKeyDown={handleKeyDown} // Trigger filter on Enter key
+        onKeyDown={handleKeyDown}
         className="h-9 w-full max-w-40"
       />
     );
+  };
+
+  const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
+    event.preventDefault();
+    setSelectedPerson(rowData);
+    setPersonModalOpen(true);
+  };
+
+  const handleClose = () => {
+    setPersonModalOpen(false);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   const columns = useMemo<ColumnDef<Person>[]>(
@@ -102,14 +134,20 @@ const PartiesLeadContent = ({
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col">
               <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px"
-                href="#"
+                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/lead/${info.row.original.id}`);
+                }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
               </a>
               <a
-                className="text-2sm text-gray-700 font-normal hover:text-primary-active"
-                href="#"
+                className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/lead/${info.row.original.id}`);
+                }}
               >
                 {info.row.original.email}
               </a>
@@ -168,10 +206,49 @@ const PartiesLeadContent = ({
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Invoices" column={column} />
+          <DataGridColumnHeader title="Activity" column={column} />
         ),
         enableSorting: false,
-        cell: () => <button className="btn btn-link">Download</button>,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                -Select-
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                openPersonModal(e, row.original);
+              }}>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                navigate(`/lead/${row.original.id}`);
+              }}>
+                Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedLeadForActivity({
+                    id: row.original.id,
+                    status: row.original.status,
+                    address: row.original.address,
+                    created_at: row.original.created_at,
+                    activity_type: row.original.activity_type,
+                  });
+                  setActivityModalOpen(true);
+                }}
+              >
+                Create Activity
+              </DropdownMenuItem>
+
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
         meta: {
           headerClassName: "w-28",
           cellClassName: "text-gray-800 font-medium",
@@ -180,11 +257,11 @@ const PartiesLeadContent = ({
     ],
     []
   );
+
   const fetchUsers = async (params: TDataGridRequestParams) => {
     try {
       const queryParams = new URLSearchParams();
-
-      queryParams.set("page", String(params.pageIndex + 1)); // Page is 1-indexed on server
+      queryParams.set("page", String(params.pageIndex + 1));
       queryParams.set("items_per_page", String(params.pageSize));
 
       if (params.sorting?.[0]?.id) {
@@ -200,11 +277,10 @@ const PartiesLeadContent = ({
         queryParams.set("person_type", searchPersonTypeQuery);
       }
 
-      // Column filters
       if (params.columnFilters) {
         params.columnFilters.forEach(({ id, value }) => {
           if (value !== undefined && value !== null) {
-            queryParams.set(`filter[${id}]`, String(value)); // Properly serialize filter values
+            queryParams.set(`filter[${id}]`, String(value));
           }
         });
       }
@@ -214,8 +290,8 @@ const PartiesLeadContent = ({
       );
 
       return {
-        data: response.data.data, // Server response data
-        totalCount: response.data.pagination.total, // Total count for pagination
+        data: response.data.data,
+        totalCount: response.data.pagination.total,
       };
     } catch (error) {
       console.log(error);
@@ -247,17 +323,14 @@ const PartiesLeadContent = ({
     }
   };
 
-  // Handle search query submission
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setRefreshKey((prev) => prev + 1); // Update the refresh key to force DataGrid reload
+    setRefreshKey((prev) => prev + 1);
   };
 
-  // Handle search query submission
   const handlePersonTypeSearch = (query: string) => {
     setPersonTypeQuery(query);
-    setRefreshKey((prev) => prev + 1); // Update the refresh key to force DataGrid reload
-    console.log("Handle PersonTypeSearch");
+    setRefreshKey((prev) => prev + 1);
   };
 
   const Toolbar = ({
@@ -279,18 +352,18 @@ const PartiesLeadContent = ({
         setSearch(searchInput);
       }
     };
-    // Handle onChange event
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchInput(e.target.value); // Update the input value
+      setSearchInput(e.target.value);
     };
+
     const handlePersonTypeChange = (personType: string) => {
       setPersonType(personType);
-      console.log("Person Type", searchPersonType);
       setDefaultPersonType(personType);
     };
+
     return (
       <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-        {/* <h3 className="card-title font-medium text-sm"></h3> */}
         <div className="flex flex-wrap gap-2 lg:gap-5">
           <div className="flex">
             <label className="input input-sm">
@@ -300,7 +373,7 @@ const PartiesLeadContent = ({
                 placeholder="Search users"
                 value={searchInput}
                 onChange={handleChange}
-                onKeyDown={handleKeyDown} // Trigger filter on Enter key
+                onKeyDown={handleKeyDown}
               />
             </label>
           </div>
@@ -326,10 +399,11 @@ const PartiesLeadContent = ({
       </div>
     );
   };
+
   return (
     <div className="grid gap-5 lg:gap-7.5">
       <DataGrid
-        key={refreshKey} // Ensure DataGrid reloads when refreshKey changes
+        key={refreshKey}
         columns={columns}
         serverSide={true}
         onFetchData={fetchUsers}
@@ -346,6 +420,16 @@ const PartiesLeadContent = ({
           />
         }
         layout={{ card: true }}
+      />
+      <ModalPerson
+        open={personModalOpen}
+        onOpenChange={handleClose}
+        person={selectedPerson}
+      />
+      <ActivityForm
+        open={activityModalOpen}
+        onOpenChange={() => setActivityModalOpen(false)}
+        lead={selectedLeadForActivity}
       />
     </div>
   );

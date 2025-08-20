@@ -20,9 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown  } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
+import { Pencil } from 'lucide-react';
+import { ModalPerson } from "./blocks/persons";
+import { useNavigate } from "react-router-dom";
+import { ActivityForm } from "./ActivityForm";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -33,6 +44,13 @@ type PersonsQueryApiResponse = QueryApiResponse<Person>;
 interface IPartiesPersonContentProps {
   refreshStatus: number;
 }
+interface ActivityLead {
+  id: number;
+  status?: string;
+  address?: string;
+  created_at?: string;
+  activity_type?: string;
+}
 
 const PartiesPersonContent = ({
   refreshStatus,
@@ -41,6 +59,12 @@ const PartiesPersonContent = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
   const [refreshKey, setRefreshKey] = useState(0); // Unique key to trigger DataGrid reload
+  const [personModalOpen, setPersonModalOpen] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [selectedLeadForActivity, setSelectedLeadForActivity] = useState<ActivityLead | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -63,6 +87,7 @@ const PartiesPersonContent = ({
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       setInputValue(event.target.value); // Update local state
     };
+    
 
     return (
       <Input
@@ -73,6 +98,15 @@ const PartiesPersonContent = ({
         className="h-9 w-full max-w-40"
       />
     );
+  };
+const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
+  event.preventDefault();
+  setSelectedPerson(rowData);
+  setPersonModalOpen(true);
+};
+    const handleClose = () => {
+    setPersonModalOpen(false);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   const columns = useMemo<ColumnDef<Person>[]>(
@@ -102,14 +136,20 @@ const PartiesPersonContent = ({
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col">
               <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px"
-                href="#"
+                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/lead/${info.row.original.id}`);
+                }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
               </a>
               <a
-                className="text-2sm text-gray-700 font-normal hover:text-primary-active"
-                href="#"
+                className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/lead/${info.row.original.id}`);
+                }}
               >
                 {info.row.original.email}
               </a>
@@ -168,10 +208,48 @@ const PartiesPersonContent = ({
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Invoices" column={column} />
+          <DataGridColumnHeader title="Activity" column={column} />
         ),
         enableSorting: false,
-        cell: () => <button className="btn btn-link">Download</button>,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                -Select-
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                openPersonModal(e, row.original);
+              }}>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                navigate(`/lead/${row.original.id}`);
+              }}>
+                Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedLeadForActivity({
+                    id: row.original.id,
+                    status: row.original.status,
+                    address: row.original.address,
+                    created_at: row.original.created_at,
+                    activity_type: row.original.activity_type,
+                  });
+                  setActivityModalOpen(true);
+                }}
+              >
+                Create Activity
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
         meta: {
           headerClassName: "w-28",
           cellClassName: "text-gray-800 font-medium",
@@ -346,6 +424,12 @@ const PartiesPersonContent = ({
           />
         }
         layout={{ card: true }}
+      />
+      <ModalPerson open={personModalOpen} onOpenChange={handleClose}   person={selectedPerson}/>
+      <ActivityForm
+        open={activityModalOpen}
+        onOpenChange={() => setActivityModalOpen(false)}
+        lead={selectedLeadForActivity}
       />
     </div>
   );
