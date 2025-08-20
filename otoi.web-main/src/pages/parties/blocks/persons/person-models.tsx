@@ -32,6 +32,9 @@ export type PersonType = {
 };
 
 export type Person = {
+  address: string | undefined;
+  activity_type: string | undefined;
+  created_at: string | undefined;
   id: number;
   first_name: string;
   last_name: string;
@@ -39,5 +42,7 @@ export type Person = {
   email: string;
   gst: string;
   person_type: string;
+  edit: string;
   personType: PersonType;
+  status: string;
 };

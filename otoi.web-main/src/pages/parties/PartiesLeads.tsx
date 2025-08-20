@@ -11,6 +11,7 @@ import {
 
 import { PartiesLeadContent } from "./PartiesLeadsContent";
 import { useLayout } from "@/providers";
+import { Person } from "../parties/blocks/persons/person-models";
 
 export interface IPersonModalContentProps {
   state: boolean;
@@ -20,15 +21,17 @@ const PartiesLeadsPage = () => {
   const { currentLayout } = useLayout();
   const [refreshKey, setRefreshKey] = useState(0); // State to trigger refresh
   const [personModalOpen, setPersonModalOpen] = useState(false);
+    const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   // handle close
   const handleClose = () => {
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-  const openPersonModal = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setPersonModalOpen(true);
-  };
+const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
+  event.preventDefault();
+  setSelectedPerson(rowData);
+  setPersonModalOpen(true);
+};
   return (
     <Fragment>
       {currentLayout?.name === "demo1-layout" && (
@@ -56,7 +59,7 @@ const PartiesLeadsPage = () => {
 
       <Container>
         <PartiesLeadContent refreshStatus={refreshKey} />
-        <ModalPerson open={personModalOpen} onOpenChange={handleClose} />
+        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson}/>
       </Container>
     </Fragment>
   );

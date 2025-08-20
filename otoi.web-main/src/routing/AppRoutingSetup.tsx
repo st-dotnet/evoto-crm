@@ -83,6 +83,7 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
+import { LeadDetails } from '@/pages/parties/LeadDetails';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -183,6 +184,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/auth/welcome-message" element={<AuthenticationWelcomeMessagePage />} />
           <Route path="/parties/persons" element={<PartiesPersonsPage />} />
           <Route path="/parties/leads" element={<PartiesLeadsPage />} />
+          <Route path="/lead/:id" element={<LeadDetails />} />
           <Route
             path="/auth/account-deactivated"
             element={<AuthenticationAccountDeactivatedPage />}
