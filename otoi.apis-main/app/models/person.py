@@ -12,8 +12,8 @@ class Person(BaseMixin, db.Model):
     person_type_id = Column(Integer, ForeignKey("person_types.id", ondelete="SET NULL"), nullable=True)
     mobile = Column(String(15), nullable=False, unique=True)
     email = Column(String(255), nullable=True)
-    test = Column(String(255), nullable= True)
-    # gst = Column(String(20), nullable=True)
+    # test = Column(String(255), nullable= True)
+    gst = Column(String(20), nullable=True)
     referenced_by = Column(String(500), nullable=True)
     
     # Relationships

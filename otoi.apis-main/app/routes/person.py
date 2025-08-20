@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models.person import Person, PersonType, PersonAddress
+from app.models.active import Active, ActiveType
 from app.models.common import Address
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
 from sqlalchemy import or_, func
@@ -101,12 +102,12 @@ def get_persons():
                       email:
                         type: string
                         description: Email address
-                      test:
-                        type: string
-                        description: test  
-                      # gst:
+                      # test:
                       #   type: string
-                      #   description: GST number
+                      #   description: test  
+                      gst:
+                        type: string
+                        description: GST number
                       person_type:
                         type: string
                         description: Person type
@@ -131,8 +132,8 @@ def get_persons():
               Person.first_name.ilike(f"%{query_value}%"),
               Person.last_name.ilike(f"%{query_value}%"),
               Person.email.ilike(f"%{query_value}%"),
-              Person.test.ilike(f"%{query_value}%"),
-              # Person.gst.ilike(f"%{query_value}%"),
+              # Person.test.ilike(f"%{query_value}%"),
+              Person.gst.ilike(f"%{query_value}%"),
               Person.mobile.ilike(f"%{query_value}%"),
           )
         )
@@ -156,18 +157,18 @@ def get_persons():
               query = query.order_by(db.desc(func.concat(Person.first_name, " ", Person.last_name)))
           else:
               query = query.order_by(func.concat(Person.first_name, " ", Person.last_name))
-      if field == "test":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(Person.test))
-          else:
-              query = query.order_by(Person.test)        
-      # if field == "gst":
+      # if field == "test":
       #     # Sort by concatenated first_name and last_name
       #     if order == "desc":
-      #         query = query.order_by(db.desc(Person.gst))
+      #         query = query.order_by(db.desc(Person.test))
       #     else:
-      #         query = query.order_by(Person.gst)
+      #         query = query.order_by(Person.test)        
+      if field == "gst":
+          # Sort by concatenated first_name and last_name
+          if order == "desc":
+              query = query.order_by(db.desc(Person.gst))
+          else:
+              query = query.order_by(Person.gst)
       if field == "mobile":
           # Sort by concatenated first_name and last_name
           if order == "desc":
@@ -194,8 +195,8 @@ def get_persons():
             "last_name": person.last_name,
             "mobile": person.mobile,
             "email": person.email,
-            "test": person.test,
-            # "gst": person.gst,
+            # "test": person.test,
+            "gst": person.gst,
             "person_type": person.person_type.name,
         }
         for person in persons
@@ -230,14 +231,14 @@ def create_person():
                 type: string
                 description: Email address (optional)
                 example: john.doe@example.com
-              test:
-                type: string
-                description: test
-                example: test    
-              # gst:
+              # test:
               #   type: string
-              #   description: GST number (optional)
-              #   example: 12345ABCDE
+              #   description: test
+              #   example: test    
+              gst:
+                type: string
+                description: GST number (optional)
+                example: 12345ABCDE
               referenced_by:
                 type: string
                 description: Referenced By (optional)
@@ -294,9 +295,9 @@ def create_person():
         last_name=data["last_name"],
         mobile=data["mobile"],
         email=data.get("email"),
-        test=data["test"],
-        # gst=data.get("gst"),
-        person_type_id=person_type_id,
+        # test=data["test"],
+        gst=data.get("gst"),
+        person_type_id=data["person_type_id"],
         referenced_by=data.get("referenced_by")
     )
     set_created_fields(person)
@@ -341,14 +342,14 @@ def update_person(person_id):
                 type: string
                 description: Email address (optional)
                 example: john.doe@example.com
-              test:
-                type: string
-                description: test
-                example: test  
+              # test:
+              #   type: string
+              #   description: test
+              #   example: test  
               gst:
-                # type: string
-                # description: GST number (optional)
-                # example: 12345ABCDE
+                type: string
+                description: GST number (optional)
+                example: 12345ABCDE
               person_type_id:
                 type: integer
                 description: ID of the person type (optional)
@@ -379,8 +380,8 @@ def update_person(person_id):
     person.last_name = data.get("last_name", person.last_name)
     person.mobile = data.get("mobile", person.mobile)
     person.email = data.get("email", person.email)
-    person.test = data.get("test", person.test)
-    # person.gst = data.get("gst", person.gst)
+    # person.test = data.get("test", person.test)
+    person.gst = data.get("gst", person.gst)
     person_type_id = data.get("person_type_id")
     person.referenced_by = data.get("referenced_by", person.referenced_by)
     if person_type_id:
@@ -450,6 +451,12 @@ def get_leads():
         required: false
         schema:
           type: string
+      - name: person_type
+        in: query
+        description: Filter by person type ID
+        required: false
+        schema:
+          type: integer    
       - name: sort
         in: query
         description: Comma-separated field names for sorting (e.g., 'first_name,-email')
@@ -492,6 +499,9 @@ def get_leads():
                   items:
                     type: object
                     properties:
+                      id:
+                        type: integer
+                        description: Person ID  
                       first_name:
                         type: string
                         description: First name
@@ -504,6 +514,9 @@ def get_leads():
                       email:
                         type: string
                         description: Email address
+                      person_type:
+                        type: string
+                        description: Person type  
       404:
         description: No leads found
     """
@@ -534,6 +547,7 @@ def get_leads():
         )
     if "mobile" in request.args:
         query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+   
 
     # Sorting
     sort = request.args.get("sort", "id")
@@ -550,11 +564,12 @@ def get_leads():
     leads = pagination.items
 
     result = [
-        {
+        {   "id": lead.id,
             "first_name": lead.first_name,
             "last_name": lead.last_name,
             "mobile": lead.mobile,
             "email": lead.email,
+            "person_type": lead.person_type.name,
         }
         for lead in leads
     ]
@@ -602,12 +617,12 @@ def get_person_by_id(person_id):
                 email:
                   type: string
                   description: Email address
-                test:
-                   type: string
-                   descripton: test  
-                # gst:
-                #   type: string
-                #   description: GST number
+                # test:
+                #    type: string
+                #    descripton: test  
+                gst:
+                  type: string
+                  description: GST number
                 person_type:
                   type: string
                   description: Person type
@@ -624,11 +639,157 @@ def get_person_by_id(person_id):
         "last_name": person.last_name,
         "mobile": person.mobile,
         "email": person.email,
-        "test": person.test,
-        # "gst": person.gst,
+        # "test": person.test,
+        "gst": person.gst,
         "person_type": person.person_type.name,
     }
 
     return jsonify(result)
+
+
+
+
+
+#Active
+
+@person_blueprint.route("/actives", methods=["GET","OPTIONS"])
+def get_active():
+    """
+    Fetch a list of persons with person_type 'active' with filtering, sorting, and pagination.
+    ---
+    tags:
+      - Actives
+    parameters:
+      - name: filter[name]
+        in: query
+        description: Filter by name (first_name or last_name)
+        required: false
+        schema:
+          type: string
+      - name: query
+        in: query
+        description: Search by first_name, last_name, email, or mobile
+        required: false
+        schema:
+          type: string
+      - name: active_type
+        in: query
+        description: Filter by person type ID
+        required: false
+        schema:
+          type: integer    
+      - name: sort
+        in: query
+        description: Comma-separated field names for sorting (e.g., 'first_name,-email')
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: "Page number (default: 1)"
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: items_per_page
+        in: query
+        description: "Number of records per page (default: 10)"
+        required: false
+        schema:
+          type: integer
+          default: 10
+    responses:
+      200:
+        description: A list of leads
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pages:
+                  type: integer
+                  description: Total pages
+                pagination:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                      description: Total number of records
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      LAId:
+                        type: integer
+                        description: Person ID  
+                      comment:
+                        type: string
+                        description: comment
+                      active_type:
+                        type: string
+                        description: Active type 
+                      status:
+                         type: string
+                         description: Lead status   
+      404:
+        description: No leads found
+    """
+    query = (
+        Active.query
+        .join(ActiveType)
+        .filter(ActiveType.name == "Active")
+    )
+
+    # Filtering
+    # if "filter[name]" in request.args:
+    #     filter_value = request.args.get("filter[name]", "")
+    #     query = query.filter(
+    #         or_(
+    #             Person.first_name.ilike(f"%{filter_value}%"),
+    #             Person.last_name.ilike(f"%{filter_value}%")
+    #         )
+    #     )
+    if "query" in request.args:
+        query_value = request.args.get("query", "")
+        query = query.filter(
+            or_(
+                Active.LAId.ilike(f"%{query_value}%"),
+                Active.active_type_id.ilike(f"%{query_value}%"),
+                Active.comment.ilike(f"%{query_value}%"),
+                Active.person_type.ilike(f"%{query_value}%")
+            )
+        )
+    # if "mobile" in request.args:
+    #     query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+   
+
+    # Sorting
+    sort = request.args.get("sort", "id")
+    for field in sort.split(","):
+        if field.startswith("-"):
+            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+        else:
+            query = query.order_by(getattr(Person, field, "id"))
+
+    # Pagination
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("items_per_page", 10))
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    actives = pagination.items
+
+    result = [
+        {   "LAId": actives.LAId,
+            "active_type": actives.active_type,
+            "comment": actives.comment,
+            "status": lead.status,
+        }
+        for lead in actives
+    ]
+    return jsonify({
+        "pages": pagination.pages,
+        "pagination": {"total": pagination.total},
+        "data": result
+    })
 
 
