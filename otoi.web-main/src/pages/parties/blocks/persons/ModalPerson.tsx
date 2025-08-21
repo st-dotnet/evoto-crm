@@ -395,7 +395,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                         </div>
 
                         {/* Show Address Fields if 'Win' is selected */}
-                        {formik.values.status === 'Win' && (
+                        {formik.values.status === '4' && (
                           <>
                             <hr />
                             <label className="form-label text-gray-900">Address</label>
@@ -482,7 +482,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                         )}
 
                         {/* Show Reason Field if 'Lose' is selected */}
-                        {formik.values.status === 'Lose' && (
+                        {formik.values.status === '5' && (
                           <>
                             <hr />
                             <label className="form-label text-gray-900">Reason</label>
