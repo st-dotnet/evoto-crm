@@ -31,10 +31,11 @@ class ActiveType(BaseMixin, db.Model):
     actives = relationship("Active", back_populates="active_type")
     business = relationship("Business", back_populates="active_types")
 
-class LeadType(BaseMixin, db.Model):
-    __tablename__ = "lead_types"
+class Status(BaseMixin, db.Model):
+    __tablename__ = "status_list"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(50), nulllable= False, unique=True)    
+    name = Column(String(50), nullable=False, unique=True)
+    business_id = Column(Integer, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)    
 
 Active.active_type = relationship("ActiveType", back_populates="actives")    

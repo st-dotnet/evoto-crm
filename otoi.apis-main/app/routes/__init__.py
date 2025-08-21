@@ -7,6 +7,8 @@ from app.routes.item_category import item_category_blueprint
 from app.routes.measuring_unit import measuring_unit_blueprint
 from app.routes.item_image import item_image_blueprint
 from app.routes.person_type import person_type_blueprint
+from app.routes.active_type import active_type_blueprint
+from app.routes.active_type import status_list_blueprint
 
 def register_blueprints(app):
     app.register_blueprint(auth_blueprint, url_prefix="/auth")
@@ -17,4 +19,6 @@ def register_blueprints(app):
     app.register_blueprint(item_blueprint, url_prefix="/items")
     app.register_blueprint(item_image_blueprint, url_prefix="/item_images")
     app.register_blueprint(person_type_blueprint, url_prefix="/person-types")
+    app.register_blueprint(active_type_blueprint, url_prefix="/active-types")
+    app.register_blueprint(status_list_blueprint, url_prefix="/status-list")
 
