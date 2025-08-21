@@ -652,7 +652,7 @@ def get_person_by_id(person_id):
 
 #Active
 
-@person_blueprint.route("/actives", methods=["GET","OPTIONS"])
+@person_blueprint.route("/", methods=["GET","OPTIONS"])
 def get_active():
     """
     Fetch a list of persons with person_type 'active' with filtering, sorting, and pagination.
