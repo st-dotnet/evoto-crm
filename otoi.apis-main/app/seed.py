@@ -4,7 +4,7 @@ from app.models.business import Business
 from app.models.user import User, Role
 from app.models.common import Address
 from app.models.person import PersonType
-from app.models.active import ActiveType, LeadType
+from app.models.active import ActiveType, Status
 from app.models.business import BusinessType, IndustryType, BusinessRegistrationType
 from datetime import datetime
 from sqlalchemy import create_engine, text 
@@ -98,12 +98,13 @@ def seed_data(app: Flask):
             
             print("Active types seeded.")
 
-            lead_types = ["New", "Win", "In-progress","Lose", "Quote Given" ]
-            for l_type in lead_types:
-                if not LeadType.query.filter_by(name=l_type).first():
-                    db.session.add(LeadType(name=l_type))
-            
-            print("Active types seeded.")
+            status_list = ["New", "Win", "In-progress", "Lose", "Quote Given"]
+
+            for s in status_list:
+                if not Status.query.filter_by(name=s).first():
+                    db.session.add(Status(name=s))
+
+            print("Status types seeded.")
 
             business_types = ["Retailer", "Wholesaler", "Distributor", "Manufacturer", "Services"]
             for b_type in business_types:
