@@ -6,7 +6,7 @@ import clsx from "clsx";
 import axios from "axios";
 
 interface ActivityLead {
-  id: number;
+  id: string;
   status?: string;
   address?: string;
   created_at?: string;

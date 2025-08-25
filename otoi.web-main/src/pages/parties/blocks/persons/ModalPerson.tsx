@@ -31,7 +31,7 @@ interface Status {
 }
 
 interface Person {
-  id?: number;
+  uuid?: string;
   first_name: string;
   last_name: string;
   mobile: string;
@@ -127,9 +127,9 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           gst: values.gst,
           person_type_id: values.person_type_id,
         };
-        if (person?.id) {
+        if (person?.uuid) {
           await axios.put(
-            `${import.meta.env.VITE_APP_API_URL}/persons/${person.id}`,
+            `${import.meta.env.VITE_APP_API_URL}/persons/${person.uuid}`,
             postData,
           );
         } else {

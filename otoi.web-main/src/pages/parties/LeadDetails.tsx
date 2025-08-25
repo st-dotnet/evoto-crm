@@ -5,7 +5,7 @@ import axios from "axios";
 import { KeenIcon } from '@/components';
 
 export const LeadDetails = () => {
-  const { id } = useParams<{ id: string }>();
+  const { uuid } = useParams<{ uuid: string }>();
   const [user, setUser] = useState<Person | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "activities" | "intelligence">("overview");
 
@@ -13,7 +13,7 @@ export const LeadDetails = () => {
     const fetchUser = async () => {
       try {
         const response = await axios.get<Person>(
-          `${import.meta.env.VITE_APP_API_URL}/persons/${id}`
+          `${import.meta.env.VITE_APP_API_URL}/persons/${uuid}`
         );
         setUser(response.data);
       } catch (error) {
@@ -21,7 +21,7 @@ export const LeadDetails = () => {
       }
     };
     fetchUser();
-  }, [id]);
+  }, [uuid]);
 
   if (!user) return <div className="p-6 text-center">Loading...</div>;
 

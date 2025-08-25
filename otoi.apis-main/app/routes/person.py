@@ -132,7 +132,6 @@ def get_persons():
               Person.first_name.ilike(f"%{query_value}%"),
               Person.last_name.ilike(f"%{query_value}%"),
               Person.email.ilike(f"%{query_value}%"),
-              # Person.test.ilike(f"%{query_value}%"),
               Person.gst.ilike(f"%{query_value}%"),
               Person.mobile.ilike(f"%{query_value}%"),
           )
@@ -142,12 +141,11 @@ def get_persons():
         query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
 
     if "person_type" in request.args:
-        value = request.args['person_type']
-        person_type = int(request.args['person_type'])
-        query = query.filter(Person.person_type_id == person_type)
+        person_type_uuid = request.args['person_type']
+        query = query.filter(Person.person_type_id == person_type_uuid)
 
     # Sorting
-    sort = request.args.get("sort", "id")
+    sort = request.args.get("sort", "uuid")
     order = request.args.get("order", "asc")  # Extract order ('asc' or 'desc')
 
     for field in sort.split(","):
@@ -156,13 +154,7 @@ def get_persons():
           if order == "desc":
               query = query.order_by(db.desc(func.concat(Person.first_name, " ", Person.last_name)))
           else:
-              query = query.order_by(func.concat(Person.first_name, " ", Person.last_name))
-      # if field == "test":
-      #     # Sort by concatenated first_name and last_name
-      #     if order == "desc":
-      #         query = query.order_by(db.desc(Person.test))
-      #     else:
-      #         query = query.order_by(Person.test)        
+              query = query.order_by(func.concat(Person.first_name, " ", Person.last_name))      
       if field == "gst":
           # Sort by concatenated first_name and last_name
           if order == "desc":
@@ -178,9 +170,9 @@ def get_persons():
       else:
         # Handle other fields
         if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+            query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
         else:
-            query = query.order_by(getattr(Person, field, "id"))
+            query = query.order_by(getattr(Person, field, "uuid"))
 
     # Pagination
     page = int(request.args.get("page", 1))
@@ -190,14 +182,14 @@ def get_persons():
 
     result = [
         {
-            "id": person.id,
+            "uuid": person.uuid,
             "first_name": person.first_name,
             "last_name": person.last_name,
             "mobile": person.mobile,
             "email": person.email,
-            # "test": person.test,
             "gst": person.gst,
             "person_type": person.person_type.name,
+            "status": person.status,
         }
         for person in persons
     ]
@@ -230,11 +222,7 @@ def create_person():
               email:
                 type: string
                 description: Email address (optional)
-                example: john.doe@example.com
-              # test:
-              #   type: string
-              #   description: test
-              #   example: test    
+                example: john.doe@example.com   
               gst:
                 type: string
                 description: GST number (optional)
@@ -247,6 +235,22 @@ def create_person():
                 type: integer
                 description: ID of the person type
                 example: 1
+              status:
+                type: string
+                description: Status of the person (e.g., Win, Lost)
+                example: Win
+              address:
+                type: object
+                description: Address object (required if status is Win)
+                properties:
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  country:
+                    type: string
+                  zip:
+                    type: string  
     responses:
       201:
         description: Person created successfully
@@ -269,25 +273,32 @@ def create_person():
 
     # Check if person_type_id is provided
     person_type_id = data.get("person_type_id")
-
-    # Set default "Person Type" if not provided
-    if person_type_id is None:
-        # Default person type to "Lead" if creating a Lead, or "Customer" for other cases
-        form_type = data.get("form_type", "person")  # Check if form type is provided
-        if form_type == "lead":
-            person_type = PersonType.query.filter_by(name="Lead").first()
-        else:
-            person_type = PersonType.query.filter_by(name="Customer").first()
-
-        if person_type:
-            person_type_id = person_type.id
-        else:
-            return jsonify({"error": "Invalid person type"}), 400  # If no default found, return error
         
     # Validate person type
-    person_type = PersonType.query.filter_by(id=person_type_id).first()
+    person_type = PersonType.query.filter_by(uuid=person_type_id).first()
     if not person_type:
         return jsonify({"error": "Invalid person type"}), 400
+    
+
+    status = data.get("status", "").strip()
+
+    if status == "Lose":
+        reason = data.get("reason")
+        if not reason:
+            return jsonify({"error": "Reason is required when status is 'Lose'"}), 400
+
+    
+    # If status is 'Win', check that address information is provided
+    if status == "Win":
+        address_data = data.get("address")
+        if not address_data or not all(key in address_data for key in ['city', 'state', 'country', 'zip']):
+            return jsonify({"error": "Address is required and must include city, state, country, and zip when status is 'Win'"}), 400
+
+
+    # Check if mobile number already exists
+    existing_person = Person.query.filter_by(mobile=data["mobile"]).first()
+    if existing_person:
+        return jsonify({"error": "A person with this mobile number already exists"}), 400
 
     # Create person
     person = Person(
@@ -295,19 +306,35 @@ def create_person():
         last_name=data["last_name"],
         mobile=data["mobile"],
         email=data.get("email"),
-        # test=data["test"],
         gst=data.get("gst"),
         person_type_id=data["person_type_id"],
-        referenced_by=data.get("referenced_by")
+        referenced_by=data.get("referenced_by"),
+        status=status,
+        reason=reason if status == "Lose" else None  # Set reason if status is "Lose"
+
     )
+
+    if status == "Win" and address_data:
+        # Assuming Address model is already set up to handle address fields
+        address = Address(
+            city=address_data.get("city"),
+            state=address_data.get("state"),
+            country=address_data.get("country"),
+            zip=address_data.get("zip")
+        )
+        db.session.add(address)
+        db.session.commit()
+
+        # Now associate address with person
+        person.addresses.append(PersonAddress(address_id=address.uuid))
     set_created_fields(person)
     set_business(person)
     db.session.add(person)
     db.session.commit()
 
-    return jsonify({"message": "Person created successfully", "id": person.id}), 201
+    return jsonify({"message": "Person created successfully", "uuid": person.uuid}), 201
 
-@person_blueprint.route("/<int:person_id>", methods=["PUT"])
+@person_blueprint.route("/<uuid:person_id>", methods=["PUT"])
 def update_person(person_id):
     """
     Update an existing person's details.
@@ -341,11 +368,7 @@ def update_person(person_id):
               email:
                 type: string
                 description: Email address (optional)
-                example: john.doe@example.com
-              # test:
-              #   type: string
-              #   description: test
-              #   example: test  
+                example: john.doe@example.com 
               gst:
                 type: string
                 description: GST number (optional)
@@ -380,12 +403,11 @@ def update_person(person_id):
     person.last_name = data.get("last_name", person.last_name)
     person.mobile = data.get("mobile", person.mobile)
     person.email = data.get("email", person.email)
-    # person.test = data.get("test", person.test)
     person.gst = data.get("gst", person.gst)
     person_type_id = data.get("person_type_id")
     person.referenced_by = data.get("referenced_by", person.referenced_by)
     if person_type_id:
-        person_type = PersonType.query.filter_by(id=person_type_id).first()
+        person_type = PersonType.query.filter_by(uuid=person_type_id).first()
         if not person_type:
             return jsonify({"error": "Invalid person type"}), 400
         person.person_type_id = person_type_id
@@ -393,7 +415,7 @@ def update_person(person_id):
     db.session.commit()
     return jsonify({"message": "Person updated successfully"})
 
-@person_blueprint.route("/<int:person_id>", methods=["DELETE"])
+@person_blueprint.route("/<uuid:person_id>", methods=["DELETE"])
 def delete_person(person_id):
     """
     Delete a person by ID.
@@ -550,12 +572,12 @@ def get_leads():
    
 
     # Sorting
-    sort = request.args.get("sort", "id")
+    sort = request.args.get("sort", "uuid")
     for field in sort.split(","):
         if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+            query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
         else:
-            query = query.order_by(getattr(Person, field, "id"))
+            query = query.order_by(getattr(Person, field, "uuid"))
 
     # Pagination
     page = int(request.args.get("page", 1))
@@ -564,12 +586,14 @@ def get_leads():
     leads = pagination.items
 
     result = [
-        {   "id": lead.id,
+        {   "uuid": lead.uuid,
             "first_name": lead.first_name,
             "last_name": lead.last_name,
             "mobile": lead.mobile,
             "email": lead.email,
+            "gst": lead.gst,
             "person_type": lead.person_type.name,
+            "status": lead.status
         }
         for lead in leads
     ]
@@ -580,7 +604,7 @@ def get_leads():
     })
   
 
-@person_blueprint.route("/<int:person_id>", methods=["GET"])
+@person_blueprint.route("/<uuid:person_id>", methods=["GET"])
 def get_person_by_id(person_id):
     """
     Fetch a single person by their ID.
@@ -629,17 +653,18 @@ def get_person_by_id(person_id):
       404:
         description: Person not found
     """
-    # Fetch person by ID
-    person = Person.query.get_or_404(person_id)
+    # Fetch person by UUID
+    person = Person.query.filter_by(uuid=person_id).first()
+    if not person:
+        return jsonify({"error": "Person not found"}), 404
 
     # Prepare the response
     result = {
-        "id": person.id,
+        "uuid": person.uuid,
         "first_name": person.first_name,
         "last_name": person.last_name,
         "mobile": person.mobile,
         "email": person.email,
-        # "test": person.test,
         "gst": person.gst,
         "person_type": person.person_type.name,
     }
@@ -765,12 +790,12 @@ def get_active():
    
 
     # Sorting
-    sort = request.args.get("sort", "id")
+    sort = request.args.get("sort", "uuid")
     for field in sort.split(","):
         if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+            query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
         else:
-            query = query.order_by(getattr(Person, field, "id"))
+            query = query.order_by(getattr(Person, field, "uuid"))
 
     # Pagination
     page = int(request.args.get("page", 1))
