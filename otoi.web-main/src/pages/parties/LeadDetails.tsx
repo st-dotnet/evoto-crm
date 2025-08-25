@@ -214,7 +214,7 @@ export const LeadDetails = () => {
               <div className="text-gray-500 text-sm">August 2025</div>
               <div className="bg-white shadow rounded-lg p-4">
                 <p className="font-semibold">Lifecycle change</p>
-                <p className="text-sm"><span className="font-medium text-gray-600">Shiv Gauri</span> updated the lifecycle stage for this contact to Lead. <span className="text-gray-600 cursor-pointer">View details</span></p>
+                <p className="text-sm"><span className="font-medium text-gray-600">{user.first_name || user.last_name ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "--"}</span> updated the lifecycle stage for this contact to Lead. <span className="text-gray-600 cursor-pointer">View details</span></p>
                 <p>{user.created_at || "--"}</p>
               </div>
               <div className="bg-white shadow rounded-lg p-4">

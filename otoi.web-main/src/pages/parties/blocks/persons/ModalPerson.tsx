@@ -14,6 +14,8 @@ import {
 import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
+import { Country, State, City } from "country-state-city";
+
 
 interface IModalPersonProps {
   open: boolean;
@@ -38,13 +40,15 @@ interface Person {
   email: string;
   gst: string;
   person_type: string;
-  person_type_id?: string;
+  person_type_uuid?: string;
   status?: string;
   city?: string;
   state?: string;
   country?: string;
   zip?: number;
   reason?: string;
+  address1?: string;
+  address2?: string;
 }
 
 const initialValues: Omit<Person, "person_type"> = {
@@ -53,7 +57,7 @@ const initialValues: Omit<Person, "person_type"> = {
   mobile: "",
   email: "",
   gst: "",
-  person_type_id: "",
+  person_type_uuid: "",
 };
 
 const savePersonSchema = Yup.object().shape({
@@ -73,10 +77,10 @@ const savePersonSchema = Yup.object().shape({
     .email("Wrong email format")
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols"),
-    // .required("Email is required"),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  person_type_id: Yup.string().required("Person Type is required"),
+  person_type_uuid: Yup.string().required("Person Type is required"),
 });
+
 
 const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
   const [loading, setLoading] = useState(false);
@@ -125,7 +129,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           mobile: values.mobile,
           email: values.email,
           gst: values.gst,
-          person_type_id: values.person_type_id,
+          person_type_uuid: values.person_type_uuid,
         };
         if (person?.uuid) {
           await axios.put(
@@ -158,7 +162,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           mobile: person.mobile || "",
           email: person.email || "",
           gst: person.gst || "",
-          person_type_id: person.person_type_id || "",
+          person_type_uuid: person.person_type_uuid || "",
         },
       });
     } else if (open) {
@@ -166,355 +170,372 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
     }
   }, [open, person]);
 
-  return (
+   return (
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="container-fixed max-w-[600px] p-0 [&>button]:hidden">
-          <DialogHeader className="modal-header">
-            <DialogTitle className="modal-title">
+        <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
+          <DialogHeader className="bg-gray-50 p-6 border-b">
+            <DialogTitle className="text-lg font-semibold text-gray-800">
               {person ? "Edit Person" : "Add Person"}
             </DialogTitle>
-            <DialogDescription></DialogDescription>
-            <DialogClose></DialogClose>
+            <DialogClose
+              onClick={onOpenChange}
+              className=" right-2 top-1 rounded-sm opacity-70"/>
           </DialogHeader>
-          <DialogBody className="modal-body">
+          <DialogBody className="p-6">
             <div className="max-w-[auto] w-full">
               <form
-                className="flex flex-col gap-5 p-10"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
                 noValidate
                 onSubmit={formik.handleSubmit}
               >
                 {formik.status && (
-                  <Alert variant="danger">{formik.status}</Alert>
+                  <Alert variant="danger" className="col-span-full mb-4">
+                    {formik.status}
+                  </Alert>
                 )}
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">First Name</label>
-                  <label className="input">
-                    <input
-                      placeholder="first name"
-                      type="input"
-                      autoComplete="off"
-                      {...formik.getFieldProps("first_name")}
-                      className={clsx(
-                        "form-control bg-transparent",
-                        {
-                          "is-invalid":
-                            formik.touched.first_name &&
-                            formik.errors.first_name,
-                        },
-                        {
-                          "is-valid":
-                            formik.touched.first_name &&
-                            !formik.errors.first_name,
-                        },
-                      )}
-                    />
-                  </label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">First Name<span style={{color:"red"}}>*</span></label>
+                  <input
+                    placeholder="First name"
+                    type="text"
+                    autoComplete="off"
+                    {...formik.getFieldProps("first_name")}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ":
+                          formik.touched.first_name && formik.errors.first_name,
+                      },
+                    )}
+                  />
                   {formik.touched.first_name && formik.errors.first_name && (
-                    <span role="alert" className="text-danger text-xs mt-1">
+                    <span role="alert" className="text-xs text-red-500">
                       {formik.errors.first_name}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">Last Name</label>
-                  <label className="input">
-                    <input
-                      placeholder="last name"
-                      type="input"
-                      autoComplete="off"
-                      {...formik.getFieldProps("last_name")}
-                      className={clsx(
-                        "form-control bg-transparent",
-                        {
-                          "is-invalid":
-                            formik.touched.last_name && formik.errors.last_name,
-                        },
-                        {
-                          "is-valid":
-                            formik.touched.last_name &&
-                            !formik.errors.last_name,
-                        },
-                      )}
-                    />
-                  </label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Last Name<span style={{color:"red"}}>*</span></label>
+                  <input
+                    placeholder="Last name"
+                    type="text"
+                    autoComplete="off"
+                    {...formik.getFieldProps("last_name")}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ":
+                          formik.touched.last_name && formik.errors.last_name,
+                      },
+                    )}
+                  />
                   {formik.touched.last_name && formik.errors.last_name && (
-                    <span role="alert" className="text-danger text-xs mt-1">
+                    <span role="alert" className="text-xs text-red-500">
                       {formik.errors.last_name}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">Mobile</label>
-                  <label className="input">
-                    <input
-                      placeholder="mobile"
-                      type="input"
-                      autoComplete="off"
-                      {...formik.getFieldProps("mobile")}
-                      className={clsx(
-                        "form-control bg-transparent",
-                        {
-                          "is-invalid":
-                            formik.touched.mobile && formik.errors.mobile,
-                        },
-                        {
-                          "is-valid":
-                            formik.touched.mobile && !formik.errors.mobile,
-                        },
-                      )}
-                    />
-                  </label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Mobile<span style={{color:"red"}}>*</span></label>
+                  <input
+                    placeholder="Mobile"
+                    type="text"
+                    autoComplete="off"
+                    {...formik.getFieldProps("mobile")}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ":
+                          formik.touched.mobile && formik.errors.mobile,
+                      },
+                    )}
+                  />
                   {formik.touched.mobile && formik.errors.mobile && (
-                    <span role="alert" className="text-danger text-xs mt-1">
+                    <span role="alert" className="text-xs text-red-500">
                       {formik.errors.mobile}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">Email</label>
-                  <label className="input">
-                    <input
-                      placeholder="email@email.com"
-                      type="email"
-                      autoComplete="off"
-                      {...formik.getFieldProps("email")}
-                      className={clsx(
-                        "form-control bg-transparent",
-                        {
-                          "is-invalid":
-                            formik.touched.email && formik.errors.email,
-                        },
-                        {
-                          "is-valid":
-                            formik.touched.email && !formik.errors.email,
-                        },
-                      )}
-                    />
-                  </label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    placeholder="Email"
+                    type="email"
+                    autoComplete="off"
+                    {...formik.getFieldProps("email")}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ":
+                          formik.touched.email && formik.errors.email,
+                      },
+                    )}
+                  />
                   {formik.touched.email && formik.errors.email && (
-                    <span role="alert" className="text-danger text-xs mt-1">
+                    <span role="alert" className="text-xs text-red-500">
                       {formik.errors.email}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">GST</label>
-                  <label className="input">
-                    <input
-                      type="text"
-                      placeholder="GST"
-                      autoComplete="off"
-                      {...formik.getFieldProps("gst")}
-                      className={clsx(
-                        "form-control bg-transparent",
-                        {
-                          "is-invalid": formik.touched.gst && formik.errors.gst,
-                        },
-                        {
-                          "is-valid": formik.touched.gst && !formik.errors.gst,
-                        },
-                      )}
-                    />
-                  </label>
-                  {formik.touched.gst && formik.errors.gst && (
-                    <span role="alert" className="text-danger text-xs mt-1">
-                      {formik.errors.gst}
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Person Type<span style={{color:"red"}}>*</span></label>
+                  <select
+                    {...formik.getFieldProps("person_type_uuid")}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500":
+                          formik.touched.person_type_uuid && formik.errors.person_type_uuid,
+                        
+                      },
+                    )}
+                  >
+                    <option value="">--Select--</option>
+                    {personTypes.map((type: IModalPersonType) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formik.touched.person_type_uuid && formik.errors.person_type_uuid && (
+                    <span role="alert" className="text-xs text-red-500">
+                      {formik.errors.person_type_uuid}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="form-label text-gray-900">
-                    Person Type
-                  </label>
-                  <label>
-                    <select
-                      {...formik.getFieldProps("person_type_id")}
-                      className={clsx(
-                        "select",
-                        {
-                          "is-invalid":
-                            formik.touched.person_type_id && formik.errors.person_type_id,
-                        },
-                        {
-                          "is-valid":
-                            formik.touched.person_type_id && !formik.errors.person_type_id,
-                        },
-                      )}
-                    >
-                      <option value="">--Select--</option>
-                      {personTypes.map((type: IModalPersonType) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {formik.touched.person_type_id && formik.errors.person_type_id && (
-                    <span role="alert" className="text-danger text-xs mt-1">
-                      {formik.errors.person_type_id}
-                    </span>
-                  )}
-                </div>
-                {(() => {
-                  const selectedType = personTypes.find(
-                    (t) => String(t.id) === String(formik.values.person_type_id)
-                  );
+                 {(() => {
+                   const selectedType = formik.values.person_type_uuid;
 
-                  if (selectedType?.id === 4) {
-                    return (
-                      <>
-                        <div className="flex flex-col gap-1">
-                          <label className="form-label text-gray-900">Status</label>
-                          <label>
-                            <select
-                              {...formik.getFieldProps("status")}
-                              className={clsx(
-                                "select",
-                                {
-                                  "is-invalid": formik.touched.status && formik.errors.status,
-                                },
-                                {
-                                  "is-valid": formik.touched.status && !formik.errors.status,
-                                },
-                              )}
-                            >
-                              <option value="">--Select--</option>
-                              {status.map((type: Status) => (
-                                <option key={type.id} value={type.id}>
-                                  {type.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          {formik.touched.status && formik.errors.status && (
-                            <span role="alert" className="text-danger text-xs mt-1">
-                              {formik.errors.status}
-                            </span>
-                          )}
-                        </div>
+                   if (selectedType === "c9d4298d-a214-4e5c-91dc-88feecef3ff6") {
+                     return (
+                       <>
+                         {/* Status Dropdown */}
+                         <div className="flex flex-col gap-1.5 col-span">
+                           <label className="block text-sm font-medium text-gray-700">Status</label>
+                           <select
+                             {...formik.getFieldProps("status")}
+                             className={clsx(
+                               "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                               {
+                                 "border-red-500 ":
+                                   formik.touched.status && formik.errors.status,
+                               },
+                             )}
+                           >
+                             {status.map((type: Status) => (
+                               <option key={type.id} value={type.id}>
+                                 {type.name}
+                               </option>
+                             ))}
+                           </select>
+                           {formik.touched.status && formik.errors.status && (
+                             <span role="alert" className="text-xs text-red-500">
+                               {formik.errors.status}
+                             </span>
+                           )}
+                         </div>
 
-                        {/* Show Address Fields if 'Win' is selected */}
-                        {formik.values.status === '4' && (
-                          <>
-                            <hr />
-                            <label className="form-label text-gray-900">Address</label>
-                            <div className="flex flex-col gap-1">
-                              <label className="form-label text-gray-900">City</label>
-                              <label className="input">
-                                <input
-                                  placeholder="City"
-                                  type="input"
-                                  autoComplete="off"
-                                  {...formik.getFieldProps("city")}
-                                  className={clsx("form-control bg-transparent", {
-                                    "is-invalid": formik.touched.city && formik.errors.city,
-                                  })}
-                                />
-                              </label>
-                              {formik.touched.city && formik.errors.city && (
-                                <span role="alert" className="text-danger text-xs mt-1">
-                                  {formik.errors.city}
-                                </span>
-                              )}
-                            </div>
+                         {/* Address Section if status = 668d4f19-7866-4373-a139-cca5a75e9ce4 */}
+                         {formik.values.status === "668d4f19-7866-4373-a139-cca5a75e9ce4" && (
+                           <>
+                             <div className="col-span-full pt-4">
+                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                 {/* GST */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">GST</label>
+                                   <input
+                                     placeholder="GST"
+                                     type="text"
+                                     autoComplete="off"
+                                     {...formik.getFieldProps("gst")}
+                                     className={clsx(
+                                       "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                                       {
+                                         "border-red-500 ":
+                                           formik.touched.gst && formik.errors.gst,
+                                       },
+                                     )}
+                                   />
+                                   {formik.touched.gst && formik.errors.gst && (
+                                     <span role="alert" className="text-xs text-red-500">
+                                       {formik.errors.gst}
+                                     </span>
+                                   )}
+                                 </div>
 
-                            <div className="flex flex-col gap-1">
-                              <label className="form-label text-gray-900">State</label>
-                              <label className="input">
-                                <input
-                                  placeholder="State"
-                                  type="input"
-                                  autoComplete="off"
-                                  {...formik.getFieldProps("state")}
-                                  className={clsx("form-control bg-transparent", {
-                                    "is-invalid": formik.touched.state && formik.errors.state,
-                                  })}
-                                />
-                              </label>
-                              {formik.touched.state && formik.errors.state && (
-                                <span role="alert" className="text-danger text-xs mt-1">
-                                  {formik.errors.state}
-                                </span>
-                              )}
-                            </div>
+                                 {/* Address 1 */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">Address 1</label>
+                                   <input
+                                     placeholder="Address 1"
+                                     type="text"
+                                     autoComplete="off"
+                                     {...formik.getFieldProps("address1")}
+                                     className={clsx(
+                                       "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                                       {
+                                         "border-red-500 ":
+                                           formik.touched.address1 && formik.errors.address1,
+                                       },
+                                     )}
+                                   />
+                                   {formik.touched.address1 && formik.errors.address1 && (
+                                     <span role="alert" className="text-xs text-red-500">
+                                       {formik.errors.address1}
+                                     </span>
+                                   )}
+                                 </div>
 
-                            <div className="flex flex-col gap-1">
-                              <label className="form-label text-gray-900">Country</label>
-                              <label className="input">
-                                <input
-                                  placeholder="Country"
-                                  type="input"
-                                  autoComplete="off"
-                                  {...formik.getFieldProps("country")}
-                                  className={clsx("form-control bg-transparent", {
-                                    "is-invalid": formik.touched.country && formik.errors.country,
-                                  })}
-                                />
-                              </label>
-                              {formik.touched.country && formik.errors.country && (
-                                <span role="alert" className="text-danger text-xs mt-1">
-                                  {formik.errors.country}
-                                </span>
-                              )}
-                            </div>
+                                 {/* Address 2 */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">Address 2</label>
+                                   <input
+                                     placeholder="Address 2"
+                                     type="text"
+                                     autoComplete="off"
+                                     {...formik.getFieldProps("address2")}
+                                     className={clsx(
+                                       "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                                       {
+                                         "border-red-500 ":
+                                           formik.touched.address2 && formik.errors.address2,
+                                       },
+                                     )}
+                                   />
+                                   {formik.touched.address2 && formik.errors.address2 && (
+                                     <span role="alert" className="text-xs text-red-500">
+                                       {formik.errors.address2}
+                                     </span>
+                                   )}
+                                 </div>
 
-                            <div className="flex flex-col gap-1">
-                              <label className="form-label text-gray-900">Zip</label>
-                              <label className="input">
-                                <input
-                                  placeholder="Zip"
-                                  type="input"
-                                  autoComplete="off"
-                                  {...formik.getFieldProps("zip")}
-                                  className={clsx("form-control bg-transparent", {
-                                    "is-invalid": formik.touched.zip && formik.errors.zip,
-                                  })}
-                                />
-                              </label>
-                              {formik.touched.zip && formik.errors.zip && (
-                                <span role="alert" className="text-danger text-xs mt-1">
-                                  {formik.errors.zip}
-                                </span>
-                              )}
-                            </div>
-                          </>
-                        )}
+                                 {/* Country */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">
+                                     Country <span style={{ color: "red" }}>*</span>
+                                   </label>
+                                   <select
+                                     {...formik.getFieldProps("country")}
+                                     onChange={(e) => {
+                                       formik.setFieldValue("country", e.target.value);
+                                       formik.setFieldValue("state", ""); // reset state
+                                       formik.setFieldValue("city", ""); // reset city
+                                     }}
+                                     className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                                   >
+                                     <option value="">--Select Country--</option>
+                                     {Country.getAllCountries().map((c) => (
+                                       <option key={c.isoCode} value={c.isoCode}>
+                                         {c.name}
+                                       </option>
+                                     ))}
+                                   </select>
+                                 </div>
 
-                        {/* Show Reason Field if 'Lose' is selected */}
-                        {formik.values.status === '5' && (
-                          <>
-                            <hr />
-                            <label className="form-label text-gray-900">Reason</label>
-                            <label className="input">
-                              <input
-                                placeholder="Reason"
-                                type="textarea"
-                                autoComplete="off"
-                                {...formik.getFieldProps("reason")}
-                                className={clsx("form-control bg-transparent", {
-                                  "is-invalid": formik.touched.reason && formik.errors.reason,
-                                })}
-                              />
-                            </label>
-                            {formik.touched.reason && formik.errors.reason && (
-                              <span role="alert" className="text-danger text-xs mt-1">
-                                {formik.errors.reason}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
+                                 {/* State */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">
+                                     State <span style={{ color: "red" }}>*</span>
+                                   </label>
+                                   <select
+                                     {...formik.getFieldProps("state")}
+                                     onChange={(e) => {
+                                       formik.setFieldValue("state", e.target.value);
+                                       formik.setFieldValue("city", ""); // reset city
+                                     }}
+                                     disabled={!formik.values.country}
+                                     className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                                   >
+                                     <option value="">--Select State--</option>
+                                     {formik.values.country &&
+                                       State.getStatesOfCountry(formik.values.country).map((s) => (
+                                         <option key={s.isoCode} value={s.isoCode}>
+                                           {s.name}
+                                         </option>
+                                       ))}
+                                   </select>
+                                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <hr></hr>
+                                 {/* City */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">
+                                     City <span style={{ color: "red" }}>*</span>
+                                   </label>
+                                   <select
+                                     {...formik.getFieldProps("city")}
+                                     disabled={!formik.values.state}
+                                     className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                                   >
+                                     <option value="">--Select City--</option>
+                                     {formik.values.country &&
+                                       formik.values.state &&
+                                       City.getCitiesOfState(
+                                         formik.values.country,
+                                         formik.values.state
+                                       ).map((city) => (
+                                         <option key={city.name} value={city.name}>
+                                           {city.name}
+                                         </option>
+                                       ))}
+                                   </select>
+                                 </div>
+
+                                 {/* Zip */}
+                                 <div className="flex flex-col gap-1.5">
+                                   <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                                   <input
+                                     placeholder="Zip Code"
+                                     type="text"
+                                     autoComplete="off"
+                                     {...formik.getFieldProps("zip")}
+                                     className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                                   />
+                                   {formik.touched.zip && formik.errors.zip && (
+                                     <span role="alert" className="text-xs text-red-500">
+                                       {formik.errors.zip}
+                                     </span>
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           </>
+                         )}
+
+                         {/* Reason Section if status = 1215424c-347a-4503-98c2-016e16593cc9 */}
+                         {formik.values.status === "1215424c-347a-4503-98c2-016e16593cc9" && (
+                           <div className="flex flex-col gap-1.5 col-span-full">
+                             <label className="block text-sm font-medium text-gray-700">Reason</label>
+                             <textarea
+                               placeholder="Reason"
+                               autoComplete="off"
+                               {...formik.getFieldProps("reason")}
+                               className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[100px]"
+                             />
+                             {formik.touched.reason && formik.errors.reason && (
+                               <span role="alert" className="text-xs text-red-500">
+                                 {formik.errors.reason}
+                               </span>
+                             )}
+                           </div>
+                         )}
+                       </>
+                     );
+                   }
+                   return null;
+                 })()}
+
+                 <div className="flex justify-end col-span-full pt-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={onOpenChange}
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colorsbg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
+                  >
+                    Cancel
+                  </button>
                   <button
                     type="submit"
-                    className="btn btn-primary right"
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colorsbg-blue-600 text-white btn-primary hover:bg-blue-500 h-10 px-4 py-2"
                     disabled={loading || formik.isSubmitting}
                   >
                     {loading ? "Please wait..." : "Save"}

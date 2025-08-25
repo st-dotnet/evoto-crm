@@ -20,6 +20,10 @@ export const MENU_SIDEBAR: TMenuConfig = [
       {
         title: "Leads",
         path: "/parties/leads",
+      },
+       {
+        title: "Customers",
+        path: "/parties/customers",
       }
     ]
   },

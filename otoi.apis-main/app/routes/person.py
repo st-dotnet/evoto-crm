@@ -604,7 +604,163 @@ def get_leads():
     })
   
 
-@person_blueprint.route("/<uuid:person_id>", methods=["GET"])
+@person_blueprint.route("/customers", methods=["GET","OPTIONS"])
+def get_customers():
+    """
+    Fetch a list of persons with person_type 'Customers' with filtering, sorting, and pagination.
+    ---
+    tags:
+      - Customers
+    parameters:
+      - name: filter[name]
+        in: query
+        description: Filter by name (first_name or last_name)
+        required: false
+        schema:
+          type: string
+      - name: query
+        in: query
+        description: Search by first_name, last_name, email, or mobile
+        required: false
+        schema:
+          type: string
+      - name: mobile
+        in: query
+        description: Filter by mobile number
+        required: false
+        schema:
+          type: string
+      - name: person_type
+        in: query
+        description: Filter by person type ID
+        required: false
+        schema:
+          type: integer    
+      - name: sort
+        in: query
+        description: Comma-separated field names for sorting (e.g., 'first_name,-email')
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: "Page number (default: 1)"
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: items_per_page
+        in: query
+        description: "Number of records per page (default: 10)"
+        required: false
+        schema:
+          type: integer
+          default: 10
+    responses:
+      200:
+        description: A list of customers
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pages:
+                  type: integer
+                  description: Total pages
+                pagination:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                      description: Total number of records
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: Person ID  
+                      first_name:
+                        type: string
+                        description: First name
+                      last_name:
+                        type: string
+                        description: Last name
+                      mobile:
+                        type: string
+                        description: Mobile number
+                      email:
+                        type: string
+                        description: Email address
+                      person_type:
+                        type: string
+                        description: Person type  
+      404:
+        description: No customers found
+    """
+    query = (
+        Person.query
+        .join(PersonType)
+        .filter(PersonType.name == "Customer")
+    )
+
+    # Filtering
+    if "filter[name]" in request.args:
+        filter_value = request.args.get("filter[name]", "")
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{filter_value}%"),
+                Person.last_name.ilike(f"%{filter_value}%")
+            )
+        )
+    if "query" in request.args:
+        query_value = request.args.get("query", "")
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{query_value}%"),
+                Person.last_name.ilike(f"%{query_value}%"),
+                Person.email.ilike(f"%{query_value}%"),
+                Person.mobile.ilike(f"%{query_value}%")
+            )
+        )
+    if "mobile" in request.args:
+        query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+   
+
+    # Sorting
+    sort = request.args.get("sort", "id")
+    for field in sort.split(","):
+        if field.startswith("-"):
+            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+        else:
+            query = query.order_by(getattr(Person, field, "id"))
+
+    # Pagination
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("items_per_page", 10))
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    customers = pagination.items
+
+    result = [
+        {   "id": customer.id,
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,  
+            "gst": customer.gst,
+            "person_type": customer.person_type.name,
+        }
+        for customer in customers
+    ]
+    return jsonify({
+        "pages": pagination.pages,
+        "pagination": {"total": pagination.total},
+        "data": result
+    })
+  
+
+@person_blueprint.route("/<int:person_id>", methods=["GET"])
 def get_person_by_id(person_id):
     """
     Fetch a single person by their ID.
