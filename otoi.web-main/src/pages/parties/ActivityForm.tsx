@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { Input } from "@/components/ui/input";
 
 interface ActivityLead {
-  id: number;
+  id: string;
   status?: string;
   address?: string;
   created_at?: string;
