@@ -31,7 +31,7 @@ def get_active_types():
                     description: Name of the active type
     """
     activeTypes = ActiveType.query.all()
-    return jsonify([{'id': activeType.id, 'name': activeType.name} for activeType in activeTypes])
+    return jsonify([{'id': activeType.uuid, 'name': activeType.name} for activeType in activeTypes])
 
 
 status_list_blueprint = Blueprint("status_list", __name__, url_prefix="/status-list")
@@ -61,4 +61,4 @@ def get_active_types():
                     description: Name of the active type
     """
     status = Status.query.all()
-    return jsonify([{'id': status.id, 'name': status.name} for status in status])
+    return jsonify([{'id': status.uuid, 'name': status.name} for status in status])

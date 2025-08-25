@@ -46,7 +46,7 @@ interface IPartiesLeadContentProps {
 }
 
 interface ActivityLead {
-  id: number;
+  id: string;
   status?: string;
   address?: string;
   created_at?: string;
@@ -137,7 +137,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.uuid}`);
                 }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
@@ -146,7 +146,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
                 className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.uuid}`);
                 }}
               >
                 {info.row.original.email}
@@ -226,7 +226,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
-                navigate(`/lead/${row.original.id}`);
+                navigate(`/lead/${row.original.uuid}`);
               }}>
                 Details
               </DropdownMenuItem>
@@ -234,7 +234,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedLeadForActivity({
-                    id: row.original.id,
+                    id: row.original.uuid,
                     status: row.original.status,
                     address: row.original.address,
                     created_at: row.original.created_at,

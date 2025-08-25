@@ -36,6 +36,7 @@ export type Person = {
   activity_type: string | undefined;
   created_at: string | undefined;
   id: number;
+  uuid: string;
   first_name: string;
   last_name: string;
   mobile: string;

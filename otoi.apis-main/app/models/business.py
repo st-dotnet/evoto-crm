@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table, UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.extensions import db
 from app.models.associations import user_business 
+import uuid
 
 class BusinessType(db.Model):
     __tablename__ = "business_types"
@@ -47,7 +48,7 @@ class Business(db.Model):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
-    address_id = Column(Integer, ForeignKey("addresses.id", ondelete="CASCADE"), nullable=False)
+    address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.uuid", ondelete="CASCADE"), nullable=False)
     # Relationships
     industry_type = relationship("IndustryType", back_populates="businesses")
     business_registration_type = relationship("BusinessRegistrationType", back_populates="businesses")

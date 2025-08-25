@@ -30,4 +30,4 @@ def get_person_types():
                     description: Name of the person type
     """
     personTypes = PersonType.query.all()
-    return jsonify([{'id': personType.id, 'name': personType.name} for personType in personTypes])
+    return jsonify([{'id': personType.uuid, 'name': personType.name} for personType in personTypes])

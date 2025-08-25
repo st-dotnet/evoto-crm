@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, String
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, UUID
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.extensions import db
+import uuid
 
 class BaseMixin:
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -13,7 +14,7 @@ class BaseMixin:
 class Address(db.Model):
     __tablename__ = "addresses"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     address1 = Column(String(255), nullable=False)
     address2 = Column(String(255), nullable=True)
     city = Column(String(100), nullable=False)
