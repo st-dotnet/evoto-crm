@@ -40,12 +40,12 @@ interface Person {
   email: string;
   gst: string;
   person_type: string;
-  person_type_uuid?: string;
+  person_type_id?: string;
   status?: string;
   city?: string;
   state?: string;
   country?: string;
-  zip?: number;
+  pin?: number;
   reason?: string;
   address1?: string;
   address2?: string;
@@ -57,7 +57,15 @@ const initialValues: Omit<Person, "person_type"> = {
   mobile: "",
   email: "",
   gst: "",
-  person_type_uuid: "",
+  person_type_id: "",
+  status: "",
+  city: "",
+  state: "",
+  country: "",
+  address1: "",
+  address2: "",
+  reason: "",
+  // pin: "",
 };
 
 const savePersonSchema = Yup.object().shape({
@@ -78,7 +86,15 @@ const savePersonSchema = Yup.object().shape({
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols"),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  person_type_uuid: Yup.string().required("Person Type is required"),
+  person_type_id: Yup.string().required("Person Type is required"), 
+  // status: Yup.string().required("Person Type is required"), 
+  // city: Yup.string().required("Person Type is required"),
+  // state: Yup.string().required("Person Type is required"),
+  // country: Yup.string().required("Person Type is required"),
+  // address1: Yup.string().required("Person Type is required"),
+  // address2: Yup.string().required("Person Type is required"),
+  // pin: Yup.string().required("Person Type is required"),
+  // reason: Yup.string().required("Person Type is required"),
 });
 
 
@@ -129,7 +145,15 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           mobile: values.mobile,
           email: values.email,
           gst: values.gst,
-          person_type_uuid: values.person_type_uuid,
+          person_type_id: values.person_type_id,
+          status: values.status,
+          city: values.city,
+          state: values.state,
+          country: values.country,
+          address1: values.address1,
+          address2: values.address2,
+          pin: values.pin,
+          reason: values.reason,
         };
         if (person?.uuid) {
           await axios.put(
@@ -162,7 +186,14 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           mobile: person.mobile || "",
           email: person.email || "",
           gst: person.gst || "",
-          person_type_uuid: person.person_type_uuid || "",
+          person_type_id: person.person_type_id || "",
+          status: person.status || "",
+          city: person.city || "",
+          state: person.state || "",
+          country: person.country || "",
+          // pin: person.pin || "",
+          address1: person.address1 || "",
+          address2: person.address2 || "",
         },
       });
     } else if (open) {
@@ -281,12 +312,12 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                 <div className="flex flex-col gap-1.5">
                   <label className="block text-sm font-medium text-gray-700">Person Type<span style={{color:"red"}}>*</span></label>
                   <select
-                    {...formik.getFieldProps("person_type_uuid")}
+                    {...formik.getFieldProps("person_type_id")}
                     className={clsx(
                       "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
                       {
                         "border-red-500":
-                          formik.touched.person_type_uuid && formik.errors.person_type_uuid,
+                          formik.touched.person_type_id && formik.errors.person_type_id,
                         
                       },
                     )}
@@ -298,16 +329,16 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                       </option>
                     ))}
                   </select>
-                  {formik.touched.person_type_uuid && formik.errors.person_type_uuid && (
+                  {formik.touched.person_type_id && formik.errors.person_type_id && (
                     <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.person_type_uuid}
+                      {formik.errors.person_type_id}
                     </span>
                   )}
                 </div>
                  {(() => {
-                   const selectedType = formik.values.person_type_uuid;
+                   const selectedType = formik.values.person_type_id;
 
-                   if (selectedType === "c9d4298d-a214-4e5c-91dc-88feecef3ff6") {
+                   if (selectedType === "4") {
                      return (
                        <>
                          {/* Status Dropdown */}
@@ -337,7 +368,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                          </div>
 
                          {/* Address Section if status = 668d4f19-7866-4373-a139-cca5a75e9ce4 */}
-                         {formik.values.status === "668d4f19-7866-4373-a139-cca5a75e9ce4" && (
+                         {formik.values.status === "4" && (
                            <>
                              <div className="col-span-full pt-4">
                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -483,17 +514,17 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
 
                                  {/* Zip */}
                                  <div className="flex flex-col gap-1.5">
-                                   <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                                   <label className="block text-sm font-medium text-gray-700">pin Code</label>
                                    <input
-                                     placeholder="Zip Code"
+                                     placeholder="pin Code"
                                      type="text"
                                      autoComplete="off"
-                                     {...formik.getFieldProps("zip")}
+                                     {...formik.getFieldProps("pin")}
                                      className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                                    />
-                                   {formik.touched.zip && formik.errors.zip && (
+                                   {formik.touched.pin && formik.errors.pin && (
                                      <span role="alert" className="text-xs text-red-500">
-                                       {formik.errors.zip}
+                                       {formik.errors.pin}
                                      </span>
                                    )}
                                  </div>
@@ -503,7 +534,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                          )}
 
                          {/* Reason Section if status = 1215424c-347a-4503-98c2-016e16593cc9 */}
-                         {formik.values.status === "1215424c-347a-4503-98c2-016e16593cc9" && (
+                         {formik.values.status === "5" && (
                            <div className="flex flex-col gap-1.5 col-span-full">
                              <label className="block text-sm font-medium text-gray-700">Reason</label>
                              <textarea

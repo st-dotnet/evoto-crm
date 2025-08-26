@@ -53,5 +53,6 @@ class Business(db.Model):
     industry_type = relationship("IndustryType", back_populates="businesses")
     business_registration_type = relationship("BusinessRegistrationType", back_populates="businesses")
     users = relationship("User", secondary=user_business, back_populates="businesses")
-    address = relationship("Address", back_populates="business")
+    primary_address = relationship("Address", foreign_keys=[address_id])
+    addresses = relationship("Address", foreign_keys="[Address.business_id]", primaryjoin="Business.id == Address.business_id")
     active_types = relationship("ActiveType", back_populates="business")

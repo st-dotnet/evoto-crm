@@ -1,16 +1,24 @@
-from datetime import datetime
 from flask import g
+from datetime import datetime
 
-def set_created_fields(model_instance):
-    """Set created_by and created_at fields."""
-    model_instance.created_by = g.user_id  # Assuming `g.user_id` holds the current user's ID
-    model_instance.created_at = datetime.utcnow()
 
-def set_updated_fields(model_instance):
-    """Set updated_by and updated_at fields."""
-    model_instance.updated_by = g.user_id  # Assuming `g.user_id` holds the current user's ID
-    model_instance.updated_at = datetime.utcnow()
+def set_business(instance):
+    """Set business_id on the instance using safe default."""
+    if hasattr(instance, 'business_id'):
+        instance.business_id = getattr(g, 'business_id', 1)
 
-def set_business(model_instance):
-    """Set business_id field."""
-    model_instance.business_id = g.business_id  # Assum
+
+def set_created_fields(instance):
+    """Set created_at and created_by fields on the instance."""
+    if hasattr(instance, 'created_at'):
+        instance.created_at = datetime.utcnow()
+    if hasattr(instance, 'created_by'):
+        instance.created_by = getattr(g, 'user_id', None)
+
+
+def set_updated_fields(instance):
+    """Set updated_at and updated_by fields on the instance."""
+    if hasattr(instance, 'updated_at'):
+        instance.updated_at = datetime.utcnow()
+    if hasattr(instance, 'updated_by'):
+        instance.updated_by = getattr(g, 'user_id', None)
