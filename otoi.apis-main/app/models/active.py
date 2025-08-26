@@ -10,7 +10,7 @@ class Active(BaseMixin, db.Model):
     __tablename__ = "active"
 
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    active_type_uuid = Column(UUID(as_uuid=True), ForeignKey("active_types.uuid", ondelete="SET NULL"), nullable=True)
+    active_type_id = Column(Integer, ForeignKey("active_types.id", ondelete="SET NULL"), nullable=True)
     comment = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -25,7 +25,7 @@ class Active(BaseMixin, db.Model):
 class ActiveType(BaseMixin, db.Model):
     __tablename__ = "active_types"
 
-    uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)
 
@@ -37,7 +37,7 @@ class ActiveType(BaseMixin, db.Model):
 class Status(BaseMixin, db.Model):
     __tablename__ = "status_list"
 
-    uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)
 
