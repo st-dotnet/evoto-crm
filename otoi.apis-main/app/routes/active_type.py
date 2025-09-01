@@ -31,21 +31,21 @@ def get_active_types():
                     description: Name of the active type
     """
     activeTypes = ActiveType.query.all()
-    return jsonify([{'id': activeType.uuid, 'name': activeType.name} for activeType in activeTypes])
+    return jsonify([{'id': activeType.id, 'name': activeType.name} for activeType in activeTypes])
 
 
 status_list_blueprint = Blueprint("status_list", __name__, url_prefix="/status-list")
 
 @status_list_blueprint.route("/", methods=["GET"])
-def get_active_types():
+def get_status_list():
     """
-    Get all active types.
+    Get all status items.
     ---
     tags:
-      - Active Types
+      - Status List
     responses:
       200:
-        description: A list of active types.
+        description: A list of status items.
         content:
           application/json:
             schema:
@@ -55,10 +55,10 @@ def get_active_types():
                 properties:
                   id:
                     type: integer
-                    description: Item category ID
+                    description: Status ID
                   name:
                     type: string
-                    description: Name of the active type
+                    description: Name of the status
     """
-    status = Status.query.all()
-    return jsonify([{'id': status.uuid, 'name': status.name} for status in status])
+    status_items = Status.query.all()
+    return jsonify([{'id': status_item.id, 'name': status_item.name} for status_item in status_items])

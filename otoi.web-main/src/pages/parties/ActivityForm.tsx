@@ -1,16 +1,21 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import clsx from "clsx";
-import { Input } from "@/components/ui/input";
+import axios from "axios";
 
 interface ActivityLead {
   id: string;
   status?: string;
   address?: string;
   created_at?: string;
-  activity_type?: string;
+  active_type_id?: string;
+}
+
+interface ActivityType {
+  id: number;
+  name: string;
 }
 
 interface ActivityFormProps {
@@ -20,21 +25,36 @@ interface ActivityFormProps {
 }
 
 const validationSchema = Yup.object({
-  // status: Yup.string().required("Status is required"),
+  status: Yup.string().required("Status is required"),
+  active_type_id: Yup.string().required("Activity Type is required"),
 });
 
 export function ActivityForm({ open, onOpenChange, lead }: ActivityFormProps) {
   const [loading, setLoading] = useState(false);
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+
+  // Fetch activity types from backend
+  useEffect(() => {
+    const fetchActivityTypes = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/active-types/`);
+        setActivityTypes(response.data);
+      } catch (error) {
+        console.error("Error fetching activity types:", error);
+      }
+    };
+    fetchActivityTypes();
+  }, []);
 
   const formik = useFormik({
     initialValues: {
-      status: lead?.status || "",  // Ensure the initial value for the dropdown
+      status: lead?.status || "",
+      active_type_id: lead?.active_type_id || "",
+      address: lead?.address || "",
     },
     validationSchema,
     onSubmit: async (values) => {
-      // Handle the form submission logic
       setLoading(true);
-      // Add your form submission logic here
       console.log("Form submitted with:", values);
       setLoading(false);
     },
@@ -47,79 +67,73 @@ export function ActivityForm({ open, onOpenChange, lead }: ActivityFormProps) {
           <DialogTitle className="modal-title">Create Activity</DialogTitle>
         </DialogHeader>
         <div className="modal-body">
-          <div className="max-w-[auto] w-full">
-            <form className="flex flex-col gap-5 p-10" noValidate onSubmit={formik.handleSubmit}>
+          <form className="flex flex-col gap-5 p-10" noValidate onSubmit={formik.handleSubmit}>
+            
+            {/* Status */}
+            <div className="flex flex-col gap-1">
+              <label className="form-label text-gray-900">Lead Status</label>
+              <select
+                {...formik.getFieldProps("status")}
+                className={clsx("select", {
+                  "is-invalid": formik.touched.status && formik.errors.status,
+                  "is-valid": formik.touched.status && !formik.errors.status,
+                })}
+              >
+                <option value="">--Select--</option>
+                <option value="New">New</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Quote Given">Quote Given</option>
+                <option value="Win">Win</option>
+                <option value="Lose">Lose</option>
+              </select>
+              {formik.touched.status && formik.errors.status && (
+                <span role="alert" className="text-danger text-xs mt-1">
+                  {formik.errors.status}
+                </span>
+              )}
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="form-label text-gray-900">Lead Status</label>
-                <label>
-                  <select
-                    {...formik.getFieldProps("status")}
-                    className={clsx(
-                      "select",
-                      { "is-invalid": formik.touched.status && formik.errors.status },
-                      { "is-valid": formik.touched.status && !formik.errors.status }
-                    )}
-                  >
-                    <option value="">--Select--</option>
-                    <option value="New">New</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Quote Given">Quote Given</option>
-                    <option value="Win">Win</option>
-                    <option value="Lose">Lose</option>
-                  </select>
-                </label>
-                {formik.touched.status && formik.errors.status && (
-                  <span role="alert" className="text-danger text-xs mt-1">
-                    {formik.errors.status}
-                  </span>
-                )}
-              </div>
+            {/* Address */}
+            <div className="flex flex-col gap-1">
+              <label className="form-label text-gray-900">Address</label>
+              <input
+                {...formik.getFieldProps("address")}
+                className="form-control bg-transparent p-2 border rounded"
+              />
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="form-label text-gray-900">Address</label>
-                <label className="input">
-                  <input
-                    id="address"
-                    // value={lead?.address || ""}
-                    className="form-control bg-transparent p-2 border rounded"
-                  />
-                </label>
-              </div>
+            {/* Activity Type */}
+            <div className="flex flex-col gap-1">
+              <label className="form-label text-gray-900">Activity Type</label>
+              <select
+                {...formik.getFieldProps("active_type_id")}
+                className={clsx("select", {
+                  "is-invalid": formik.touched.active_type_id && formik.errors.active_type_id,
+                  "is-valid": formik.touched.active_type_id && !formik.errors.active_type_id,
+                })}
+              >
+                <option value="">--Select--</option>
+                {activityTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+              {formik.touched.active_type_id && formik.errors.active_type_id && (
+                <span role="alert" className="text-danger text-xs mt-1">
+                  {formik.errors.active_type_id}
+                </span>
+              )}
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="form-label text-gray-900">Activity Type</label>
-                
-                <label>
-                  <select
-                    {...formik.getFieldProps("activity_type")}
-                    className={clsx(
-                      "select",
-                      { "is-invalid": formik.touched.status && formik.errors.status },
-                      { "is-valid": formik.touched.status && !formik.errors.status }
-                    )}
-                  >
-                    <option value="">--Select--</option>
-                    <option value="Call">Call</option>
-                    <option value="Email">Email</option>
-                    <option value="In-Person">In-Person</option>
-                  </select>
-                </label>
-                {formik.touched.status && formik.errors.status && (
-                  <span role="alert" className="text-danger text-xs mt-1">
-                    {formik.errors.status}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <hr />
-                <button type="submit" className="btn btn-primary right" disabled={loading}>
-                  {loading ? "Please wait..." : "Save"}
-                </button>
-              </div>
-            </form>
-          </div>
+            {/* Submit */}
+            <div className="flex flex-col gap-1">
+              <hr />
+              <button type="submit" className="btn btn-primary right" disabled={loading}>
+                {loading ? "Please wait..." : "Save"}
+              </button>
+            </div>
+          </form>
         </div>
       </DialogContent>
     </Dialog>

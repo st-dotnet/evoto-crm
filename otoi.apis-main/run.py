@@ -5,6 +5,7 @@ import os
 
 app = create_app()
 app.config["SQLALCHEMY_ECHO"] = True
+app.config["DEBUG"] = True
 
 if os.getenv("FLASK_ENV") == "development":
     with app.app_context():

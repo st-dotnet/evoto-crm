@@ -98,7 +98,7 @@ def seed_data(app: Flask):
             
             print("Active types seeded.")
 
-            status_list = ["New", "Win", "In-progress", "Lose", "Quote Given"]
+            status_list = ["New", "In-progress", "Quote Given", "Win", "Lose"]
 
             for s in status_list:
                 if not Status.query.filter_by(name=s).first():

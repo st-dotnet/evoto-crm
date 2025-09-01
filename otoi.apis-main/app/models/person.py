@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text,UUID
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.extensions import db
 from app.models.common import BaseMixin, Address
@@ -11,7 +12,7 @@ class Person(BaseMixin, db.Model):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
-    person_type_id = Column(UUID(as_uuid=True), ForeignKey("person_types.uuid", ondelete="SET NULL"), nullable=True)
+    person_type_id = Column(Integer, ForeignKey("person_types.id", ondelete="SET NULL"), nullable=True)
     mobile = Column(String(15), nullable=False, unique=True)
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
@@ -39,7 +40,7 @@ class PersonAddress(BaseMixin,db.Model):
 class PersonType(BaseMixin, db.Model):
     __tablename__ = "person_types"
 
-    uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)
 
     # Relationships
@@ -47,4 +48,4 @@ class PersonType(BaseMixin, db.Model):
 
 Person.person_type = relationship("PersonType", back_populates="persons")
 Person.addresses = relationship("PersonAddress", back_populates="person")
-Address.person_addresses = relationship("PersonAddress", back_populates="address")
+Address.person_addresses = relationship("PersonAddress", back_populates="address",cascade="all, delete-orphan")

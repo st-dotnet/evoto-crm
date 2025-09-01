@@ -11,11 +11,12 @@ class BaseMixin:
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False)
 
-class Address(db.Model):
+class Address(BaseMixin, db.Model):
     __tablename__ = "addresses"
 
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    address1 = Column(String(255), nullable=False)
+
+    address1 = Column(String(255), nullable=True)
     address2 = Column(String(255), nullable=True)
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
@@ -23,7 +24,7 @@ class Address(db.Model):
     pin = Column(String(20), nullable=False)  # Postal Code
  
     # Relationships
-    business = relationship("Business", back_populates="address")
+    person_addresses = relationship("PersonAddress", back_populates="address")
 
     def __repr__(self):
         return (f"<Address(address1={self.address1}, city={self.city}, state={self.state}, "

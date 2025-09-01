@@ -143,8 +143,8 @@ def get_persons():
         query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
 
     if "person_type" in request.args:
-        person_type_uuid = request.args['person_type']
-        query = query.filter(Person.person_type_id == person_type_uuid)
+        person_type_id = request.args['person_type']
+        query = query.filter(Person.person_type_id == person_type_id)
 
     # Sorting
     sort = request.args.get("sort", "uuid")
@@ -209,132 +209,107 @@ def create_person():
           schema:
             type: object
             properties:
-              first_name:
-                type: string
-                description: First name of the person
-                example: John
-              last_name:
-                type: string
-                description: Last name of the person
-                example: Doe
-              mobile:
-                type: string
-                description: Mobile number
-                example: 1234567890
-              email:
-                type: string
-                description: Email address (optional)
-                example: john.doe@example.com   
-              gst:
-                type: string
-                description: GST number (optional)
-                example: 12345ABCDE
-              referenced_by:
-                type: string
-                description: Referenced By (optional)
-                example: Amit Jain
-              person_type_id:
-                type: integer
-                description: ID of the person type
-                example: 1
-              status:
-                type: string
-                description: Status of the person (e.g., Win, Lost)
-                example: Win
+              first_name: {type: string}
+              last_name: {type: string}
+              mobile: {type: string}
+              email: {type: string}
+              gst: {type: string}
+              referenced_by: {type: string}
+              person_type_id: {type: integer}
+              status: {type: string, example: Win}
+              reason: {type: string, description: Required if status=Lose}
               address:
                 type: object
-                description: Address object (required if status is Win)
+                description: Required if status=Win
                 properties:
-                  city:
-                    type: string
-                  state:
-                    type: string
-                  country:
-                    type: string
-                  zip:
-                    type: string  
+                  address1: {type: string}
+                  address2: {type: string}
+                  city: {type: string}
+                  state: {type: string}
+                  country: {type: string}
+                  pin: {type: string}
     responses:
       201:
         description: Person created successfully
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                message:
-                  type: string
-                  example: Person created successfully
-                id:
-                  type: integer
-                  description: Created person ID
-                  example: 1
-      400:
-        description: Invalid person type
     """
-    data = request.json
+    try:
+        data = request.json
+        print("=== DEBUG Incoming Data ===", data)
 
-    # Check if person_type_id is provided
-    person_type_id = data.get("person_type_id")
-        
-    # Validate person type
-    person_type = PersonType.query.filter_by(uuid=person_type_id).first()
-    if not person_type:
-        return jsonify({"error": "Invalid person type"}), 400
-    
+        # Validate person type
+        person_type = PersonType.query.filter_by(id=data.get("person_type_id")).first()
+        if not person_type:
+            return jsonify({"error": "Invalid person type"}), 400
 
-    status = data.get("status", "").strip()
+        status = data.get("status", "").strip()
+        reason = None
+        address_data = None
 
-    if status == "Lose":
-        reason = data.get("reason")
-        if not reason:
-            return jsonify({"error": "Reason is required when status is 'Lose'"}), 400
+        # Validation for Lose
+        if status == "Lose":
+            reason = data.get("reason")
+            if not reason:
+                return jsonify({"error": "Reason is required when status is 'Lose'"}), 400
 
-    
-    # If status is 'Win', check that address information is provided
-    if status == "Win":
-        address_data = data.get("address")
-        if not address_data or not all(key in address_data for key in ['city', 'state', 'country', 'zip']):
-            return jsonify({"error": "Address is required and must include city, state, country, and zip when status is 'Win'"}), 400
+        # Validation for Win → must provide nested address
+        if status == "Win":
+            address_data = data.get("address")
+            if not address_data or not all(k in address_data and address_data[k] for k in ["city", "state", "country", "pin"]):
+                return jsonify({"error": "Address (city, state, country, pin) is required when status is 'Win'"}), 400
 
+        # Check duplicate mobile
+        if Person.query.filter_by(mobile=data["mobile"]).first():
+            return jsonify({"error": "A person with this mobile already exists"}), 400
 
-    # Check if mobile number already exists
-    existing_person = Person.query.filter_by(mobile=data["mobile"]).first()
-    if existing_person:
-        return jsonify({"error": "A person with this mobile number already exists"}), 400
-
-    # Create person
-    person = Person(
-        first_name=data["first_name"],
-        last_name=data["last_name"],
-        mobile=data["mobile"],
-        email=data.get("email"),
-        gst=data.get("gst"),
-        person_type_id=data["person_type_id"],
-        referenced_by=data.get("referenced_by"),
-        status=status,
-        reason=reason if status == "Lose" else None  # Set reason if status is "Lose"
-
-    )
-
-    if status == "Win" and address_data:
-        # Assuming Address model is already set up to handle address fields
-        address = Address(
-            city=address_data.get("city"),
-            state=address_data.get("state"),
-            country=address_data.get("country"),
-            zip=address_data.get("zip")
+        # Create Person
+        person = Person(
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            mobile=data["mobile"],
+            email=data.get("email"),
+            gst=data.get("gst"),
+            person_type_id=data["person_type_id"],
+            referenced_by=data.get("referenced_by"),
+            status=status,
+            reason=reason,
         )
-        db.session.add(address)
+        set_created_fields(person)
+        set_business(person)
+        db.session.add(person)
+        db.session.flush()  # Get person.uuid
+
+        # If Win → Save Address + Relation
+        if status == "Win" and address_data:
+            address = Address(
+                address1=address_data.get("address1", ""),
+                address2=address_data.get("address2", ""),
+                city=address_data["city"],
+                state=address_data["state"],
+                country=address_data["country"],
+                pin=address_data["pin"]
+            )
+            set_created_fields(address)
+            set_business(address)
+            db.session.add(address)
+            db.session.flush()
+
+            person_address = PersonAddress(
+                person_id=person.uuid,
+                address_id=address.uuid
+            )
+            set_created_fields(person_address)
+            set_business(person_address)
+            db.session.add(person_address)
+
         db.session.commit()
+        return jsonify({"message": "Person created successfully", "uuid": str(person.uuid)}), 201
 
-        # Now associate address with person
-        person.addresses.append(PersonAddress(address_id=address.uuid))
-    set_created_fields(person)
-    set_business(person)
-    db.session.add(person)
-    db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print("ERROR in create_person:", str(e))
+        import traceback; print(traceback.format_exc())
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
-    return jsonify({"message": "Person created successfully", "uuid": person.uuid}), 201
 
 @person_blueprint.route("/<uuid:person_id>", methods=["PUT"])
 def update_person(person_id):
@@ -409,7 +384,7 @@ def update_person(person_id):
     person_type_id = data.get("person_type_id")
     person.referenced_by = data.get("referenced_by", person.referenced_by)
     if person_type_id:
-        person_type = PersonType.query.filter_by(uuid=person_type_id).first()
+        person_type = PersonType.query.filter_by(id=person_type_id).first()
         if not person_type:
             return jsonify({"error": "Invalid person type"}), 400
         person.person_type_id = person_type_id
@@ -606,6 +581,162 @@ def get_leads():
     })
   
 
+@person_blueprint.route("/customers", methods=["GET","OPTIONS"])
+def get_customers():
+    """
+    Fetch a list of persons with person_type 'Customers' with filtering, sorting, and pagination.
+    ---
+    tags:
+      - Customers
+    parameters:
+      - name: filter[name]
+        in: query
+        description: Filter by name (first_name or last_name)
+        required: false
+        schema:
+          type: string
+      - name: query
+        in: query
+        description: Search by first_name, last_name, email, or mobile
+        required: false
+        schema:
+          type: string
+      - name: mobile
+        in: query
+        description: Filter by mobile number
+        required: false
+        schema:
+          type: string
+      - name: person_type
+        in: query
+        description: Filter by person type ID
+        required: false
+        schema:
+          type: integer    
+      - name: sort
+        in: query
+        description: Comma-separated field names for sorting (e.g., 'first_name,-email')
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: "Page number (default: 1)"
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: items_per_page
+        in: query
+        description: "Number of records per page (default: 10)"
+        required: false
+        schema:
+          type: integer
+          default: 10
+    responses:
+      200:
+        description: A list of customers
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pages:
+                  type: integer
+                  description: Total pages
+                pagination:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                      description: Total number of records
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: Person ID  
+                      first_name:
+                        type: string
+                        description: First name
+                      last_name:
+                        type: string
+                        description: Last name
+                      mobile:
+                        type: string
+                        description: Mobile number
+                      email:
+                        type: string
+                        description: Email address
+                      person_type:
+                        type: string
+                        description: Person type  
+      404:
+        description: No customers found
+    """
+    query = (
+        Person.query
+        .join(PersonType)
+        .filter(PersonType.name == "Customer")
+    )
+
+    # Filtering
+    if "filter[name]" in request.args:
+        filter_value = request.args.get("filter[name]", "")
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{filter_value}%"),
+                Person.last_name.ilike(f"%{filter_value}%")
+            )
+        )
+    if "query" in request.args:
+        query_value = request.args.get("query", "")
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{query_value}%"),
+                Person.last_name.ilike(f"%{query_value}%"),
+                Person.email.ilike(f"%{query_value}%"),
+                Person.mobile.ilike(f"%{query_value}%")
+            )
+        )
+    if "mobile" in request.args:
+        query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+   
+
+    # Sorting
+    sort = request.args.get("sort", "id")
+    for field in sort.split(","):
+        if field.startswith("-"):
+            query = query.order_by(db.desc(getattr(Person, field[1:], "id")))
+        else:
+            query = query.order_by(getattr(Person, field, "id"))
+
+    # Pagination
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("items_per_page", 10))
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    customers = pagination.items
+
+    result = [
+        {   "id": customer.id,
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,  
+            "gst": customer.gst,
+            "person_type": customer.person_type.name,
+        }
+        for customer in customers
+    ]
+    return jsonify({
+        "pages": pagination.pages,
+        "pagination": {"total": pagination.total},
+        "data": result
+    })
+  
+
 @person_blueprint.route("/<uuid:person_id>", methods=["GET"])
 def get_person_by_id(person_id):
     """
@@ -679,7 +810,7 @@ def get_person_by_id(person_id):
 
 #Active
 
-@person_blueprint.route("/actives", methods=["GET","OPTIONS"])
+@person_blueprint.route("/", methods=["GET","OPTIONS"])
 def get_active():
     """
     Fetch a list of persons with person_type 'active' with filtering, sorting, and pagination.
