@@ -3,8 +3,10 @@ from app.extensions import db
 from app.models.person import Person, PersonType, PersonAddress
 from app.models.active import Active, ActiveType
 from app.models.common import Address
+from app.models.customer import Customer
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
 from sqlalchemy import or_, func
+from sqlalchemy import event
 
 person_blueprint = Blueprint("person", __name__, url_prefix="/persons")
 
@@ -816,5 +818,7 @@ def get_active():
         "pagination": {"total": pagination.total},
         "data": result
     })
+
+
 
 

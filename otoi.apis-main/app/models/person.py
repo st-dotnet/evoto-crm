@@ -22,7 +22,7 @@ class Person(BaseMixin, db.Model):
     # Relationships
     person_type = relationship("PersonType", back_populates="persons")
     addresses = relationship("PersonAddress", back_populates="person")
-
+    customer = relationship("Customer", uselist=False, back_populates="person")  # one-to-one
 
 class PersonAddress(BaseMixin,db.Model):
     __tablename__ = "person_addresses"
