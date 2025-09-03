@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { ActivityLead } from "@/types/activity";
+
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -43,14 +45,6 @@ type PersonsQueryApiResponse = QueryApiResponse<Person>;
 
 interface IPartiesCustomerContentProps {
   refreshStatus: number;
-}
-
-interface ActivityLead {
-  id: number;
-  status?: string;
-  address?: string;
-  created_at?: string;
-  activity_type?: string;
 }
 
 const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {

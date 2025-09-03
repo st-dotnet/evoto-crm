@@ -4,14 +4,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import clsx from "clsx";
 import axios from "axios";
-
-interface ActivityLead {
-  id: string;
-  status?: string;
-  address?: string;
-  created_at?: string;
-  active_type_id?: string;
-}
+import { ActivityLead } from "@/types/activity";
 
 interface ActivityType {
   id: number;

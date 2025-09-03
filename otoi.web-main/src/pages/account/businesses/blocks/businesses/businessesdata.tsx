@@ -1,18 +1,19 @@
 import { IAvatarsProps } from '@/partials/common';
 
-interface IBusinessData {
-  id: number;
-  name: string;
-  phone_number: string;
-  email: string;
-  is_gst_registered: boolean;
-  gst_number: string;
-  pan_number: string;
-  terms_and_conditions: string;
-  signature: string; // Use IAvatarsProps for the members property
+interface ITeamData {
+  team: {
+    name: string;
+    description: string;
+  };
+  rating: {
+    value: number;
+    round: number;
+  };
+  lastModified: string;
+  members: IAvatarsProps;
 }
 
-const BusinessesData: IBusinessData[] = [
+const TeamsData: ITeamData[] = [
   {
     team: {
       name: 'Product Management',

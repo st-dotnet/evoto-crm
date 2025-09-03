@@ -382,7 +382,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
     };
     const handleStatusTypeChange = (statusType: string) => {
       setStatusType(statusType);
-      console.log("Person Type", searchStatusType);
+      console.log("Status Type", searchStatusType);
       setDefaultStatusType(statusType);
     };
     return (
@@ -434,8 +434,8 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
                 <SelectItem value="1">New</SelectItem>
                 <SelectItem value="2">In Progress</SelectItem>
                 <SelectItem value="3">Quote Given</SelectItem>
-                <SelectItem value="3">Win</SelectItem>
-                <SelectItem value="3">Lose</SelectItem>
+                <SelectItem value="4">Win</SelectItem>
+                <SelectItem value="5">Lose</SelectItem>
               </SelectContent>
             </Select>
           </div>

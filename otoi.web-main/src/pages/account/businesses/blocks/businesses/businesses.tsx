@@ -11,12 +11,23 @@ import {
   DataGridColumnHeader,
   useDataGrid
 } from '@/components';
-import { CommonRating } from '@/partials/common';
-import { Business, QueryApiResponse } from './teams-types';
 import axios from 'axios';
-import { formatIsoDate } from '@/utils/Date';
-import { TeamUsers } from './TeamUsers';
 import { Input } from '@/components/ui/input';
+
+interface QueryApiResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    items_per_page: number;
+  };
+}
+
+interface Business {
+  id: number;
+  name: string;
+  description?: string;
+}
 
 type BusinessesQueryApiResponse = QueryApiResponse<Business>;
 

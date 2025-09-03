@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import clsx from "clsx";
 import {
   Dialog,
@@ -15,7 +15,6 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
-
 
 interface IModalPersonProps {
   open: boolean;
@@ -87,20 +86,13 @@ const savePersonSchema = Yup.object().shape({
     .max(50, "Maximum 50 symbols"),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   person_type_id: Yup.string().required("Person Type is required"), 
-  // status: Yup.string().required("Person Type is required"), 
-  // city: Yup.string().required("Person Type is required"),
-  // state: Yup.string().required("Person Type is required"),
-  // country: Yup.string().required("Person Type is required"),
-  // address1: Yup.string().required("Person Type is required"),
-  // address2: Yup.string().required("Person Type is required"),
-  // pin: Yup.string().required("Person Type is required"),
-  // reason: Yup.string().required("Person Type is required"),
 });
-
 
 const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
   const from = "/parties/persons";
   const [personTypes, setPersonTypes] = useState<IModalPersonType[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
@@ -177,6 +169,43 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
     },
   });
 
+  // Auto-select person type based on current route
+  const getDefaultPersonType = () => {
+    if (currentPath.includes('/leads')) {
+      // Find Lead person type (assuming it's ID 4 or has name "Lead")
+      const leadType = personTypes.find(type => 
+        type.name.toLowerCase() === 'lead' || type.id === 4
+      );
+      return leadType ? leadType.id.toString() : "";
+    } else if (currentPath.includes('/customers')) {
+      // Find Customer person type (assuming it's ID 1 or has name "Customer")
+      const customerType = personTypes.find(type => 
+        type.name.toLowerCase() === 'customer' || type.id === 1
+      );
+      return customerType ? customerType.id.toString() : "";
+    }
+    return "";
+  };
+
+  // Get modal title based on current route
+  const getModalTitle = () => {
+    if (person) {
+      if (currentPath.includes('/leads')) {
+        return "Edit Lead";
+      } else if (currentPath.includes('/customers')) {
+        return "Edit Customer";
+      }
+      return "Edit Person";
+    } else {
+      if (currentPath.includes('/leads')) {
+        return "Add Lead";
+      } else if (currentPath.includes('/customers')) {
+        return "Add Customer";
+      }
+      return "Add Person";
+    }
+  };
+
   useEffect(() => {
     if (open && person) {
       formik.resetForm({
@@ -196,18 +225,27 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           address2: person.address2 || "",
         },
       });
+    } else if (open && personTypes.length > 0) {
+      // Auto-select person type for new entries based on current route
+      const defaultPersonType = getDefaultPersonType();
+      formik.resetForm({
+        values: {
+          ...initialValues,
+          person_type_id: defaultPersonType,
+        },
+      });
     } else if (open) {
       formik.resetForm();
     }
-  }, [open, person]);
+  }, [open, person, personTypes, currentPath]);
 
-   return (
+  return (
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
           <DialogHeader className="bg-gray-50 p-6 border-b">
             <DialogTitle className="text-lg font-semibold text-gray-800">
-              {person ? "Edit Person" : "Add Person"}
+              {getModalTitle()}
             </DialogTitle>
             <DialogClose
               onClick={onOpenChange}
@@ -514,9 +552,9 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
 
                                  {/* Zip */}
                                  <div className="flex flex-col gap-1.5">
-                                   <label className="block text-sm font-medium text-gray-700">pin Code</label>
+                                   <label className="block text-sm font-medium text-gray-700">Pin Code</label>
                                    <input
-                                     placeholder="pin Code"
+                                     placeholder="Pin Code"
                                      type="text"
                                      autoComplete="off"
                                      {...formik.getFieldProps("pin")}
@@ -533,7 +571,6 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
                            </>
                          )}
 
-                         {/* Reason Section if status = 1215424c-347a-4503-98c2-016e16593cc9 */}
                          {formik.values.status === "5" && (
                            <div className="flex flex-col gap-1.5 col-span-full">
                              <label className="block text-sm font-medium text-gray-700">Reason</label>
@@ -580,5 +617,4 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
     </Fragment>
   );
 };
-
-export { ModalPerson };
+export { ModalPerson };  
