@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
