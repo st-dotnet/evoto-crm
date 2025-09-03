@@ -25,5 +25,6 @@ class Customer(db.Model):
     pin = Column(String(20), nullable=False)
  
     # Relationship back to Person
-    person = relationship("Person", back_populates="customer")
+    person = relationship("Person", back_populates="customers")
+    
  

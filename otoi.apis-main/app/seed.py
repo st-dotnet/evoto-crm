@@ -36,10 +36,30 @@ def create_database(app):
 
 def seed_data(app: Flask):
     with app.app_context():
-
         print("Clearing database...")
-        db.drop_all()  # Drop all tables
-        db.create_all()  # Recreate all tables
+        
+        # Drop tables in the correct order to avoid dependency issues
+        with db.engine.connect() as conn:
+            # Disable foreign key checks
+            conn.execute(text('SET session_replication_role = \'replica\';'))
+            
+            # Get all table names in the correct drop order
+            inspector = db.inspect(db.engine)
+            table_names = inspector.get_table_names()
+            
+            # Drop tables in reverse order of dependencies
+            for table in reversed(table_names):
+                try:
+                    conn.execute(text(f'DROP TABLE IF EXISTS \"{table}\" CASCADE'))
+                    print(f"Dropped table: {table}")
+                except Exception as e:
+                    print(f"Error dropping table {table}: {e}")
+            
+            # Re-enable foreign key checks
+            conn.execute(text('SET session_replication_role = \'origin\';'))
+        
+        # Recreate all tables
+        db.create_all()
         print("Database cleared and tables recreated.")
 
         # Add a default super admin user

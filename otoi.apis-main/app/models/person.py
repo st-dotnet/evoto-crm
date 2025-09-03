@@ -16,16 +16,29 @@ class Person(BaseMixin, db.Model):
     mobile = Column(String(15), nullable=False, unique=True)
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
-    status = Column(String(80), nullable=False,)
+    status = Column(String(80), nullable=False)
     reason = Column(String(200), nullable=True)
     referenced_by = Column(String(500), nullable=True)
-    
+
     # Relationships
     person_type = relationship("PersonType", back_populates="persons")
-    addresses = relationship("PersonAddress", back_populates="person")
-    customer = relationship("Customer", uselist=False, back_populates="person")  # one-to-one
+    person_addresses = relationship("PersonAddress", back_populates="person", cascade="all, delete-orphan")
 
-class PersonAddress(BaseMixin,db.Model):
+    # direct access to addresses
+    addresses = relationship("Address", secondary="person_addresses", back_populates="persons")
+
+    # one-to-one relation with Customer
+    customers = relationship("Customer", back_populates="person", cascade="all, delete-orphan")
+
+
+    def __repr__(self):
+        return f"<Person(name={self.first_name} {self.last_name}, mobile={self.mobile})>"
+
+
+# -------------------------
+# PersonAddress (join table)
+# -------------------------
+class PersonAddress(BaseMixin, db.Model):
     __tablename__ = "person_addresses"
 
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -33,10 +46,16 @@ class PersonAddress(BaseMixin,db.Model):
     address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.uuid", ondelete="CASCADE"), nullable=False)
 
     # Relationships
-    person = relationship("Person", back_populates="addresses")
+    person = relationship("Person", back_populates="person_addresses")
     address = relationship("Address", back_populates="person_addresses")
 
+    def __repr__(self):
+        return f"<PersonAddress(person_id={self.person_id}, address_id={self.address_id})>"
 
+
+# -------------------------
+# PersonType Model
+# -------------------------
 class PersonType(BaseMixin, db.Model):
     __tablename__ = "person_types"
 
@@ -46,6 +65,5 @@ class PersonType(BaseMixin, db.Model):
     # Relationships
     persons = relationship("Person", back_populates="person_type")
 
-Person.person_type = relationship("PersonType", back_populates="persons")
-Person.addresses = relationship("PersonAddress", back_populates="person")
-Address.person_addresses = relationship("PersonAddress", back_populates="address",cascade="all, delete-orphan")
+    def __repr__(self):
+        return f"<PersonType(name={self.name})>"

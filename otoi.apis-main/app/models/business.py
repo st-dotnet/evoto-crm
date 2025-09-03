@@ -48,11 +48,9 @@ class Business(db.Model):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
-    address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.uuid", ondelete="CASCADE"), nullable=False)
     # Relationships
     industry_type = relationship("IndustryType", back_populates="businesses")
     business_registration_type = relationship("BusinessRegistrationType", back_populates="businesses")
     users = relationship("User", secondary=user_business, back_populates="businesses")
-    primary_address = relationship("Address", foreign_keys=[address_id])
-    addresses = relationship("Address", foreign_keys="[Address.business_id]", primaryjoin="Business.id == Address.business_id")
+    addresses = relationship("Address", back_populates="business", cascade="all, delete-orphan")
     active_types = relationship("ActiveType", back_populates="business")
