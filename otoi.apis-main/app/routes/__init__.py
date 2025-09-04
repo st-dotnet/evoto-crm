@@ -21,5 +21,6 @@ def register_blueprints(app):
     app.register_blueprint(person_type_blueprint, url_prefix="/person-types")
     app.register_blueprint(active_type_blueprint, url_prefix="/active-types")
     app.register_blueprint(status_list_blueprint, url_prefix="/status-list")
-    app.register_blueprint(customer_blueprint, url_prefix="/customers")
+    # "customer_blueprint" already defines url_prefix="/customers"; don't double-prefix
+    app.register_blueprint(customer_blueprint)
 

@@ -1,16 +1,17 @@
 from flask import Blueprint, jsonify, request
 from app.models.customer import Customer
 from app.extensions import db
+from sqlalchemy import func
 
-customer_blueprint = Blueprint("customers", __name__)
 
-# GET all customers
+customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
+
+# GET all customers (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["GET"])
 def get_customers():
-    customers = Customer.query.all()
-    print("=== DEBUG Update Incoming Data ===", customers)
+    query = Customer.query
     sort = request.args.get("sort", "uuid")
-    order = request.args.get("order", "asc")  # Extract order ('asc' or 'desc')
+    order = request.args.get("order", "asc").lower()  # Extract order ('asc' or 'desc')
 
     for field in sort.split(","):
       if field == "name":
@@ -44,25 +45,40 @@ def get_customers():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     customers = pagination.items
 
-    return jsonify([
-        {
-            "uuid": str(c.uuid),
-            "Customer_id": str(c.Customer_id),
-            "first_name": c.first_name,
-            "last_name": c.last_name,
-            "mobile": c.mobile,
-            "email": c.email,
-            "gst": c.gst,
-            "status": c.status,
-            "address1": c.address1,
-            "address2": c.address2,
-            "city": c.city,
-            "state": c.state,
-            "country": c.country,
-            "pin": c.pin,
+    # Shape response to match frontend expectations: { data: [...], pagination: { total, ... } }
+    return jsonify({
+        "data": [
+            {
+                "id": str(c.uuid),  # alias for row key expected by frontend
+                "uuid": str(c.uuid),
+                "customer_id": str(c.uuid),
+                "first_name": c.first_name,
+                "last_name": c.last_name,
+                "mobile": c.mobile,
+                "email": c.email,
+                "gst": c.gst,
+                "status": c.status,
+                "address1": c.address1,
+                "address2": c.address2,
+                "city": c.city,
+                "state": c.state,
+                "country": c.country,
+                "pin": c.pin,
+            }
+            for c in customers
+        ],
+        "pagination": {
+            "total": pagination.total,
+            "items_per_page": per_page,
+            "current_page": page,
+            "last_page": pagination.pages,
+            "from": (pagination.page - 1) * per_page + 1 if pagination.total > 0 else 0,
+            "to": min(pagination.page * per_page, pagination.total),
+            "prev_page_url": None,
+            "next_page_url": None,
+            "first_page_url": None,
         }
-        for c in customers
-    ])
+    })
 
 # GET a single customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["GET"])
@@ -70,7 +86,7 @@ def get_customer(customer_id):
     customer = Customer.query.get_or_404(customer_id)
     return jsonify({
         "uuid": str(customer.uuid),
-        "Customer_id": str(customer.Customer_id),
+        "customer_id": str(customer.uuid),
         "first_name": customer.first_name,
         "last_name": customer.last_name,
         "mobile": customer.mobile,

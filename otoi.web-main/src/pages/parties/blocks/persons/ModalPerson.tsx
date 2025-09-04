@@ -41,13 +41,13 @@ interface Person {
   person_type: string;
   person_type_id?: string;
   status?: string;
+  address1?: string;
+  address2?: string;
   city?: string;
   state?: string;
   country?: string;
-  pin?: number;
+  pin?: string;
   reason?: string;
-  address1?: string;
-  address2?: string;
 }
 
 const initialValues: Omit<Person, "person_type"> = {
@@ -58,13 +58,13 @@ const initialValues: Omit<Person, "person_type"> = {
   gst: "",
   person_type_id: "",
   status: "",
+  address1: "",
+  address2: "",
   city: "",
   state: "",
   country: "",
-  address1: "",
-  address2: "",
+  pin: "",
   reason: "",
-  // pin: "",
 };
 
 const savePersonSchema = Yup.object().shape({
@@ -85,7 +85,8 @@ const savePersonSchema = Yup.object().shape({
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols"),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  person_type_id: Yup.string().required("Person Type is required"), 
+  person_type_id: Yup.string().required("Person Type is required"),
+  pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
 });
 
 const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
@@ -220,7 +221,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
           city: person.city || "",
           state: person.state || "",
           country: person.country || "",
-          // pin: person.pin || "",
+          pin: person.pin || "",
           address1: person.address1 || "",
           address2: person.address2 || "",
         },

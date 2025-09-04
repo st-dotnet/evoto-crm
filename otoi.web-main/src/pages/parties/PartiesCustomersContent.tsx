@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  Person,
+  Customer,
   QueryApiResponse,
-} from "../parties/blocks/persons/person-models";
+} from "../parties/blocks/persons/customer-models";
 import { ModalPerson } from "./blocks/persons";
 import { ActivityForm } from "./ActivityForm";
 
@@ -41,7 +41,7 @@ interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
 }
 
-type PersonsQueryApiResponse = QueryApiResponse<Person>;
+type CustomersQueryApiResponse = QueryApiResponse<Customer>;
 
 interface IPartiesCustomerContentProps {
   refreshStatus: number;
@@ -52,7 +52,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
   const [refreshKey, setRefreshKey] = useState(0);
   const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Customer | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<ActivityLead | null>(null);
 
@@ -90,7 +90,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     );
   };
 
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
+  const openPersonModal = (event: { preventDefault: () => void }, rowData: Customer | null = null) => {
     event.preventDefault();
     setSelectedPerson(rowData);
     setPersonModalOpen(true);
@@ -101,7 +101,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     setRefreshKey((prevKey) => prevKey + 1);
   };
 
-  const columns = useMemo<ColumnDef<Person>[]>(
+  const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
       {
         accessorKey: "id",
@@ -131,7 +131,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.person_id}`);
                 }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
@@ -140,7 +140,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.person_id}`);
                 }}
               >
                 {info.row.original.email}
@@ -153,7 +153,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         },
       },
       {
-        accessorFn: (row: Person) => row.gst,
+        accessorFn: (row: Customer) => row.gst,
         id: "gst",
         header: ({ column }) => (
           <DataGridColumnHeader title="GST" column={column} />
@@ -168,7 +168,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         },
       },
       {
-        accessorFn: (row: Person) => row.mobile,
+        accessorFn: (row: Customer) => row.mobile,
         id: "mobile",
         header: ({ column }) => (
           <DataGridColumnHeader title="Mobile" column={column} />
@@ -176,21 +176,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         enableSorting: true,
         cell: (info: any) => {
           return info.row.original.mobile;
-        },
-        meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
-        },
-      },
-      {
-        accessorFn: (row: Person) => row.person_type,
-        id: "type",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Type" column={column} />
-        ),
-        enableSorting: false,
-        cell: (info: any) => {
-          return info.row.original.person_type;
         },
         meta: {
           headerClassName: "min-w-[137px]",
@@ -230,7 +215,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                   setSelectedCustomerForActivity({
                     id: row.original.id,
                     status: row.original.status,
-                    address: row.original.address,
+                    address: row.original.address1,
                     created_at: row.original.created_at,
                     activity_type: row.original.activity_type,
                   });
@@ -279,10 +264,12 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         });
       }
 
-      const response = await axios.get<PersonsQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/persons/customers?${queryParams.toString()}`,
+      // const response = await axios.get<CustomersQueryApiResponse>(
+      //   `${import.meta.env.VITE_APP_API_URL}/customers?${queryParams.toString()}`,
+      // );
+      const response = await axios.get<CustomersQueryApiResponse>(
+        `/api/customers?${queryParams.toString()}`,
       );
-
       return {
         data: response.data.data,
         totalCount: response.data.pagination.total,

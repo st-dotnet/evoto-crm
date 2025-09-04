@@ -2,8 +2,10 @@ from flask import Flask
 from app import create_app
 from app.seed import seed_data, create_database
 import os
+from flask_cors import CORS
 
 app = create_app()
+CORS(app)
 app.config["SQLALCHEMY_ECHO"] = True
 app.config["DEBUG"] = True
 
