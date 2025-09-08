@@ -199,7 +199,39 @@ def get_persons():
 
 @person_blueprint.route("/", methods=["POST"])
 def create_person():
-    """Create a new person."""
+    """
+    Create a new person.
+    ---
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              first_name: {type: string}
+              last_name: {type: string}
+              mobile: {type: string}
+              email: {type: string}
+              gst: {type: string}
+              referenced_by: {type: string}
+              person_type_id: {type: integer}
+              status: {type: string, example: Win}
+              reason: {type: string, description: Required if status=Lose}
+              address:
+                type: object
+                description: Required if status=Win
+                properties:
+                  address1: {type: string}
+                  address2: {type: string}
+                  city: {type: string}
+                  state: {type: string}
+                  country: {type: string}
+                  pin: {type: string}
+    responses:
+      200:
+        description: Person created successfully
+    """
     try:
         data = request.json
         print("=== DEBUG Incoming Data ===", data)
@@ -348,6 +380,7 @@ def update_person(person_id):
     """
     try:
         data = request.json
+        print("=== DEBUG Update Incoming Data ===", data)
 
         # Fetch person
         person = Person.query.get_or_404(person_id)
@@ -441,7 +474,30 @@ def update_person(person_id):
 
 @person_blueprint.route("/<uuid:person_id>", methods=["DELETE"])
 def delete_person(person_id):
-    """Delete a person by ID."""
+    """
+    Delete a person by ID.
+    ---
+    parameters:
+      - name: person_id
+        in: path
+        description: ID of the person to delete
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: Person deleted successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  example: Person deleted successfully
+      404:
+        description: Person not found
+    """
     person = Person.query.get_or_404(person_id)
     db.session.delete(person)
     db.session.commit()
@@ -614,11 +670,10 @@ def get_person_by_id(person_id):
     parameters:
       - name: person_id
         in: path
-        description: UUID of the person to fetch
+        description: ID of the person to fetch
         required: true
         schema:
-          type: string
-          format: uuid
+          type: integer
     responses:
       200:
         description: Details of the person
@@ -627,10 +682,9 @@ def get_person_by_id(person_id):
             schema:
               type: object
               properties:
-                uuid:
-                  type: string
-                  format: uuid
-                  description: Person UUID
+                id:
+                  type: integer
+                  description: Person ID
                 first_name:
                   type: string
                   description: First name
@@ -643,6 +697,9 @@ def get_person_by_id(person_id):
                 email:
                   type: string
                   description: Email address
+                # test:
+                #    type: string
+                #    descripton: test  
                 gst:
                   type: string
                   description: GST number
@@ -657,8 +714,9 @@ def get_person_by_id(person_id):
     if not person:
         return jsonify({"error": "Person not found"}), 404
 
+    # Prepare the response
     result = {
-        "uuid": str(person.uuid),   # convert to string for JSON
+        "uuid": person.uuid,
         "first_name": person.first_name,
         "last_name": person.last_name,
         "mobile": person.mobile,

@@ -26,22 +26,7 @@ def create_app():
     app.before_request(extract_jwt_info)
 
     # Initialize Swagger
-    swagger_config = {
-        "headers": [],
-        "specs": [
-            {
-                "endpoint": 'apispec_1',
-                "route": '/apispec_1.json',
-                "rule_filter": lambda rule: True,   # include all endpoints
-                "model_filter": lambda tag: True,   # include all models
-            }
-        ],
-        "static_url_path": "/flasgger_static",
-        "swagger_ui": True,
-        "specs_route": "/apidocs/"
-    }
-    Swagger(app, config=swagger_config)
-
+    Swagger(app)
 
     # Register blueprints
     register_blueprints(app)
