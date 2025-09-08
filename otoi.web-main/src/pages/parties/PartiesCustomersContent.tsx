@@ -264,15 +264,16 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         });
       }
 
-      // const response = await axios.get<CustomersQueryApiResponse>(
-      //   `${import.meta.env.VITE_APP_API_URL}/customers?${queryParams.toString()}`,
-      // );
       const response = await axios.get<CustomersQueryApiResponse>(
-        `/api/customers?${queryParams.toString()}`,
+        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
       );
+      // Support both envelope ({ data, pagination }) and plain array responses
+      const payload: any = response.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
       return {
-        data: response.data.data,
-        totalCount: response.data.pagination.total,
+        data: rows,
+        totalCount: total,
       };
     } catch (error) {
       console.log(error);
@@ -407,11 +408,11 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         onOpenChange={handleClose}
         person={selectedPerson}
       />
-      <ActivityForm
+      {/* <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}
         lead={selectedCustomerForActivity}
-      />
+      /> */}
     </div>
   );
 };
