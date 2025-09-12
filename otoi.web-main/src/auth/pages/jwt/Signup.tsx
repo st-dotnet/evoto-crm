@@ -13,6 +13,7 @@ const initialValues = {
   firstName: '',
   lastName: '',
   email: '',
+  mobileNo: '',
   password: '',
   changepassword: '',
   acceptTerms: false
@@ -28,6 +29,10 @@ const signupSchema = Yup.object().shape({
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
     .required('Email is required'),
+  mobileNo: Yup.string()
+    .min(10, 'Minimum 10 symbols')
+    .max(10, 'Maximum 10 symbols')
+    .required('Mobile Number is required'),
   password: Yup.string()
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
@@ -59,7 +64,7 @@ const Signup = () => {
         if (!register) {
           throw new Error('JWTProvider is required for this form.');
         }
-        await register(values.firstName, values.lastName, values.email, values.password, values.changepassword);
+        await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
         navigate(from, { replace: true });
       } catch (error) {
         console.error(error);
@@ -160,6 +165,14 @@ const Signup = () => {
               placeholder="Last Name"
               type="text"
               autoComplete="off"
+              {...formik.getFieldProps('lastName')}
+              className={clsx(
+                'form-control bg-transparent',
+                { 'is-invalid': formik.touched.lastName && formik.errors.lastName },
+                {
+                  'is-valid': formik.touched.lastName && !formik.errors.lastName
+                }
+              )}
             />
           </label>
         </div>
@@ -183,6 +196,29 @@ const Signup = () => {
           {formik.touched.email && formik.errors.email && (
             <span role="alert" className="text-danger text-xs mt-1">
               {formik.errors.email}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="form-label text-gray-900">Mobile No.<span style={{color:"red"}}>*</span></label>
+          <label className="input">
+            <input
+              placeholder="83******25"
+              type="text"
+              autoComplete="off"
+              {...formik.getFieldProps('mobileNo')}
+              className={clsx(
+                'form-control bg-transparent',
+                { 'is-invalid': formik.touched.mobileNo && formik.errors.mobileNo },
+                {
+                  'is-valid': formik.touched.mobileNo && !formik.errors.mobileNo
+                }
+              )}
+            />
+          </label>
+          {formik.touched.mobileNo && formik.errors.mobileNo && (
+            <span role="alert" className="text-danger text-xs mt-1">
+              {formik.errors.mobileNo}
             </span>
           )}
         </div>

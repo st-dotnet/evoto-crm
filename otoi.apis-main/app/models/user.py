@@ -21,6 +21,7 @@ class User(db.Model):
     lastName = Column(String(80), nullable=True)
     username = Column(String(80), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
+    mobileNo = Column(String(10), unique=True, nullable=False)
     password_hash = Column(String(), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

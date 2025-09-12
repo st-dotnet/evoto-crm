@@ -33,6 +33,9 @@ def signup():
               email:
                 type: string
                 example: "john@example.com"
+              mobileNo:
+                type: string
+                example: "83******25"
               password:
                 type: string
                 example: "StrongP@ssw0rd"
@@ -58,6 +61,8 @@ def signup():
                   type: string
                 email:
                   type: string
+                mobileNo:
+                  type: string
                 role:
                   type: string
                 created_at:
@@ -67,7 +72,10 @@ def signup():
     """
     data = request.get_json(silent=True) or {}
 
+    firstName = (data.get("firstName") or "")
+    lastName = (data.get("lastName") or "")
     email = (data.get("email") or "").strip().lower()
+    mobileNo = (data.get("mobileNo") or "").strip()
     password = data.get("password") or ""
     password_confirmation = data.get("password_confirmation") or data.get("changepassword") or ""
     username = (data.get("username") or (email.split("@")[0] if email else "")).strip()
@@ -91,7 +99,7 @@ def signup():
         return jsonify({"error": f"role '{role_name}' not found"}), 400
 
     # Create user
-    user = User(username=username, email=email, role=role)
+    user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role)
     user.set_password(password)
 
     # Persist and set audit fields
