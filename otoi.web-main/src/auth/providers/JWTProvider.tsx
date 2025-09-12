@@ -34,6 +34,7 @@ interface AuthContextProps {
     firstName: string,
     lastName: string,
     email: string,
+    mobileNo: string,
     password: string,
     password_confirmation: string,
   ) => Promise<void>;
@@ -93,13 +94,19 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const register = async (
+    firstName: string,
+    lastName: string,
     email: string,
+    mobileNo: string,
     password: string,
     password_confirmation: string,
   ) => {
     try {
       const { data: auth } = await axios.post(REGISTER_URL, {
+        firstName,
+        lastName,
         email,
+        mobileNo,
         password,
         password_confirmation
       });
