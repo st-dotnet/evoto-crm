@@ -75,6 +75,7 @@ def seed_data(app: Flask):
             admin.lastName="admin"
             admin.username="admin"
             admin.email="info@evototechnologies.com"
+            admin.mobileNo="0000000000"
             admin.role = admin_role
             admin.created_at = datetime.utcnow()
             admin.created_by = admin.id
