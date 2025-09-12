@@ -409,7 +409,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
               onValueChange={(value) => handlePersonTypeChange(value)}
             >
               <SelectTrigger className="w-28" size="sm">
-                <SelectValue placeholder="Select" />
+              <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent className="w-32">
                 <SelectItem value="-1">All</SelectItem>

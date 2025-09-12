@@ -71,6 +71,8 @@ def seed_data(app: Flask):
         admin = User()
         business = Business()
         if not User.query.filter_by(username="admin").first():
+            admin.firstName="admin"
+            admin.lastName="admin"
             admin.username="admin"
             admin.email="info@evototechnologies.com"
             admin.role = admin_role

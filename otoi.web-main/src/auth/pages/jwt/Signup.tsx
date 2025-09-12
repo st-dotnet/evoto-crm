@@ -10,6 +10,8 @@ import { Alert, KeenIcon } from '@/components';
 import { useLayout } from '@/providers';
 
 const initialValues = {
+  firstName: '',
+  lastName: '',
   email: '',
   password: '',
   changepassword: '',
@@ -17,6 +19,10 @@ const initialValues = {
 };
 
 const signupSchema = Yup.object().shape({
+  firstName: Yup.string()
+    .min(3, 'Minimum 3 characters')
+    .max(50, 'Maximum 50 characters')
+    .required('First Name is required'),
   email: Yup.string()
     .email('Wrong email format')
     .min(3, 'Minimum 3 symbols')
@@ -53,7 +59,7 @@ const Signup = () => {
         if (!register) {
           throw new Error('JWTProvider is required for this form.');
         }
-        await register(values.email, values.password, values.changepassword);
+        await register(values.firstName, values.lastName, values.email, values.password, values.changepassword);
         navigate(from, { replace: true });
       } catch (error) {
         console.error(error);
@@ -125,7 +131,40 @@ const Signup = () => {
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
 
         <div className="flex flex-col gap-1">
-          <label className="form-label text-gray-900">Email</label>
+          <label className="form-label text-gray-900">First Name <span style={{color:"red"}}>*</span></label>
+          <label className="input">
+            <input
+              placeholder="First Name"
+              type="text"
+              autoComplete="off"
+              {...formik.getFieldProps('firstName')}
+              className={clsx(
+                'form-control bg-transparent',
+                { 'is-invalid': formik.touched.firstName && formik.errors.firstName },
+                {
+                  'is-valid': formik.touched.firstName && !formik.errors.firstName
+                }
+              )}
+            />
+          </label>
+          {formik.touched.firstName && formik.errors.firstName && (
+            <span role="alert" className="text-danger text-xs mt-1">
+              {formik.errors.firstName}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="form-label text-gray-900">Last Name</label>
+          <label className="input">
+            <input
+              placeholder="Last Name"
+              type="text"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="form-label text-gray-900">Email<span style={{color:"red"}}>*</span></label>
           <label className="input">
             <input
               placeholder="email@email.com"
@@ -149,7 +188,7 @@ const Signup = () => {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="form-label text-gray-900">Password</label>
+          <label className="form-label text-gray-900">Password<span style={{color:"red"}}>*</span></label>
           <label className="input">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -182,7 +221,7 @@ const Signup = () => {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="form-label text-gray-900">Confirm Password</label>
+          <label className="form-label text-gray-900">Confirm Password<span style={{color:"red"}}>*</span></label>
           <label className="input">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
