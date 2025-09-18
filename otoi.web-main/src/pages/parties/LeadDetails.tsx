@@ -28,7 +28,7 @@ export const LeadDetails = () => {
   return (
     <div className="flex">
       {/* Left Sidebar */}
-      <div className="w-96 bg-white shadow-md p-6  overflow-y-auto">
+      <div className="w-96 bg-white shadow-md p-6  overflow-y-auto dark:bg-[#0D0E12]">
         {/* Header */}
         <div className="flex items-center gap-4">
           {/* Avatar */}
@@ -96,7 +96,7 @@ export const LeadDetails = () => {
       </div>
 
       {/* Right side content */}
-      <div className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+      <div className="flex-1 p-6 bg-gray-50 overflow-y-auto dark:bg-[#0D0E12]">
         {/* Tabs */}
         <div className="flex border-b mb-6">
           <button
@@ -126,7 +126,7 @@ export const LeadDetails = () => {
         {activeTab === "overview" && (
           <div>
             {/* Activity totals */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <h3 className="text-lg font-semibold mb-4">Activity totals</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -145,7 +145,7 @@ export const LeadDetails = () => {
             </div>
 
             {/* Data highlights */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <h3 className="text-lg font-semibold mb-4">Data highlights</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -164,7 +164,7 @@ export const LeadDetails = () => {
             </div>
 
             {/* Recent activities */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Recent activities</h3>
                 <button className="text-sm text-gray-600 hover:underline">All time so far</button>
@@ -178,10 +178,10 @@ export const LeadDetails = () => {
             </div>
 
             {/* Contacts */}
-            <div className="bg-white rounded-xl shadow p-6">
+            <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Contacts</h3>
-                <button className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">+ Add</button>
+                <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">+ Add</button>
               </div>
               <p className="text-gray-500 mt-2">No contacts linked.</p>
             </div>
@@ -195,9 +195,9 @@ export const LeadDetails = () => {
               <input
                 type="text"
                 placeholder="Search activities"
-                className="border rounded-lg px-3 py-2 text-sm w-1/3"
+                className="border rounded-lg px-3 py-2 text-sm w-1/3 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700"
               />
-              <button className="px-3 py-2 border rounded-lg text-sm">Collapse all</button>
+              <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">Collapse all</button>
             </div>
 
             {/* Activity Tabs */}
@@ -212,12 +212,12 @@ export const LeadDetails = () => {
             {/* Timeline */}
             <div className="space-y-4">
               <div className="text-gray-500 text-sm">August 2025</div>
-              <div className="bg-white shadow rounded-lg p-4">
+              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
                 <p className="font-semibold">Lifecycle change</p>
                 <p className="text-sm"><span className="font-medium text-gray-600">{user.first_name || user.last_name ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "--"}</span> updated the lifecycle stage for this contact to Lead. <span className="text-gray-600 cursor-pointer">View details</span></p>
                 <p>{user.created_at || "--"}</p>
               </div>
-              <div className="bg-white shadow rounded-lg p-4">
+              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
                 <p className="text-sm">This contact was created from Offline Sources from CRM UI</p>
                 <p>{user.created_at || "--"}</p>
               </div>
@@ -226,7 +226,7 @@ export const LeadDetails = () => {
         )}
 
         {activeTab === "intelligence" && (
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
             <p className="text-gray-500">No intelligence data available yet.</p>
           </div>
         )}

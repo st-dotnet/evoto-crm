@@ -41,7 +41,7 @@ const CrudAvatarUpload = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-center cursor-pointer h-5 left-0 right-0 bottom-0 bg-dark-clarity absolute">
+            <div className="flex items-center justify-center cursor-pointer h-5 left-0 right-0 bottom-0 bg-dark-clarity absolute dark:bg-gray-600">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"

@@ -12,7 +12,7 @@ const AuthPassword = () => {
             <input
               className="input"
               type="text"
-              placeholder="Enter phone" 
+              placeholder="Enter Current Password" 
             />   
           </div>
         </div>

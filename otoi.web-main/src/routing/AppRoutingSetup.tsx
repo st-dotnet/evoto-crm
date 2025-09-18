@@ -83,8 +83,8 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
-import { LeadDetails } from '@/pages/parties/LeadDetails';
 import { PartiesCustomersPage } from '@/pages/parties/PartiesCustomers';
+import { LeadDetails } from '@/pages/parties/LeadDetails';
 
 const AppRoutingSetup = (): ReactElement => {
   return (

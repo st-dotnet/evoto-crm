@@ -262,7 +262,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
 
   return (
     <MenuSub
-      className="menu-default light:border-gray-300 w-[200px] md:w-[250px]"
+      className="menu-default light:border-gray-300 w-[200px] md:w-[280px]"
       rootClassName="p-0"
     >
       {buildHeader()}
