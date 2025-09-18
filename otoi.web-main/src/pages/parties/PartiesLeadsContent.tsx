@@ -426,6 +426,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
         open={personModalOpen}
         onOpenChange={handleClose}
         person={selectedPerson}
+        customer={null}
       />
       <ActivityForm
         open={activityModalOpen}

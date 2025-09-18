@@ -466,7 +466,12 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
         }
         layout={{ card: true }}
       />
-      <ModalPerson open={personModalOpen} onOpenChange={handleClose}   person={selectedPerson}/>
+      <ModalPerson 
+        open={personModalOpen}
+        onOpenChange={handleClose}
+        person={selectedPerson}
+        customer={null}
+      />
       <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}

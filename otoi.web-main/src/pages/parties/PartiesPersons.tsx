@@ -59,7 +59,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
 
       <Container>
         <PartiesPersonContent refreshStatus={refreshKey} />
-        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson}/>
+        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson} customer={null}/>
       </Container>
     </Fragment>
   );

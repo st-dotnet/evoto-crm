@@ -61,9 +61,11 @@ class PersonType(BaseMixin, db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)
+    business_id = Column(Integer, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     persons = relationship("Person", back_populates="person_type")
+    business = relationship("Business", back_populates="person_types")
 
     def __repr__(self):
         return f"<PersonType(name={self.name})>"
