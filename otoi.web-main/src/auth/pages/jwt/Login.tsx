@@ -23,8 +23,8 @@ const loginSchema = Yup.object().shape({
 });
 
 const initialValues = {
-  email: "info@evototechnologies.com",
-  password: "admin123",
+  email: "",
+  password: "",
   remember: false,
 };
 
@@ -118,10 +118,10 @@ const Login = () => {
           <span className="border-t border-gray-200 w-full"></span>
         </div>
 
-        <Alert variant="primary">
+        {/* <Alert variant="primary">
           Use <span className="font-semibold text-gray-900">info@evototechnologies.com</span> username and{" "}
           <span className="font-semibold text-gray-900">admin123</span> password.
-        </Alert>
+        </Alert> */}
 
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
 

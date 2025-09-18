@@ -36,19 +36,13 @@ const ResetPassword = () => {
       setLoading(true);
       setHasErrors(undefined);
       try {
-        if (!requestPasswordResetLink) {
-          throw new Error('JWTProvider is required for this form.');
-        }
-        await requestPasswordResetLink(values.email);
-        setHasErrors(false);
-        setLoading(false);
         const params = new URLSearchParams();
         params.append('email', values.email);
         navigate({
           pathname:
             currentLayout?.name === 'auth-branded'
-              ? '/auth/reset-password/check-email'
-              : '/auth/classic/reset-password/check-email',
+              ? '/auth/reset-password/change'
+              : '/auth/classic/reset-password/change',
           search: params.toString()
         });
       } catch (error) {

@@ -8,8 +8,10 @@ import { DropdownApps } from '@/partials/dropdowns/apps';
 import { DropdownChat } from '@/partials/dropdowns/chat';
 import { ModalSearch } from '@/partials/modals/search/ModalSearch';
 import { useLanguage } from '@/i18n';
+import { useAuthContext } from '@/auth';
 
 const HeaderTopbar = () => {
+  const { currentUser } = useAuthContext();
   const { isRTL } = useLanguage();
   const itemChatRef = useRef<any>(null);
   const itemAppsRef = useRef<any>(null);
@@ -25,6 +27,9 @@ const HeaderTopbar = () => {
   const handleClose = () => {
     setSearchModalOpen(false);
   };
+  const initials = (
+    `${currentUser?.first_name?.[0] ?? ''}`
+  ).toUpperCase() || 'U';
 
   return (
     <div className="flex items-center gap-2 lg:gap-3.5">
@@ -129,11 +134,9 @@ const HeaderTopbar = () => {
           }}
         >
           <MenuToggle className="btn btn-icon rounded-full">
-            <img
-              className="size-9 rounded-full border-2 border-success shrink-0"
-              src={toAbsoluteUrl('/media/avatars/300-2.png')}
-              alt=""
-            />
+              <div className="w-full h-full rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">
+                <span className="text-sm font-semibold">{initials}</span>
+              </div>
           </MenuToggle>
           {DropdownUser({ menuItemRef: itemUserRef })}
         </MenuItem>

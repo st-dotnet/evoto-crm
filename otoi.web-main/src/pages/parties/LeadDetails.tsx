@@ -46,7 +46,7 @@ export const LeadDetails = () => {
         {/* Actions */}
         <div className="flex flex-wrap gap-3 mt-6">
           <button className="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center gap-2">
-            <KeenIcon icon="notepad-edit" />
+            <KeenIcon icon="notepad-edit"  />
             Note
           </button>
 

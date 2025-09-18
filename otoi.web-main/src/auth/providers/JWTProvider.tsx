@@ -119,25 +119,40 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const requestPasswordResetLink = async (email: string) => {
-    await axios.post(FORGOT_PASSWORD_URL, {
-      email
-    });
-  };
+  // const requestPasswordResetLink = async (email: string) => {
+  //   await axios.post(FORGOT_PASSWORD_URL, {
+  //     email
+  //   });
+  // };
 
-  const changePassword = async (
-    email: string,
-    token: string,
-    password: string,
-    password_confirmation: string
-  ) => {
-    await axios.post(RESET_PASSWORD_URL, {
-      email,
-      token,
-      password,
-      password_confirmation
-    });
-  };
+  // const changePassword = async (
+  //   email: string,
+  //   token: string,
+  //   password: string,
+  //   password_confirmation: string
+  // ) => {
+  //   await axios.post(RESET_PASSWORD_URL, {
+  //     email,
+  //     token,
+  //     password,
+  //     password_confirmation
+  //   });
+  // };
+const requestPasswordResetLink = async (email: string) => {
+  const response = await axios.post(`${API_URL}/auth/check-email`, { email });
+  return response.data;
+};
+
+const changePassword = async (email: string, newPassword: string, confirmPassword: string) => {
+  if (newPassword !== confirmPassword) {
+    throw new Error("Passwords do not match");
+  }
+  const response = await axios.post(`${API_URL}/auth/update-password`, { email, newPassword });
+  return response.data;
+};
+
+
+
 
   const getUser = async () => {
     return await axios.get<UserModel>(GET_USER_URL);

@@ -3,11 +3,14 @@ import { toAbsoluteUrl } from '@/utils/Assets';
 import { ImageInput } from '@/components/image-input';
 import type { IImageInputFile } from '@/components/image-input';
 import { useState } from 'react';
+import { useAuthContext } from '@/auth';
 
 const CrudAvatarUpload = () => {
-  const [avatar, setAvatar] = useState<IImageInputFile[]>([
-    { dataURL: toAbsoluteUrl(`/media/avatars/300-2.png`) }
-  ]);
+  const { currentUser } = useAuthContext();
+  const [avatar, setAvatar] = useState<IImageInputFile[]>([]);
+  const initials = (
+    `${currentUser?.first_name?.[0] ?? ''}`
+  ).toUpperCase() || 'U';
 
   return (
     <ImageInput value={avatar} onChange={(selectedAvatar) => setAvatar(selectedAvatar)}>
@@ -30,7 +33,13 @@ const CrudAvatarUpload = () => {
             className="image-input-placeholder rounded-full border-2 border-success image-input-empty:border-gray-300"
             style={{ backgroundImage: `url(${toAbsoluteUrl(`/media/avatars/blank.png`)})` }}
           >
-            {avatar.length > 0 && <img src={avatar[0].dataURL} alt="avatar" />}
+            {avatar.length > 0 ? (
+              <img src={avatar[0].dataURL} alt="avatar" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">
+                <span className="text-sm font-semibold">{initials}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-center cursor-pointer h-5 left-0 right-0 bottom-0 bg-dark-clarity absolute">
               <svg

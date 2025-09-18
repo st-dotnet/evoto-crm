@@ -1,11 +1,14 @@
 import { KeenIcon } from '@/components';
 import { toAbsoluteUrl } from '@/utils/Assets';
+import { useAuthContext } from '@/auth';
 
 interface IBasicSettingsProps {
   title: string;
 }
 
 const BasicSettings = ({ title }: IBasicSettingsProps) => {
+  const { currentUser } = useAuthContext();
+  const email = currentUser?.email || '';
   return (
     <div className="card min-w-full">
       <div className="card-header">
@@ -25,7 +28,7 @@ const BasicSettings = ({ title }: IBasicSettingsProps) => {
               <td className="py-2 min-w-36 text-gray-600 font-normal">Email</td>
               <td className="py-2 min-w-60">
                 <a href="#" className="text-gray-800 font-normal text-sm hover:text-primary-active">
-                  jasontt@studio.co
+                  {email}
                 </a>
               </td>
               <td className="py-2 max-w-16 text-end">

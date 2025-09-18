@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { FormattedMessage } from 'react-intl';
 import { useAuthContext } from '@/auth';
 import { useLanguage } from '@/i18n';
-import { toAbsoluteUrl } from '@/utils';
 import { DropdownUserLanguages } from './DropdownUserLanguages';
 import { useSettings } from '@/providers/SettingsProvider';
 import { DefaultTooltip, KeenIcon } from '@/components';
@@ -23,7 +22,7 @@ interface IDropdownUserProps {
 
 const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
   const { settings, storeSettings } = useSettings();
-  const { logout } = useAuthContext();
+  const { logout, currentUser } = useAuthContext();
   const { isRTL } = useLanguage();
 
   const handleThemeMode = (event: ChangeEvent<HTMLInputElement>) => {
@@ -35,27 +34,41 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
   };
 
   const buildHeader = () => {
+    const fullName = (() => {
+      const first = currentUser?.first_name?.trim() || '';
+      const last = currentUser?.last_name?.trim() || '';
+
+      if (!first && !last) return currentUser?.fullname || 'User';
+      if (!last || first.toLowerCase() === last.toLowerCase()) return first;
+
+      return `${first} ${last}`;
+    })();
+
+    const email = currentUser?.email || '';
+    const initials = (
+      `${currentUser?.first_name?.[0] ?? ''}`
+    ).toUpperCase() || 'U';
     return (
       <div className="flex items-center justify-between px-5 py-1.5 gap-1.5">
         <div className="flex items-center gap-2">
-          <img
-            className="size-9 rounded-full border-2 border-success"
-            src={toAbsoluteUrl('/media/avatars/300-2.png')}
-            alt=""
-          />
+          <div className="size-9 rounded-full border-2 border-success bg-gray-200 text-gray-700 flex items-center justify-center">
+            <span className="text-xs font-semibold">{initials}</span>
+          </div>
           <div className="flex flex-col gap-1.5">
             <Link
               to="/account/hoteme/get-stard"
               className="text-sm text-gray-800 hover:text-primary font-semibold leading-none"
             >
-              Cody Fisher
+              {fullName}
             </Link>
-            <a
-              href="mailto:c.fisher@gmail.com"
-              className="text-xs text-gray-600 hover:text-primary font-medium leading-none"
-            >
-              c.fisher@gmail.com
-            </a>
+            {email ? (
+              <a
+                href={`mailto:${email}`}
+                className="text-xs text-gray-600 hover:text-primary font-medium leading-none"
+              >
+                {email}
+              </a>
+            ) : null}
           </div>
         </div>
         <span className="badge badge-xs badge-primary badge-outline">Pro</span>
