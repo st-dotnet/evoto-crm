@@ -21,7 +21,7 @@ const PartiesCustomersPage = () => {
   const { currentLayout } = useLayout();
   const [refreshKey, setRefreshKey] = useState(0); // State to trigger refresh
   const [personModalOpen, setPersonModalOpen] = useState(false);
-    const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   // handle close
   const handleClose = () => {
     setPersonModalOpen(false);
@@ -59,10 +59,12 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
 
       <Container>
         <PartiesCustomerContent refreshStatus={refreshKey} />
-        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson}/>
+        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson} customer={null}/>
       </Container>
     </Fragment>
   );
 };
 
 export { PartiesCustomersPage };
+
+

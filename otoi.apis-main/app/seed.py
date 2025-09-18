@@ -50,7 +50,7 @@ def seed_data(app: Flask):
             # Drop tables in reverse order of dependencies
             for table in reversed(table_names):
                 try:
-                    conn.execute(text(f'DROP TABLE IF EXISTS \"{table}\" CASCADE'))
+                    conn.execute(text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
                     print(f"Dropped table: {table}")
                 except Exception as e:
                     print(f"Error dropping table {table}: {e}")
@@ -58,6 +58,13 @@ def seed_data(app: Flask):
             # Re-enable foreign key checks
             conn.execute(text('SET session_replication_role = \'origin\';'))
         
+        # As an extra safety, drop all metadata-managed tables and recreate to pick up new columns
+        try:
+            db.drop_all()
+            print("SQLAlchemy metadata drop_all() completed.")
+        except Exception as e:
+            print(f"drop_all error (non-fatal): {e}")
+
         # Recreate all tables
         db.create_all()
         print("Database cleared and tables recreated.")

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import create_access_token
 from app.models.user import User, Role
 from app.extensions import db
@@ -155,25 +155,35 @@ def login():
               properties:
                 access_token:
                   type: string
+                token_type:
+                  type: string
       401:
         description: Invalid credentials
     """
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
- 
+    data = request.get_json()
+    if not data or "email" not in data or "password" not in data:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    email = data["email"]
+    password = data["password"]
+
     user = User.query.filter_by(email=email).first()
-    
+
     if user and user.check_password(password):
-        # Access the id of the first business
-        business_id = user.businesses[0].id if user.businesses else None  # Handle empty business list
-        token = create_access_token(identity=str(user.id), additional_claims={
-            "username": user.username,
-            "role": user.role.name,
-            "business_id": business_id
-        })
+        business_id = user.businesses[0].id if user.businesses else None
+        token = create_access_token(
+            identity=str(user.id),
+            additional_claims={
+                "username": user.username,
+                "role": user.role.name,
+                "business_id": business_id
+            }
+        )
         g.user_id = user.id
         g.business_id = business_id
-        return jsonify({"access_token": token , "token_type":"Bearer"}), 200
+        return jsonify({
+            "access_token": token,
+            "token_type": "Bearer"
+        }), 200
 
     return jsonify({"error": "Invalid credentials"}), 401

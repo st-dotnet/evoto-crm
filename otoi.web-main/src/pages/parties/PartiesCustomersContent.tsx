@@ -34,7 +34,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ActivityLead } from "@/types/activity";
+import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
+
 
 
 interface IColumnFilterProps<TData, TValue> {
@@ -46,6 +47,16 @@ type CustomersQueryApiResponse = QueryApiResponse<Customer>;
 interface IPartiesCustomerContentProps {
   refreshStatus: number;
 }
+
+interface ActivityLead {
+  id: string;
+  status?: string;
+  address?: string;
+  created_at?: string;
+  activity_type?: string;
+}
+
+
 
 const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,7 +142,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.person_id}`);
+                  navigate(`/customer/${info.row.original.id}`);
                 }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
@@ -140,7 +151,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/lead/${info.row.original.person_id}`);
+                  navigate(`/customer/${info.row.original.id}`);
                 }}
               >
                 {info.row.original.email}
@@ -205,7 +216,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
-                navigate(`/lead/${row.original.id}`);
+                navigate(`/customer/${row.original.id}`);
               }}>
                 Details
               </DropdownMenuItem>
@@ -213,7 +224,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedCustomerForActivity({
-                    id: row.original.id,
+                    id: row.original.uuid,
                     status: row.original.status,
                     address: row.original.address1,
                     created_at: row.original.created_at,
@@ -264,15 +275,16 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         });
       }
 
-      // const response = await axios.get<CustomersQueryApiResponse>(
-      //   `${import.meta.env.VITE_APP_API_URL}/customers?${queryParams.toString()}`,
-      // );
       const response = await axios.get<CustomersQueryApiResponse>(
-        `/api/customers?${queryParams.toString()}`,
+        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
       );
+      // Support both envelope ({ data, pagination }) and plain array responses
+      const payload: any = response.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
       return {
-        data: response.data.data,
-        totalCount: response.data.pagination.total,
+        data: rows,
+        totalCount: total,
       };
     } catch (error) {
       console.log(error);
@@ -406,6 +418,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         open={personModalOpen}
         onOpenChange={handleClose}
         person={selectedPerson}
+        customer={null}
       />
       <ActivityForm
         open={activityModalOpen}

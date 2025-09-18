@@ -20,6 +20,7 @@ interface IModalPersonProps {
   open: boolean;
   onOpenChange: () => void;
   person: Person | null;
+  customer: null;
 }
 
 interface IModalPersonType {
@@ -126,49 +127,55 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
     fetchStatus();
   }, []);
 
-  const formik = useFormik({
-    initialValues,
-    validationSchema: savePersonSchema,
-    onSubmit: async (values, { setStatus, setSubmitting }) => {
-      setLoading(true);
-      try {
-        const postData = {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          mobile: values.mobile,
-          email: values.email,
-          gst: values.gst,
-          person_type_id: values.person_type_id,
-          status: values.status,
-          city: values.city,
-          state: values.state,
-          country: values.country,
-          address1: values.address1,
-          address2: values.address2,
-          pin: values.pin,
-          reason: values.reason,
-        };
-        if (person?.uuid) {
-          await axios.put(
-            `${import.meta.env.VITE_APP_API_URL}/persons/${person.uuid}`,
-            postData,
-          );
-        } else {
-          await axios.post(
-            `${import.meta.env.VITE_APP_API_URL}/persons/`,
-            postData,
-          );
-        }
-        onOpenChange();
-        navigate(from, { replace: true });
-      } catch (error) {
-        console.error(error);
-        setStatus("The person details are incorrect");
-        setSubmitting(false);
-        setLoading(false);
+const formik = useFormik({
+  initialValues,
+  validationSchema: savePersonSchema,
+  onSubmit: async (values, { setStatus, setSubmitting }) => {
+    setLoading(true);
+    try {
+      const postData = {
+        first_name: values.first_name,
+        last_name: values.last_name,
+        mobile: values.mobile,
+        email: values.email,
+        gst: values.gst,
+        person_type_id: values.person_type_id,
+        status: values.status,
+        city: values.city,
+        state: values.state,
+        country: values.country,
+        address1: values.address1,
+        address2: values.address2,
+        pin: values.pin,
+        reason: values.reason,
+      };
+
+      // Resolve API base with fallback to dev proxy
+      const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+      const apiBasePersons = baseUrl.endsWith("/") ? `${baseUrl}persons` : `${baseUrl}/persons`;
+      const apiBaseCustomers = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
+
+      // Decide endpoints
+      // - Updates: if on customers page, PUT /api/customers/:uuid; else PUT /api/persons/:uuid
+      // - Creates: always POST /api/persons/ (to trigger person flow and events)
+      if (person?.uuid) {
+        const updateBase = currentPath.includes("/customers") ? apiBaseCustomers : apiBasePersons;
+        await axios.put(`${updateBase}/${person.uuid}`, postData);
+      } else {
+        await axios.post(`${apiBasePersons}/`, postData);
       }
-    },
-  });
+
+      onOpenChange();
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error(error);
+      setStatus("The person details are incorrect");
+      setSubmitting(false);
+      setLoading(false);
+    }
+  },
+});
+
 
   // Auto-select person type based on current route
   const getDefaultPersonType = () => {
@@ -208,7 +215,7 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
   };
 
   useEffect(() => {
-    if (open && person) {
+    if (open && person  ) {
       formik.resetForm({
         values: {
           first_name: person.first_name || "",
@@ -619,3 +626,4 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
   );
 };
 export { ModalPerson };  
+

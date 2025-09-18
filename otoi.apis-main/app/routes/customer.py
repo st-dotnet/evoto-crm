@@ -3,7 +3,6 @@ from app.models.customer import Customer
 from app.extensions import db
 from sqlalchemy import func
 
-
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
 
 # GET all customers (support both with and without trailing slash)
@@ -100,3 +99,44 @@ def get_customer(customer_id):
         "country": customer.country,
         "pin": customer.pin,
     })
+
+# UPDATE a customer by UUID
+@customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
+def update_customer(customer_id):
+    data = request.get_json() or {}
+    customer = Customer.query.get_or_404(customer_id)
+
+    # Update primitive fields safely
+    customer.first_name = data.get("first_name", customer.first_name)
+    customer.last_name = data.get("last_name", customer.last_name)
+    customer.mobile = data.get("mobile", customer.mobile)
+    customer.email = data.get("email", customer.email)
+    customer.gst = data.get("gst", customer.gst)
+    customer.status = data.get("status", customer.status)
+
+    # Address fields
+    customer.address1 = data.get("address1", customer.address1)
+    customer.address2 = data.get("address2", customer.address2)
+    customer.city = data.get("city", customer.city)
+    customer.state = data.get("state", customer.state)
+    customer.country = data.get("country", customer.country)
+    customer.pin = data.get("pin", customer.pin)
+
+    db.session.commit()
+
+    return jsonify({
+        "uuid": str(customer.uuid),
+        "customer_id": str(customer.uuid),
+        "first_name": customer.first_name,
+        "last_name": customer.last_name,
+        "mobile": customer.mobile,
+        "email": customer.email,
+        "gst": customer.gst,
+        "status": customer.status,
+        "address1": customer.address1,
+        "address2": customer.address2,
+        "city": customer.city,
+        "state": customer.state,
+        "country": customer.country,
+        "pin": customer.pin,
+    }), 200

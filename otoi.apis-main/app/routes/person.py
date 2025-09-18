@@ -114,88 +114,99 @@ def get_persons():
                         type: string
                         description: Person type
     """
+    try:
 
-    query = Person.query
+      query = Person.query
 
-    # Filtering 
-    if "filter[name]" in request.args:
-        filter_value = request.args.get("filter[name]", "")
-        query = query.filter(
-          or_(
-              Person.first_name.ilike(f"%{filter_value}%"),
-              Person.last_name.ilike(f"%{filter_value}%"),
-              Person.email.ilike(f"%{filter_value}%")
+      # Filtering 
+      if "filter[name]" in request.args:
+          filter_value = request.args.get("filter[name]", "")
+          query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{filter_value}%"),
+                Person.last_name.ilike(f"%{filter_value}%"),
+                Person.email.ilike(f"%{filter_value}%")
+            )
           )
-        )
-    if "query" in request.args:
-        query_value = request.args.get("query", "")
-        query = query.filter(
-          or_(
-              Person.first_name.ilike(f"%{query_value}%"),
-              Person.last_name.ilike(f"%{query_value}%"),
-              Person.email.ilike(f"%{query_value}%"),
-              Person.gst.ilike(f"%{query_value}%"),
-              Person.mobile.ilike(f"%{query_value}%"),
+      if "query" in request.args:
+          query_value = request.args.get("query", "")
+          query = query.filter(
+            or_(
+                Person.first_name.ilike(f"%{query_value}%"),
+                Person.last_name.ilike(f"%{query_value}%"),
+                Person.email.ilike(f"%{query_value}%"),
+                Person.gst.ilike(f"%{query_value}%"),
+                Person.mobile.ilike(f"%{query_value}%"),
+            )
           )
-        )
-            
-    if "mobile" in request.args:
-        query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+              
+      if "mobile" in request.args:
+          query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
 
-    if "person_type" in request.args:
-        person_type_id = request.args['person_type']
-        query = query.filter(Person.person_type_id == person_type_id)
+      if "person_type" in request.args:
+          person_type_id = request.args['person_type']
+          query = query.filter(Person.person_type_id == person_type_id)
 
-    # Sorting
-    sort = request.args.get("sort", "uuid")
-    order = request.args.get("order", "asc")  # Extract order ('asc' or 'desc')
+      # Sorting
+      sort = request.args.get("sort", "uuid")
+      order = request.args.get("order", "asc")  # Extract order ('asc' or 'desc')
 
-    for field in sort.split(","):
-      if field == "name":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(func.concat(Person.first_name, " ", Person.last_name)))
-          else:
-              query = query.order_by(func.concat(Person.first_name, " ", Person.last_name))      
-      if field == "gst":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(Person.gst))
-          else:
-              query = query.order_by(Person.gst)
-      if field == "mobile":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(Person.mobile))
-          else:
-              query = query.order_by(Person.mobile)        
-      else:
-        # Handle other fields
-        if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
+      for field in sort.split(","):
+        if field == "name":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(db.desc(func.concat(Person.first_name, " ", Person.last_name)))
+            else:
+                query = query.order_by(func.concat(Person.first_name, " ", Person.last_name))      
+        if field == "gst":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(db.desc(Person.gst))
+            else:
+                query = query.order_by(Person.gst)
+        if field == "mobile":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(db.desc(Person.mobile))
+            else:
+                query = query.order_by(Person.mobile)        
         else:
-            query = query.order_by(getattr(Person, field, "uuid"))
+          # Handle other fields
+          if field.startswith("-"):
+              query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
+          else:
+              query = query.order_by(getattr(Person, field, "uuid"))
 
-    # Pagination
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("items_per_page", 10))
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    persons = pagination.items
+      # Pagination
+      page = int(request.args.get("page", 1))
+      per_page = int(request.args.get("items_per_page", 10))
+      pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+      persons = pagination.items
 
-    result = [
-        {
-            "uuid": person.uuid,
-            "first_name": person.first_name,
-            "last_name": person.last_name,
-            "mobile": person.mobile,
-            "email": person.email,
-            "gst": person.gst,
-            "person_type": person.person_type.name,
-            "status": person.status,
-        }
-        for person in persons
-    ]
-    return jsonify({"pages": pagination.pages, "data": result , "pagination": { "total" : pagination.total}})
+      result = [
+          {
+              "uuid": person.uuid,
+              "first_name": person.first_name,
+              "last_name": person.last_name,
+              "mobile": person.mobile,
+              "email": person.email,
+              "gst": person.gst,
+              "person_type": person.person_type.name,
+              "status": person.status,
+          }
+          for person in persons
+      ]
+      return jsonify({"pages": pagination.pages, "data": result , "pagination": { "total" : pagination.total}})
+
+    except Exception as e:
+      db.session.rollback()
+      print("ERROR in update_person:", str(e))
+      import traceback; print(traceback.format_exc())
+      return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+@person_blueprint.route("/test", methods=["GET"])
+def get_test():
+     return jsonify("api work ")
 
 @person_blueprint.route("/", methods=["POST"])
 def create_person():
@@ -380,7 +391,6 @@ def update_person(person_id):
     """
     try:
         data = request.json
-        print("=== DEBUG Update Incoming Data ===", data)
 
         # Fetch person
         person = Person.query.get_or_404(person_id)
