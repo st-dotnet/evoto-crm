@@ -1,10 +1,13 @@
 import React, { useMemo, useState, useEffect } from "react";
+
 import {
-  Person,
+  Vendor,
   QueryApiResponse,
-} from "../parties/blocks/persons/person-models";
-import { ModalLead } from "./blocks/persons/ModalLead";
+} from "../parties/blocks/persons/customer-models";
+
+import { ModalVendor } from "./blocks/persons/ModalVendor";
 import { ActivityForm } from "./ActivityForm";
+
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -20,7 +23,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
+
+import {
+  ColumnDef,
+  Column,
+  RowSelectionState,
+} from "@tanstack/react-table";
 import {
   Select,
   SelectContent,
@@ -32,14 +40,15 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
 }
 
-type PersonsQueryApiResponse = QueryApiResponse<Person>;
+type VendorsQueryApiResponse = QueryApiResponse<Vendor>;
 
-interface IPartiesLeadContentProps {
+interface IPartiesVendorsContentProps {
   refreshStatus: number;
 }
 
@@ -51,35 +60,24 @@ interface ActivityLead {
   activity_type?: string;
 }
 
-/** Status mapping used in the table */
-const statusOptions: { [key: string]: string } = {
-  "1": "New",
-  "2": "In-Progress",
-  "3": "Quote-Given",
-  "4": "Win",
-  "5": "Lose",
-};
-
-const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
+const PartiesVendorsContent = ({
+  refreshStatus,
+}: IPartiesVendorsContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchStatusQuery, setSearchStatusQuery] = useState("-1");
+  const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
   const [refreshKey, setRefreshKey] = useState(0);
   const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Vendor | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [selectedLeadForActivity, setSelectedLeadForActivity] =
-    useState<ActivityLead | null>(null);
+  const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<
+    ActivityLead | null
+  >(null);
+
   const navigate = useNavigate();
 
-  // Bump the grid when the parent refreshStatus changes
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
   }, [refreshStatus]);
-
-  // Trigger a refresh whenever searchStatusQuery changes
-  useEffect(() => {
-    setRefreshKey((prev) => prev + 1);
-  }, [searchStatusQuery]);
 
   const ColumnInputFilter = <TData, TValue>({
     column,
@@ -87,9 +85,6 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
     const [inputValue, setInputValue] = useState(
       (column.getFilterValue() as string) ?? ""
     );
-    useEffect(() => {
-      setInputValue((column.getFilterValue() as string) ?? "");
-    }, [column]);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
@@ -97,21 +92,22 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
       }
     };
 
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInputValue(event.target.value);
+    };
+
     return (
       <Input
         placeholder="Filter..."
         value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         className="h-9 w-full max-w-40"
       />
     );
   };
 
-  const openPersonModal = (
-    event: { preventDefault: () => void },
-    rowData: Person | null = null
-  ) => {
+  const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
     event.preventDefault();
     setSelectedPerson(rowData);
     setPersonModalOpen(true);
@@ -122,7 +118,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
     setRefreshKey((prevKey) => prevKey + 1);
   };
 
-  const columns = useMemo<ColumnDef<Person>[]>(
+  const columns = useMemo<ColumnDef<Vendor>[]>(
     () => [
       {
         accessorKey: "id",
@@ -135,7 +131,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
         },
       },
       {
-        accessorFn: (row) => row.first_name,
+        accessorFn: (row) => row.company_name,
         id: "name",
         header: ({ column }) => (
           <DataGridColumnHeader
@@ -148,24 +144,12 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
         cell: (info: any) => (
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col">
-              <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${info.row.original.uuid}`);
-                }}
-              >
-                {info.row.original.first_name} {info.row.original.last_name}
-              </a>
-              <a
-                className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${info.row.original.uuid}`);
-                }}
-              >
+              <div className="font-medium text-sm text-gray-900 mb-px">
+                {info.row.original.company_name}
+              </div>
+              <div className="text-2sm text-gray-700 font-normal">
                 {info.row.original.email}
-              </a>
+              </div>
             </div>
           </div>
         ),
@@ -174,41 +158,29 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
         },
       },
       {
-        accessorFn: (row: Person) => row.gst,
+        accessorFn: (row: Vendor) => row.gst,
         id: "gst",
         header: ({ column }) => (
           <DataGridColumnHeader title="GST" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => info.row.original.gst,
+        cell: (info: any) => {
+          return info.row.original.gst;
+        },
         meta: {
           headerClassName: "min-w-[137px]",
           cellClassName: "text-gray-800 font-medium",
         },
       },
       {
-        accessorFn: (row: Person) => row.mobile,
+        accessorFn: (row: Vendor) => row.mobile,
         id: "mobile",
         header: ({ column }) => (
           <DataGridColumnHeader title="Mobile" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => info.row.original.mobile,
-        meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
-        },
-      },
-      {
-        accessorFn: (row: Person) => row.status,
-        id: "status",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Status" column={column} />
-        ),
-        enableSorting: false,
         cell: (info: any) => {
-          const value = info.row.original.status?.toString();
-          return value ? statusOptions[value] || value : "-";
+          return info.row.original.mobile;
         },
         meta: {
           headerClassName: "min-w-[137px]",
@@ -230,31 +202,27 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  openPersonModal(e, row.original);
-                }}
-              >
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                openPersonModal(e, row.original);
+              }}>
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${row.original.uuid}`);
-                }}
-              >
+              <DropdownMenuItem onClick={(e) => {
+                e.preventDefault();
+                navigate(`/vendor/${row.original.uuid}`);
+              }}>
                 Details
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
-                  setSelectedLeadForActivity({
+                  setSelectedCustomerForActivity({
                     id: row.original.uuid,
-                    status: row.original.status,
-                    address: row.original.address,
-                    created_at: row.original.created_at,
-                    activity_type: row.original.activity_type,
+                    status: undefined,
+                    address: row.original.address1,
+                    created_at: undefined,
+                    activity_type: undefined,
                   });
                   setActivityModalOpen(true);
                 }}
@@ -270,7 +238,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
         },
       },
     ],
-    [navigate]
+    []
   );
 
   const fetchUsers = async (params: TDataGridRequestParams) => {
@@ -278,17 +246,20 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
       const queryParams = new URLSearchParams();
       queryParams.set("page", String(params.pageIndex + 1));
       queryParams.set("items_per_page", String(params.pageSize));
+
       if (params.sorting?.[0]?.id) {
         queryParams.set("sort", params.sorting[0].id);
         queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
       }
+
       if (searchQuery.trim().length > 0) {
         queryParams.set("query", searchQuery);
       }
-      // Send status filter only when not "-1"
-      if (searchStatusQuery !== "-1") {
-        queryParams.set("status", searchStatusQuery);
+
+      if (searchPersonTypeQuery != "-1") {
+        queryParams.set("person_type", searchPersonTypeQuery);
       }
+
       if (params.columnFilters) {
         params.columnFilters.forEach(({ id, value }) => {
           if (value !== undefined && value !== null) {
@@ -296,12 +267,17 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
           }
         });
       }
-      const response = await axios.get<PersonsQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/persons/leads?${queryParams.toString()}`
+
+      const response = await axios.get<VendorsQueryApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/vendors/?${queryParams.toString()}`,
       );
+      // Support both envelope ({ data, pagination }) and plain array responses
+      const payload: any = response.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
       return {
-        data: response.data.data,
-        totalCount: response.data.pagination.total,
+        data: rows,
+        totalCount: total,
       };
     } catch (error) {
       console.log(error);
@@ -312,6 +288,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
           onClick: () => console.log("Ok"),
         },
       });
+
       return {
         data: [],
         totalCount: 0,
@@ -337,30 +314,38 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const handleStatusSearch = (query: string) => {
-    setSearchStatusQuery(query);
+  const handlePersonTypeSearch = (query: string) => {
+    setPersonTypeQuery(query);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const Toolbar = ({
     defaultSearch,
     setSearch,
-    statusValue,
-    onStatusChange,
+    defaultPersonType,
+    setDefaultPersonType,
   }: {
     defaultSearch: string;
     setSearch: (query: string) => void;
-    statusValue: string;
-    onStatusChange: (query: string) => void;
+    defaultPersonType: string;
+    setDefaultPersonType: (query: string) => void;
   }) => {
     const [searchInput, setSearchInput] = useState(defaultSearch);
-    useEffect(() => {
-      setSearchInput(defaultSearch);
-    }, [defaultSearch]);
+    const [searchPersonType, setPersonType] = useState(defaultPersonType);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         setSearch(searchInput);
       }
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchInput(e.target.value);
+    };
+
+    const handlePersonTypeChange = (personType: string) => {
+      setPersonType(personType);
+      setDefaultPersonType(personType);
     };
 
     return (
@@ -373,30 +358,29 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
                 type="text"
                 placeholder="Search users"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={handleChange}
                 onKeyDown={handleKeyDown}
               />
             </label>
           </div>
-          <div className="flex flex-wrap gap-2.5 items-center">
-            <label className="select-sm mr-2">Status</label>
+          {/* <div className="flex flex-wrap gap-2.5">
+            <label className="select-sm"> Person Type </label>
             <Select
-              value={statusValue}
-              onValueChange={(value) => onStatusChange(value)}
+              defaultValue=""
+              value={searchPersonType}
+              onValueChange={(value) => handlePersonTypeChange(value)}
             >
-              <SelectTrigger className="w-32" size="sm">
+              <SelectTrigger className="w-28" size="sm">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
-              <SelectContent className="w-36">
+              <SelectContent className="w-32">
                 <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">New</SelectItem>
-                <SelectItem value="2">In-Progress</SelectItem>
-                <SelectItem value="3">Quote-Given</SelectItem>
-                <SelectItem value="4">Win</SelectItem>
-                <SelectItem value="5">Lose</SelectItem>
+                <SelectItem value="1">Customer</SelectItem>
+                <SelectItem value="2">Vendor</SelectItem>
+                <SelectItem value="3">Provider</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
       </div>
     );
@@ -417,24 +401,24 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
           <Toolbar
             defaultSearch={searchQuery}
             setSearch={handleSearch}
-            statusValue={searchStatusQuery}
-            onStatusChange={handleStatusSearch}
+            defaultPersonType={searchPersonTypeQuery}
+            setDefaultPersonType={handlePersonTypeSearch}
           />
         }
         layout={{ card: true }}
       />
-      <ModalLead
+      <ModalVendor
         open={personModalOpen}
         onOpenChange={handleClose}
-        person={selectedPerson}
+        vendor={selectedPerson}
       />
       <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}
-        lead={selectedLeadForActivity}
+        lead={selectedCustomerForActivity}
       />
     </div>
   );
 };
 
-export { PartiesLeadContent };
+export { PartiesVendorsContent };

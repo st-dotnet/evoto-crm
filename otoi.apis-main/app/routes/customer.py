@@ -79,6 +79,137 @@ def get_customers():
         }
     })
 
+# CREATE a new customer (support both with and without trailing slash)
+@customer_blueprint.route("/", methods=["POST"])
+def create_customer():
+    from app.models.person import Person, PersonType  # local import to avoid cycles
+    data = request.get_json() or {}
+
+    # Basic validation
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    mobile = (data.get("mobile") or "").strip()
+    email = (data.get("email") or "").strip()
+    gst = (data.get("gst") or "").strip()
+    status = (data.get("status") or "").strip() or "1"  # default New
+    address1 = (data.get("address1") or "").strip()
+    address2 = (data.get("address2") or "").strip()
+    city = (data.get("city") or "").strip()
+    state = (data.get("state") or "").strip()
+    country = (data.get("country") or "").strip()
+    pin = (data.get("pin") or "").strip()
+
+    if not first_name or not last_name or not mobile:
+        return jsonify({"error": "first_name, last_name and mobile are required"}), 400
+
+    # Resolve person_id: if provided use it, else create/find a Person
+    person_id = data.get("person_id")
+    person = None
+    if person_id:
+        person = Person.query.get(person_id)
+        if not person:
+            return jsonify({"error": "Person not found for provided person_id"}), 404
+    else:
+        # Try to find existing person by mobile, else create
+        person = Person.query.filter(Person.mobile == mobile).first()
+        if not person:
+            # Determine Customer person type (id or name)
+            person_type = None
+            if data.get("person_type_id"):
+                person_type = PersonType.query.filter_by(id=data.get("person_type_id")).first()
+            if not person_type:
+                person_type = PersonType.query.filter(PersonType.name.ilike("customer")).first()
+
+            person = Person(
+                first_name=first_name,
+                last_name=last_name,
+                mobile=mobile,
+                email=email or None,
+                gst=gst or None,
+                status=status,
+                reason=(data.get("reason") or None),
+                person_type_id=person_type.id if person_type else None,
+            )
+            db.session.add(person)
+            db.session.flush()  # get uuid
+
+    # If a customer uuid is provided, try to update existing
+    existing_customer = None
+    if data.get("uuid"):
+        existing_customer = Customer.query.get(data.get("uuid"))
+    if not existing_customer:
+        # Or find by person_id if already linked
+        existing_customer = Customer.query.filter_by(person_id=person.uuid).first()
+
+    if existing_customer:
+        # Update existing (idempotent POST for current frontend behavior)
+        existing_customer.first_name = first_name
+        existing_customer.last_name = last_name
+        existing_customer.mobile = mobile
+        existing_customer.email = email or None
+        existing_customer.gst = gst or None
+        existing_customer.status = status
+        existing_customer.address1 = address1
+        existing_customer.address2 = address2 or None
+        existing_customer.city = city
+        existing_customer.state = state
+        existing_customer.country = country
+        existing_customer.pin = pin
+        db.session.commit()
+
+        return jsonify({
+            "uuid": str(existing_customer.uuid),
+            "customer_id": str(existing_customer.uuid),
+            "first_name": existing_customer.first_name,
+            "last_name": existing_customer.last_name,
+            "mobile": existing_customer.mobile,
+            "email": existing_customer.email,
+            "gst": existing_customer.gst,
+            "status": existing_customer.status,
+            "address1": existing_customer.address1,
+            "address2": existing_customer.address2,
+            "city": existing_customer.city,
+            "state": existing_customer.state,
+            "country": existing_customer.country,
+            "pin": existing_customer.pin,
+        }), 200
+
+    # Create customer record (no existing found)
+    customer = Customer(
+        person_id=person.uuid,
+        first_name=first_name,
+        last_name=last_name,
+        mobile=mobile,
+        email=email or None,
+        gst=gst or None,
+        status=status,
+        address1=address1,
+        address2=address2 or None,
+        city=city,
+        state=state,
+        country=country,
+        pin=pin,
+    )
+    db.session.add(customer)
+    db.session.commit()
+
+    return jsonify({
+        "uuid": str(customer.uuid),
+        "customer_id": str(customer.uuid),
+        "first_name": customer.first_name,
+        "last_name": customer.last_name,
+        "mobile": customer.mobile,
+        "email": customer.email,
+        "gst": customer.gst,
+        "status": customer.status,
+        "address1": customer.address1,
+        "address2": customer.address2,
+        "city": customer.city,
+        "state": customer.state,
+        "country": customer.country,
+        "pin": customer.pin,
+    }), 201
+
 # GET a single customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["GET"])
 def get_customer(customer_id):

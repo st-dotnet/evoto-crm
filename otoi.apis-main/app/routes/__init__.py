@@ -13,6 +13,7 @@ from app.routes.item_image import item_image_blueprint
 from app.routes.person_type import person_type_blueprint
 from app.routes.active_type import active_type_blueprint, status_list_blueprint
 from app.routes.customer import customer_blueprint
+from app.routes.vendor import vendor_blueprint
 
 
 def register_blueprints(app):
@@ -28,5 +29,6 @@ def register_blueprints(app):
     app.register_blueprint(active_type_blueprint, url_prefix="/api/active-types")
     app.register_blueprint(status_list_blueprint, url_prefix="/api/status-list")
     app.register_blueprint(customer_blueprint, url_prefix="/api/customers")
+    app.register_blueprint(vendor_blueprint, url_prefix="/api/vendors")
 
 

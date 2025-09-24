@@ -253,6 +253,9 @@ def create_person():
             return jsonify({"error": "Invalid person type"}), 400
 
         status = str(data.get("status") or "").strip()
+        # Default status for new Leads if not provided
+        if (not status) and person_type and (person_type.name.lower() == "customer"):
+            status = "1"  # New
         reason = None
         address_data = None
 
@@ -636,6 +639,27 @@ def get_leads():
         )
     if "mobile" in request.args:
         query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
+    if "status" in request.args:
+        status_value = request.args.get("status", "").strip()
+        if status_value and status_value != "-1":
+            code_to_text = {
+                "1": "New",
+                "2": "In-Progress",
+                "3": "Quote-Given",
+                "4": "Win",
+                "5": "Lose",
+            }
+            mapped_text = code_to_text.get(status_value)
+            if mapped_text:
+                query = query.filter(
+                    or_(
+                        Person.status == status_value,
+                        Person.status.ilike(mapped_text)
+                    )
+                )
+            else:
+                # If a text value is sent directly, filter by it (case-insensitive)
+                query = query.filter(Person.status.ilike(status_value))
    
 
     # Sorting

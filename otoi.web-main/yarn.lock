@@ -1708,7 +1708,7 @@
   resolved "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.13.tgz"
   integrity sha512-hCZTSvwbzWGvhqxp/RqVqwU999pBf2vp7hzIjiYOsl8wqOmUxkQ6ddw1cV3l8811+kdUFus/q4d1Y3E3SyEifA==
 
-"@types/react-dom@*", "@types/react-dom@^18.3.1":
+"@types/react-dom@*", "@types/react-dom@^16.x || ^17.x || ^18.x || ^19.x", "@types/react-dom@^18.3.1":
   version "18.3.1"
   resolved "https://registry.npmjs.org/@types/react-dom/-/react-dom-18.3.1.tgz"
   integrity sha512-qW1Mfv8taImTthu4KoXgDfLuk4bydU6Q/TkADnDWWHwi4NX4BR+LWfTp2sVmTqRrsHvyDDTelgelxJ+SsejKKQ==
@@ -1729,7 +1729,7 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react@*", "@types/react@^16.8.0 || ^17.0.0 || ^18.0.0", "@types/react@^16.9.0 || ^17.0.0 || ^18.0.0", "@types/react@^17.0.0 || ^18.0.0", "@types/react@^17.0.0 || ^18.0.0 || ^19.0.0", "@types/react@^18.3.12", "@types/react@16 || 17 || 18":
+"@types/react@*", "@types/react@^16.8.0 || ^17.0.0 || ^18.0.0", "@types/react@^16.9.0 || ^17.0.0 || ^18.0.0", "@types/react@^16.x || ^17.x || ^18.x || ^19.x", "@types/react@^17.0.0 || ^18.0.0", "@types/react@^17.0.0 || ^18.0.0 || ^19.0.0", "@types/react@^18.3.12", "@types/react@16 || 17 || 18":
   version "18.3.12"
   resolved "https://registry.npmjs.org/@types/react/-/react-18.3.12.tgz"
   integrity sha512-D2wOSq/d6Agt28q7rSI3jhU7G6aiuzljDGZ2hTZHIkrTLUI+AF3WMeKkEZ9nN2fkBAlcktT6vcZjDFiIhMYEQw==
@@ -3729,7 +3729,7 @@ react-day-picker@^8.10.1:
   resolved "https://registry.npmjs.org/react-day-picker/-/react-day-picker-8.10.1.tgz"
   integrity sha512-TMx7fNbhLk15eqcMt+7Z7S2KF7mfTId/XJDjKE8f+IUcFn0l08/kI4FiYTL/0yuOLmEcbR4Fwe3GJf/NiiMnPA==
 
-"react-dom@^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc", "react-dom@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react-dom@^16.8.0 || ^17.0.0 || ^18.0.0", "react-dom@^17.0.0 || ^18.0.0", "react-dom@^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom@^18 || ^19 || ^19.0.0-rc", react-dom@^18.0.0, "react-dom@^18.0.0 || ^19.0.0 || ^19.0.0-rc", react-dom@^18.3.1, "react-dom@>= 16.8.0", react-dom@>=16.6.0, react-dom@>=16.8, react-dom@>=16.8.0:
+"react-dom@^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc", "react-dom@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react-dom@^16.8.0 || ^17.0.0 || ^18.0.0", "react-dom@^16.x || ^17.x || ^18.x || ^19.x", "react-dom@^17.0.0 || ^18.0.0", "react-dom@^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom@^18 || ^19 || ^19.0.0-rc", react-dom@^18.0.0, "react-dom@^18.0.0 || ^19.0.0 || ^19.0.0-rc", react-dom@^18.3.1, "react-dom@>= 16.8.0", react-dom@>=16.6.0, react-dom@>=16.8, react-dom@>=16.8.0:
   version "18.3.1"
   resolved "https://registry.npmjs.org/react-dom/-/react-dom-18.3.1.tgz"
   integrity sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==
@@ -3893,7 +3893,7 @@ react-transition-group@^4.4.5:
     loose-envify "^1.4.0"
     prop-types "^15.6.2"
 
-"react@^16.3.0 || ^17.0.0 || ^18.0.0", "react@^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc", "react@^16.6.0 || ^17.0.0 || ^18.0.0", "react@^16.6.0 || 17 || 18", "react@^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc", "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^17.0.0 || ^18.0.0", "react@^17.0.0 || ^18.0.0 || ^19.0.0", "react@^18 || ^19", "react@^18 || ^19 || ^19.0.0-rc", react@^18.0.0, "react@^18.0.0 || ^19.0.0 || ^19.0.0-rc", react@^18.3.1, "react@>= 16.8.0", react@>=0.13, react@>=16.3.0, react@>=16.6.0, react@>=16.8, react@>=16.8.0, "react@16.8 - 18":
+"react@^16.3.0 || ^17.0.0 || ^18.0.0", "react@^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc", "react@^16.6.0 || ^17.0.0 || ^18.0.0", "react@^16.6.0 || 17 || 18", "react@^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc", "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^16.x || ^17.x || ^18.x || ^19.x", "react@^17.0.0 || ^18.0.0", "react@^17.0.0 || ^18.0.0 || ^19.0.0", "react@^18 || ^19", "react@^18 || ^19 || ^19.0.0-rc", react@^18.0.0, "react@^18.0.0 || ^19.0.0 || ^19.0.0-rc", react@^18.3.1, "react@>= 16.8.0", react@>=0.13, react@>=16.3.0, react@>=16.6.0, react@>=16.8, react@>=16.8.0, "react@16.8 - 18":
   version "18.3.1"
   resolved "https://registry.npmjs.org/react/-/react-18.3.1.tgz"
   integrity sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==
@@ -4064,6 +4064,11 @@ source-map@^0.5.7:
   version "0.5.7"
   resolved "https://registry.npmjs.org/source-map/-/source-map-0.5.7.tgz"
   integrity sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ==
+
+spinners-react@^1.0.11:
+  version "1.0.11"
+  resolved "https://registry.npmjs.org/spinners-react/-/spinners-react-1.0.11.tgz"
+  integrity sha512-CpQZixAI3dW+nLuJSrOTz4bDroSwLoIO5ljFt8wc1qy39yhK6MUubKnPD3z9/xIwNWFqy3mMRlW1mik/Fgqjow==
 
 "string-width-cjs@npm:string-width@^4.2.0":
   version "4.2.3"

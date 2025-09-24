@@ -3,6 +3,7 @@ import { Person } from "./blocks/persons/person-models";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { KeenIcon } from '@/components';
+import { SpinnerDotted } from 'spinners-react';
 
 export const LeadDetails = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -23,7 +24,11 @@ export const LeadDetails = () => {
     fetchUser();
   }, [uuid]);
 
-  if (!user) return <div className="p-6 text-center">Loading...</div>;
+  if (!user) return  <div className="fixed inset-0 flex items-center justify-center">
+      <div className="text-[#0D0E12] dark:text-gray-700">
+        <SpinnerDotted color="currentColor" />
+      </div>
+    </div>;
 
   return (
     <div className="flex">
@@ -126,7 +131,7 @@ export const LeadDetails = () => {
         {activeTab === "overview" && (
           <div>
             {/* Activity totals */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700 dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">
               <h3 className="text-lg font-semibold mb-4">Activity totals</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -145,7 +150,7 @@ export const LeadDetails = () => {
             </div>
 
             {/* Data highlights */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700 dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">
               <h3 className="text-lg font-semibold mb-4">Data highlights</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -164,7 +169,7 @@ export const LeadDetails = () => {
             </div>
 
             {/* Recent activities */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700 dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Recent activities</h3>
                 <button className="text-sm text-gray-600 hover:underline">All time so far</button>
@@ -178,10 +183,10 @@ export const LeadDetails = () => {
             </div>
 
             {/* Contacts */}
-            <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+            <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700 dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Contacts</h3>
-                <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">+ Add</button>
+                <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100 dark:shadow-[0_1px_3px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">+ Add</button>
               </div>
               <p className="text-gray-500 mt-2">No contacts linked.</p>
             </div>
@@ -195,13 +200,13 @@ export const LeadDetails = () => {
               <input
                 type="text"
                 placeholder="Search activities"
-                className="border rounded-lg px-3 py-2 text-sm w-1/3 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700"
+                className="border rounded-lg px-3 py-2 text-sm w-1/3 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700 dark:shadow-[0_1px_3px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]"
               />
-              <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">Collapse all</button>
+              <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100 dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)]">Collapse all</button>
             </div>
 
             {/* Activity Tabs */}
-            <div className="flex gap-6 border-b mb-4 text-sm">
+            <div className="flex gap-6 border-b mb-4 text-sm ">
               {["Activity", "Notes", "Emails", "Whatsapp", "Calls", "Tasks", "Meetings"].map((tab) => (
                 <button key={tab} className="pb-2 font-medium text-gray-600 hover:border-b hover:text-gray-800 border-gray-600">
                   {tab}
@@ -212,12 +217,12 @@ export const LeadDetails = () => {
             {/* Timeline */}
             <div className="space-y-4">
               <div className="text-gray-500 text-sm">August 2025</div>
-              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+              <div className="bg-white shadow dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)] rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
                 <p className="font-semibold">Lifecycle change</p>
                 <p className="text-sm"><span className="font-medium text-gray-600">{user.first_name || user.last_name ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "--"}</span> updated the lifecycle stage for this contact to Lead. <span className="text-gray-600 cursor-pointer">View details</span></p>
                 <p>{user.created_at || "--"}</p>
               </div>
-              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+              <div className="bg-white shadow dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)] rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
                 <p className="text-sm">This contact was created from Offline Sources from CRM UI</p>
                 <p>{user.created_at || "--"}</p>
               </div>
@@ -226,7 +231,7 @@ export const LeadDetails = () => {
         )}
 
         {activeTab === "intelligence" && (
-          <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+          <div className="bg-white rounded-xl shadow dark:shadow-[0_1px_5px_0_rgb(255_255_255),_0_1px_2px_-1px_rgb(0_0_0)] p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
             <p className="text-gray-500">No intelligence data available yet.</p>
           </div>
         )}

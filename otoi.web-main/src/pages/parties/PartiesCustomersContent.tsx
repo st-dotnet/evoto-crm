@@ -3,7 +3,7 @@ import {
   Customer,
   QueryApiResponse,
 } from "../parties/blocks/persons/customer-models";
-import { ModalPerson } from "./blocks/persons";
+import { ModalCustomer } from "./blocks/persons/ModalCustomer";
 import { ActivityForm } from "./ActivityForm";
 
 import {
@@ -414,11 +414,10 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         }
         layout={{ card: true }}
       />
-      <ModalPerson
+      <ModalCustomer
         open={personModalOpen}
         onOpenChange={handleClose}
-        person={selectedPerson}
-        customer={null}
+        customer={selectedPerson ? { ...selectedPerson, person_type_id: (selectedPerson as any).person_type_id ?? 1 } : null}
       />
       <ActivityForm
         open={activityModalOpen}

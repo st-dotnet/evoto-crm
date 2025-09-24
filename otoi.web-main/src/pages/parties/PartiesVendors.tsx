@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ModalCustomer } from "./blocks/persons/ModalCustomer";
+import { ModalVendor } from "./blocks/persons/ModalVendor";
 import { Container } from "@/components/container";
 import {
   Toolbar,
@@ -9,25 +9,39 @@ import {
   ToolbarPageTitle,
 } from "@/partials/toolbar";
 
-import { PartiesCustomerContent } from "./PartiesCustomersContent";
+import { PartiesVendorsContent } from "./PartiesVendorsContent";
 import { useLayout } from "@/providers";
-import { Person } from "../parties/blocks/persons/person-models";
+// Define Vendor type locally since import path does not exist
+export interface Vendor {
+  uuid?: string;
+  vendor_name: string;
+  company_name: string;
+  mobile: string;
+  email: string;
+  gst: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pin?: string;
+}
 
 export interface IPersonModalContentProps {
   state: boolean;
 }
 
-const PartiesCustomersPage = () => {
+const PartiesVendorsPage = () => {
   const { currentLayout } = useLayout();
   const [refreshKey, setRefreshKey] = useState(0); // State to trigger refresh
   const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Vendor | null>(null);
   // handle close
   const handleClose = () => {
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
+const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
   event.preventDefault();
   setSelectedPerson(rowData);
   setPersonModalOpen(true);
@@ -41,7 +55,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
               <ToolbarPageTitle />
               <ToolbarDescription>
                 <div className="flex items-center flex-wrap gap-1.5 font-medium">
-                  <span className="text-md text-gray-600">All Leads:</span>
+                  <span className="text-md text-gray-600">All Vendors:</span>
                 </div>
               </ToolbarDescription>
             </ToolbarHeading>
@@ -50,7 +64,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
                 Import CSV
               </a>
               <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
-                Add Customer
+                Add Vendor
               </a>
             </ToolbarActions>
           </Toolbar>
@@ -58,13 +72,13 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
       )}
 
       <Container>
-        <PartiesCustomerContent refreshStatus={refreshKey} />
-        <ModalCustomer open={personModalOpen} onOpenChange={handleClose} customer={null}/>
+        <PartiesVendorsContent refreshStatus={refreshKey} />
+        <ModalVendor open={personModalOpen} onOpenChange={handleClose} vendor={selectedPerson} />
       </Container>
     </Fragment>
   );
 };
 
-export { PartiesCustomersPage };
+export { PartiesVendorsPage };
 
 
