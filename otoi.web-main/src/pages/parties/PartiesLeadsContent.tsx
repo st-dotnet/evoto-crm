@@ -378,7 +378,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
               />
             </label>
           </div>
-          <div className="flex flex-wrap gap-2.5 items-center">
+          {/* <div className="flex flex-wrap gap-2.5 items-center">
             <label className="select-sm mr-2">Status</label>
             <Select
               value={statusValue}
@@ -396,7 +396,7 @@ const PartiesLeadContent = ({ refreshStatus }: IPartiesLeadContentProps) => {
                 <SelectItem value="5">Lose</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
       </div>
     );

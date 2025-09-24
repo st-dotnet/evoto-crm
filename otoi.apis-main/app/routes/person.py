@@ -206,7 +206,7 @@ def get_persons():
 
 @person_blueprint.route("/test", methods=["GET"])
 def get_test():
-     return jsonify("api work ")
+     return jsonify("api work ") 
 
 @person_blueprint.route("/", methods=["POST"])
 def create_person():
@@ -643,11 +643,11 @@ def get_leads():
         status_value = request.args.get("status", "").strip()
         if status_value and status_value != "-1":
             code_to_text = {
-                "1": "New",
-                "2": "In-Progress",
-                "3": "Quote-Given",
-                "4": "Win",
-                "5": "Lose",
+                1: "New",
+                2: "In-Progress",
+                3: "Quote-Given",
+                4: "Win",
+                5: "Lose",
             }
             mapped_text = code_to_text.get(status_value)
             if mapped_text:
@@ -660,16 +660,6 @@ def get_leads():
             else:
                 # If a text value is sent directly, filter by it (case-insensitive)
                 query = query.filter(Person.status.ilike(status_value))
-   
-
-    # Sorting
-    sort = request.args.get("sort", "uuid")
-    for field in sort.split(","):
-        if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Person, field[1:], "uuid")))
-        else:
-            query = query.order_by(getattr(Person, field, "uuid"))
-
     # Pagination
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("items_per_page", 10))

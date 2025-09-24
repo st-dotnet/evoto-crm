@@ -16,7 +16,7 @@ class Person(BaseMixin, db.Model):
     mobile = Column(String(15), nullable=False, unique=True)
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
-    status = Column(String(80), nullable=False)
+    status = Column(Integer, nullable=False)
     reason = Column(String(200), nullable=True)
     referenced_by = Column(String(500), nullable=True)
 

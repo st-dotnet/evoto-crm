@@ -14,6 +14,7 @@ from app.routes.person_type import person_type_blueprint
 from app.routes.active_type import active_type_blueprint, status_list_blueprint
 from app.routes.customer import customer_blueprint
 from app.routes.vendor import vendor_blueprint
+from app.routes.csv_import import csv_import_bp 
 
 
 def register_blueprints(app):
@@ -30,5 +31,6 @@ def register_blueprints(app):
     app.register_blueprint(status_list_blueprint, url_prefix="/api/status-list")
     app.register_blueprint(customer_blueprint, url_prefix="/api/customers")
     app.register_blueprint(vendor_blueprint, url_prefix="/api/vendors")
+    app.register_blueprint(csv_import_bp, url_prefix="/api/csv_import")
 
 
