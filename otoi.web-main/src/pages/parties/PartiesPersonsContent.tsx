@@ -413,13 +413,12 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
               </SelectTrigger>
               <SelectContent className="w-32">
                 <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">Customer</SelectItem>
-                <SelectItem value="2">Vendor</SelectItem>
-                <SelectItem value="3">Provider</SelectItem>
+                <SelectItem value="4">Lead</SelectItem>
+                <SelectItem value="5">Employee</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-wrap gap-2.5">
+          {/* <div className="flex flex-wrap gap-2.5">
             <label className="select-sm"> Status Type </label>
             <Select
               defaultValue=""
@@ -438,7 +437,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
                 <SelectItem value="5">Lose</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
       </div>
     );
@@ -470,7 +469,6 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
         open={personModalOpen}
         onOpenChange={handleClose}
         person={selectedPerson}
-        customer={null}
       />
       <ActivityForm
         open={activityModalOpen}

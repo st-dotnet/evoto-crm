@@ -1,8 +1,21 @@
 import { KeenIcon } from '@/components';
 
 import { CrudAvatarUpload } from '@/partials/crud';
+import { useAuthContext } from '@/auth';
+
 
 const PersonalInfo = () => {
+  const { currentUser } = useAuthContext();
+
+  const fullName = (() => {
+    const first = currentUser?.first_name?.trim() || '';
+    const last = currentUser?.last_name?.trim() || '';
+
+    if (!first && !last) return currentUser?.fullname || 'User';
+    if (!last || first.toLowerCase() === last.toLowerCase()) return first;
+
+    return `${first} ${last}`;
+  })();
   return (
     <div className="card min-w-full">
       <div className="card-header">
@@ -23,8 +36,8 @@ const PersonalInfo = () => {
               </td>
             </tr>
             <tr>
-              <td className="py-2 text-gray-600 font-normal">Name</td>
-              <td className="py-2 text-gray-800 font-normaltext-sm">Jason Tatum</td>
+              <td className="py-2 text-gray-600 font-normal">Username</td>
+              <td className="py-2 text-gray-800 font-normaltext-sm">{fullName}</td>
               <td className="py-2 text-center">
                 <a href="#" className="btn btn-sm btn-icon btn-clear btn-primary">
                   <KeenIcon icon="notepad-edit" />

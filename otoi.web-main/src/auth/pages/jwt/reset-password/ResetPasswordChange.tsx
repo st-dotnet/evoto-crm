@@ -35,20 +35,16 @@ const ResetPasswordChange = () => {
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
       setHasErrors(undefined);
-
-      const token = new URLSearchParams(window.location.search).get('token');
       const email = new URLSearchParams(window.location.search).get('email');
-
-      if (!token || !email) {
+      if (!email) {
         setHasErrors(true);
-        setStatus('Token and email properties are required');
+        setStatus('Email is required');
         setLoading(false);
         setSubmitting(false);
         return;
       }
-
       try {
-        await changePassword(email, token, values.newPassword, values.confirmPassword);
+        await changePassword(email, values.newPassword, values.confirmPassword, values.confirmPassword);
         setHasErrors(false);
         navigate(
           currentLayout?.name === 'auth-branded'

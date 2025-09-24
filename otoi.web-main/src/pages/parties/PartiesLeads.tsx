@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ModalPerson } from "./blocks/persons";
+import { ModalLead } from "./blocks/persons/ModalLead";
 import { Container } from "@/components/container";
 import {
   Toolbar,
@@ -59,7 +59,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
 
       <Container>
         <PartiesLeadContent refreshStatus={refreshKey} />
-        <ModalPerson open={personModalOpen} onOpenChange={handleClose} person={selectedPerson} customer={null}/>
+        <ModalLead open={personModalOpen} onOpenChange={handleClose} person={selectedPerson} />
       </Container>
     </Fragment>
   );

@@ -90,7 +90,7 @@ const Login = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        {/* <div className="grid grid-cols-2 gap-2.5">
           <a href="#" className="btn btn-light btn-sm justify-center">
             <img
               src={toAbsoluteUrl("/media/brand-logos/google.svg")}
@@ -110,7 +110,7 @@ const Login = () => {
             />
             Use Apple
           </a>
-        </div>
+        </div> */}
 
         <div className="flex items-center gap-2">
           <span className="border-t border-gray-200 w-full"></span>

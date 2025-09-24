@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { KeenIcon } from "@/components";
+import { SpinnerDotted } from 'spinners-react';
 
 interface Customer {
   uuid?: string;
@@ -11,6 +12,7 @@ interface Customer {
   email: string;
   gst?: string;
   status?: string;
+  person_type?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -39,12 +41,16 @@ export const CustomerDetails = () => {
     if (uuid) fetchCustomer();
   }, [uuid]);
 
-  if (!customer) return <div className="p-6 text-center">Loading...</div>;
+  if (!customer) return <div className="fixed inset-0 flex items-center justify-center">
+    <div className="text-[#0D0E12] dark:text-gray-700">
+      <SpinnerDotted color="currentColor" />
+    </div>
+  </div>;
 
   return (
     <div className="flex">
       {/* Left Sidebar */}
-      <div className="w-96 bg-white shadow-md p-6 overflow-y-auto">
+      <div className="w-96 bg-white shadow-md p-6 overflow-y-auto dark:bg-[#0D0E12]">
         {/* Header */}
         <div className="flex items-center gap-4">
           {/* Avatar */}
@@ -88,6 +94,7 @@ export const CustomerDetails = () => {
             <p><strong>Mobile:</strong> {customer.mobile || "--"}</p>
             <p><strong>GST:</strong> {customer.gst || "--"}</p>
             <p><strong>Status:</strong> {customer.status || "--"}</p>
+            <p><strong>Person-Type:</strong> {customer.person_type || "--"}</p>
             <p><strong>Created:</strong> {customer.created_at || "--"}</p>
           </div>
         </div>
@@ -107,7 +114,7 @@ export const CustomerDetails = () => {
       </div>
 
       {/* Right side content */}
-      <div className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+      <div className="flex-1 p-6 bg-gray-50 overflow-y-auto dark:bg-[#0D0E12]">
         {/* Tabs */}
         <div className="flex border-b mb-6">
           <button
@@ -146,7 +153,7 @@ export const CustomerDetails = () => {
         {activeTab === "overview" && (
           <div>
             {/* Activity totals */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <h3 className="text-lg font-semibold mb-4">Activity totals</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -165,7 +172,7 @@ export const CustomerDetails = () => {
             </div>
 
             {/* Data highlights */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <h3 className="text-lg font-semibold mb-4">Data highlights</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -184,7 +191,7 @@ export const CustomerDetails = () => {
             </div>
 
             {/* Recent activities */}
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <div className="bg-white rounded-xl shadow p-6 mb-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Recent activities</h3>
                 <button className="text-sm text-gray-600 hover:underline">All time so far</button>
@@ -202,6 +209,13 @@ export const CustomerDetails = () => {
                 <p>No activities.</p>
               </div>
             </div>
+            <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Contacts</h3>
+                <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">+ Add</button>
+              </div>
+              <p className="text-gray-500 mt-2">No contacts linked.</p>
+            </div>
           </div>
         )}
 
@@ -212,9 +226,9 @@ export const CustomerDetails = () => {
               <input
                 type="text"
                 placeholder="Search activities"
-                className="border rounded-lg px-3 py-2 text-sm w-1/3"
+                className="border rounded-lg px-3 py-2 text-sm w-1/3 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700"
               />
-              <button className="px-3 py-2 border rounded-lg text-sm">Collapse all</button>
+              <button className="px-3 py-2 border border-gray-700 rounded-lg text-sm hover:bg-gray-100">Collapse all</button>
             </div>
 
             {/* Activity Tabs */}
@@ -232,7 +246,7 @@ export const CustomerDetails = () => {
             {/* Timeline */}
             <div className="space-y-4">
               <div className="text-gray-500 text-sm">September 2025</div>
-              <div className="bg-white shadow rounded-lg p-4">
+              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
                 <p className="font-semibold">Customer created</p>
                 <p className="text-sm">
                   <span className="font-medium text-gray-600">
@@ -242,12 +256,16 @@ export const CustomerDetails = () => {
                 </p>
                 <p>{customer.created_at || "--"}</p>
               </div>
+              <div className="bg-white shadow rounded-lg p-4 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
+                <p className="text-sm">This contact was created from Offline Sources from CRM UI</p>
+                <p>{customer.created_at || "--"}</p>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === "intelligence" && (
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white rounded-xl shadow p-6 dark:bg-[#0D0E12] dark:border-2 dark:border-gray-700">
             <p className="text-gray-500">No intelligence data available yet.</p>
           </div>
         )}

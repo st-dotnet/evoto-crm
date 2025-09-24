@@ -54,3 +54,24 @@ export type Customer = {
   personType: PersonType; 
   pin: string;
 };
+export type Vendor = {
+  id: number;
+  uuid: string;
+  person_id: string;
+  customer_id: string;
+  vendor_name: string;
+  company_name: string;
+  mobile: string;
+  email: string;
+  gst: string;
+  status: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  country: string;
+  activity_type: string | undefined;
+  created_at: string | undefined;
+  edit: string;
+  pin: string;
+};

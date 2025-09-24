@@ -187,3 +187,48 @@ def login():
         }), 200
 
     return jsonify({"error": "Invalid credentials"}), 401
+
+@auth_blueprint.route("/check-email", methods=["POST"])
+def check_email():
+    """
+    Check if the email exists in the database
+    ---
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                example: "user@example.com"
+    responses:
+      200:
+        description: Email found
+      404:
+        description: Email not found
+    """
+    data = request.get_json()
+    email = data.get("email")
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Email not found"}), 404
+    return jsonify({"message": "Email found"}), 200
+
+@auth_blueprint.route("/update-password", methods=["POST"])
+def update_password():
+    data = request.get_json()
+    email = data.get("email")
+    new_password = data.get("newPassword")
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Email not found"}), 404
+
+    user.set_password(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Password updated"}), 200

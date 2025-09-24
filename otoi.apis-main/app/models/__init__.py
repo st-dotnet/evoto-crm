@@ -3,6 +3,7 @@ from .common import Address
 from .person import Person, PersonType, PersonAddress
 from .active import Active, ActiveType, Status
 from .customer import Customer
+from .vendor import Vendor
 from .business import BusinessRegistrationType, BusinessType, IndustryType, Business
 from .associations import user_business
 from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
@@ -10,7 +11,7 @@ from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 __all__ = [ "User", "Role", "Address", 
            "Person", "PersonType", "PersonAddress", 
            "Active", "ActiveType", "Status",
-           "Customer",
+           "Customer", "Vendor",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business","user_business",
            "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage"]
