@@ -5,7 +5,7 @@ from app.models.active import Active, ActiveType
 from app.models.common import Address
 from app.models.customer import Customer
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
-from sqlalchemy import or_, func
+from sqlalchemy import String, cast, or_, func
 from sqlalchemy import event
 
 person_blueprint = Blueprint("person", __name__, url_prefix="/persons")
@@ -637,30 +637,31 @@ def get_leads():
                 Person.mobile.ilike(f"%{query_value}%")
             )
         )
-    if "mobile" in request.args:
-        query = query.filter(Person.mobile.ilike(f"%{request.args['mobile']}%"))
     if "status" in request.args:
         status_value = request.args.get("status", "").strip()
-        if status_value and status_value != "-1":
+        if status_value and status_value.lower() != "-1":
             code_to_text = {
-                1: "New",
-                2: "In-Progress",
-                3: "Quote-Given",
-                4: "Win",
-                5: "Lose",
+              "1": "New",
+              "2": "In-Progress",
+              "3": "Quote Given",
+              "4": "Win",
+              "5": "Lose",
             }
-            mapped_text = code_to_text.get(status_value)
-            if mapped_text:
+
+            if status_value in code_to_text:
                 query = query.filter(
                     or_(
-                        Person.status == status_value,
-                        Person.status.ilike(mapped_text)
-                    )
-                )
+                        Person.status == int(status_value),
+                        cast(Person.status, String).ilike(code_to_text[status_value])
+                      )
+                 )
             else:
-                # If a text value is sent directly, filter by it (case-insensitive)
-                query = query.filter(Person.status.ilike(status_value))
-    # Pagination
+            # If a text value is sent directly, filter by it (case-insensitive)
+                query = query.filter(cast(Person.status, String).ilike(f"%{status_value}%"))
+
+
+
+    # # Pagination
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("items_per_page", 10))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
