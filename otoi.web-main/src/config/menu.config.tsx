@@ -14,10 +14,6 @@ export const MENU_SIDEBAR: TMenuConfig = [
     icon: "users",
     children: [
       {
-        title: "Persons",
-        path: "/parties/persons",
-      },
-      {
         title: "Leads",
         path: "/parties/leads",
       },

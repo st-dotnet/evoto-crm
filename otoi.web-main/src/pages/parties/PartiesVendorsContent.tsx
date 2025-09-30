@@ -3,9 +3,9 @@ import React, { useMemo, useState, useEffect } from "react";
 import {
   Vendor,
   QueryApiResponse,
-} from "../parties/blocks/persons/customer-models";
+} from "../parties/blocks/leads/customer-models";
 
-import { ModalVendor } from "./blocks/persons/ModalVendor";
+import { ModalVendor } from "./blocks/leads/ModalVendor";
 import { ActivityForm } from "./ActivityForm";
 
 import {
