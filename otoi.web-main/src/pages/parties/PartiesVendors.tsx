@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ModalVendor } from "./blocks/persons/ModalVendor";
+import { ModalVendor } from "./blocks/leads/ModalVendor";
 import { Container } from "@/components/container";
 import {
   Toolbar,

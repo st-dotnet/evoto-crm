@@ -1,2 +1,2 @@
-export * from './PartiesPersonsContent';
-export * from './PartiesPersons';
+export * from './LeadsContent';
+export * from './PartiesLeads';

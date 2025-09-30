@@ -1,10 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  Customer,
-  QueryApiResponse,
-} from "../parties/blocks/leads/customer-models";
-import { ModalCustomer } from "./blocks/leads/ModalCustomer";
-import { ActivityForm } from "./ActivityForm";
+  Lead,
+  QueryLeadApiResponse,
+} from "../parties/blocks/leads/lead-models";
 
 import {
   DataGrid,
@@ -14,6 +12,7 @@ import {
   DataGridRowSelectAll,
   DataGridRowSelect,
 } from "@/components";
+import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,33 +20,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-
-import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
+import { ModalLead } from "./blocks/leads";
 import { useNavigate } from "react-router-dom";
-import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
-
-
+import { ActivityForm } from "./ActivityForm";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
 }
 
-type CustomersQueryApiResponse = QueryApiResponse<Customer>;
+type LeadsQueryApiResponse = QueryLeadApiResponse;
 
-interface IPartiesCustomerContentProps {
+interface ILeadsContentProps {
   refreshStatus: number;
 }
-
 interface ActivityLead {
   id: string;
   status?: string;
@@ -56,16 +44,15 @@ interface ActivityLead {
   activity_type?: string;
 }
 
-
-
-const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {
+const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Customer | null>(null);
+  const [searchStatusTypeQuery, setStatusTypeQuery] = useState("-1");
+  const [refreshKey, setRefreshKey] = useState(0); // Unique key to trigger DataGrid reload
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<ActivityLead | null>(null);
+  const [selectedLeadForActivity, setSelectedLeadForActivity] =
+    useState<ActivityLead | null>(null);
 
   const navigate = useNavigate();
 
@@ -82,37 +69,36 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        column.setFilterValue(inputValue);
+        column.setFilterValue(inputValue); // Apply the filter only on Enter
       }
-    };
-
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(event.target.value);
     };
 
     return (
       <Input
         placeholder="Filter..."
         value={inputValue}
-        onChange={handleChange}
+        onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         className="h-9 w-full max-w-40"
       />
     );
   };
 
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Customer | null = null) => {
+  const openLeadModal = (
+    event: { preventDefault: () => void },
+    rowData: Lead | null = null
+  ) => {
     event.preventDefault();
-    setSelectedPerson(rowData);
-    setPersonModalOpen(true);
+    setSelectedLead(rowData);
+    setLeadModalOpen(true);
   };
 
   const handleClose = () => {
-    setPersonModalOpen(false);
+    setLeadModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
 
-  const columns = useMemo<ColumnDef<Customer>[]>(
+  const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
       {
         accessorKey: "id",
@@ -120,9 +106,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         cell: ({ row }) => <DataGridRowSelect row={row} />,
         enableSorting: false,
         enableHiding: false,
-        meta: {
-          headerClassName: "w-0",
-        },
+        meta: { headerClassName: "w-0" },
       },
       {
         accessorFn: (row) => row.first_name,
@@ -142,7 +126,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/customer/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.uuid}`);
                 }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
@@ -151,7 +135,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/customer/${info.row.original.id}`);
+                  navigate(`/lead/${info.row.original.uuid}`);
                 }}
               >
                 {info.row.original.email}
@@ -159,35 +143,29 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             </div>
           </div>
         ),
-        meta: {
-          headerClassName: "min-w-[300px]",
-        },
+        meta: { headerClassName: "min-w-[300px]" },
       },
       {
-        accessorFn: (row: Customer) => row.gst,
-        id: "gst",
+        accessorFn: (row: Lead) => row.mobile,
+        id: "mobile",
         header: ({ column }) => (
-          <DataGridColumnHeader title="GST" column={column} />
+          <DataGridColumnHeader title="Mobile" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => {
-          return info.row.original.gst;
-        },
+        cell: (info: any) => info.row.original.mobile,
         meta: {
           headerClassName: "min-w-[137px]",
           cellClassName: "text-gray-800 font-medium",
         },
       },
       {
-        accessorFn: (row: Customer) => row.mobile,
-        id: "mobile",
+        accessorFn: (row: Lead) => row.status,
+        id: "status",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Mobile" column={column} />
+          <DataGridColumnHeader title="Status" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => {
-          return info.row.original.mobile;
-        },
+        cell: (info: any) => info.row.original.status,
         meta: {
           headerClassName: "min-w-[137px]",
           cellClassName: "text-gray-800 font-medium",
@@ -196,7 +174,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Activity" column={column} />
+          <DataGridColumnHeader title="Actions" column={column} />
         ),
         enableSorting: false,
         cell: ({ row }) => (
@@ -208,25 +186,29 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                openPersonModal(e, row.original);
-              }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  openLeadModal(e, row.original);
+                }}
+              >
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                navigate(`/customer/${row.original.id}`);
-              }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/lead/${row.original.uuid}`);
+                }}
+              >
                 Details
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
-                  setSelectedCustomerForActivity({
+                  setSelectedLeadForActivity({
                     id: row.original.uuid,
                     status: row.original.status,
-                    address: row.original.address1,
+                    address: row.original.address,
                     created_at: row.original.created_at,
                     activity_type: row.original.activity_type,
                   });
@@ -235,7 +217,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               >
                 Create Activity
               </DropdownMenuItem>
-
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -248,7 +229,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     []
   );
 
-  const fetchUsers = async (params: TDataGridRequestParams) => {
+  const fetchLeads = async (params: TDataGridRequestParams) => {
     try {
       const queryParams = new URLSearchParams();
       queryParams.set("page", String(params.pageIndex + 1));
@@ -258,15 +239,14 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         queryParams.set("sort", params.sorting[0].id);
         queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
       }
-
       if (searchQuery.trim().length > 0) {
         queryParams.set("query", searchQuery);
       }
-
-      if (searchPersonTypeQuery != "-1") {
-        queryParams.set("person_type", searchPersonTypeQuery);
+      if (searchStatusTypeQuery != "-1") {
+        queryParams.set("status_type", searchStatusTypeQuery);
       }
 
+      // Column filters
       if (params.columnFilters) {
         params.columnFilters.forEach(({ id, value }) => {
           if (value !== undefined && value !== null) {
@@ -275,31 +255,21 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         });
       }
 
-      const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
+      const response = await axios.get<LeadsQueryApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/leads/?${queryParams.toString()}`
       );
-      // Support both envelope ({ data, pagination }) and plain array responses
-      const payload: any = response.data as any;
-      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
+
       return {
-        data: rows,
-        totalCount: total,
+        data: response.data.data,
+        totalCount: response.data.pagination.total,
       };
     } catch (error) {
       console.log(error);
       toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
+        description: `An error occurred while fetching leads. Please try again later`,
+        action: { label: "Ok", onClick: () => console.log("Ok") },
       });
-
-      return {
-        data: [],
-        totalCount: 0,
-      };
+      return { data: [], totalCount: 0 };
     }
   };
 
@@ -308,51 +278,39 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} are selected.`, {
         description: `Selected row IDs: ${selectedRowIds}`,
-        action: {
-          label: "Undo",
-          onClick: () => console.log("Undo"),
-        },
+        action: { label: "Undo", onClick: () => console.log("Undo") },
       });
     }
   };
 
+  // search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setRefreshKey((prev) => prev + 1);
   };
-
-  const handlePersonTypeSearch = (query: string) => {
-    setPersonTypeQuery(query);
+  const handleStatusTypeSearch = (query: string) => {
+    setStatusTypeQuery(query);
     setRefreshKey((prev) => prev + 1);
   };
 
   const Toolbar = ({
     defaultSearch,
     setSearch,
-    defaultPersonType,
-    setDefaultPersonType,
+    defaultStatusType,
+    setDefaultStatusType,
   }: {
     defaultSearch: string;
     setSearch: (query: string) => void;
-    defaultPersonType: string;
-    setDefaultPersonType: (query: string) => void;
+    defaultStatusType: string;
+    setDefaultStatusType: (query: string) => void;
   }) => {
     const [searchInput, setSearchInput] = useState(defaultSearch);
-    const [searchPersonType, setPersonType] = useState(defaultPersonType);
+    const [searchStatusType, setStatusType] = useState(defaultStatusType);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         setSearch(searchInput);
       }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchInput(e.target.value);
-    };
-
-    const handlePersonTypeChange = (personType: string) => {
-      setPersonType(personType);
-      setDefaultPersonType(personType);
     };
 
     return (
@@ -363,28 +321,34 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               <KeenIcon icon="magnifier" />
               <input
                 type="text"
-                placeholder="Search users"
+                placeholder="Search leads"
                 value={searchInput}
-                onChange={handleChange}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
             </label>
           </div>
+          {/* Status Filter */}
           {/* <div className="flex flex-wrap gap-2.5">
-            <label className="select-sm"> Person Type </label>
+            <label className="select-sm"> Status Type </label>
             <Select
               defaultValue=""
-              value={searchPersonType}
-              onValueChange={(value) => handlePersonTypeChange(value)}
+              value={searchStatusType}
+              onValueChange={(value) => {
+                setStatusType(value);
+                setDefaultStatusType(value);
+              }}
             >
               <SelectTrigger className="w-28" size="sm">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent className="w-32">
                 <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">Customer</SelectItem>
-                <SelectItem value="2">Vendor</SelectItem>
-                <SelectItem value="3">Provider</SelectItem>
+                <SelectItem value="1">New</SelectItem>
+                <SelectItem value="2">In Progress</SelectItem>
+                <SelectItem value="3">Quote Given</SelectItem>
+                <SelectItem value="4">Win</SelectItem>
+                <SelectItem value="5">Lose</SelectItem>
               </SelectContent>
             </Select>
           </div> */}
@@ -399,7 +363,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         key={refreshKey}
         columns={columns}
         serverSide={true}
-        onFetchData={fetchUsers}
+        onFetchData={fetchLeads}
         rowSelection={true}
         getRowId={(row: any) => row.id}
         onRowSelectionChange={handleRowSelection}
@@ -408,24 +372,24 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           <Toolbar
             defaultSearch={searchQuery}
             setSearch={handleSearch}
-            defaultPersonType={searchPersonTypeQuery}
-            setDefaultPersonType={handlePersonTypeSearch}
+            defaultStatusType={searchStatusTypeQuery}
+            setDefaultStatusType={handleStatusTypeSearch}
           />
         }
         layout={{ card: true }}
       />
-      <ModalCustomer
-        open={personModalOpen}
+      <ModalLead
+        open={leadModalOpen}
         onOpenChange={handleClose}
-        customer={selectedPerson ? { ...selectedPerson, person_type_id: (selectedPerson as any).person_type_id ?? 1 } : null}
+        lead={selectedLead}
       />
       <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}
-        lead={selectedCustomerForActivity}
+        lead={selectedLeadForActivity}
       />
     </div>
   );
 };
 
-export { PartiesCustomerContent };
+export { LeadsContent };

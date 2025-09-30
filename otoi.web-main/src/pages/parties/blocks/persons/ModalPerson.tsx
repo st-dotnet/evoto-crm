@@ -49,7 +49,16 @@ interface Person {
   country?: string;
   pin?: string;
   reason?: string;
+  addresses?: Array<{
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pin?: string;
+  }>;
 }
+
 
 const initialValues: Omit<Person, "person_type"> = {
   first_name: "",
@@ -167,48 +176,37 @@ const ModalPerson = ({ open, onOpenChange, person }: IModalPersonProps) => {
     },
   });
 
-  useEffect(() => {
-    // Ensure loading/submitting reset each time modal opens
-    if (open) {
-      setLoading(false);
-      // Safely clear any residual submitting state
-      if (formik.isSubmitting) {
-        formik.setSubmitting(false);
-      }
-    }
-    if (open && person) {
-      // Resolve person_type_id from either provided id or by matching the name from loaded personTypes
-      const resolvedTypeId =
-        person.person_type_id ||
-        (person.person_type
-          ? personTypes.find(
-              (t) => t.name.toLowerCase() === (person.person_type || "").toLowerCase()
-            )?.id?.toString()
-          : "") ||
-        "";
-
-      formik.resetForm({
-        values: {
-          first_name: person.first_name || "",
-          last_name: person.last_name || "",
-          mobile: person.mobile || "",
-          email: person.email || "",
-          gst: person.gst || "",
-          person_type_id: resolvedTypeId,
-          status: person.status || "",
-          city: person.city || "",
-          state: person.state || "",
-          country: person.country || "",
-          pin: person.pin || "",
-          address1: person.address1 || "",
-          address2: person.address2 || "",
-          reason: person.reason || "",
-        },
-      });
-    } else if (open) {
-      formik.resetForm();
-    }
-  }, [open, person, personTypes]);
+useEffect(() => {
+  if (open && person) {
+    const resolvedTypeId =
+      person.person_type_id ||
+      (person.person_type
+        ? personTypes.find(
+            (t) => t.name.toLowerCase() === (person.person_type || "").toLowerCase()
+          )?.id?.toString()
+        : "") ||
+      "";
+    const address = person.addresses?.[0] || {};
+    formik.resetForm({
+      values: {
+        first_name: person.first_name || "",
+        last_name: person.last_name || "",
+        mobile: person.mobile || "",
+        email: person.email || "",
+        gst: person.gst || "",
+        person_type_id: resolvedTypeId,
+        status: person.status || "",
+        city: address.city || "",
+        state: address.state || "",
+        country: address.country || "",
+        pin: address.pin || "",
+        address1: address.address1 || "",
+        address2: address.address2 || "",
+        reason: person.reason || "",
+      },
+    });
+  }
+}, [open, person, personTypes]);
 
   return (
     <Fragment>

@@ -72,8 +72,7 @@ import {
   NetworkUserTableTeamCrewPage,
   NetworkVisitorsPage
 } from '@/pages/network';
-import { PartiesPersonsPage } from '@/pages/parties';
-import { PartiesLeadsPage } from '@/pages/parties/PartiesLeads';
+import { LeadsPage } from '@/pages/parties/PartiesLeads';
 import { AuthPage } from '@/auth';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { Demo1Layout } from '@/layouts/demo1';
@@ -185,8 +184,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/network/user-table/store-clients" element={<NetworkStoreClientsPage />} />
           <Route path="/network/user-table/visitors" element={<NetworkVisitorsPage />} />
           <Route path="/auth/welcome-message" element={<AuthenticationWelcomeMessagePage />} />
-          <Route path="/parties/persons" element={<PartiesPersonsPage />} />
-          <Route path="/parties/leads" element={<PartiesLeadsPage />} />
+          <Route path="/parties/leads" element={<LeadsPage />} />
           <Route path="/parties/customers" element={<PartiesCustomersPage />} />
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />

@@ -1,5 +1,5 @@
-import { Fragment, useState } from "react";
-import { ModalLead } from "./blocks/persons/ModalLead";
+import { Fragment, useState, useRef } from "react";
+import { ModalLead } from "./blocks/leads";
 import { Container } from "@/components/container";
 import {
   Toolbar,
@@ -8,30 +8,81 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
 } from "@/partials/toolbar";
-
-import { PartiesLeadContent } from "./PartiesLeadsContent";
+import { LeadsContent } from ".//LeadsContent";
 import { useLayout } from "@/providers";
-import { Person } from "../parties/blocks/persons/person-models";
+import { Lead } from "../parties/blocks/leads/lead-models";
+import axios from "axios";
 
-export interface IPersonModalContentProps {
+export interface ILeadModalContentProps {
   state: boolean;
 }
 
-const PartiesLeadsPage = () => {
+const LeadsPage = () => {
   const { currentLayout } = useLayout();
-  const [refreshKey, setRefreshKey] = useState(0); // State to trigger refresh
-  const [personModalOpen, setPersonModalOpen] = useState(false);
-    const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  // handle close
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleClose = () => {
-    setPersonModalOpen(false);
+    setLeadModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-const openPersonModal = (event: { preventDefault: () => void }, rowData: Person | null = null) => {
-  event.preventDefault();
-  setSelectedPerson(rowData);
-  setPersonModalOpen(true);
-};
+
+  const openLeadModal = (
+    event: { preventDefault: () => void },
+    rowData: Lead | null = null
+  ) => {
+    event.preventDefault();
+    setSelectedLead(rowData);
+    setLeadModalOpen(true);
+  };
+
+  // Download Excel Template
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_APP_API_URL}/leads/download-template`,
+        {
+          responseType: "blob",
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "lead-template.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Failed to download template", error);
+    }
+  };
+
+  // Import CSV
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("csv_file", file);
+
+    axios
+      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_leads`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      .then((response) => {
+        alert(response.data.message);
+        setRefreshKey((prevKey) => prevKey + 1);
+      })
+      .catch((error) => {
+        console.error("Failed to import CSV", error);
+        alert("Failed to import CSV");
+      });
+  };
+
   return (
     <Fragment>
       {currentLayout?.name === "demo1-layout" && (
@@ -46,23 +97,49 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Person 
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="#" className="btn btn-sm btn-light">
-                Import CSV
-              </a>
-              <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
+              {/* Import CSV Button */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                accept=".csv"
+                onChange={handleImportCSV}
+              />
+              <button
+                className="btn btn-sm btn-light"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Import Leads CSV
+              </button>
+              {/* Download Template Button */}
+              <button
+                className="btn btn-sm btn-success"
+                onClick={handleDownloadTemplate}
+              >
+                Download Lead Template
+              </button>
+              {/* Add Lead Button */}
+              <a
+                className="btn btn-sm btn-primary"
+                onClick={(e) => openLeadModal(e)}
+                href="#"
+              >
                 Add Lead
               </a>
             </ToolbarActions>
           </Toolbar>
         </Container>
       )}
-
       <Container>
-        <PartiesLeadContent refreshStatus={refreshKey} />
-        <ModalLead open={personModalOpen} onOpenChange={handleClose} person={selectedPerson} />
+        <LeadsContent refreshStatus={refreshKey} />
+        <ModalLead
+          open={leadModalOpen}
+          onOpenChange={handleClose}
+          lead={selectedLead}
+        />
       </Container>
     </Fragment>
   );
 };
 
-export { PartiesLeadsPage };
+export { LeadsPage };
