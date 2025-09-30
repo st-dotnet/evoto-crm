@@ -46,6 +46,13 @@ interface Person {
     country?: string;
     pin?: string;
     reason?: string;
+    // Shipping address fields
+    shipping_address1?: string;
+    shipping_address2?: string;
+    shipping_city?: string;
+    shipping_state?: string;
+    shipping_country?: string;
+    shipping_pin?: string;
 }
 
 const initialValues: Person = {
@@ -63,29 +70,63 @@ const initialValues: Person = {
     country: "",
     pin: "",
     reason: "",
+    shipping_address1: "",
+    shipping_address2: "",
+    shipping_city: "",
+    shipping_state: "",
+    shipping_country: "",
+    shipping_pin: "",
 };
 
 const saveCustomerSchema = Yup.object().shape({
     first_name: Yup.string().min(3).max(50).required("First Name is required"),
     last_name: Yup.string().min(3).max(50).required("Last Name is required"),
-    mobile: Yup.string().min(10).max(13).required("Mobile is required"),
-    email: Yup.string().email("Invalid email"),
+    mobile: Yup.string()
+        .test(
+            "mobile-or-email",
+            "Either Mobile or Email is required",
+            function (value) {
+                const { email } = this.parent;
+                if (!value && !email) {
+                    return false;
+                }
+                return true;
+            }
+        )
+        .test(
+            "mobile-length",
+            "Mobile number must be exactly 10 digits",
+            (value) => !value || value.length === 10
+        ),
+    email: Yup.string()
+        .email("Invalid email")
+        .test(
+            "mobile-or-email",
+            "Either Mobile or Email is required",
+            function (value) {
+                const { mobile } = this.parent;
+                if (!value && !mobile) {
+                    return false;
+                }
+                return true;
+            }
+        ),
     gst: Yup.string().min(15).max(15),
     pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+    shipping_pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
     reason: Yup.string().when("status", {
         is: (status: string) => status === "5",
         then: (schema) => schema.required("Reason is required when status is Lose"),
         otherwise: (schema) => schema,
     })
-
 });
 
 const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) => {
     const [loading, setLoading] = useState(false);
     const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
     const [statusList, setStatusList] = useState<Status[]>([]);
+    const [sameAsBilling, setSameAsBilling] = useState<boolean>(true);
 
-    // Fetch types & status
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_APP_API_URL}/person-types/`).then((res) => setPersonTypes(res.data));
         axios.get(`${import.meta.env.VITE_APP_API_URL}/status-list/`).then((res) => setStatusList(res.data));
@@ -94,12 +135,20 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
     const formik = useFormik({
         initialValues,
         validationSchema: saveCustomerSchema,
-        onSubmit: async (values, { setStatus, setSubmitting }) => {
+        onSubmit: async (values, { setStatus, setSubmitting, setTouched }) => {
+            setTouched({
+                first_name: true,
+                last_name: true,
+                mobile: true,
+                email: true,
+                gst: true,
+                pin: true,
+                reason: true,
+            });
             setLoading(true);
             try {
                 const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
                 const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
-
                 if (customer?.uuid) {
                     await axios.put(`${apiBase}/${customer.uuid}`, values);
                 } else {
@@ -116,10 +165,10 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
         },
     });
 
-    // Pre-fill for edit or set defaults
     useEffect(() => {
         if (open && customer) {
             formik.resetForm({ values: { ...customer } });
+            setSameAsBilling(!!customer?.shipping_address1);
         } else if (open && personTypes.length > 0 && statusList.length > 0) {
             const customerType = personTypes.find((t) => t.name.toLowerCase() === "customer");
             const winStatus = statusList.find((s) => s.name.toLowerCase() === "win");
@@ -132,6 +181,17 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
             });
         }
     }, [open, customer, personTypes, statusList]);
+
+    useEffect(() => {
+        if (sameAsBilling) {
+            formik.setFieldValue("shipping_address1", formik.values.address1);
+            formik.setFieldValue("shipping_address2", formik.values.address2);
+            formik.setFieldValue("shipping_country", formik.values.country);
+            formik.setFieldValue("shipping_state", formik.values.state);
+            formik.setFieldValue("shipping_city", formik.values.city);
+            formik.setFieldValue("shipping_pin", formik.values.pin);
+        }
+    }, [sameAsBilling, formik.values]);
 
     return (
         <Fragment>
@@ -154,37 +214,72 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                     {formik.status}
                                 </Alert>
                             )}
-
                             {/* First Name */}
                             <div className="flex flex-col gap-1.5">
-                                <label className="block text-sm font-medium text-gray-700">First Name<span style={{ color: "red" }}>*</span></label>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    First Name<span style={{ color: "red" }}>*</span>
+                                </label>
                                 <input {...formik.getFieldProps("first_name")} className="input" />
+                                {formik.touched.first_name && formik.errors.first_name && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.first_name}
+                                    </span>
+                                )}
                             </div>
-
                             {/* Last Name */}
                             <div className="flex flex-col gap-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Last Name<span style={{ color: "red" }}>*</span></label>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Last Name<span style={{ color: "red" }}>*</span>
+                                </label>
                                 <input {...formik.getFieldProps("last_name")} className="input" />
+                                {formik.touched.last_name && formik.errors.last_name && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.last_name}
+                                    </span>
+                                )}
                             </div>
-
                             {/* Mobile */}
                             <div className="flex flex-col gap-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Mobile<span style={{ color: "red" }}>*</span></label>
-                                <input {...formik.getFieldProps("mobile")} className="input" />
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Mobile
+                                </label>
+                                <input
+                                    {...formik.getFieldProps("mobile")}
+                                    className="input"
+                                    type="text"
+                                    onInput={(e) => {
+                                        const input = e.target as HTMLInputElement;
+                                        if (input.value.length > 10) {
+                                            input.value = input.value.slice(0, 10);
+                                        }
+                                    }}
+                                />
+                                {formik.touched.mobile && formik.errors.mobile && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.mobile}
+                                    </span>
+                                )}
                             </div>
-
                             {/* Email */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="block text-sm font-medium text-gray-700">Email</label>
                                 <input {...formik.getFieldProps("email")} className="input" />
+                                {formik.touched.email && formik.errors.email && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.email}
+                                    </span>
+                                )}
                             </div>
-
                             {/* GST */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="block text-sm font-medium text-gray-700">GST</label>
                                 <input {...formik.getFieldProps("gst")} className="input" />
+                                {formik.touched.gst && formik.errors.gst && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.gst}
+                                    </span>
+                                )}
                             </div>
-
                             {/* Status */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -201,21 +296,19 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                 if (selectedStatus === "4") {
                                     return (
                                         <>
-                                            {/* Address Fields */}
+                                            {/* Billing Address Fields */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
-                                                    Address 1
+                                                    Billing Address 1
                                                 </label>
                                                 <input {...formik.getFieldProps("address1")} className="input" />
                                             </div>
-
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
-                                                    Address 2
+                                                    Billing Address 2
                                                 </label>
                                                 <input {...formik.getFieldProps("address2")} className="input" />
                                             </div>
-
                                             {/* Country */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
@@ -238,7 +331,6 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                                     ))}
                                                 </select>
                                             </div>
-
                                             {/* State */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
@@ -262,7 +354,6 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                                         ))}
                                                 </select>
                                             </div>
-
                                             {/* City */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
@@ -286,18 +377,130 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                                         ))}
                                                 </select>
                                             </div>
-
                                             {/* Pin Code */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
                                                     Pin Code
                                                 </label>
                                                 <input {...formik.getFieldProps("pin")} className="input" />
+                                                {formik.touched.pin && formik.errors.pin && (
+                                                    <span role="alert" className="text-xs text-red-500">
+                                                        {formik.errors.pin}
+                                                    </span>
+                                                )}
                                             </div>
+                                            {/* Same as Billing Checkbox */}
+                                            <div className="flex items-center gap-2 col-span-full">
+                                                <input
+                                                    type="checkbox"
+                                                    id="sameAsBilling"
+                                                    checked={sameAsBilling}
+                                                    onChange={(e) => setSameAsBilling(e.target.checked)}
+                                                />
+                                                <label htmlFor="sameAsBilling" className="text-sm font-medium text-gray-700">
+                                                    Shipping Address is same as Billing Address
+                                                </label>
+                                            </div>
+                                            {/* Shipping Address Fields (Conditional) */}
+                                            {!sameAsBilling && (
+                                                <>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping Address 1
+                                                        </label>
+                                                        <input {...formik.getFieldProps("shipping_address1")} className="input" />
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping Address 2
+                                                        </label>
+                                                        <input {...formik.getFieldProps("shipping_address2")} className="input" />
+                                                    </div>
+                                                    {/* Shipping Country */}
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping Country<span style={{ color: "red" }}>*</span>
+                                                        </label>
+                                                        <select
+                                                            {...formik.getFieldProps("shipping_country")}
+                                                            onChange={(e) => {
+                                                                formik.setFieldValue("shipping_country", e.target.value);
+                                                                formik.setFieldValue("shipping_state", "");
+                                                                formik.setFieldValue("shipping_city", "");
+                                                            }}
+                                                            className="input"
+                                                        >
+                                                            <option value="">--Select Country--</option>
+                                                            {Country.getAllCountries().map((c) => (
+                                                                <option key={c.isoCode} value={c.isoCode}>
+                                                                    {c.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    {/* Shipping State */}
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping State<span style={{ color: "red" }}>*</span>
+                                                        </label>
+                                                        <select
+                                                            {...formik.getFieldProps("shipping_state")}
+                                                            onChange={(e) => {
+                                                                formik.setFieldValue("shipping_state", e.target.value);
+                                                                formik.setFieldValue("shipping_city", "");
+                                                            }}
+                                                            disabled={!formik.values.shipping_country}
+                                                            className="input"
+                                                        >
+                                                            <option value="">--Select State--</option>
+                                                            {formik.values.shipping_country &&
+                                                                State.getStatesOfCountry(formik.values.shipping_country).map((s) => (
+                                                                    <option key={s.isoCode} value={s.isoCode}>
+                                                                        {s.name}
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                    </div>
+                                                    {/* Shipping City */}
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping City<span style={{ color: "red" }}>*</span>
+                                                        </label>
+                                                        <select
+                                                            {...formik.getFieldProps("shipping_city")}
+                                                            disabled={!formik.values.shipping_state}
+                                                            className="input"
+                                                        >
+                                                            <option value="">--Select City--</option>
+                                                            {formik.values.shipping_country &&
+                                                                formik.values.shipping_state &&
+                                                                City.getCitiesOfState(
+                                                                    formik.values.shipping_country,
+                                                                    formik.values.shipping_state
+                                                                ).map((city) => (
+                                                                    <option key={city.name} value={city.name}>
+                                                                        {city.name}
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                    </div>
+                                                    {/* Shipping Pin Code */}
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="block text-sm font-medium text-gray-700">
+                                                            Shipping Pin Code
+                                                        </label>
+                                                        <input {...formik.getFieldProps("shipping_pin")} className="input" />
+                                                        {formik.touched.shipping_pin && formik.errors.shipping_pin && (
+                                                            <span role="alert" className="text-xs text-red-500">
+                                                                {formik.errors.shipping_pin}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
                                         </>
                                     );
                                 }
-
                                 if (selectedStatus === "5") {
                                     return (
                                         <div className="flex flex-col gap-1.5 col-span-full">
@@ -318,14 +521,21 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                         </div>
                                     );
                                 }
-
                                 return null;
                             })()}
                             <div className="col-span-full flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={onOpenChange} className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colorsbg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2">
+                                <button
+                                    type="button"
+                                    onClick={onOpenChange}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
+                                >
                                     Cancel
                                 </button>
-                                <button type="submit" disabled={loading || formik.isSubmitting} className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colorsbg-blue-600 text-white btn-primary hover:bg-blue-500 h-10 px-4 py-2">
+                                <button
+                                    type="submit"
+                                    disabled={loading || formik.isSubmitting}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-10 px-4 py-2"
+                                >
                                     {loading ? "Saving..." : "Save"}
                                 </button>
                             </div>
