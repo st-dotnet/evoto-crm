@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle } from "lucide-react";
 
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
@@ -194,6 +194,21 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         },
       },
       {
+        accessorFn: (row: Customer) => row.city,
+        id: "city",
+        header: ({ column }) => (
+          <DataGridColumnHeader title="City" column={column} />
+        ),
+        enableSorting: true,
+        cell: (info: any) => {
+          return info.row.original.city;
+        },
+        meta: {
+          headerClassName: "min-w-[137px]",
+          cellClassName: "text-gray-800 font-medium",
+        },
+      },
+      {
         id: "actions",
         header: ({ column }) => (
           <DataGridColumnHeader title="Activity" column={column} />
@@ -203,22 +218,22 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                -Select-
-                <ChevronDown className="h-3 w-3" />
+                <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                openPersonModal(e, row.original);
-              }}>
-                Edit
+              <DropdownMenuItem onClick={(e) => { e.preventDefault(); openPersonModal(e, row.original);}}>
+                 <Edit className="mr-2 h-4 w-4" />
+                  Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                navigate(`/customer/${row.original.id}`);
-              }}>
-                Details
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/customer/${row.original.id}`);
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                <span>Details</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -233,9 +248,13 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                   setActivityModalOpen(true);
                 }}
               >
-                Create Activity
+                <PlusCircle className="mr-2 h-4 w-4" />
+                <span>Create Activity</span>
               </DropdownMenuItem>
-
+              <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                <span className="text-red-500">Delete</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
