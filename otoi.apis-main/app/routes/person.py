@@ -21,9 +21,9 @@ def get_persons():
         required: false
         schema:
           type: string
-      - name:filter[name]
+      - name: filter[email]
         in: query
-        description: Filter by name (email)
+        description: Filter by email (email)
         required: true
         schema:
           type: string    
