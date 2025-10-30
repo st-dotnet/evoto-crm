@@ -8,6 +8,19 @@ customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
 # GET all customers (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["GET"])
 def get_customers():
+    """
+    Get all customers.
+    ---
+    tags:
+      - customers
+    responses:
+      200:
+        description: A list of all customers.
+        content:
+          application/json:
+            schema:
+              type: array
+    """
     query = Customer.query
     sort = request.args.get("sort", "uuid")
     order = request.args.get("order", "asc").lower()  # Extract order ('asc' or 'desc')
@@ -82,6 +95,16 @@ def get_customers():
 # CREATE a new customer (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["POST"])
 def create_customer():
+    """
+    Create customer.
+    ---
+    tags:
+      - customers
+    responses:
+      200:
+        description: Create customer.
+        
+    """
     from app.models.person import Person, PersonType  # local import to avoid cycles
     data = request.get_json() or {}
 
@@ -213,6 +236,16 @@ def create_customer():
 # GET a single customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["GET"])
 def get_customer(customer_id):
+    """
+    Get customer by id.
+    ---
+    tags:
+      - get customer by id 
+    responses:
+      200:
+        description: get customer by id .
+        
+    """
     customer = Customer.query.get_or_404(customer_id)
     return jsonify({
         "uuid": str(customer.uuid),
@@ -234,6 +267,14 @@ def get_customer(customer_id):
 # UPDATE a customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
 def update_customer(customer_id):
+    """
+    tags:
+      - Update customer
+    responses:
+      200:
+        description: update customer.
+        
+    """
     data = request.get_json() or {}
     customer = Customer.query.get_or_404(customer_id)
 
