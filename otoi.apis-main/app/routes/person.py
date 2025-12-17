@@ -34,30 +34,35 @@ def get_leads():
         required: false
         schema:
           type: string
-       -name: filter[email]
+
+      - name: filter[email]
         in: query
         description: Filter by email (email)
         required: true
         schema:
-          type: string     
+          type: string
+
       - name: query
         in: query
         description: Search by first_name, last_name, email, gst, or mobile
         required: false
         schema:
           type: string
+
       - name: mobile
         in: query
         description: Filter by mobile number
         required: false
         schema:
           type: string
+
       - name: sort
         in: query
         description: Comma-separated field names for sorting (e.g., 'first_name,-email')
         required: false
         schema:
           type: string
+
       - name: page
         in: query
         description: "Page number (default: 1)"
@@ -65,6 +70,7 @@ def get_leads():
         schema:
           type: integer
           default: 1
+
       - name: items_per_page
         in: query
         description: "Number of records per page (default: 10)"
@@ -72,6 +78,7 @@ def get_leads():
         schema:
           type: integer
           default: 10
+
     responses:
       200:
         description: A list of leads
@@ -260,31 +267,47 @@ def create_lead():
     """
     Create a new lead.
     ---
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              first_name: {type: string}
-              last_name: {type: string}
-              mobile: {type: string}
-              email: {type: string}
-              gst: {type: string}
-              referenced_by: {type: string}
-              status: {type: string, example: Win}
-              reason: {type: string, description: Required if status=Lose}
-              address:
-                type: object
-                description: Required if status=Win
-                properties:
-                  address1: {type: string}
-                  address2: {type: string}
-                  city: {type: string}
-                  state: {type: string}
-                  country: {type: string}
-                  pin: {type: string}
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            mobile:
+              type: string
+            email:
+              type: string
+            gst:
+              type: string
+            referenced_by:
+              type: string
+            status:
+              type: string
+              example: Win
+            reason:
+              type: string
+              description: "Required if status is Lose"
+            address:
+              type: object
+              description: "Required if status is Win"
+              properties:
+                address1:
+                  type: string
+                address2:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                country:
+                  type: string
+                pin:
+                  type: string
     responses:
       200:
         description: Lead created successfully
@@ -297,13 +320,11 @@ def create_lead():
         reason = None
         address_data = None
 
-        # Validation for Lose
         if status.lower() in ["lose", "5"]:
             reason = data.get("reason")
             if not reason:
                 return jsonify({"error": "Reason is required when status is 'Lose'"}), 400
 
-        # Validation for Win → must provide address
         if status.lower() in ["win", "4"]:
             address_data = data.get("address") or {
                 "address1": data.get("address1"),
@@ -314,13 +335,11 @@ def create_lead():
                 "pin": data.get("pin"),
             }
             if not all(address_data.get(k) for k in ["city", "state", "country", "pin"]):
-                return jsonify({"error": "Address (city, state, country, pin) is required when status is 'Win'"}), 400
+                return jsonify({"error": "Address is required when status is 'Win'"}), 400
 
-        # Duplicate check
         if Lead.query.filter_by(mobile=data["mobile"]).first():
             return jsonify({"error": "A lead with this mobile already exists"}), 400
 
-        # Create Lead
         lead = Lead(
             first_name=data["first_name"],
             last_name=data["last_name"],
@@ -334,9 +353,8 @@ def create_lead():
         set_created_fields(lead)
         set_business(lead)
         db.session.add(lead)
-        db.session.flush()  # get UUID or ID
+        db.session.flush()
 
-        # Save Address if present
         if address_data:
             address = Address(
                 address1=address_data.get("address1"),
@@ -351,7 +369,6 @@ def create_lead():
             db.session.add(address)
             db.session.flush()
 
-            # Link table
             lead_address = LeadAddress(
                 lead_id=lead.uuid,
                 address_id=address.uuid
@@ -365,44 +382,40 @@ def create_lead():
 
     except Exception as e:
         db.session.rollback()
-        print("ERROR in create_lead:", str(e))
         import traceback; print(traceback.format_exc())
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @lead_blueprint.route("/<uuid:lead_id>", methods=["PUT"])
 def update_lead(lead_id):
     """
-    Update an existing lead's details, including addresses.
+    Update an existing lead.
     ---
     parameters:
       - name: lead_id
         in: path
-        description: ID of the lead to update
+        required: true
+        type: string
+        format: uuid
+      - in: body
+        name: body
         required: true
         schema:
-          type: string
-          format: uuid
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              first_name: {type: string}
-              last_name: {type: string}
-              mobile: {type: string}
-              email: {type: string}
-              gst: {type: string}
-              status: {type: string}
-              reason: {type: string}
-              address1: {type: string}
-              address2: {type: string}
-              city: {type: string}
-              state: {type: string}
-              country: {type: string}
-              pin: {type: string}
+          type: object
+          properties:
+            first_name: { type: string }
+            last_name: { type: string }
+            mobile: { type: string }
+            email: { type: string }
+            gst: { type: string }
+            status: { type: string }
+            reason: { type: string }
+            address1: { type: string }
+            address2: { type: string }
+            city: { type: string }
+            state: { type: string }
+            country: { type: string }
+            pin: { type: string }
     responses:
       200:
         description: Lead updated successfully
@@ -411,7 +424,6 @@ def update_lead(lead_id):
         data = request.json
         lead = Lead.query.get_or_404(lead_id)
 
-        # Update Lead fields
         lead.first_name = data.get("first_name", lead.first_name)
         lead.last_name = data.get("last_name", lead.last_name)
         lead.mobile = data.get("mobile", lead.mobile)
@@ -420,105 +432,52 @@ def update_lead(lead_id):
         lead.status = data.get("status", lead.status)
         lead.reason = data.get("reason", lead.reason)
 
-        # Update or create address
-        address_data = {
-            "address1": data.get("address1"),
-            "address2": data.get("address2"),
-            "city": data.get("city"),
-            "state": data.get("state"),
-            "country": data.get("country"),
-            "pin": data.get("pin"),
-        }
-
-        if any(address_data.values()):
-            existing_link = LeadAddress.query.filter_by(lead_id=lead.uuid).first()
-            if existing_link:
-                address = Address.query.get(existing_link.address_id)
-                if address:
-                    address.address1 = address_data.get("address1", address.address1)
-                    address.address2 = address_data.get("address2", address.address2)
-                    address.city = address_data.get("city", address.city)
-                    address.state = address_data.get("state", address.state)
-                    address.country = address_data.get("country", address.country)
-                    address.pin = address_data.get("pin", address.pin)
-            else:
-                address = Address(**address_data)
-                set_created_fields(address)
-                set_business(address)
-                db.session.add(address)
-                db.session.flush()
-                lead_address = LeadAddress(lead_id=lead.uuid, address_id=address.uuid)
-                set_created_fields(lead_address)
-                set_business(lead_address)
-                db.session.add(lead_address)
-
         set_updated_fields(lead)
         db.session.commit()
         return jsonify({"message": "Lead updated successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        print("ERROR in update_lead:", str(e))
         import traceback; print(traceback.format_exc())
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 @lead_blueprint.route("/<uuid:lead_id>", methods=["GET"])
 def get_lead_by_id(lead_id):
     """
-    Fetch a single lead by their ID, including addresses.
+    Fetch a single lead by ID.
     ---
     parameters:
       - name: lead_id
         in: path
-        description: UUID of the lead to fetch
         required: true
-        schema:
-          type: string
-          format: uuid
+        type: string
+        format: uuid
     responses:
       200:
-        description: Details of the lead
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                uuid:
-                  type: string
-                  format: uuid
-                  description: Lead UUID
-                first_name:
-                  type: string
-                  description: First name
-                last_name:
-                  type: string
-                  description: Last name
-                mobile:
-                  type: string
-                  description: Mobile number
-                email:
-                  type: string
-                  description: Email address
-                gst:
-                  type: string
-                  description: GST number
-                status:
-                  type: string
-                  description: Status
-                reason:
-                  type: string
-                  description: Reason
-                addresses:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      address1: {type: string}
-                      address2: {type: string}
-                      city: {type: string}
-                      state: {type: string}
-                      country: {type: string}
-                      pin: {type: string}
+        description: Lead details
+        schema:
+          type: object
+          properties:
+            uuid: { type: string }
+            first_name: { type: string }
+            last_name: { type: string }
+            mobile: { type: string }
+            email: { type: string }
+            gst: { type: string }
+            status: { type: string }
+            reason: { type: string }
+            addresses:
+              type: array
+              items:
+                type: object
+                properties:
+                  address1: { type: string }
+                  address2: { type: string }
+                  city: { type: string }
+                  state: { type: string }
+                  country: { type: string }
+                  pin: { type: string }
       404:
         description: Lead not found
     """
@@ -530,18 +489,19 @@ def get_lead_by_id(lead_id):
     if not lead:
         return jsonify({"error": "Lead not found"}), 404
 
-    addresses = []
-    for la in lead.lead_addresses:
-        addresses.append({
+    addresses = [
+        {
             "address1": la.address.address1,
             "address2": la.address.address2,
             "city": la.address.city,
             "state": la.address.state,
             "country": la.address.country,
             "pin": la.address.pin,
-        })
+        }
+        for la in lead.lead_addresses
+    ]
 
-    result = {
+    return jsonify({
         "uuid": str(lead.uuid),
         "first_name": lead.first_name,
         "last_name": lead.last_name,
@@ -551,8 +511,7 @@ def get_lead_by_id(lead_id):
         "status": str(lead.status),
         "reason": lead.reason,
         "addresses": addresses,
-    }
-    return jsonify(result)
+    })
 
 
 # #Active
