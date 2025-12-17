@@ -5,8 +5,8 @@
   "type": "module",
   "proxy": "http://127.0.0.1:5000",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "node init && vite",
+    "build": "node init && tsc && vite build",
     "lint": "eslint src --fix",
     "preview": "vite preview"
   },
