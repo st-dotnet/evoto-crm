@@ -34,12 +34,12 @@ def get_leads():
         required: false
         schema:
           type: string
-       -name: filter[email]
+      - name: filter[email]
         in: query
         description: Filter by email (email)
         required: true
         schema:
-          type: string     
+          type: string
       - name: query
         in: query
         description: Search by first_name, last_name, email, gst, or mobile
