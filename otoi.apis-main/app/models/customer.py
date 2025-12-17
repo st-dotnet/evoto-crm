@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, ForeignKey, UUID
+from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.extensions import db
 import uuid
@@ -8,7 +9,7 @@ class Customer(db.Model):
     __tablename__ = "customers"
  
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    person_id = Column(UUID(as_uuid=True), ForeignKey("persons.uuid", ondelete="CASCADE"), unique=True, nullable=False)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.uuid", ondelete="CASCADE"), unique=True, nullable=False)
  
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
@@ -24,7 +25,7 @@ class Customer(db.Model):
     country = Column(String(100), nullable=False)
     pin = Column(String(20), nullable=False)
  
-    # Relationship back to Person
-    person = relationship("Person", back_populates="customers")
+    # Relationship back to Lead
+    lead = relationship("Lead", back_populates="customers")
     
  

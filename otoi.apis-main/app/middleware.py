@@ -7,12 +7,16 @@ logging.basicConfig(level=logging.ERROR)
 def extract_jwt_info():
     """
     Middleware to verify JWT and extract user_id and business_id.
-    Skips specified routes.
+    Skips specified routes and unauthenticated/preflight requests.
     """
     excluded_endpoints = ["auth.login"]  # List of endpoints to skip JWT verification
 
     # Skip middleware for excluded endpoints
     if request.endpoint in excluded_endpoints:
+        return
+
+    # Skip CORS preflight and requests without Authorization header
+    if request.method == "OPTIONS" or not request.headers.get("Authorization"):
         return
 
     try:
