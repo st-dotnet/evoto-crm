@@ -65,13 +65,35 @@ const saveVendorSchema = Yup.object().shape({
     .max(200, "Maximum 200 symbols")
     .required("Company Name is required"),
   mobile: Yup.string()
-    .min(10, "Minimum 10 symbols")
-    .max(13, "Maximum 13 symbols")
-    .required("Mobile is required"),
+    .test(
+      "mobile-or-email",
+      "Either Mobile or Email is required",
+      function (value) {
+        const { email } = this.parent;
+        if (!value && !email) {
+          return false;
+        }
+        return true;
+      }
+    )
+    .test(
+      "mobile-length",
+      "Mobile number must be exactly 10 digits",
+      (value) => !value || value.length === 10
+    ),
   email: Yup.string()
-    .email("Wrong email format")
-    .min(3, "Minimum 3 symbols")
-    .max(50, "Maximum 50 symbols"),
+    .email("Invalid email")
+    .test(
+      "mobile-or-email",
+      "Either Mobile or Email is required",
+      function (value) {
+        const { mobile } = this.parent;
+        if (!value && !mobile) {
+          return false;
+        }
+        return true;
+      }
+    ),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
 });
@@ -210,44 +232,33 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
               {/* Mobile */}
               <div className="flex flex-col gap-1.5">
                 <label className="block text-sm font-medium text-gray-700">
-                  Mobile<span className="text-red-500">*</span>
+                  Mobile
                 </label>
                 <input
-                  placeholder="Mobile"
-                  type="text"
-                  autoComplete="off"
                   {...formik.getFieldProps("mobile")}
-                  className={clsx(
-                    "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
-                    {
-                      "border-red-500":
-                        formik.touched.mobile && formik.errors.mobile,
+                  className="input"
+                  type="text"
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    if (input.value.length > 10) {
+                      input.value = input.value.slice(0, 10);
                     }
-                  )}
+                  }}
                 />
                 {formik.touched.mobile && formik.errors.mobile && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.mobile}
-                    </span>
+                  <span role="alert" className="text-xs text-red-500">
+                    {formik.errors.mobile}
+                  </span>
                 )}
               </div>
-
               {/* Email */}
               <div className="flex flex-col gap-1.5">
-                <label className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  placeholder="Email"
-                  type="email"
-                  autoComplete="off"
-                  {...formik.getFieldProps("email")}
-                  className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input {...formik.getFieldProps("email")} className="input" />
                 {formik.touched.email && formik.errors.email && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.email}
-                    </span>
+                  <span role="alert" className="text-xs text-red-500">
+                    {formik.errors.email}
+                  </span>
                 )}
               </div>
 
