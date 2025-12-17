@@ -3,7 +3,6 @@ from flask import Flask
 from app.models.business import Business
 from app.models.user import User, Role
 from app.models.common import Address
-from app.models.person import PersonType
 from app.models.active import ActiveType, Status
 from app.models.business import BusinessType, IndustryType, BusinessRegistrationType
 from datetime import datetime
@@ -114,12 +113,12 @@ def seed_data(app: Flask):
                     role = Role(name=role_name)
                     db.session.add(role)
     
-            types = ["Customer", "Vendor", "Provider", "Lead", "Employee"]
-            for t in types:
-                if not PersonType.query.filter_by(name=t).first():
-                    db.session.add(PersonType(name=t, business_id = business.id, created_at=datetime.utcnow(), created_by=admin.id))
+            # types = ["Customer", "Vendor", "Provider", "Lead", "Employee"]
+            # for t in types:
+            #     if not PersonType.query.filter_by(name=t).first():
+            #         db.session.add(PersonType(name=t, business_id = business.id, created_at=datetime.utcnow(), created_by=admin.id))
             
-            print("Person types seeded.")
+            # print("Person types seeded.")
 
             active_types = ["Call", "Email", "In-person"]
             for a_type in active_types:

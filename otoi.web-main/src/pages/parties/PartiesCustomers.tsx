@@ -1,5 +1,5 @@
 import { Fragment, useRef, useState } from "react";
-import { ModalCustomer } from "./blocks/leads/ModalCustomer";
+import { ModalCustomer } from "./blocks/customers/ModalCustomer";
 import { Container } from "@/components/container";
 import {
   Toolbar,

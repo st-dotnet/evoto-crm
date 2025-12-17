@@ -3,10 +3,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import {
   Vendor,
   QueryApiResponse,
-} from "../parties/blocks/leads/customer-models";
+} from "./blocks/customers/customer-models";
 
-import { ModalVendor } from "./blocks/leads/ModalVendor";
-import { ActivityForm } from "./ActivityForm";
+import { ModalVendor } from "./blocks/vendors/ModalVendor";
+import { ActivityForm } from "./blocks/leads/ActivityForm";
 
 import {
   DataGrid,
@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle } from "lucide-react";
 
 import {
   ColumnDef,
@@ -197,8 +197,7 @@ const PartiesVendorsContent = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                -Select-
-                <ChevronDown className="h-3 w-3" />
+                <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -206,14 +205,16 @@ const PartiesVendorsContent = ({
                 e.preventDefault();
                 openPersonModal(e, row.original);
               }}>
+                <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
+              {/* <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
                 navigate(`/vendor/${row.original.uuid}`);
               }}>
+                <Eye className="mr-2 h-4 w-4" />
                 Details
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
@@ -227,7 +228,12 @@ const PartiesVendorsContent = ({
                   setActivityModalOpen(true);
                 }}
               >
+                <PlusCircle className="mr-2 h-4 w-4" />
                 Create Activity
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                <span className="text-red-500">Delete</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

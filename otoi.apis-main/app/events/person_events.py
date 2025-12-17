@@ -1,41 +1,36 @@
 from sqlalchemy import event, text
-from app.models.person import Person
+from app.models.person import Lead, LeadAddress
 from app.models.customer import Customer
 from app.models.common import Address
-from app.models.person import PersonAddress
 from app.extensions import db
 
-PERSON_TYPE_MAP = {4: "lead", 1: "customer"}
-STATUS_MAP = {4: "win", 5: "lost"}
+STATUS_MAP = {4: "win", 5: "lose"}
 
 
-@event.listens_for(Person, "after_insert")
-def create_customer_after_person_insert(mapper, connection, target):
-    """Automatically create a Customer record if Person is a Lead with status = Win"""
-    person_type_id = int(target.person_type_id) if str(target.person_type_id).isdigit() else target.person_type_id
-    person_type_value = PERSON_TYPE_MAP.get(person_type_id)
-
+@event.listens_for(Lead, "after_insert")
+def create_customer_after_lead_insert(mapper, connection, target):
+    """Automatically create a Customer record if Lead status = Win"""
     status = int(target.status) if str(target.status).isdigit() else target.status
     status_value = STATUS_MAP.get(status, str(status).lower())
 
-    if person_type_value == "lead" and status_value == "win":
+    if status_value == "4":
         import uuid
         customer_id = str(uuid.uuid4())
-        person_id = str(target.uuid)
+        lead_id = str(target.uuid)
 
         connection.execute(
             text("""
                 INSERT INTO customers (
-                    uuid, person_id, first_name, last_name, mobile, email, gst, status,
+                    uuid, lead_id, first_name, last_name, mobile, email, gst, status,
                     address1, address2, city, state, country, pin
                 ) VALUES (
-                    :customer_id, :person_id, :first_name, :last_name, :mobile, :email,
+                    :customer_id, :lead_id, :first_name, :last_name, :mobile, :email,
                     :gst, :status, '', '', '', '', '', ''
                 )
             """),
             {
                 "customer_id": customer_id,
-                "person_id": person_id,
+                "lead_id": lead_id,
                 "first_name": target.first_name,
                 "last_name": target.last_name,
                 "mobile": target.mobile,
@@ -46,11 +41,11 @@ def create_customer_after_person_insert(mapper, connection, target):
         )
 
 
-def _update_customer_with_address(connection, address, person_id):
+def _update_customer_with_address(connection, address, lead_id):
     """Helper function to update customer with latest address"""
     customer_result = connection.execute(
-        text("SELECT uuid FROM customers WHERE person_id = :person_id"),
-        {"person_id": str(person_id)},
+        text("SELECT uuid FROM customers WHERE lead_id = :lead_id"),
+        {"lead_id": str(lead_id)},
     ).fetchone()
 
     if customer_result:
@@ -81,21 +76,21 @@ def _update_customer_with_address(connection, address, person_id):
 @event.listens_for(Address, "after_insert")
 @event.listens_for(Address, "after_update")
 def update_customer_after_address(mapper, connection, target):
-    """Keep customer address in sync with the latest Person address"""
-    # Find persons linked to this address
+    """Keep customer address in sync with the latest Lead address"""
+    # Find leads linked to this address
     result = connection.execute(
-        text("SELECT person_id FROM person_addresses WHERE address_id = :address_id"),
+        text("SELECT lead_id FROM lead_addresses WHERE address_id = :address_id"),
         {"address_id": str(target.uuid)},
     )
 
     for row in result:
-        person_id = row[0]
-        _update_customer_with_address(connection, target, person_id)
+        lead_id = row[0]
+        _update_customer_with_address(connection, target, lead_id)
 
 
-@event.listens_for(PersonAddress, "after_insert")
-def update_customer_after_person_address_link(mapper, connection, target):
-    """Update customer when a Person gets linked to an existing Address"""
+@event.listens_for(LeadAddress, "after_insert")
+def update_customer_after_lead_address_link(mapper, connection, target):
+    """Update customer when a Lead gets linked to an existing Address"""
     address_result = connection.execute(
         text("SELECT address1, address2, city, state, country, pin FROM addresses WHERE uuid = :address_id"),
         {"address_id": str(target.address_id)},
@@ -104,4 +99,5 @@ def update_customer_after_person_address_link(mapper, connection, target):
     if address_result:
         class TmpAddress:
             address1, address2, city, state, country, pin = address_result
-        _update_customer_with_address(connection, TmpAddress, target.person_id)
+        _update_customer_with_address(connection, TmpAddress, target.lead_id)
+
