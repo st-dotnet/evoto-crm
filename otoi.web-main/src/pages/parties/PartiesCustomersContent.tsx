@@ -2,9 +2,9 @@ import React, { useMemo, useState, useEffect } from "react";
 import {
   Customer,
   QueryApiResponse,
-} from "../parties/blocks/leads/customer-models";
-import { ModalCustomer } from "./blocks/leads/ModalCustomer";
-import { ActivityForm } from "./ActivityForm";
+} from "./blocks/customers/customer-models";
+import { ModalCustomer } from "./blocks/customers/ModalCustomer";
+import { ActivityForm } from "./blocks/leads/ActivityForm";
 
 import {
   DataGrid,

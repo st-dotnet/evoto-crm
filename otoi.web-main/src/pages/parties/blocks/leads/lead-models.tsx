@@ -41,6 +41,7 @@ export type Lead = {
   address: string | undefined;
   activity_type: string | undefined;
   status: string; // only status kept
+  city: string;
   created_at: string | undefined;
   edit: string;
 };
