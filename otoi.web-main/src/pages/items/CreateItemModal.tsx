@@ -13,6 +13,8 @@ import {
 import { Alert } from "@/components";
 import { createItem } from "../../pages/items/services/items.service";
 import StockDetails from "./StockDetails";
+import PricingDetails from "./PricingDetails";
+import CustomFields from "./CustomFields";
 
 // Define types for the item and form values
 interface IItem {
@@ -164,14 +166,16 @@ export default function CreateItemModal({
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-[900px] p-0 rounded-lg shadow-lg h-[80vh]">
+                <DialogContent className="max-w-[900px] p-0 rounded-lg shadow-lg h-[80vh] flex flex-col">
                     <DialogHeader className="bg-gray-50 p-6 border-b">
                         <DialogTitle className="text-lg font-semibold text-gray-800">
                             {item ? "Edit Item" : "Create New Item"}
                         </DialogTitle>
                     </DialogHeader>
-                    <DialogBody className="overflow-y-auto max-h-[70vh]">
-                        <div className="flex h-[70vh]">
+
+                    {/* Scrollable Content */}
+                    <DialogBody className="overflow-y-auto max-h-[70vh] flex-1">
+                        <div className="flex h-full">
                             {/* Left Sidebar */}
                             <div className="w-64 p-4 bg-gray-50 border-r overflow-y-auto">
                                 <div
@@ -181,9 +185,9 @@ export default function CreateItemModal({
                                     )}
                                     onClick={() => setActiveSection("basic")}
                                 >
-                                    <button>Basic Details *</button>
+                                    <button>Basic Details <span className="text-red-500">*</span></button>
                                 </div>
-                                <h2 className="text-sm font-medium text-gray-500 mb-2">Advance Details</h2>
+                                <h2 className="text-sm font-bold text-black-500 mb-2">  Advance Details</h2>
                                 <div
                                     className={clsx(
                                         "p-2 mb-2 rounded cursor-pointer",
@@ -193,8 +197,26 @@ export default function CreateItemModal({
                                 >
                                     <button>Stock Details</button>
                                 </div>
-                                <div className="text-gray-500 p-2 mb-2">Pricing Details</div>
-                                <div className="text-gray-500 p-2">Custom Fields</div>
+                                <div
+                                    className={clsx(
+                                        "p-2 mb-2 rounded cursor-pointer",
+                                        activeSection === "price" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
+                                    )}
+                                    onClick={() => setActiveSection("price")}
+                                >
+                                    <button>Price Details</button>
+                                </div>
+                                {/* <div className="text-gray-500 p-2">Custom Fields</div> */}
+                                <div
+                                    className={clsx(
+                                        "p-2 mb-2 rounded cursor-pointer",
+                                        activeSection === "custom_fields" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
+                                    )}
+                                    onClick={() => setActiveSection("custom_fields")}
+                                >
+                                    <button>Custom Fields</button>
+                                </div>
+
                             </div>
 
                             {/* Right Form Section */}
@@ -354,28 +376,31 @@ export default function CreateItemModal({
 
                                     {/* Stock Details Section */}
                                     {activeSection === "stock" && <StockDetails formik={formik} />}
-
-                                    {/* Footer Buttons */}
-                                    <div className="flex justify-end gap-4 mt-6">
-                                        <button
-                                            type="button"
-                                            onClick={onOpenChange}
-                                            className="px-4 py-2 bg-gray-200 rounded"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="px-4 py-2 bg-blue-600 text-white rounded"
-                                            disabled={loading || formik.isSubmitting}
-                                        >
-                                            {loading ? "Saving..." : "Save"}
-                                        </button>
-                                    </div>
+                                    {/* Pricing Details Section */}
+                                    {activeSection === "price" && <PricingDetails formik={formik} />}
                                 </form>
                             </div>
                         </div>
                     </DialogBody>
+
+                    {/* Fixed Footer */}
+                    <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-4">
+                        <button
+                            type="button"
+                            onClick={onOpenChange}
+                            className="px-4 py-2 rounded border bg-gray-100 hover:bg-gray-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="dialog-form"
+                            disabled={loading || formik.isSubmitting}
+                            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {loading ? "Saving..." : "Save"}
+                        </button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

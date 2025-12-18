@@ -382,9 +382,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           key={refreshKey}
           columns={columns}
           data={items}
-          rowSelection={{}}
+          rowSelection={true}
           getRowId={(row) => row.item_id.toString()}
-          pagination={{ pageSize: 10, size: 5 }}
+          pagination={{ size: 5 }}
           toolbar={
             <Toolbar
               defaultSearch={searchQuery}
