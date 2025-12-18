@@ -117,12 +117,12 @@ export default function CreateItemModal({
                             <div className="bg-purple-100 text-purple-800 p-2 rounded mb-4">
                                 <button>
                                     Basic Details *
-                                </button>      
+                                </button>
                             </div>
                             <h2>Advance Details</h2>
                             <div className="text-gray-500 p-2 mb-2">
-                                <button>Stock Details</button> 
-                                </div>
+                                <button>Stock Details</button>
+                            </div>
                             <div className="text-gray-500 p-2 mb-2">Pricing Details</div>
                             <div className="text-gray-500 p-2">Custom Fields</div>
                         </div>
@@ -214,8 +214,8 @@ export default function CreateItemModal({
                                             Sales Price
                                         </label>
                                         <div className="flex">
-                                            
-                                            <input 
+
+                                            <input
                                                 type="number"
                                                 placeholder="ex: ₹200"
                                                 className={clsx(
