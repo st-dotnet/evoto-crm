@@ -34,28 +34,56 @@ class MeasuringUnit(BaseMixin, db.Model):
     items = relationship("Item", back_populates="measuring_unit")
 
 
+# class Item(BaseMixin, db.Model):
+#     __tablename__ = "items"
+
+#     id = Column(Integer, primary_key=True, autoincrement=True)
+#     item_type_id = Column(Integer, ForeignKey("item_types.id", ondelete="CASCADE"), nullable=False)
+#     category_id = Column(Integer, ForeignKey("item_categories.id", ondelete="CASCADE"), nullable=False)
+#     measuring_unit_id = Column(Integer, ForeignKey("measuring_units.id", ondelete="CASCADE"), nullable=False)
+#     item_name = Column(String(255), nullable=False, unique=True)
+#     sales_price = Column(Float, nullable=False)
+#     purchase_price = Column(Float, nullable=False)
+#     gst_tax_rate = Column(Float, nullable=False)
+#     opening_stock = Column(Float, nullable=False)
+#     item_code = Column(String(100), nullable=False, unique=True)
+#     hsn_code = Column(String(50), nullable=True)
+#     enable_low_quantity_warning = Column(Boolean, default=False)
+#     description = Column(Text, nullable=True)
+
+#     # Relationships
+#     item_type = relationship("ItemType", back_populates="items")
+#     category = relationship("ItemCategory", back_populates="items")
+#     measuring_unit = relationship("MeasuringUnit", back_populates="items")
+#     images = relationship("ItemImage", back_populates="item")
+
 class Item(BaseMixin, db.Model):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
     item_type_id = Column(Integer, ForeignKey("item_types.id", ondelete="CASCADE"), nullable=False)
     category_id = Column(Integer, ForeignKey("item_categories.id", ondelete="CASCADE"), nullable=False)
     measuring_unit_id = Column(Integer, ForeignKey("measuring_units.id", ondelete="CASCADE"), nullable=False)
+
     item_name = Column(String(255), nullable=False, unique=True)
     sales_price = Column(Float, nullable=False)
-    purchase_price = Column(Float, nullable=False)
     gst_tax_rate = Column(Float, nullable=False)
     opening_stock = Column(Float, nullable=False)
-    item_code = Column(String(100), nullable=False, unique=True)
+
+    purchase_price = Column(Float, nullable=True)
+    item_code = Column(String(100), nullable=True, unique=True)
     hsn_code = Column(String(50), nullable=True)
-    enable_low_quantity_warning = Column(Boolean, default=False)
     description = Column(Text, nullable=True)
+
+    enable_low_quantity_warning = Column(Boolean, default=False)
 
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
     category = relationship("ItemCategory", back_populates="items")
     measuring_unit = relationship("MeasuringUnit", back_populates="items")
     images = relationship("ItemImage", back_populates="item")
+
 
 
 class ItemImage(BaseMixin, db.Model):
