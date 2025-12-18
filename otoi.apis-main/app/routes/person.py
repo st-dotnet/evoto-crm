@@ -34,20 +34,12 @@ def get_leads():
         required: false
         schema:
           type: string
-<<<<<<< HEAD
-=======
-
->>>>>>> remotes/origin/new-inventory-changes
       - name: filter[email]
         in: query
         description: Filter by email (email)
         required: true
         schema:
           type: string
-<<<<<<< HEAD
-=======
-
->>>>>>> remotes/origin/new-inventory-changes
       - name: query
         in: query
         description: Search by first_name, last_name, email, gst, or mobile
