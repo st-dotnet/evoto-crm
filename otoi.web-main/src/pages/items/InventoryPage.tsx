@@ -28,10 +28,14 @@ interface InventoryItem {
   opening_stock: number;
   sales_price: number;
   purchase_price: number | null;
+  type: string;
+  category: string;
+  business_id: number | null;
 }
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
+  table?: any; // Add this line to fix the missing property error
 }
 
 interface IInventoryItemsProps {
@@ -48,47 +52,71 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch items from API
   const fetchItems = async () => {
     try {
       setLoading(true);
       const response = await getItems(searchQuery, 1, 10);
 
-      // Handle the backend response format
-      const itemsData = response?.items || [];
+      // Handle both array and object responses
+      const itemsData = Array.isArray(response)
+        ? response
+        : (response && 'items' in response)
+          ? response.items
+          : [];
 
-      const mappedItems = itemsData.map((item: any) => ({
-        item_id: item.id || 0,
-        item_name: item.name || "",
-        item_code: item.code || "N/A",
-        opening_stock: item.stock || 0,
-        sales_price: item.sales_price || 0,
-        purchase_price: null,
-        type: item.type,
-        category: item.category,
-        business_id: item.business_id
-      }));
+      // Helper function to safely convert to number with fallback
+      const toNumber = (value: any, fallback = 0) => {
+        if (value === null || value === undefined || value === 'None') return fallback;
+        const num = Number(value);
+        return isNaN(num) ? fallback : num;
+      };
+
+      const mappedItems = itemsData.map((item: any) => {
+        // Ensure all required fields have proper fallbacks
+        const mappedItem = {
+          item_id: item.id || 0,
+          item_name: item.item_name || "Unnamed Item",
+          item_code: item.item_code || `ITEM-${Date.now()}`,
+          opening_stock: toNumber(item.opening_stock, 0),
+          sales_price: toNumber(item.sales_price, 0),
+          purchase_price: item.purchase_price !== null && item.purchase_price !== 'None'
+            ? toNumber(item.purchase_price, 0)
+            : null,
+          type: item.item_type || item.type || "Product",
+          category: item.category || "Uncategorized",
+          business_id: item.business_id || null,
+        };
+
+        console.log("Mapped item:", mappedItem); // Debug log
+        return mappedItem;
+      });
 
       setItems(mappedItems);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching items:", err);
       setItems([]);
-      toast("Failed to fetch items");
+      toast.error("Failed to fetch items. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch items on component mount or when dependencies change
   useEffect(() => {
     fetchItems();
   }, [refreshStatus, searchQuery, lowStock]);
 
+  // Update refresh key when refreshStatus changes
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
   }, [refreshStatus]);
 
-  const stockValue = items.reduce((sum, i) => sum + (i.sales_price || 0) * (i.opening_stock || 0), 0);
-  const lowStockCount = items.filter((i) => (i.opening_stock || 0) <= 5).length;
+  // Calculate stock value and low stock count
+  const stockValue = items.reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
+  const lowStockCount = items.filter((item) => (item.opening_stock || 0) <= 5).length;
 
+  // Delete an item
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete item?")) return;
     try {
@@ -100,17 +128,15 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     }
   };
 
+  // Edit an item
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
     setShowModal(true);
   };
 
-  const ColumnInputFilter = <TData, TValue>({
-    column,
-  }: IColumnFilterProps<TData, TValue>) => {
-    const [inputValue, setInputValue] = useState(
-      (column.getFilterValue() as string) ?? ""
-    );
+  // Column filter component
+  const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
+    const [inputValue, setInputValue] = useState((column.getFilterValue() as string) ?? "");
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
@@ -133,6 +159,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     );
   };
 
+  // Define columns for DataGrid
   const columns = useMemo<ColumnDef<InventoryItem>[]>(
     () => [
       {
@@ -270,6 +297,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     []
   );
 
+  // Toolbar component for search
   const Toolbar = ({
     defaultSearch,
     setSearch,
@@ -309,6 +337,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     );
   };
 
+  // Render the component
   return (
     <div className="container-fluid">
       {/* Header */}
@@ -316,7 +345,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         <h1 className="fw-bold">Items</h1>
       </div>
 
-      {/* SUMMARY CARDS */}
+      {/* Summary Cards */}
       <div className="row g-4 mb-5" style={{ display: "flex", gap: "20em" }}>
         {/* Stock Value */}
         <div className="col-md-4" style={{ width: "30em" }}>
@@ -352,13 +381,13 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       </div>
 
       {/* Search and Buttons */}
-      <div className="d-flex gap-3 mb-5">
-        <input
+      <div className="d-flex gap-3 mb-5" style={{ display: 'flex' }} >
+        {/* <input
           className="form-control w-250px"
           placeholder="Search Item"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        /> */}
         <button
           className={`btn ${lowStock ? "btn-primary" : "btn-light"}`}
           onClick={() => setLowStock(!lowStock)}
@@ -378,20 +407,24 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
       {/* DataGrid */}
       <div className="grid gap-5 lg:gap-7.5">
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          data={items}
-          rowSelection={true}
-          getRowId={(row) => row.item_id.toString()}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={setSearchQuery}
-            />
-          }
-        />
+        {loading ? (
+          <div className="text-center py-10">Loading...</div>
+        ) : (
+          <DataGrid
+            key={refreshKey}
+            columns={columns}
+            data={items}
+            rowSelection={true}
+            getRowId={(row) => row.item_id.toString()}
+            pagination={{ size: 5 }}
+            toolbar={
+              <Toolbar
+                defaultSearch={searchQuery}
+                setSearch={setSearchQuery}
+              />
+            }
+          />
+        )}
       </div>
 
       {/* Modal */}
@@ -403,14 +436,13 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           fetchItems();
         }}
         onSuccess={fetchItems}
-        item={selectedItem}
+        item={selectedItem ? { ...selectedItem, purchase_price: selectedItem.purchase_price ?? undefined } : null}
       />
     </div>
   );
 };
 
 export default InventoryPage;
-
 
 
 // import { useEffect, useState } from "react";

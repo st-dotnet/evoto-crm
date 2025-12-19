@@ -14,14 +14,16 @@ import { Alert } from "@/components";
 import { createItem } from "../../pages/items/services/items.service";
 import StockDetails from "./StockDetails";
 import PricingDetails from "./PricingDetails";
-import CustomFields from "./CustomFields";
+// import CustomFields from "./CustomFields";
 
 // Define types for the item and form values
 interface IItem {
+    id?: number;
     item_type_id?: number;
     category_id?: number;
     item_name?: string;
     sales_price?: string | number;
+    purchase_price?: string | number;
     gst_tax_rate?: string | number;
     measuring_unit?: string;
     opening_stock?: string | number;
@@ -54,6 +56,7 @@ const initialValues: IItem = {
     category_id: 1,
     item_name: "",
     sales_price: "",
+    purchase_price: "",
     gst_tax_rate: "",
     measuring_unit: "PCS",
     opening_stock: "",
@@ -104,30 +107,38 @@ export default function CreateItemModal({
         onSubmit: async (values, { setStatus, setSubmitting }) => {
             setLoading(true);
             try {
-                const postData = {
-                    item_name: values.item_name,
-                    item_type_id: values.item_type_id,
-                    category_id: values.category_id,
-                    sales_price: Number(values.sales_price),
-                    gst_tax_rate: Number(values.gst_tax_rate),
-                    measuring_unit: values.measuring_unit,
-                    opening_stock: Number(values.opening_stock),
-                    show_in_online_store: values.show_in_online_store,
-                    item_code: values.item_code,
-                    hsn_code: values.hsn_code,
-                    alternative_unit: values.alternative_unit,
-                    low_stock_warning: values.low_stock_warning,
-                    low_stock_quantity: Number(values.low_stock_quantity),
-                    description: values.description,
-                    as_of_date: values.as_of_date,
+                const postData: IItem = {
+                    item_name: values.item_name || '',
+                    item_type_id: values.item_type_id || 1,
+                    category_id: values.category_id || 1,
+                    sales_price: values.sales_price ? Number(values.sales_price) : 0,
+                    purchase_price: values.purchase_price ? Number(values.purchase_price) : 0,
+                    gst_tax_rate: values.gst_tax_rate ? Number(values.gst_tax_rate) : 0,
+                    measuring_unit: values.measuring_unit || 'PCS',
+                    opening_stock: values.opening_stock ? Number(values.opening_stock) : 0,
+                    show_in_online_store: values.show_in_online_store || false,
+                    item_code: values.item_code || '',
+                    hsn_code: values.hsn_code || '',
+                    alternative_unit: values.alternative_unit || '',
+                    low_stock_warning: values.low_stock_warning || false,
+                    low_stock_quantity: values.low_stock_quantity ? Number(values.low_stock_quantity) : 0,
+                    description: values.description || '',
+                    as_of_date: values.as_of_date || new Date().toISOString().split('T')[0],
+                    tax_type: values.tax_type || 'with_tax',
+                    ...(item?.id && { id: item.id }) // Conditionally include id if it exists
                 };
 
-                await createItem(postData);
-                onSuccess();
-                onOpenChange();
+                const response = await createItem(postData);
+                if (response) {
+                    onSuccess();
+                    onOpenChange();
+                } else {
+                    setStatus("Failed to save item. Please try again.");
+                }
             } catch (error) {
-                console.error(error);
-                setStatus("Failed to create item");
+                console.error('Error saving item:', error);
+                const errorMessage = (error as any)?.response?.data?.message || "Failed to save item. Please try again.";
+                setStatus(errorMessage);
             } finally {
                 setSubmitting(false);
                 setLoading(false);
@@ -144,6 +155,7 @@ export default function CreateItemModal({
                     category_id: item.category_id || 1,
                     item_name: item.item_name || "",
                     sales_price: item.sales_price || "",
+                    purchase_price: item.purchase_price || "",
                     gst_tax_rate: item.gst_tax_rate || "",
                     measuring_unit: item.measuring_unit || "PCS",
                     opening_stock: item.opening_stock || "",
@@ -207,7 +219,7 @@ export default function CreateItemModal({
                                     <button>Price Details</button>
                                 </div>
                                 {/* <div className="text-gray-500 p-2">Custom Fields</div> */}
-                                <div
+                                {/* <div
                                     className={clsx(
                                         "p-2 mb-2 rounded cursor-pointer",
                                         activeSection === "custom_fields" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
@@ -215,13 +227,13 @@ export default function CreateItemModal({
                                     onClick={() => setActiveSection("custom_fields")}
                                 >
                                     <button>Custom Fields</button>
-                                </div>
+                                </div> */}
 
                             </div>
 
                             {/* Right Form Section */}
                             <div className="flex-1 p-6 overflow-y-auto">
-                                <form onSubmit={formik.handleSubmit} className="space-y-4">
+                                <form id="item-form" onSubmit={formik.handleSubmit} className="space-y-4">
                                     {formik.status && (
                                         <Alert variant="danger" className="mb-4">
                                             {formik.status}
@@ -394,7 +406,7 @@ export default function CreateItemModal({
                         </button>
                         <button
                             type="submit"
-                            form="dialog-form"
+                            form="item-form"
                             disabled={loading || formik.isSubmitting}
                             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                         >
