@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app.models.customer import Customer
+from app.models.person import Lead
 from app.extensions import db
 from sqlalchemy import func
 
@@ -96,16 +97,10 @@ def get_customers():
 @customer_blueprint.route("/", methods=["POST"])
 def create_customer():
     """
-    Create customer.
-    ---
-    tags:
-      - customers
-    responses:
-      200:
-        description: Create customer.
-        
+    Create or update a customer linked to a Lead.
+    If a lead_id is provided, that lead is used; otherwise we try to
+    find/create a Lead based on the mobile number.
     """
-    from app.models.person import Person, PersonType  # local import to avoid cycles
     data = request.get_json() or {}
 
     # Basic validation
@@ -125,25 +120,17 @@ def create_customer():
     if not first_name or not last_name or not mobile:
         return jsonify({"error": "first_name, last_name and mobile are required"}), 400
 
-    # Resolve person_id: if provided use it, else create/find a Person
-    person_id = data.get("person_id")
-    person = None
-    if person_id:
-        person = Person.query.get(person_id)
-        if not person:
-            return jsonify({"error": "Person not found for provided person_id"}), 404
+    # Resolve lead: if lead_id is provided use it, else create/find a Lead
+    lead_id = data.get("lead_id")
+    lead = None
+    if lead_id:
+        lead = Lead.query.get(lead_id)
+        if not lead:
+            return jsonify({"error": "Lead not found for provided lead_id"}), 404
     else:
-        # Try to find existing person by mobile, else create
-        person = Person.query.filter(Person.mobile == mobile).first()
-        if not person:
-            # Determine Customer person type (id or name)
-            person_type = None
-            if data.get("person_type_id"):
-                person_type = PersonType.query.filter_by(id=data.get("person_type_id")).first()
-            if not person_type:
-                person_type = PersonType.query.filter(PersonType.name.ilike("customer")).first()
-
-            person = Person(
+        lead = Lead.query.filter(Lead.mobile == mobile).first()
+        if not lead:
+            lead = Lead(
                 first_name=first_name,
                 last_name=last_name,
                 mobile=mobile,
@@ -151,18 +138,17 @@ def create_customer():
                 gst=gst or None,
                 status=status,
                 reason=(data.get("reason") or None),
-                person_type_id=person_type.id if person_type else None,
             )
-            db.session.add(person)
+            db.session.add(lead)
             db.session.flush()  # get uuid
 
     # If a customer uuid is provided, try to update existing
     existing_customer = None
     if data.get("uuid"):
         existing_customer = Customer.query.get(data.get("uuid"))
-    if not existing_customer:
-        # Or find by person_id if already linked
-        existing_customer = Customer.query.filter_by(person_id=person.uuid).first()
+    if not existing_customer and lead is not None:
+        # Or find by lead_id if already linked
+        existing_customer = Customer.query.filter_by(lead_id=lead.uuid).first()
 
     if existing_customer:
         # Update existing (idempotent POST for current frontend behavior)
@@ -199,7 +185,7 @@ def create_customer():
 
     # Create customer record (no existing found)
     customer = Customer(
-        person_id=person.uuid,
+        lead_id=lead.uuid if lead is not None else None,
         first_name=first_name,
         last_name=last_name,
         mobile=mobile,

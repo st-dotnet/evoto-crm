@@ -54,4 +54,3 @@ class Business(db.Model):
     users = relationship("User", secondary=user_business, back_populates="businesses")
     addresses = relationship("Address", back_populates="business", cascade="all, delete-orphan")
     active_types = relationship("ActiveType", back_populates="business")
-    person_types = relationship("PersonType", back_populates="business")

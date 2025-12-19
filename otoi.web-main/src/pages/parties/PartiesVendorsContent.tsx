@@ -3,10 +3,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import {
   Vendor,
   QueryApiResponse,
-} from "../parties/blocks/leads/customer-models";
+} from "./blocks/customers/customer-models";
 
-import { ModalVendor } from "./blocks/leads/ModalVendor";
-import { ActivityForm } from "./ActivityForm";
+import { ModalVendor } from "./blocks/vendors/ModalVendor";
+import { ActivityForm } from "./blocks/leads/ActivityForm";
 
 import {
   DataGrid,

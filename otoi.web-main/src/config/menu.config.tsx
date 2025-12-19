@@ -33,7 +33,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Inventory",
-        path: "/items/items"
+        path: "/items/inventory"
       },
       {
         title: "Godown",
