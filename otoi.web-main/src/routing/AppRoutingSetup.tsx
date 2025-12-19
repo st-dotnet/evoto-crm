@@ -82,10 +82,11 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
-import { CustomerDetails } from '@/pages/parties/CustomerDetails';
+import { CustomerDetails } from '@/pages/parties/blocks/customers/CustomerDetails';
 import { PartiesCustomersPage } from '@/pages/parties/PartiesCustomers';
-import { LeadDetails } from '@/pages/parties/LeadDetails';
+import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
 import { PartiesVendorsPage } from '@/pages/parties/PartiesVendors';
+import InventoryPage from '@/pages/items/InventoryPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -189,6 +190,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
+          <Route path="/items/inventory" element={<InventoryPage/>} />
           <Route
             path="/auth/account-deactivated"
             element={<AuthenticationAccountDeactivatedPage />}

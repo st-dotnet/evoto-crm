@@ -8,7 +8,7 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
 } from "@/partials/toolbar";
-import { LeadsContent } from ".//LeadsContent";
+import { LeadsContent } from ".//blocks/leads/LeadsContent";
 import { useLayout } from "@/providers";
 import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
