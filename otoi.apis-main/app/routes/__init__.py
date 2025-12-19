@@ -4,7 +4,7 @@
 from app.routes.auth import auth_blueprint
 from app.routes.user import user_blueprint
 from app.routes.person import lead_blueprint
-from app.routes.item import items_bp
+from app.routes.item import item_blueprint
 from app.routes.item_category import item_category_blueprint
 from app.routes.measuring_unit import measuring_unit_blueprint
 from app.routes.item_image import item_image_blueprint
@@ -27,4 +27,4 @@ def register_blueprints(app):
     app.register_blueprint(customer_blueprint, url_prefix="/api/customers")
     app.register_blueprint(vendor_blueprint, url_prefix="/api/vendors")
     app.register_blueprint(csv_import_bp, url_prefix="/api/csv_import")
-    app.register_blueprint(items_bp, url_prefix="/api/items")
+    app.register_blueprint(item_blueprint, url_prefix="/api/items")
