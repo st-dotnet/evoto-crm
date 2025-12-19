@@ -26,31 +26,91 @@ def get_items():
                   id:
                     type: integer
                     description: Item ID
-                  name:
+                  item_name:
                     type: string
                     description: Name of the item
-                  type:
+                  item_type:
                     type: string
-                    description: Item type
+                    description: Item type name
+                  item_type_id:
+                    type: integer
+                    description: Item type ID
                   category:
                     type: string
-                    description: Item category
+                    description: Category name
+                  category_id:
+                    type: integer
+                    description: Category ID
                   sales_price:
                     type: number
                     format: float
-                    description: Sales price of the item
+                    description: Sales price
+                  purchase_price:
+                    type: number
+                    format: float
+                    description: Purchase price
+                  gst_tax_rate:
+                    type: number
+                    format: float
+                    description: GST tax rate
+                  opening_stock:
+                    type: number
+                    format: float
+                    description: Opening stock
+                  item_code:
+                    type: string
+                    description: Item code
+                  description:
+                    type: string
+                    description: Item description
+                  measuring_unit:
+                    type: string
+                    description: Measuring unit name
+                  measuring_unit_id:
+                    type: integer
+                    description: Measuring unit ID
+                  business_id:
+                    type: integer
+                    description: Business ID
+              
     """
-    items = Item.query.all()
-    return jsonify([
-        {
-            "id": item.id,
-            "name": item.item_name,
-            "type": item.item_type.name,
-            "category": item.item_category.name,
-            "sales_price": item.sales_price,
-            "business_id": item.business_id,
-        } for item in items
-    ])
+    try:
+        items = Item.query.all()
+        result = []
+        for item in items:
+            try:
+                # Safely get related objects
+                category = getattr(item, 'category', None)
+                item_type = getattr(item, 'item_type', None)
+                measuring_unit = getattr(item, 'measuring_unit', None)                
+                
+                result.append({
+                    "id": item.id,
+                    "item_name": getattr(item, 'item_name', ''),
+                    "item_type": getattr(item_type, 'name', None) if item_type else None,
+                    "item_type_id": getattr(item, 'item_type_id', None),
+                    "category": getattr(category, 'name', None) if category else None,
+                    "category_id": getattr(item, 'category_id', None),
+                    "sales_price": float(getattr(item, 'sales_price', 0.0)),
+                    "purchase_price": float(getattr(item, 'purchase_price', 0.0)),
+                    "gst_tax_rate": float(getattr(item, 'gst_tax_rate', 0.0)),
+                    "opening_stock": float(getattr(item, 'opening_stock', 0.0)),
+                    "item_code": getattr(item, 'item_code', ''),
+                    "description": getattr(item, 'description', ''),
+                    "measuring_unit": getattr(measuring_unit, 'name', None) if measuring_unit else None,
+                    "measuring_unit_id": getattr(item, 'measuring_unit_id', None),
+                    "business_id": getattr(item, 'business_id', None),
+                   
+                })
+            except Exception as e:
+                print(f"Error processing item {getattr(item, 'id', 'unknown')}: {str(e)}")
+                continue
+                
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error in get_items: {str(e)}")
+        return jsonify({"error": "Failed to fetch items", "details": str(e)}), 500
 
 
 @item_blueprint.route("/", methods=["POST"])
