@@ -34,6 +34,10 @@ def get_leads():
         required: false
         schema:
           type: string
+<<<<<<<<< Temporary merge branch 1
+
+=========
+>>>>>>>>> Temporary merge branch 2
       - name: filter[email]
         in: query
         description: Filter by email (email)
