@@ -68,7 +68,7 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
               onClick={() => setShowAlternativeUnit(!showAlternativeUnit)}
               className="px-3 border rounded text-blue-600 hover:bg-gray-50 whitespace-nowrap"
             >
-             {showAlternativeUnit ? "- Remove Alternative Unit" : "+ Add Alternative Unit"}
+              {showAlternativeUnit ? "- Remove Alternative Unit" : "+ Add Alternative Unit"}
             </button>
           </div>
         </div>
@@ -137,17 +137,58 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
         </div>
 
         {/* Low Stock Warning */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="low_stock_warning"
-            checked={formik.values.low_stock_warning}
-            onChange={formik.handleChange}
-          />
-          <label htmlFor="low_stock_warning" className="text-sm">
-            Enable low stock quantity warning
-          </label>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="low_stock_warning"
+              checked={formik.values.low_stock_warning}
+              onChange={formik.handleChange}
+              className="h-4 w-4"
+            />
+            <label htmlFor="low_stock_warning" className="text-sm">
+              Enable low stock quantity warning
+            </label>
+          </div>
+
+          {formik.values.low_stock_warning && (
+            <div className="ml-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Low Stock Quantity</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Enter Low Stock Quantity"
+                    className="flex-1 p-2 border rounded-l text-sm"
+                    {...formik.getFieldProps("low_stock_quantity")}
+                  />
+                  <select
+                    className="p-2 border rounded-r bg-white text-sm"
+                    {...formik.getFieldProps("low_stock_measuring_unit")}
+                  >
+                    <option value="PCS">Pieces (PCS)</option>
+                    <option value="KG">Kilogram</option>
+                    <option value="L">Liter</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Description Box */}
+        <div className="ml-6 space-y-1">
+          <label htmlFor="description" className="text-sm block">
+            Description
+          </label>
+          <textarea
+            id="description"
+            placeholder="Enter Description"
+            className="w-full p-2 border rounded text-sm"
+            {...formik.getFieldProps("description")}
+          />
+        </div>
+
 
       </div>
     </div>

@@ -17,11 +17,7 @@ export const getItems = async (
   const response = await axios.get<ItemsApiResponse>(
     `${API_URL}/items/?${params.toString()}`
   )
-
-  return {
-    items: response.data.items ?? [],
-    total: response.data.total ?? 0,
-  }
+   return response.data
 }
 
 export const createItem = async (payload: any) => {
