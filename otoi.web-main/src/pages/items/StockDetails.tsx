@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useFormik } from "formik";
 
 interface IStockDetailsProps {
-  formik: ReturnType<typeof useFormik>;
+  formik: any;
 }
 
 export default function StockDetails({ formik }: IStockDetailsProps) {

@@ -156,14 +156,16 @@ def create_item():
         description: Item created successfully.
     """
     data = request.json or {}
-
+    print("Received data for new item:", data)
     # Ensure a category exists for the provided category_id.
     # If it does not exist, create it automatically so that the
     # request does not fail with a 400 error.
     category_id = data.get("category_id")
+    print("-----------------------------Processing category_id:", category_id)
     category = None
     if category_id is not None:
         category = ItemCategory.query.get(category_id)
+        print("---------------------------Fetched category:", category.uuid if category else None)
         if not category:
             # Auto-create a category for this id with a default name.
             category = ItemCategory(id=category_id, name=str(category_id))
@@ -172,6 +174,7 @@ def create_item():
             db.session.flush()
     if not category:
         return jsonify({"message": "Invalid category_id"}), 400
+    print("-------------------------------Using category:", category.uuid if category else None)
 
     # Ensure a measuring unit exists for the provided measuring_unit/measuring_unit_id.
     # We normalize names to match existing units in DB: PCS, KG, LITER.
@@ -210,18 +213,33 @@ def create_item():
     # 3) If still not found, fail clearly instead of inserting NULL.
     if measuring_unit is None:
         return jsonify({"message": "Invalid measuring_unit or measuring_unit_id"}), 400
+    
+    item_type_id = data["item_type_id"]
+
+    # Handle Product vs Service safely
+    if item_type_id == 2:  # Service
+        purchase_price = None
+        opening_stock = None
+    else:  # Product
+        purchase_price = data.get("purchase_price")
+        opening_stock = data.get("opening_stock")
+
 
     item = Item(
-        item_type_id=data["item_type_id"],
-        category_id=category.id,
+        item_type_id=item_type_id,
+        category_id=category.uuid,
         measuring_unit_id=measuring_unit.id,
+
         item_name=data["item_name"],
         sales_price=data["sales_price"],
-        purchase_price=data.get("purchase_price", 0),  # Default to 0 if not provided
-        gst_tax_rate=data.get("gst_tax_rate", 0),    # Default to 0 if not provided
-        opening_stock=data.get("opening_stock", 0),  # Default to 0 if not provided
-        item_code=data.get("item_code", ""),         # Default to empty string if not provided
-        description=data.get("description", ""),    # Default to empty string if not provided
+        gst_tax_rate=data.get("gst_tax_rate"),
+
+        purchase_price=purchase_price,
+        opening_stock=opening_stock,
+
+        item_code=data.get("item_code") or None,
+        hsn_code=data.get("hsn_code") or None,
+        description=data.get("description") or None,    # Default to empty string if not provided
     )
     set_created_fields(item)
     db.session.add(item)

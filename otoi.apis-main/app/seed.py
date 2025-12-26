@@ -152,9 +152,15 @@ def seed_measuring_units():
 
 
 def seed_item_types():
-    item_types = ["Product", "Service"]
+    types = [
+        "Raw Material",
+        "Finished Goods",
+        "Semi-Finished Goods",
+        "Consumables",
+        "Packing Material"
+    ]
 
-    for name in item_types:
+    for name in types:
         if not ItemType.query.filter_by(name=name).first():
             db.session.add(ItemType(name=name))
 
@@ -171,9 +177,6 @@ def seed_item_categories():
 
     db.session.commit()
     print("Item categories seeded successfully.")
-
-
-
 
 
 

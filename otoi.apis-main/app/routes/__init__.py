@@ -19,7 +19,7 @@ def register_blueprints(app):
     app.register_blueprint(auth_blueprint, url_prefix="/api/auth")
     app.register_blueprint(user_blueprint, url_prefix="/api/user")
     app.register_blueprint(lead_blueprint, url_prefix="/api/leads")
-    app.register_blueprint(item_category_blueprint, url_prefix="/api/item_categories")
+    app.register_blueprint(item_category_blueprint, url_prefix="/api/item-categories")
     app.register_blueprint(measuring_unit_blueprint, url_prefix="/api/measuring_units")
     app.register_blueprint(item_image_blueprint, url_prefix="/api/item_images")
     app.register_blueprint(active_type_blueprint, url_prefix="/api/active-types")
