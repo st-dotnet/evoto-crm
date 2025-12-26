@@ -50,6 +50,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   // Fetch items from API
@@ -116,15 +119,27 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const stockValue = items.reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
   const lowStockCount = items.filter((item) => (item.opening_stock || 0) <= 5).length;
 
-  // Delete an item
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Delete item?")) return;
+  // Delete an item with confirmation
+  const handleDeleteClick = (id: number) => {
+    setItemToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (itemToDelete === null) return;
+
+    setIsDeleting(true);
     try {
-      await deleteItem(id);
+      await deleteItem(itemToDelete);
+      toast.success("Item deleted successfully");
       fetchItems();
     } catch (err) {
       console.error("Failed to delete item:", err);
-      toast("Failed to delete item");
+      toast.error("Failed to delete item. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -190,7 +205,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/inventory/${info.row.original.item_id}`);
+                  navigate(`/items/inventory/${info.row.original.item_id}`);
                 }}
               >
                 {info.row.original.item_name}
@@ -253,7 +268,12 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+              <button 
+                className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
                 <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
@@ -261,6 +281,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleEdit(row.original);
                 }}
               >
@@ -270,7 +291,8 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/inventory/${row.original.item_id}`);
+                  e.stopPropagation();
+                  navigate(`/items/inventory/${row.original.item_id}`);
                 }}
               >
                 <Eye className="mr-2 h-4 w-4" />
@@ -279,7 +301,8 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
-                  handleDelete(row.original.item_id);
+                  e.stopPropagation();
+                  handleDeleteClick(row.original.item_id);
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -438,6 +461,38 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         onSuccess={fetchItems}
         item={selectedItem ? { ...selectedItem, purchase_price: selectedItem.purchase_price ?? undefined } : null}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {deleteDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setDeleteDialogOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-medium mb-4">Delete Item</h3>
+            <p className="text-gray-600 mb-6">Are you sure you want to delete this item?.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

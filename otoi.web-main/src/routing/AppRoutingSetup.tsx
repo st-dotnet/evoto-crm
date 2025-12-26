@@ -87,6 +87,7 @@ import { PartiesCustomersPage } from '@/pages/parties/PartiesCustomers';
 import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
 import { PartiesVendorsPage } from '@/pages/parties/PartiesVendors';
 import InventoryPage from '@/pages/items/InventoryPage';
+import ItemDetailsPage from '@/pages/items/ItemDetails';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -191,6 +192,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/lead/:uuid" element={<LeadDetails />} />
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
           <Route path="/items/inventory" element={<InventoryPage/>} />
+          <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
+          
           <Route
             path="/auth/account-deactivated"
             element={<AuthenticationAccountDeactivatedPage />}

@@ -11,31 +11,37 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert } from "@/components";
-import { createItem } from "../../pages/items/services/items.service";
+import { toast } from "sonner";
+import { createItem, updateItem } from "../../pages/items/services/items.service";
+
 import StockDetails from "./StockDetails";
 import PricingDetails from "./PricingDetails";
-// import CustomFields from "./CustomFields";
+import CustomFields from "./CustomFields";
 
 // Define types for the item and form values
 interface IItem {
+    item_id: number;
     id?: number;
     item_type_id?: number;
+    item_type?: string;
     category_id?: number;
+    category?: string;
     item_name?: string;
-    sales_price?: string | number;
-    purchase_price?: string | number;
-    gst_tax_rate?: string | number;
+    item_code?: string;
+    sales_price?: number | string;
+    purchase_price?: number | string | null;
+    gst_tax_rate?: number | string;
     measuring_unit?: string;
-    opening_stock?: string | number;
+    opening_stock?: number | string;
     show_in_online_store?: boolean;
     tax_type?: string;
-    item_code?: string;
     hsn_code?: string;
     alternative_unit?: string;
     low_stock_warning?: boolean;
-    low_stock_quantity?: number;
+    low_stock_quantity?: number | string;
     description?: string;
     as_of_date?: string;
+    business_id?: number | null;
 }
 
 interface ICategory {
@@ -51,7 +57,7 @@ interface ICreateItemModalProps {
 }
 
 // Initial values for the form
-const initialValues: IItem = {
+const initialValues: Omit<IItem, 'item_id'> = {
     item_type_id: 1,
     category_id: 1,
     item_name: "",
@@ -62,7 +68,6 @@ const initialValues: IItem = {
     opening_stock: "",
     show_in_online_store: false,
     tax_type: "with_tax",
-    item_code: "",
     hsn_code: "",
     alternative_unit: "",
     low_stock_warning: false,
@@ -99,15 +104,16 @@ export default function CreateItemModal({
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState("");
     const [activeSection, setActiveSection] = useState("basic"); // State to track active section
-
+console.log("Editing item======>item:", item);
     // Formik setup
     const formik = useFormik({
         initialValues,
         validationSchema: saveItemSchema,
         onSubmit: async (values, { setStatus, setSubmitting }) => {
             setLoading(true);
+
             try {
-                const postData: IItem = {
+                const payload: Omit<IItem, 'item_id' | 'item_code'> = {
                     item_name: values.item_name || '',
                     item_type_id: values.item_type_id || 1,
                     category_id: values.category_id || 1,
@@ -117,7 +123,6 @@ export default function CreateItemModal({
                     measuring_unit: values.measuring_unit || 'PCS',
                     opening_stock: values.opening_stock ? Number(values.opening_stock) : 0,
                     show_in_online_store: values.show_in_online_store || false,
-                    item_code: values.item_code || '',
                     hsn_code: values.hsn_code || '',
                     alternative_unit: values.alternative_unit || '',
                     low_stock_warning: values.low_stock_warning || false,
@@ -125,42 +130,64 @@ export default function CreateItemModal({
                     description: values.description || '',
                     as_of_date: values.as_of_date || new Date().toISOString().split('T')[0],
                     tax_type: values.tax_type || 'with_tax',
-                    ...(item?.id && { id: item.id }) // Conditionally include id if it exists
                 };
 
-                const response = await createItem(postData);
-                if (response) {
-                    onSuccess();
-                    onOpenChange();
+                let response;
+                
+                if (item?.item_id) {
+                    // EDITING an existing item
+                    response = await updateItem(item.item_id, payload);
+                    if (response.success) {
+                        toast.success("Item updated successfully");
+                        onOpenChange();
+                        onSuccess();
+                        formik.resetForm();
+                    } else {
+                        throw new Error(response.error || "Failed to update item");
+                    }
                 } else {
-                    setStatus("Failed to save item. Please try again.");
+                    // CREATING a new item
+                    response = await createItem(payload);
+                    if (response.success) {
+                        toast.success("Item created successfully");
+                        onSuccess();
+                        onOpenChange();
+                        formik.resetForm();
+                    } else {
+                        throw new Error(response.error || "Failed to create item");
+                    }
                 }
             } catch (error) {
                 console.error('Error saving item:', error);
-                const errorMessage = (error as any)?.response?.data?.message || "Failed to save item. Please try again.";
+                const errorMessage = (error as any)?.response?.data?.message || 
+                                  (error as Error)?.message || 
+                                  "Failed to save item. Please try again.";
                 setStatus(errorMessage);
+                toast.error(errorMessage);
             } finally {
                 setSubmitting(false);
                 setLoading(false);
             }
-        },
+        }
+
     });
 
     // Reset form when editing an item
     useEffect(() => {
         if (open && item) {
+            console.log("Resetting form for item:", item);    
             formik.resetForm({
                 values: {
-                    item_type_id: item.item_type_id || 1,
-                    category_id: item.category_id || 1,
-                    item_name: item.item_name || "",
-                    sales_price: item.sales_price || "",
-                    purchase_price: item.purchase_price || "",
-                    gst_tax_rate: item.gst_tax_rate || "",
-                    measuring_unit: item.measuring_unit || "PCS",
-                    opening_stock: item.opening_stock || "",
-                    show_in_online_store: item.show_in_online_store || false,
-                    tax_type: item.tax_type || "with_tax",
+                    item_type_id: item.item_type_id ?? 1,
+                    category_id: item.category_id ?? 1,
+                    item_name: item.item_name ?? "",
+                    sales_price: item.sales_price?.toString() ?? "",
+                    purchase_price: item.purchase_price?.toString() ?? "",
+                    gst_tax_rate: item.gst_tax_rate?.toString() ?? "",
+                    measuring_unit: item.measuring_unit ?? "PCS",
+                    opening_stock: item.opening_stock?.toString() ?? "",
+                    show_in_online_store: item.show_in_online_store ?? false,
+                    tax_type: item.tax_type ?? "with_tax",
                     item_code: item.item_code || "",
                     hsn_code: item.hsn_code || "",
                     alternative_unit: item.alternative_unit || "",
@@ -168,6 +195,7 @@ export default function CreateItemModal({
                     low_stock_quantity: item.low_stock_quantity || 0,
                     description: item.description || "",
                     as_of_date: item.as_of_date || new Date().toISOString().split("T")[0],
+                     
                 },
             });
         } else if (open && !item) {
@@ -219,7 +247,7 @@ export default function CreateItemModal({
                                     <button>Price Details</button>
                                 </div>
                                 {/* <div className="text-gray-500 p-2">Custom Fields</div> */}
-                                {/* <div
+                                <div
                                     className={clsx(
                                         "p-2 mb-2 rounded cursor-pointer",
                                         activeSection === "custom_fields" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
@@ -227,7 +255,7 @@ export default function CreateItemModal({
                                     onClick={() => setActiveSection("custom_fields")}
                                 >
                                     <button>Custom Fields</button>
-                                </div> */}
+                                </div>
 
                             </div>
 
@@ -311,8 +339,10 @@ export default function CreateItemModal({
                                                 <label className="font-medium">Show Item in Online Store</label>
                                                 <input
                                                     type="checkbox"
-                                                    {...formik.getFieldProps("show_in_online_store")}
+                                                    checked={formik.values.show_in_online_store}
+                                                    onChange={() => formik.setFieldValue("show_in_online_store", !formik.values.show_in_online_store)}
                                                 />
+
                                             </div>
 
                                             {/* Sales Price and GST Tax Rate */}
@@ -390,6 +420,8 @@ export default function CreateItemModal({
                                     {activeSection === "stock" && <StockDetails formik={formik} />}
                                     {/* Pricing Details Section */}
                                     {activeSection === "price" && <PricingDetails formik={formik} />}
+                                    {/* Custom Details Section */}
+                                    {activeSection === "custom_fields" && <CustomFields formik={formik} />}
                                 </form>
                             </div>
                         </div>
@@ -410,7 +442,7 @@ export default function CreateItemModal({
                             disabled={loading || formik.isSubmitting}
                             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {loading ? "Saving..." : "Save"}
+                            {loading || formik.isSubmitting ? "Saving..." : (item ? "Update" : "Save")}
                         </button>
                     </div>
                 </DialogContent>

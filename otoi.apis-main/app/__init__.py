@@ -5,7 +5,7 @@ from flask_cors import CORS
 from app.routes import register_blueprints
 from app.middleware import extract_jwt_info
 from app.cli import register_cli
-from app.events import person_events  # IMPORTANT
+# from app.events import person_events  # IMPORTANT
 
 
 def create_app():
@@ -16,7 +16,17 @@ def create_app():
     register_cli(app)
 
     # Enable CORS
-    CORS(app)
+    # CORS(app)
+    CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Authorization"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
+
+
 
     # Initialize extensions
     db.init_app(app)

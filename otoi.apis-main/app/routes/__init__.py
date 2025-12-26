@@ -4,7 +4,6 @@
 from app.routes.auth import auth_blueprint
 from app.routes.user import user_blueprint
 from app.routes.person import lead_blueprint
-from app.routes.item import item_blueprint
 from app.routes.item_category import item_category_blueprint
 from app.routes.measuring_unit import measuring_unit_blueprint
 from app.routes.item_image import item_image_blueprint
@@ -12,6 +11,9 @@ from app.routes.active_type import active_type_blueprint, status_list_blueprint
 from app.routes.customer import customer_blueprint
 from app.routes.vendor import vendor_blueprint
 from app.routes.csv_import import csv_import_bp
+from app.routes.item import item_blueprint
+from app.routes.barcode import barcode_blueprint
+
 
 
 def register_blueprints(app):
@@ -28,3 +30,6 @@ def register_blueprints(app):
     app.register_blueprint(vendor_blueprint, url_prefix="/api/vendors")
     app.register_blueprint(csv_import_bp, url_prefix="/api/csv_import")
     app.register_blueprint(item_blueprint, url_prefix="/api/items")
+    app.register_blueprint(barcode_blueprint, url_prefix="/api/barcode")
+
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useFormik } from "formik";
 
 interface IStockDetailsProps {
@@ -7,9 +7,140 @@ interface IStockDetailsProps {
 
 export default function StockDetails({ formik }: IStockDetailsProps) {
   const [showAlternativeUnit, setShowAlternativeUnit] = useState(false);
+  const [barcodeUrl, setBarcodeUrl] = useState<string | null>(null);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [barcodeError, setBarcodeError] = useState<string | null>(null);
+  const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+
+  const handleGetBarcode = async (download: boolean = false) => {
+    const itemName = formik.values.item_name;
+    let itemCode = formik.values.item_code;
+
+    if (!formik.values.id && !itemCode) {
+      itemCode = Math.floor(1000000 + Math.random() * 900000000).toString();
+      formik.setFieldValue("item_code", itemCode);
+    }
+
+    if (!itemCode) return;
+
+    const baseUrl = "http://127.0.0.1:5000"; // Replace with your backend port if different
+    const url = !formik.values.id
+      ? `${baseUrl}/api/barcode/preview?item_code=${encodeURIComponent(itemCode)}&item_name=${encodeURIComponent(itemName || "")}${download ? "&download=true" : ""}`
+      : `${baseUrl}/api/items/${formik.values.id}/barcode${download ? "?download=true" : ""}`;
+
+    setIsLoadingBarcode(true);
+    setBarcodeError(null);
+    setImgError(false);
+
+    try {
+      if (download) {
+        // Directly trigger download
+        window.open(url, "_blank");
+      } else {
+        // Fetch and display in modal
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch barcode");
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setBarcodeUrl(blobUrl);
+        setIsBarcodeModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch barcode:", error);
+      setBarcodeError("Failed to load barcode. Please try again.");
+    } finally {
+      setIsLoadingBarcode(false);
+    }
+  };
+
+
+  const BarcodeModal = () => {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+          setIsBarcodeModalOpen(false);
+          setBarcodeError(null);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div ref={modalRef} className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Barcode Preview</h3>
+          <button
+            onClick={() => {
+              setIsBarcodeModalOpen(false);
+              setBarcodeError(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="text-center">
+          <div className="mb-4">
+            <h4 className="font-medium text-lg">{formik.values.item_name || 'Item Name'}</h4>
+            <p className="text-gray-600">{formik.values.item_code || 'Item Code'}</p>
+          </div>
+
+          <div className="mb-6 min-h-[200px] flex items-center justify-center bg-gray-50 rounded border border-gray-200 p-4">
+            {barcodeError ? (
+              <div className="text-red-500">{barcodeError}</div>
+            ) : isLoadingBarcode ? (
+              <div className="text-gray-500">Generating barcode...</div>
+            ) : barcodeUrl ? (
+              <img
+                src={barcodeUrl}
+                alt="Item Barcode"
+                className="max-w-full h-auto"
+                onError={() => {
+                  console.error('Failed to load barcode image');
+                  setImgError(true);
+                }}
+              />
+            ) : (
+              <div className="text-gray-500">No barcode available</div>
+            )}
+            {imgError && (
+              <div className="text-red-500 mt-2">
+                Failed to load barcode image. Please try downloading it.
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={() => handleGetBarcode(true)}
+              disabled={isLoadingBarcode}
+              className={`px-4 py-2 rounded transition-colors ${isLoadingBarcode
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+            >
+              {isLoadingBarcode ? 'Generating...' : 'Download Barcode'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  };
 
   return (
     <div className="border rounded-lg p-4">
+      {isBarcodeModalOpen && <BarcodeModal />}
       <div className="grid grid-cols-1 gap-4">
 
         {/* Item Code */}
@@ -24,10 +155,13 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
             />
             <button
               type="button"
+              onClick={() => handleGetBarcode()}
               className="px-3 text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
             >
               Get Barcode
             </button>
+
+
           </div>
         </div>
 
@@ -45,7 +179,7 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
               type="button"
               className="px-3 text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
             >
-              Find
+              Find HSN code
             </button>
           </div>
         </div>
@@ -177,18 +311,15 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
         </div>
 
         {/* Description Box */}
-        <div className="ml-6 space-y-1">
-          <label htmlFor="description" className="text-sm block">
+        <div className="space-y-1">
+          <label className="text-sm block">
             Description
           </label>
           <textarea
-            id="description"
             placeholder="Enter Description"
             className="w-full p-2 border rounded text-sm"
-            {...formik.getFieldProps("description")}
           />
         </div>
-
 
       </div>
     </div>
