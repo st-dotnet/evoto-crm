@@ -78,13 +78,27 @@ const saveItemSchema = Yup.object().shape({
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Item name is required"),
+
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
         .required("Sales price is required"),
-    gst_tax_rate: Yup.number().typeError("GST tax rate must be a number"),
-    opening_stock: Yup.number().typeError("Opening stock must be a number"),
-    low_stock_quantity: Yup.number().typeError("Low stock quantity must be a number"),
+
+    gst_tax_rate: Yup.number()
+        .typeError("GST tax rate must be a number"),
+
+    purchase_price: Yup.number().when("item_type_id", {
+        is: 1,
+        then: (schema) => schema.required("Purchase price is required"),
+        otherwise: (schema) => schema.notRequired(),
+    }),
+
+    opening_stock: Yup.number().when("item_type_id", {
+        is: 1,
+        then: (schema) => schema.required("Opening stock is required"),
+        otherwise: (schema) => schema.notRequired(),
+    }),
 });
+
 
 export default function CreateItemModal({
     open,
@@ -181,10 +195,11 @@ export default function CreateItemModal({
                     gst_tax_rate: item.gst_tax_rate ?? 0,
 
                     purchase_price:
-                        item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
+                        item.item_type_id === 1 ? item.purchase_price ?? 0 : undefined,
 
                     opening_stock:
-                        item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
+                        item.item_type_id === 1 ? item.opening_stock ?? 0 : undefined,
+
 
                     hsn_code: item.hsn_code ?? null,
                     description: item.description ?? null,
