@@ -30,7 +30,7 @@ class ItemCategory(BaseMixin, db.Model):
     items = relationship(
         "Item", 
         back_populates="category",
-        primaryjoin="and_(Item.category_id==ItemCategory.id, Item.is_deleted==False)",
+        primaryjoin="and_(Item.category_id==ItemCategory.uuid, Item.is_deleted==False)",
         viewonly=True
     )
 
@@ -111,25 +111,6 @@ class Item(BaseMixin, db.Model):
     )
 
 
-    __table_args__ = (
-        CheckConstraint(
-            """
-            (
-                item_type_id = 1
-                AND opening_stock IS NOT NULL
-                AND purchase_price IS NOT NULL
-            )
-            OR
-            (
-                item_type_id = 2
-                AND opening_stock IS NULL
-                AND purchase_price IS NULL
-            )
-            """,
-            name="chk_item_product_service"
-        ),
-    )
-
     # Relationships
     item_type = relationship("ItemType", back_populates="items")
     category = relationship("ItemCategory", back_populates="items")
@@ -157,7 +138,7 @@ ItemType.items = relationship(
 ItemCategory.items = relationship(
     "Item", 
     back_populates="category",
-    primaryjoin="and_(Item.category_id==ItemCategory.id, Item.is_deleted==False)",
+    primaryjoin="and_(Item.category_id==ItemCategory.uuid, Item.is_deleted==False)",
     viewonly=True
 )
 MeasuringUnit.items = relationship(

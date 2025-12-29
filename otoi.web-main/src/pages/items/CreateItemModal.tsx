@@ -3,80 +3,75 @@ import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import clsx from "clsx";
-import {
-    Dialog,
-    DialogBody,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Alert } from "@/components";
 import { toast } from "sonner";
-import { createItem, createItemCategory, getItemCategories, updateItem  } from "../../pages/items/services/items.service";
+import { createItem, createItemCategory, getItemById, getItemCategories, updateItem } from "../../pages/items/services/items.service";
 import StockDetails from "./StockDetails";
 import PricingDetails from "./PricingDetails";
 import OtherDetails from "./OtherDetails";
- 
+
 // Define types for the item and form values
 interface IItem {
     id?: number;
 
     item_type_id: number;          // 1 = Product, 2 = Service
-    category_id: string;
-    measuring_unit_id: number;
- 
+    category_id?: string | null;    // UUID string, optional and nullable
+    measuring_unit_id: 1 | 2 | 3 | 4;  // 1: PCS, 2: KG, 3: LTR, 4: MTR
+
     item_name: string;
     item_code?: string | null;
- 
+
     sales_price: number;
     gst_tax_rate: number;
- 
+
     purchase_price?: number | null;  // Product only
     opening_stock?: number | null;   // Product only
- 
+
     hsn_code?: string | null;
     description?: string | null;
- 
+
     show_in_online_store?: boolean;
     tax_type?: "with_tax" | "without_tax";
+    item_id?: number;
+
 }
- 
- 
+
 interface ICategory {
-    uuid: number;
+    uuid: string;
     name: string;
 }
- 
+
 interface ICreateItemModalProps {
     open: boolean;
     onOpenChange: () => void;
     onSuccess: () => void;
     item: IItem | null;
 }
- 
+
 // Initial values for the form
 const initialValues: IItem = {
     item_type_id: 1,              // Product by default
-    category_id: "",
-    measuring_unit_id: 1,         // default unit ID (PCS)
- 
+    category_id: null,             // Initialize as null for UUID
+    measuring_unit_id: 1,         // Default to PCS (id: 1)
+
     item_name: "",
     item_code: null,
- 
+
     sales_price: 0,
     gst_tax_rate: 0,
- 
+
     purchase_price: 0,
     opening_stock: 0,
- 
+
     hsn_code: null,
     description: null,
- 
+
     show_in_online_store: false,
     tax_type: "with_tax",
 };
- 
- 
+
 // Validation schema
 const saveItemSchema = Yup.object().shape({
     item_name: Yup.string()
@@ -90,7 +85,7 @@ const saveItemSchema = Yup.object().shape({
     opening_stock: Yup.number().typeError("Opening stock must be a number"),
     low_stock_quantity: Yup.number().typeError("Low stock quantity must be a number"),
 });
- 
+
 export default function CreateItemModal({
     open,
     onOpenChange,
@@ -102,113 +97,108 @@ export default function CreateItemModal({
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState("");
     const [activeSection, setActiveSection] = useState("basic");
- 
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Update isEditing when item prop changes
+    useEffect(() => {
+        setIsEditing(!!item?.id);
+    }, [item]);
+
     // Formik setup
     const formik = useFormik({
         initialValues,
         validationSchema: saveItemSchema,
-        onSubmit: async (values, { setStatus, setSubmitting }) => {
+        enableReinitialize: true,
+        onSubmit: async (values, { setStatus, setSubmitting, resetForm }) => {
             setLoading(true);
             const isService = values.item_type_id === 2;
 
-            const postData: IItem = {
-                item_name: values.item_name,
-                item_type_id: values.item_type_id,
-                category_id: values.category_id,
+            try {
+                const postData: IItem = {
+                    item_name: values.item_name,
+                    item_type_id: values.item_type_id,
+                    category_id: values.category_id || null,  // Ensure we send null instead of empty string
+                    sales_price: Number(values.sales_price),
+                    gst_tax_rate: Number(values.gst_tax_rate),
+                    measuring_unit_id: values.measuring_unit_id,
+                    purchase_price: isService ? null : Number(values.purchase_price || 0),
+                    opening_stock: isService ? null : Number(values.opening_stock || 0),
+                    item_code: values.item_code || null,
+                    hsn_code: values.hsn_code || null,
+                    description: values.description || null,
+                    show_in_online_store: Boolean(values.show_in_online_store),
+                    tax_type: values.tax_type || "with_tax",
+                };
 
-                sales_price: Number(values.sales_price),
-                gst_tax_rate: Number(values.gst_tax_rate),
-
-                measuring_unit_id: Number(values.measuring_unit_id),
-
-                purchase_price: isService ? null : Number(values.purchase_price),
-                opening_stock: isService ? null : Number(values.opening_stock),
-
-                item_code: values.item_code || null,
-                hsn_code: values.hsn_code || null,
-                description: values.description || null,
-
-                show_in_online_store: Boolean(values.show_in_online_store),
-                tax_type: values.tax_type || "with_tax",
-
-                ...(item?.id && { id: item.id }),
-            };
-
-            let response;
-            if (item?.id) {
-                // EDITING an existing item
-                try {
-                    response = await updateItem(item.id, postData);
-                    if (response.success) {
+                if (item?.item_id) {
+                    // EDITING an existing item
+                    const response = await updateItem(item?.item_id, postData);
+                    if (response?.success) {
                         toast.success("Item updated successfully");
-                        onOpenChange();
                         onSuccess();
-                        formik.resetForm();
+                        onOpenChange();
                     } else {
-                        throw new Error(response.error || "Failed to update item");
+                        throw new Error(response?.error || "Failed to update item");
                     }
-                }
-                catch (error: any) {
-                    console.error("Error", error.message);
-                } finally {
-                    setSubmitting(false);
-                    setLoading(false);
-                }
-            } else {
-                try {
-                    response = await createItem(postData);
+                } else {
+                    // Creating a new item
+                    const response = await createItem(postData);
                     if (response) {
+                        toast.success("Item created successfully");
                         onSuccess();
+                        resetForm();
                         onOpenChange();
                     } else {
-                        setStatus("Failed to save item. Please try again.");
+                        throw new Error("Failed to create item");
                     }
-                } catch (error) {
-                    console.error('Error saving item:', error);
-                    const errorMessage = (error as any)?.response?.data?.message || "Failed to save item. Please try again.";
-                    setStatus(errorMessage);
-                } finally {
-                    setSubmitting(false);
-                    setLoading(false);
                 }
+            } catch (error: any) {
+                console.error('Error:', error);
+                const errorMessage = error?.response?.data?.message || error.message || "An error occurred. Please try again.";
+                setStatus(errorMessage);
+                toast.error(errorMessage);
+            } finally {
+                setLoading(false);
+                setSubmitting(false);
             }
         }
     });
- 
+
     // Reset form when editing an item
     useEffect(() => {
         if (open && item) {
+            setIsEditing(true);
             formik.resetForm({
                 values: {
                     item_type_id: item.item_type_id ?? 1,
-                    category_id: item.category_id ?? "",
+                    category_id: item.category_id || null,
                     measuring_unit_id: item.measuring_unit_id ?? 1,
- 
+
                     item_name: item.item_name ?? "",
                     item_code: item.item_code ?? null,
- 
+
                     sales_price: item.sales_price ?? 0,
                     gst_tax_rate: item.gst_tax_rate ?? 0,
- 
+
                     purchase_price:
                         item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
- 
+
                     opening_stock:
                         item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
- 
+
                     hsn_code: item.hsn_code ?? null,
                     description: item.description ?? null,
- 
+
                     show_in_online_store: item.show_in_online_store ?? false,
                     tax_type: item.tax_type ?? "with_tax",
                 },
             });
         } else if (open && !item) {
+            setIsEditing(false);
             formik.resetForm();
         }
     }, [open, item]);
- 
- 
+
     // Load categories
     useEffect(() => {
         const loadCategories = async () => {
@@ -221,14 +211,14 @@ export default function CreateItemModal({
         };
         if (open) loadCategories();
     }, [open]);
- 
+
     // Handle section change
     const handleSectionChange = (section: string) => {
         if (section === "stock" && formik.values.item_type_id === 2) return;
         if (section === "price" && formik.values.item_type_id === 2) return;
         setActiveSection(section);
     };
- 
+
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
@@ -238,7 +228,7 @@ export default function CreateItemModal({
                             {item ? "Edit Item" : "Create New Item"}
                         </DialogTitle>
                     </DialogHeader>
- 
+
                     <DialogBody className="overflow-y-auto max-h-[70vh] flex-1">
                         <div className="flex h-full">
                             {/* Left Sidebar */}
@@ -272,7 +262,7 @@ export default function CreateItemModal({
                                     {formik.values.item_type_id === 2 ? "" : "Price Details"}
                                 </div>
                             </div>
- 
+
                             {/* Right Form Section */}
                             <div className="flex-1 p-6 overflow-y-auto">
                                 <form id="item-form" onSubmit={formik.handleSubmit} className="space-y-4">
@@ -281,7 +271,7 @@ export default function CreateItemModal({
                                             {formik.status}
                                         </Alert>
                                     )}
- 
+
                                     {/* Basic Details Section */}
                                     {activeSection === "basic" && (
                                         <>
@@ -307,12 +297,17 @@ export default function CreateItemModal({
                                                     </label>
                                                 </div>
                                             </div>
- 
+
                                             {/* Item Name or Service Name and Category */}
                                             <div className="flex gap-4 mb-4">
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">
-                                                        {formik.values.item_type_id === 2 ? "Service Name *" : "Item Name *"}
+                                                        {formik.values.item_type_id === 2 ? (
+                                                            <>Service Name <span style={{ color: 'red' }}>*</span></>
+                                                        ) : (
+                                                            <>Item Name <span style={{ color: 'red' }}>*</span></>
+                                                        )}
+
                                                     </label>
                                                     <input
                                                         type="text"
@@ -333,13 +328,13 @@ export default function CreateItemModal({
                                                     <label className="block text-sm font-medium mb-1">Category</label>
                                                     <select
                                                         className="w-full p-2 border rounded"
-                                                        value={formik.values.category_id}
+                                                        value={formik.values.category_id || ''}
                                                         onChange={(e) => {
                                                             if (e.target.value === "add_new") {
                                                                 setShowCategoryModal(true);
                                                                 return;
                                                             }
-                                                            formik.setFieldValue("category_id", e.target.value);
+                                                            formik.setFieldValue("category_id", e.target.value || null);
                                                         }}
                                                     >
                                                         <option value="">Select Category</option>
@@ -352,7 +347,7 @@ export default function CreateItemModal({
                                                     </select>
                                                 </div>
                                             </div>
- 
+
                                             {/* Show Item in Online Store */}
                                             <div className="flex items-center gap-2 mb-4">
                                                 <label className="font-medium">Show Item in Online Store</label>
@@ -361,7 +356,7 @@ export default function CreateItemModal({
                                                     {...formik.getFieldProps("show_in_online_store")}
                                                 />
                                             </div>
- 
+
                                             {/* Sales Price and GST Tax Rate */}
                                             <div className="flex gap-4 mb-4">
                                                 <div className="flex-1">
@@ -395,18 +390,20 @@ export default function CreateItemModal({
                                                     </select>
                                                 </div>
                                             </div>
- 
+
                                             {/* Measuring Unit and Opening Stock or Service Code */}
                                             <div className="flex gap-4">
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">Measuring Unit</label>
                                                     <select
                                                         className="w-full p-2 border rounded"
-                                                        {...formik.getFieldProps("measuring_unit")}
+                                                        value={formik.values.measuring_unit_id}
+                                                        onChange={(e) => formik.setFieldValue("measuring_unit_id", Number(e.target.value) as 1 | 2 | 3 | 4)}
                                                     >
-                                                        <option value="PCS">Pieces (PCS)</option>
-                                                        <option value="KG">Kilogram</option>
-                                                        <option value="L">Liter</option>
+                                                        <option value={1}>Pieces (PCS)</option>
+                                                        <option value={2}>Kilogram (KG)</option>
+                                                        <option value={3}>Liter (LTR)</option>
+                                                        <option value={4}>Meter (MTR)</option>
                                                     </select>
                                                 </div>
                                                 <div className="flex-1">
@@ -434,8 +431,8 @@ export default function CreateItemModal({
                                                                     : formik.values.measuring_unit_id === 2
                                                                         ? "KG"
                                                                         : formik.values.measuring_unit_id === 3
-                                                                            ? "L"
-                                                                            : ""}
+                                                                            ? "LTR"
+                                                                            : "MTR"}
                                                             </span>
                                                         </div>
                                                     )}
@@ -443,7 +440,6 @@ export default function CreateItemModal({
                                             </div>
                                         </>
                                     )}
- 
                                     {/* Stock Details Section */}
                                     {activeSection === "stock" && <StockDetails formik={formik} />}
                                     {/* Pricing Details Section */}
@@ -454,28 +450,37 @@ export default function CreateItemModal({
                             </div>
                         </div>
                     </DialogBody>
- 
-                    {/* Fixed Footer */}
-                    <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-4">
-                        <button
-                            type="button"
-                            onClick={onOpenChange}
-                            className="px-4 py-2 rounded border bg-gray-100 hover:bg-gray-200"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            form="item-form"
-                            disabled={loading || formik.isSubmitting}
-                            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                        >
-                            {loading ? "Saving..." : "Save"}
-                        </button>
-                    </div>
+                    <DialogFooter className="bg-gray-50 px-6 py-4 border-t">
+                        <div className="flex justify-end space-x-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange()}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                form="item-form"
+                                disabled={loading || formik.isSubmitting}
+                                className="min-w-[120px]"
+                            >
+                                {loading || formik.isSubmitting ? (
+                                    <span className="flex items-center">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {isEditing ? 'Updating...' : 'Saving...'}
+                                    </span>
+                                ) : isEditing ? 'Update Item' : 'Save Item'}
+                            </Button>
+                        </div>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
- 
+
             {/* CREATE CATEGORY MODAL */}
             <Dialog open={showCategoryModal} onOpenChange={() => setShowCategoryModal(false)}>
                 <DialogContent className="max-w-md">
@@ -490,13 +495,13 @@ export default function CreateItemModal({
                             onChange={(e) => setNewCategory(e.target.value)}
                         />
                         <div className="flex justify-end gap-3">
-                            <button
+                            <Button
                                 className="px-4 py-2 bg-gray-200 rounded"
                                 onClick={() => setShowCategoryModal(false)}
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 className="px-4 py-2 bg-blue-600 text-white rounded"
                                 disabled={!newCategory}
                                 onClick={async () => {
@@ -504,7 +509,10 @@ export default function CreateItemModal({
                                         await createItemCategory(newCategory);
                                         const updatedCategories = await getItemCategories();
                                         setCategories(updatedCategories);
-                                        formik.setFieldValue("category_id", updatedCategories.find((c: ICategory) => c.name === newCategory)?.uuid || "");
+                                        const newCategoryId = updatedCategories.find((c: ICategory) => c.name === newCategory)?.uuid;
+                                        if (newCategoryId) {
+                                            formik.setFieldValue("category_id", newCategoryId);
+                                        }
                                         setNewCategory("");
                                         setShowCategoryModal(false);
                                     } catch (error) {
@@ -513,7 +521,7 @@ export default function CreateItemModal({
                                 }}
                             >
                                 Add
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -521,5 +529,3 @@ export default function CreateItemModal({
         </>
     );
 }
- 
- 

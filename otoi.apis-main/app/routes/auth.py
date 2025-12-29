@@ -160,17 +160,28 @@ def login():
       401:
         description: Invalid credentials
     """
-    data = request.get_json()
-    if not data or "email" not in data or "password" not in data:
-        return jsonify({"error": "Email and password are required"}), 400
+    try:
+        data = request.get_json()
+        if not data or "email" not in data or "password" not in data:
+            return jsonify({"error": "Email and password are required"}), 400
 
-    email = data["email"]
-    password = data["password"]
+        email = data["email"].strip().lower()
+        password = data["password"]
 
-    user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
 
-    if user and user.check_password(password):
-        business_id = user.businesses[0].id if user.businesses else None
+        if not user:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        if not user.check_password(password):
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        business_id = user.businesses[0].id if user.businesses and len(user.businesses) > 0 else None
+        
+        # Ensure user has a role
+        if not user.role:
+            return jsonify({"error": "User role not found"}), 403
+
         token = create_access_token(
             identity=str(user.id),
             additional_claims={
@@ -179,12 +190,26 @@ def login():
                 "business_id": business_id
             }
         )
+        
         g.user_id = user.id
         g.business_id = business_id
+        
         return jsonify({
             "access_token": token,
-            "token_type": "Bearer"
+            "token_type": "Bearer",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role.name,
+                "business_id": business_id
+            }
         }), 200
+        
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Login error: {str(e)}")
+        return jsonify({"error": "An error occurred during login. Please try again."}), 500
 
     return jsonify({"error": "Invalid credentials"}), 401
 

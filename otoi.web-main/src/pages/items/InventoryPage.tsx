@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import {
   DataGrid,
@@ -19,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import CreateItemModal from "./CreateItemModal";
-import { getItems, deleteItem } from "../../pages/items/services/items.service";
+import { getItems, deleteItem, getItemById } from "../../pages/items/services/items.service";
 
 interface InventoryItem {
   item_id: number;
@@ -27,10 +28,15 @@ interface InventoryItem {
   item_code: string;
   opening_stock: number;
   sales_price: number;
-  purchase_price: number | null;
+  purchase_price: number | null; // ✅ DB-safe
   type: string;
   category: string;
   business_id: number | null;
+  // Extra fields for editing
+  item_type_id?: number;
+  category_id?: number;
+  measuring_unit_id?: number;
+  gst_tax_rate?: number;
 }
 
 interface IColumnFilterProps<TData, TValue> {
@@ -75,25 +81,26 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         return isNaN(num) ? fallback : num;
       };
 
-      const mappedItems = itemsData.map((item: any) => {
-        // Ensure all required fields have proper fallbacks
-        const mappedItem = {
+
+      const mappedItems = itemsData
+        .map((item: any) => ({
           item_id: item.id || 0,
           item_name: item.item_name || "Unnamed Item",
           item_code: item.item_code || `ITEM-${Date.now()}`,
           opening_stock: toNumber(item.opening_stock, 0),
           sales_price: toNumber(item.sales_price, 0),
-          purchase_price: item.purchase_price !== null && item.purchase_price !== 'None'
-            ? toNumber(item.purchase_price, 0)
-            : null,
+          purchase_price:
+            item.purchase_price !== null && item.purchase_price !== "None"
+              ? toNumber(item.purchase_price, 0)
+              : null,
           type: item.item_type || item.type || "Product",
           category: item.category || "Uncategorized",
           business_id: item.business_id || null,
-        };
+        }))
+        .sort((a, b) => b.item_id - a.item_id);
 
-        console.log("Mapped item:", mappedItem); // Debug log
-        return mappedItem;
-      });
+      setItems(mappedItems);
+
 
       setItems(mappedItems);
     } catch (err) {
@@ -144,9 +151,37 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   };
 
   // Edit an item
-  const handleEdit = (item: InventoryItem) => {
-    setSelectedItem(item);
-    setShowModal(true);
+  const handleEdit = async (item: InventoryItem) => {
+    try {
+      setLoading(true);
+
+      //  Fetch fresh data from DB
+      const fullItem = await getItemById(item.item_id);
+
+      setSelectedItem({
+        item_id: fullItem.id,
+        item_name: fullItem.item_name,
+        item_code: fullItem.item_code,
+        opening_stock: fullItem.opening_stock,
+        sales_price: fullItem.sales_price,
+        purchase_price: fullItem.purchase_price,
+        type: fullItem.item_type,
+        category: fullItem.category,
+        business_id: fullItem.business_id,
+
+        // keep extra fields for edit modal
+        item_type_id: fullItem.item_type_id,
+        category_id: fullItem.category_id,
+        measuring_unit_id: fullItem.measuring_unit_id,
+        gst_tax_rate: fullItem.gst_tax_rate,
+      });
+
+      setShowModal(true);
+    } catch (error) {
+      toast.error("Failed to load item details");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Column filter component
@@ -268,7 +303,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button 
+              <button
                 className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -459,7 +494,19 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           fetchItems();
         }}
         onSuccess={fetchItems}
-        item={selectedItem ? { ...selectedItem, purchase_price: selectedItem.purchase_price ?? undefined } : null}
+        item={
+          selectedItem
+            ? {
+              ...selectedItem,
+              purchase_price: selectedItem.purchase_price ?? undefined,
+              item_type_id: (selectedItem as any).item_type_id ?? 0,
+              category_id: (selectedItem as any).category_id ?? 0,
+              measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+              gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+            }
+            : null
+        }
+
       />
 
       {/* Delete Confirmation Dialog */}
