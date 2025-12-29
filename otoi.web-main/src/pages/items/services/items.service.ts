@@ -195,3 +195,23 @@ export const deleteItem = async (id: number) => {
   const response = await axios.delete(`${API_URL}/items/${id}`)
   return response.data
 }
+
+export const getItemCategories = async () => {
+  const response  = await axios.get(`${import.meta.env.VITE_APP_API_URL}/item-categories/`);
+  return response .data
+}
+
+
+export const createItemCategory = async (name: string) => {
+  const response = await axios.post(
+    `${import.meta.env.VITE_APP_API_URL}/item-categories/`,
+    { name }, 
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data;
+}

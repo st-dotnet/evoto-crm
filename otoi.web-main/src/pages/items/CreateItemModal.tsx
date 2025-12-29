@@ -12,70 +12,71 @@ import {
 } from "@/components/ui/dialog";
 import { Alert } from "@/components";
 import { toast } from "sonner";
-import { createItem, updateItem } from "../../pages/items/services/items.service";
-
+import { createItem, createItemCategory, getItemCategories, updateItem  } from "../../pages/items/services/items.service";
 import StockDetails from "./StockDetails";
 import PricingDetails from "./PricingDetails";
-import CustomFields from "./CustomFields";
-
+import OtherDetails from "./OtherDetails";
+ 
 // Define types for the item and form values
 interface IItem {
-    item_id: number;
     id?: number;
-    item_type_id?: number;
-    item_type?: string;
-    category_id?: number;
-    category?: string;
-    item_name?: string;
-    item_code?: string;
-    sales_price?: number | string;
-    purchase_price?: number | string | null;
-    gst_tax_rate?: number | string;
-    measuring_unit?: string;
-    opening_stock?: number | string;
-    show_in_online_store?: boolean;
-    tax_type?: string;
-    hsn_code?: string;
-    alternative_unit?: string;
-    low_stock_warning?: boolean;
-    low_stock_quantity?: number | string;
-    description?: string;
-    as_of_date?: string;
-    business_id?: number | null;
-}
 
+    item_type_id: number;          // 1 = Product, 2 = Service
+    category_id: string;
+    measuring_unit_id: number;
+ 
+    item_name: string;
+    item_code?: string | null;
+ 
+    sales_price: number;
+    gst_tax_rate: number;
+ 
+    purchase_price?: number | null;  // Product only
+    opening_stock?: number | null;   // Product only
+ 
+    hsn_code?: string | null;
+    description?: string | null;
+ 
+    show_in_online_store?: boolean;
+    tax_type?: "with_tax" | "without_tax";
+}
+ 
+ 
 interface ICategory {
-    id: number;
+    uuid: number;
     name: string;
 }
-
+ 
 interface ICreateItemModalProps {
     open: boolean;
     onOpenChange: () => void;
     onSuccess: () => void;
     item: IItem | null;
 }
-
+ 
 // Initial values for the form
-const initialValues: Omit<IItem, 'item_id'> = {
-    item_type_id: 1,
-    category_id: 1,
+const initialValues: IItem = {
+    item_type_id: 1,              // Product by default
+    category_id: "",
+    measuring_unit_id: 1,         // default unit ID (PCS)
+ 
     item_name: "",
-    sales_price: "",
-    purchase_price: "",
-    gst_tax_rate: "",
-    measuring_unit: "PCS",
-    opening_stock: "",
+    item_code: null,
+ 
+    sales_price: 0,
+    gst_tax_rate: 0,
+ 
+    purchase_price: 0,
+    opening_stock: 0,
+ 
+    hsn_code: null,
+    description: null,
+ 
     show_in_online_store: false,
     tax_type: "with_tax",
-    hsn_code: "",
-    alternative_unit: "",
-    low_stock_warning: false,
-    low_stock_quantity: 0,
-    description: "",
-    as_of_date: new Date().toISOString().split("T")[0],
 };
-
+ 
+ 
 // Validation schema
 const saveItemSchema = Yup.object().shape({
     item_name: Yup.string()
@@ -89,7 +90,7 @@ const saveItemSchema = Yup.object().shape({
     opening_stock: Yup.number().typeError("Opening stock must be a number"),
     low_stock_quantity: Yup.number().typeError("Low stock quantity must be a number"),
 });
-
+ 
 export default function CreateItemModal({
     open,
     onOpenChange,
@@ -97,46 +98,47 @@ export default function CreateItemModal({
     item,
 }: ICreateItemModalProps) {
     const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState<ICategory[]>([
-        { id: 1, name: "SmartPhone" },
-        { id: 2, name: "Snacks" },
-    ]);
+    const [categories, setCategories] = useState<ICategory[]>([]);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState("");
-    const [activeSection, setActiveSection] = useState("basic"); // State to track active section
-console.log("Editing item======>item:", item);
+    const [activeSection, setActiveSection] = useState("basic");
+ 
     // Formik setup
     const formik = useFormik({
         initialValues,
         validationSchema: saveItemSchema,
         onSubmit: async (values, { setStatus, setSubmitting }) => {
             setLoading(true);
+            const isService = values.item_type_id === 2;
 
-            try {
-                const payload: Omit<IItem, 'item_id' | 'item_code'> = {
-                    item_name: values.item_name || '',
-                    item_type_id: values.item_type_id || 1,
-                    category_id: values.category_id || 1,
-                    sales_price: values.sales_price ? Number(values.sales_price) : 0,
-                    purchase_price: values.purchase_price ? Number(values.purchase_price) : 0,
-                    gst_tax_rate: values.gst_tax_rate ? Number(values.gst_tax_rate) : 0,
-                    measuring_unit: values.measuring_unit || 'PCS',
-                    opening_stock: values.opening_stock ? Number(values.opening_stock) : 0,
-                    show_in_online_store: values.show_in_online_store || false,
-                    hsn_code: values.hsn_code || '',
-                    alternative_unit: values.alternative_unit || '',
-                    low_stock_warning: values.low_stock_warning || false,
-                    low_stock_quantity: values.low_stock_quantity ? Number(values.low_stock_quantity) : 0,
-                    description: values.description || '',
-                    as_of_date: values.as_of_date || new Date().toISOString().split('T')[0],
-                    tax_type: values.tax_type || 'with_tax',
-                };
+            const postData: IItem = {
+                item_name: values.item_name,
+                item_type_id: values.item_type_id,
+                category_id: values.category_id,
 
-                let response;
-                
-                if (item?.item_id) {
-                    // EDITING an existing item
-                    response = await updateItem(item.item_id, payload);
+                sales_price: Number(values.sales_price),
+                gst_tax_rate: Number(values.gst_tax_rate),
+
+                measuring_unit_id: Number(values.measuring_unit_id),
+
+                purchase_price: isService ? null : Number(values.purchase_price),
+                opening_stock: isService ? null : Number(values.opening_stock),
+
+                item_code: values.item_code || null,
+                hsn_code: values.hsn_code || null,
+                description: values.description || null,
+
+                show_in_online_store: Boolean(values.show_in_online_store),
+                tax_type: values.tax_type || "with_tax",
+
+                ...(item?.id && { id: item.id }),
+            };
+
+            let response;
+            if (item?.id) {
+                // EDITING an existing item
+                try {
+                    response = await updateItem(item.id, postData);
                     if (response.success) {
                         toast.success("Item updated successfully");
                         onOpenChange();
@@ -145,64 +147,88 @@ console.log("Editing item======>item:", item);
                     } else {
                         throw new Error(response.error || "Failed to update item");
                     }
-                } else {
-                    // CREATING a new item
-                    response = await createItem(payload);
-                    if (response.success) {
-                        toast.success("Item created successfully");
+                }
+                catch (error: any) {
+                    console.error("Error", error.message);
+                } finally {
+                    setSubmitting(false);
+                    setLoading(false);
+                }
+            } else {
+                try {
+                    response = await createItem(postData);
+                    if (response) {
                         onSuccess();
                         onOpenChange();
-                        formik.resetForm();
                     } else {
-                        throw new Error(response.error || "Failed to create item");
+                        setStatus("Failed to save item. Please try again.");
                     }
+                } catch (error) {
+                    console.error('Error saving item:', error);
+                    const errorMessage = (error as any)?.response?.data?.message || "Failed to save item. Please try again.";
+                    setStatus(errorMessage);
+                } finally {
+                    setSubmitting(false);
+                    setLoading(false);
                 }
-            } catch (error) {
-                console.error('Error saving item:', error);
-                const errorMessage = (error as any)?.response?.data?.message || 
-                                  (error as Error)?.message || 
-                                  "Failed to save item. Please try again.";
-                setStatus(errorMessage);
-                toast.error(errorMessage);
-            } finally {
-                setSubmitting(false);
-                setLoading(false);
             }
         }
-
     });
-
+ 
     // Reset form when editing an item
     useEffect(() => {
         if (open && item) {
-            console.log("Resetting form for item:", item);    
             formik.resetForm({
                 values: {
                     item_type_id: item.item_type_id ?? 1,
-                    category_id: item.category_id ?? 1,
+                    category_id: item.category_id ?? "",
+                    measuring_unit_id: item.measuring_unit_id ?? 1,
+ 
                     item_name: item.item_name ?? "",
-                    sales_price: item.sales_price?.toString() ?? "",
-                    purchase_price: item.purchase_price?.toString() ?? "",
-                    gst_tax_rate: item.gst_tax_rate?.toString() ?? "",
-                    measuring_unit: item.measuring_unit ?? "PCS",
-                    opening_stock: item.opening_stock?.toString() ?? "",
+                    item_code: item.item_code ?? null,
+ 
+                    sales_price: item.sales_price ?? 0,
+                    gst_tax_rate: item.gst_tax_rate ?? 0,
+ 
+                    purchase_price:
+                        item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
+ 
+                    opening_stock:
+                        item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
+ 
+                    hsn_code: item.hsn_code ?? null,
+                    description: item.description ?? null,
+ 
                     show_in_online_store: item.show_in_online_store ?? false,
                     tax_type: item.tax_type ?? "with_tax",
-                    item_code: item.item_code || "",
-                    hsn_code: item.hsn_code || "",
-                    alternative_unit: item.alternative_unit || "",
-                    low_stock_warning: item.low_stock_warning || false,
-                    low_stock_quantity: item.low_stock_quantity || 0,
-                    description: item.description || "",
-                    as_of_date: item.as_of_date || new Date().toISOString().split("T")[0],
-                     
                 },
             });
         } else if (open && !item) {
             formik.resetForm();
         }
     }, [open, item]);
-
+ 
+ 
+    // Load categories
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const data = await getItemCategories();
+                setCategories(data);
+            } catch (error) {
+                console.error("Failed to load categories", error);
+            }
+        };
+        if (open) loadCategories();
+    }, [open]);
+ 
+    // Handle section change
+    const handleSectionChange = (section: string) => {
+        if (section === "stock" && formik.values.item_type_id === 2) return;
+        if (section === "price" && formik.values.item_type_id === 2) return;
+        setActiveSection(section);
+    };
+ 
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,8 +238,7 @@ console.log("Editing item======>item:", item);
                             {item ? "Edit Item" : "Create New Item"}
                         </DialogTitle>
                     </DialogHeader>
-
-                    {/* Scrollable Content */}
+ 
                     <DialogBody className="overflow-y-auto max-h-[70vh] flex-1">
                         <div className="flex h-full">
                             {/* Left Sidebar */}
@@ -223,42 +248,31 @@ console.log("Editing item======>item:", item);
                                         "p-2 rounded mb-4 cursor-pointer",
                                         activeSection === "basic" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
                                     )}
-                                    onClick={() => setActiveSection("basic")}
+                                    onClick={() => handleSectionChange("basic")}
                                 >
                                     <button>Basic Details <span className="text-red-500">*</span></button>
                                 </div>
-                                <h2 className="text-sm font-bold text-black-500 mb-2">  Advance Details</h2>
+                                <h2 className="text-sm font-bold text-black-500 mb-2">Advance Details</h2>
                                 <div
                                     className={clsx(
-                                        "p-2 mb-2 rounded cursor-pointer",
-                                        activeSection === "stock" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
+                                        "p-2 rounded mb-2 cursor-pointer",
+                                        activeSection === "other" ? "bg-purple-100 text-purple-800" : "text-gray-500"
                                     )}
-                                    onClick={() => setActiveSection("stock")}
+                                    onClick={() => handleSectionChange(formik.values.item_type_id === 2 ? "other" : "stock")}
                                 >
-                                    <button>Stock Details</button>
+                                    {formik.values.item_type_id === 2 ? "Other Details" : "Stock Details"}
                                 </div>
                                 <div
                                     className={clsx(
                                         "p-2 mb-2 rounded cursor-pointer",
                                         activeSection === "price" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
                                     )}
-                                    onClick={() => setActiveSection("price")}
+                                    onClick={() => handleSectionChange(formik.values.item_type_id === 2 ? "" : "price")}
                                 >
-                                    <button>Price Details</button>
+                                    {formik.values.item_type_id === 2 ? "" : "Price Details"}
                                 </div>
-                                {/* <div className="text-gray-500 p-2">Custom Fields</div> */}
-                                <div
-                                    className={clsx(
-                                        "p-2 mb-2 rounded cursor-pointer",
-                                        activeSection === "custom_fields" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
-                                    )}
-                                    onClick={() => setActiveSection("custom_fields")}
-                                >
-                                    <button>Custom Fields</button>
-                                </div>
-
                             </div>
-
+ 
                             {/* Right Form Section */}
                             <div className="flex-1 p-6 overflow-y-auto">
                                 <form id="item-form" onSubmit={formik.handleSubmit} className="space-y-4">
@@ -267,13 +281,13 @@ console.log("Editing item======>item:", item);
                                             {formik.status}
                                         </Alert>
                                     )}
-
+ 
                                     {/* Basic Details Section */}
                                     {activeSection === "basic" && (
                                         <>
                                             {/* Item Type */}
                                             <div className="flex items-center gap-6 mb-4">
-                                                <label className="font-medium">Item Type *</label>
+                                                <label className="font-medium">Item Type<span className="text-red-500">*</span></label>
                                                 <div className="flex gap-4">
                                                     <label className="flex items-center gap-1">
                                                         <input
@@ -293,21 +307,26 @@ console.log("Editing item======>item:", item);
                                                     </label>
                                                 </div>
                                             </div>
-
-                                            {/* Item Name and Category */}
+ 
+                                            {/* Item Name or Service Name and Category */}
                                             <div className="flex gap-4 mb-4">
                                                 <div className="flex-1">
-                                                    <label className="block text-sm font-medium mb-1">Item Name *</label>
+                                                    <label className="block text-sm font-medium mb-1">
+                                                        {formik.values.item_type_id === 2 ? "Service Name *" : "Item Name *"}
+                                                    </label>
                                                     <input
                                                         type="text"
-                                                        placeholder="ex: Maggie 20gm"
-                                                        className={clsx("w-full p-2 border rounded", {
-                                                            "border-red-500": formik.touched.item_name && formik.errors.item_name,
-                                                        })}
+                                                        placeholder={formik.values.item_type_id === 2 ? "ex: Mobile service" : "ex: Maggie 20gm"}
+                                                        className={clsx(
+                                                            "w-full p-2 border rounded",
+                                                            { "border-red-500": formik.touched.item_name && formik.errors.item_name }
+                                                        )}
                                                         {...formik.getFieldProps("item_name")}
                                                     />
                                                     {formik.touched.item_name && formik.errors.item_name && (
-                                                        <div className="text-red-500 text-xs mt-1">{formik.errors.item_name}</div>
+                                                        <div className="text-red-500 text-xs mt-1">
+                                                            {formik.errors.item_name}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
@@ -320,12 +339,12 @@ console.log("Editing item======>item:", item);
                                                                 setShowCategoryModal(true);
                                                                 return;
                                                             }
-                                                            formik.setFieldValue("category_id", Number(e.target.value));
+                                                            formik.setFieldValue("category_id", e.target.value);
                                                         }}
                                                     >
                                                         <option value="">Select Category</option>
                                                         {categories.map((cat) => (
-                                                            <option key={cat.id} value={cat.id}>
+                                                            <option key={cat.uuid} value={cat.uuid}>
                                                                 {cat.name}
                                                             </option>
                                                         ))}
@@ -333,38 +352,30 @@ console.log("Editing item======>item:", item);
                                                     </select>
                                                 </div>
                                             </div>
-
+ 
                                             {/* Show Item in Online Store */}
                                             <div className="flex items-center gap-2 mb-4">
                                                 <label className="font-medium">Show Item in Online Store</label>
                                                 <input
                                                     type="checkbox"
-                                                    checked={formik.values.show_in_online_store}
-                                                    onChange={() => formik.setFieldValue("show_in_online_store", !formik.values.show_in_online_store)}
+                                                    {...formik.getFieldProps("show_in_online_store")}
                                                 />
-
                                             </div>
-
+ 
                                             {/* Sales Price and GST Tax Rate */}
                                             <div className="flex gap-4 mb-4">
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">Sales Price</label>
                                                     <div className="flex">
+                                                        <span className="p-2 border rounded-l bg-gray-100">₹</span>
                                                         <input
                                                             type="number"
                                                             placeholder="ex: ₹200"
-                                                            className={clsx("flex-1 p-2 border rounded-l", {
+                                                            className={clsx("flex-1 p-2 border rounded-r", {
                                                                 "border-red-500": formik.touched.sales_price && formik.errors.sales_price,
                                                             })}
                                                             {...formik.getFieldProps("sales_price")}
                                                         />
-                                                        <select
-                                                            className="border-0 px-3 bg-white focus:outline-none rounded-r"
-                                                            {...formik.getFieldProps("tax_type")}
-                                                        >
-                                                            <option value="with_tax">With Tax</option>
-                                                            <option value="without_tax">Without Tax</option>
-                                                        </select>
                                                     </div>
                                                     {formik.touched.sales_price && formik.errors.sales_price && (
                                                         <div className="text-red-500 text-xs mt-1">{formik.errors.sales_price}</div>
@@ -384,8 +395,8 @@ console.log("Editing item======>item:", item);
                                                     </select>
                                                 </div>
                                             </div>
-
-                                            {/* Measuring Unit and Opening Stock */}
+ 
+                                            {/* Measuring Unit and Opening Stock or Service Code */}
                                             <div className="flex gap-4">
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">Measuring Unit</label>
@@ -399,34 +410,51 @@ console.log("Editing item======>item:", item);
                                                     </select>
                                                 </div>
                                                 <div className="flex-1">
-                                                    <label className="block text-sm font-medium mb-1">Opening Stock</label>
-                                                    <div className="flex">
+                                                    <label className="block text-sm font-medium mb-1">
+                                                        {formik.values.item_type_id === 2 ? "Service Code" : "Opening Stock"}
+                                                    </label>
+                                                    {formik.values.item_type_id === 2 ? (
                                                         <input
-                                                            type="number"
-                                                            placeholder="ex: 150 PCS"
-                                                            className="flex-1 p-2 border rounded-l"
-                                                            {...formik.getFieldProps("opening_stock")}
+                                                            type="text"
+                                                            placeholder="Enter Service Code"
+                                                            className="w-full p-2 border rounded"
+                                                            {...formik.getFieldProps("service_code")}
                                                         />
-                                                        <span className="p-2 border rounded-r bg-gray-100">
-                                                            {formik.values.measuring_unit}
-                                                        </span>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="flex">
+                                                            <input
+                                                                type="number"
+                                                                placeholder="ex: 150 PCS"
+                                                                className="flex-1 p-2 border rounded-l"
+                                                                {...formik.getFieldProps("opening_stock")}
+                                                            />
+                                                            <span className="p-2 border rounded-r bg-gray-100">
+                                                                {formik.values.measuring_unit_id === 1
+                                                                    ? "PCS"
+                                                                    : formik.values.measuring_unit_id === 2
+                                                                        ? "KG"
+                                                                        : formik.values.measuring_unit_id === 3
+                                                                            ? "L"
+                                                                            : ""}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </>
                                     )}
-
+ 
                                     {/* Stock Details Section */}
                                     {activeSection === "stock" && <StockDetails formik={formik} />}
                                     {/* Pricing Details Section */}
                                     {activeSection === "price" && <PricingDetails formik={formik} />}
-                                    {/* Custom Details Section */}
-                                    {activeSection === "custom_fields" && <CustomFields formik={formik} />}
+                                    {/* Other Details Section */}
+                                    {activeSection === "other" && <OtherDetails formik={formik} />}
                                 </form>
                             </div>
                         </div>
                     </DialogBody>
-
+ 
                     {/* Fixed Footer */}
                     <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-4">
                         <button
@@ -442,13 +470,12 @@ console.log("Editing item======>item:", item);
                             disabled={loading || formik.isSubmitting}
                             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {loading || formik.isSubmitting ? "Saving..." : (item ? "Update" : "Save")}
+                            {loading ? "Saving..." : "Save"}
                         </button>
                     </div>
                 </DialogContent>
             </Dialog>
-
-
+ 
             {/* CREATE CATEGORY MODAL */}
             <Dialog open={showCategoryModal} onOpenChange={() => setShowCategoryModal(false)}>
                 <DialogContent className="max-w-md">
@@ -472,12 +499,17 @@ console.log("Editing item======>item:", item);
                             <button
                                 className="px-4 py-2 bg-blue-600 text-white rounded"
                                 disabled={!newCategory}
-                                onClick={() => {
-                                    const cat = { id: Date.now(), name: newCategory };
-                                    setCategories((prev) => [...prev, cat]);
-                                    formik.setFieldValue("category_id", cat.id);
-                                    setNewCategory("");
-                                    setShowCategoryModal(false);
+                                onClick={async () => {
+                                    try {
+                                        await createItemCategory(newCategory);
+                                        const updatedCategories = await getItemCategories();
+                                        setCategories(updatedCategories);
+                                        formik.setFieldValue("category_id", updatedCategories.find((c: ICategory) => c.name === newCategory)?.uuid || "");
+                                        setNewCategory("");
+                                        setShowCategoryModal(false);
+                                    } catch (error) {
+                                        console.error("Failed to create category", error);
+                                    }
                                 }}
                             >
                                 Add
@@ -489,3 +521,5 @@ console.log("Editing item======>item:", item);
         </>
     );
 }
+ 
+ 

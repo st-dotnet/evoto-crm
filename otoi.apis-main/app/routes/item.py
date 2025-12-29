@@ -186,9 +186,11 @@ def create_item():
 
     # Ensure category exists
     category_id = data.get("category_id")
+    print("-----------------------------Processing category_id:", category_id)
     category = None
     if category_id is not None:
         category = ItemCategory.query.get(category_id)
+        print("---------------------------Fetched category:", category.uuid if category else None)
         if not category:
             category = ItemCategory(id=category_id, name=str(category_id))
             set_created_fields(category)
@@ -196,6 +198,7 @@ def create_item():
             db.session.flush()
     if not category:
         return jsonify({"message": "Invalid category_id"}), 400
+    print("-------------------------------Using category:", category.uuid if category else None)
 
     # Ensure measuring unit exists
     measuring_unit = None
@@ -215,6 +218,17 @@ def create_item():
 
     if not measuring_unit:
         return jsonify({"message": "Invalid measuring_unit or measuring_unit_id"}), 400
+    
+    item_type_id = data["item_type_id"]
+
+    # Handle Product vs Service safely
+    if item_type_id == 2:  # Service
+        purchase_price = None
+        opening_stock = None
+    else:  # Product
+        purchase_price = data.get("purchase_price")
+        opening_stock = data.get("opening_stock")
+
 
     # Generate unique item code
     def generate_item_code():
@@ -234,16 +248,20 @@ def create_item():
 
     # Create item
     item = Item(
-        item_type_id=data["item_type_id"],
-        category_id=category.id,
+        item_type_id=item_type_id,
+        category_id=category.uuid,
         measuring_unit_id=measuring_unit.id,
+
         item_name=data["item_name"],
         sales_price=data["sales_price"],
-        purchase_price=data.get("purchase_price", 0),
-        gst_tax_rate=data.get("gst_tax_rate", 0),
-        opening_stock=data.get("opening_stock", 0),
-        item_code=item_code,  # Using generated code
-        description=data.get("description", ""),
+        gst_tax_rate=data.get("gst_tax_rate"),
+
+        purchase_price=purchase_price,
+        opening_stock=opening_stock,
+
+        item_code=data.get("item_code") or None,
+        hsn_code=data.get("hsn_code") or None,
+        description=data.get("description") or None,    # Default to empty string if not provided
     )
     
     set_created_fields(item)

@@ -2,7 +2,7 @@ import React from "react";
 import { useFormik } from "formik";
 
 interface IPricingDetailsProps {
-    formik: ReturnType<typeof useFormik>;
+    formik: any;
 }
 
 export default function PricingDetails({ formik }: IPricingDetailsProps) {
@@ -75,7 +75,7 @@ export default function PricingDetails({ formik }: IPricingDetailsProps) {
             </div>
 
             {/* GST Tax Rate */}
-            <div className="space-y-1" style={{display:'inline-block'}} >
+            <div className="space-y-1" style={{ display: 'inline-block' }} >
                 <label className="text-sm font-medium">GST Tax Rate (%)</label>
                 <select
                     className="w-full max-w-sm px-3 py-2 text-sm border rounded-md focus:outline-none"
