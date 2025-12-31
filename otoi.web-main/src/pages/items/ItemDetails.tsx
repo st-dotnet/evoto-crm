@@ -129,21 +129,25 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
           </div>
         </div>
 
-        {item.low_stock_warning && (
+        {item.low_stock_warning && item.item_type?.item_type_name !== "Service" && (
           <span className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full">Low Stock</span>
         )}
       </div>
 
-      <div className="bg-white border rounded-lg shadow-sm p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className={`bg-white border rounded-lg shadow-sm p-6 grid grid-cols-1 ${item.item_type?.item_type_name === "Service" ? "md:grid-cols-3" : "md:grid-cols-4"} gap-6`}>
         {/* Column 1 - Basic */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FiInfo /> Basic
+            <FiInfo /> General Details
           </h4>
           <Info label="Category" value={item.category?.category_name} />
           <Info label="Measuring Unit" value={item.measuring_unit} />
-          <Info label="HSN Code" value={item.hsn_code} />
-          <Info label="Online Store" value={item.show_in_online_store ? "Yes" : "No"} />
+          {item.item_type?.item_type_name !== "Service" && (
+            <Info label="HSN Code" value={item.hsn_code} />
+          )}
+          {/* {item.item_type?.item_type_name !== "Service" && (
+            <Info label="Online Store" value={item.show_in_online_store ? "Yes" : "No"} />
+          )} */}
         </div>
 
         {/* Column 2 - Pricing */}
@@ -152,32 +156,42 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
             <FiDollarSign /> Pricing
           </h4>
           <Info label="Sales Price" value={`₹ ${item.sales_price ?? "—"}`} />
-          <Info label="Purchase Price" value={`₹ ${item.purchase_price ?? "—"}`} />
+          {/* {item.item_type?.item_type_name === "Service" && (
+            <Info label="SAC Code" value={item.hsn_code} />
+          )} */}
+          {item.item_type?.item_type_name !== "Service" && (
+            <Info label="Purchase Price" value={`₹ ${item.purchase_price ?? "—"}`} />
+          )}
           <Info label="GST Rate" value={item.gst_tax_rate ? `${item.gst_tax_rate}%` : "—"} />
         </div>
 
-        {/* Column 3 - Stock */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FiBox /> Stock
-          </h4>
-          <Info label="Opening Stock" value={`${item.opening_stock ?? "—"} ${item.measuring_unit || ""}`} />
-          <Info label="Low Stock Warning" value={item.low_stock_warning ? "Enabled" : "Disabled"} />
-          {item.low_stock_warning && (
-            <Info label="Low Stock Qty" value={`${item.low_stock_quantity ?? "—"} ${item.measuring_unit || ""}`} />
-          )}
-          <Info label="As of Date" value={item.as_of_date} />
-        </div>
+        {/* Column 3 - Stock (only for products) */}
+        {item.item_type?.item_type_name !== "Service" && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <FiBox /> Stock
+            </h4>
+            <Info label="Opening Stock" value={`${item.opening_stock ?? "—"} ${item.measuring_unit || ""}`} />
+            <Info label="Low Stock Warning" value={item.low_stock_warning ? "Enabled" : "Disabled"} />
+            {item.low_stock_warning && (
+              <Info label="Low Stock Qty" value={`${item.low_stock_quantity ?? "—"} ${item.measuring_unit || ""}`} />
+            )}
+            {/* <Info label="As of Date" value={item.as_of_date} /> */}
+          </div>
+        )}
 
         {/* Column 4 - Description */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <FiInfo /> Notes
           </h4>
-          <Info label="Alternative Unit" value={item.alternative_unit} />
-          <div className="text-sm text-gray-700">{item.description || "No description"}</div>
+          <Info label="Description" value={item.description} />
+          {item.item_type?.item_type_name !== "Service" && (
+            <Info label="Alternative Unit" value={item.alternative_unit} />
+          )}
         </div>
       </div>
     </div>
   );
+
 }

@@ -1,4 +1,5 @@
 import random
+from sys import prefix
 import time
 from click import UUID
 from flask import Blueprint, request, jsonify
@@ -100,6 +101,7 @@ def get_items():
                 "opening_stock": float(item.opening_stock or 0),
 
                 "item_code": item.item_code or "",
+                "hsn_code": item.hsn_code or "",
                 "description": item.description or "",
 
                 "measuring_unit": measuring_unit.name if measuring_unit else None,
@@ -119,7 +121,7 @@ def get_items():
 @item_blueprint.route("/", methods=["POST"])
 def create_item():
     """
-    Create a new item with auto-generated item code.
+    Create a new item with user-defined item code.
     ---
     tags:
       - Items
@@ -133,6 +135,9 @@ def create_item():
               item_name:
                 type: string
                 description: Name of the item
+              item_code:
+                type: string
+                description: User-defined item code
               item_type_id:
                 type: integer
               category_id:
@@ -148,38 +153,40 @@ def create_item():
                 type: string
               measuring_unit_id:
                 type: integer
+              sac_code:
+                type: string
+              hsn_code:
+                type: string
     responses:
       201:
         description: Item created successfully.
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                message:
-                  type: string
-                item:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    item_name:
-                      type: string
-                    item_code:
-                      type: string
-                    description:
-                      type: string
     """
     data = request.json or {}
     print(f"Received create item request with data: {data}")
-
+ 
+    # Validate required fields
+    item_name = data.get("item_name", "").strip()
+    item_code = data.get("item_code", "").strip()
+ 
+    if not item_name:
+        return jsonify({"message": "Item Name is required"}), 400
+    if not item_code:
+        return jsonify({"message": "Item Code is required"}), 400
+ 
     # Check for duplicate name
-    if Item.query.filter_by(item_name=data.get('item_name'), is_deleted=False).first():
+    if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
         return jsonify({
             "message": "An item with this name already exists",
             "suggestion": "Please choose a different name"
         }), 400
-
+ 
+    # Check for duplicate item_code
+    if Item.query.filter_by(item_code=item_code).first():
+        return jsonify({
+            "message": "Item Code already exists",
+            "suggestion": "Please choose a different item code"
+        }), 400
+ 
     try:
         # Handle category
         category_id = data.get("category_id")
@@ -187,20 +194,17 @@ def create_item():
         if category_id:
             try:
                 category_uuid = UUID(category_id)
-                # category = ItemCategory.query.filter_by(uuid=category_uuid).first()
                 category = ItemCategory.query.filter(ItemCategory.uuid == category_uuid).first()
-
-            except (ValueError):
+            except ValueError:
                 return jsonify({"message": "Invalid category_id format"}), 400
         if not category:
-            return jsonify({"message": "Invalid category_id"}), 400               
-
-
+            return jsonify({"message": "Invalid category_id"}), 400
+ 
         # Handle measuring unit
         measuring_unit = None
         if 'measuring_unit_id' in data and data['measuring_unit_id']:
             measuring_unit = MeasuringUnit.query.get(data['measuring_unit_id'])
-        
+ 
         if not measuring_unit and 'measuring_unit' in data:
             raw_unit = str(data.get('measuring_unit', '')).strip().upper()
             if raw_unit:
@@ -211,70 +215,58 @@ def create_item():
                 }
                 unit_name = UNIT_ALIASES.get(raw_unit, raw_unit)
                 measuring_unit = MeasuringUnit.query.filter_by(name=unit_name).first()
-        
+ 
         if not measuring_unit:
             measuring_unit = MeasuringUnit.query.filter_by(name="PCS").first()
-
+ 
         if not measuring_unit:
             return jsonify({
                 "message": "No valid measuring unit provided",
                 "suggestion": "Please provide a valid measuring_unit_id or measuring_unit"
             }), 400
-
+ 
         # Handle Product vs Service
         item_type_id = data.get('item_type_id', 1)  # Default to Product
+        item_type = "Service" if item_type_id == 2 else "Product"
+ 
         if item_type_id == 2:  # Service
             purchase_price = None
             opening_stock = None
-        else:
+        else:  # Product
             purchase_price = data.get('purchase_price')
             opening_stock = data.get('opening_stock')
-
-        # Generate unique item code
-        def generate_item_code():
-            prefix = "ITM"
-            timestamp = int(time.time() * 1000) % 1000000
-            random_suffix = ''.join(random.choices('0123456789', k=4))
-            return f"{prefix}{timestamp}{random_suffix}"
-
-        # Ensure item code is unique
-        max_attempts = 5
-        for _ in range(max_attempts):
-            item_code = generate_item_code()
-            if not Item.query.filter_by(item_code=item_code).first():
-                break
-        else:
-            return jsonify({"message": "Failed to generate unique item code"}), 500
-
-        # Create item
+ 
+        # Create item with user-defined item_code
         item = Item(
             item_type_id=item_type_id,
             category_id=category.uuid if category else None,
             measuring_unit_id=measuring_unit.id,
-            item_name=data["item_name"],
+            item_name=item_name,
             sales_price=data.get("sales_price", 0),
             gst_tax_rate=data.get("gst_tax_rate", 0),
             purchase_price=purchase_price,
             opening_stock=opening_stock,
-            item_code=item_code,
-            hsn_code=data.get("hsn_code") or None,
+            item_code=item_code,  # <-- user-defined
+            hsn_code=data.get("hsn_code") if item_type == "Product" else None,
+            # sac_code=data.get("sac_code") if item_type == "Service" else None,
             description=data.get("description") or ""
         )
-        
+ 
         set_created_fields(item)
         db.session.add(item)
         db.session.commit()
-        
+ 
         return jsonify({
             "message": "Item created successfully",
             "item": {
                 "id": item.id,
                 "item_name": item.item_name,
                 "item_code": item.item_code,
+                "hsn_code": item.hsn_code or "",
                 "description": item.description or ""
             }
         }), 201
-
+ 
     except IntegrityError as e:
         db.session.rollback()
         return jsonify({
@@ -413,6 +405,7 @@ def get_item(id):
             "id": item.id,
             "item_name": item.item_name or "",
             "item_type": item.item_type.name if item.item_type else None,
+            "hsn_code": item.hsn_code or "",
             "item_type_id": item.item_type_id,
             "category": item.category.name if item.category else None,
             "category_id": str(item.category_id) if item.category_id else None,
@@ -442,7 +435,6 @@ def get_item(id):
 @item_blueprint.route("/<int:id>", methods=["PUT"])
 def update_item(id):
     try:
-        # 1️⃣ Basic validation
         if not isinstance(id, int) or id <= 0:
             return jsonify({"error": "Invalid item ID"}), 400
 
@@ -450,19 +442,16 @@ def update_item(id):
         if not data:
             return jsonify({"error": "No data provided for update"}), 400
 
-        # Never allow item_code to be updated
-        data.pop("item_code", None)
+        # data.pop("item_code", None)
 
         print(f"Updating item {id} with data: {data}")
 
-        # 2️⃣ Fetch item with lock
         item = db.session.query(Item).with_for_update().get(id)
         if not item or item.is_deleted:
             return jsonify({"error": "Item not found or has been deleted"}), 404
 
         errors = {}
 
-        # 3️⃣ Validate item name (duplicate check)
         if "item_name" in data:
             new_name = data["item_name"].strip()
             if not new_name:
@@ -478,7 +467,6 @@ def update_item(id):
                         "An item with this name already exists"
                     )
 
-        # 4️⃣ Validate category (UUID FIX ✅)
         if "category_id" in data:
             if not data["category_id"]:
                 item.category_id = None
@@ -491,7 +479,6 @@ def update_item(id):
                 else:
                     item.category_id = category.uuid
 
-        # 5️⃣ Validate measuring unit
         if "measuring_unit_id" in data:
             if not data["measuring_unit_id"]:
                 errors.setdefault("measuring_unit_id", []).append(
@@ -506,7 +493,6 @@ def update_item(id):
                 else:
                     item.measuring_unit_id = measuring_unit.id
 
-        # 6️⃣ Validate numeric fields
         numeric_fields = {
             "sales_price": (0, None),
             "purchase_price": (0, None),
@@ -525,14 +511,12 @@ def update_item(id):
                 except (ValueError, TypeError):
                     errors.setdefault(field, []).append("Must be a valid number")
 
-        # 7️⃣ Return validation errors
         if errors:
             return jsonify({
                 "error": "Validation error",
                 "details": errors
             }), 400
 
-        # 8️⃣ Update allowed fields only
         update_fields = [
             "item_name",
             "item_type_id",
@@ -548,12 +532,10 @@ def update_item(id):
             if field in data:
                 setattr(item, field, data[field])
 
-        # 9️⃣ Service vs Product logic
         if data.get("item_type_id") == 2:  # Service
             item.purchase_price = None
             item.opening_stock = None
 
-        # 🔟 Update timestamps
         set_updated_fields(item)
 
         db.session.commit()
