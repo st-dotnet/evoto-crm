@@ -231,7 +231,6 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
                 className="w-full p-2 border rounded"
                 {...formik.getFieldProps("secondary_unit")}
               >
-                <option value="">Select Unit</option>
                 <option value="PCS">PCS</option>
                 <option value="BOX">Box</option>
                 <option value="PACK">Pack</option>
@@ -248,8 +247,8 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
                   {...formik.getFieldProps("conversion_rate")}
                 />
                 <select
-                  className="w-24 p-2 border rounded"
-                  {...formik.getFieldProps("conversion_unit")}
+                  className="w-24 p-2 border rounded bg-gray-100 cursor-not-allowed appearance-none"
+                  {...formik.getFieldProps("conversion_unit") } disabled
                 >
                   <option value="PCS">PCS</option>
                   <option value="BOX">BOX</option>
