@@ -281,7 +281,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               <span className="text-2sm text-gray-700 font-normal">
                 {info.row.original.item_code}
               </span>
-              
+
             </div>
           </div>
         ),

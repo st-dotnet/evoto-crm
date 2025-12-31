@@ -75,22 +75,22 @@ const initialValues: IItem = {
 // Validation schema
 const saveItemSchema = Yup.object().shape({
     item_type_id: Yup.number().required(),
- 
+
     item_name: Yup.string()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Item name is required"),
 
     category_id: Yup.string().required("Category is required"),
- 
+
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
         .required("Sales price is required"),
- 
+
     gst_tax_rate: Yup.number()
         .nullable()
         .typeError("GST tax rate must be a number"),
- 
+
     opening_stock: Yup.number().when("item_type_id", {
         is: 1,
         then: (schema) =>
@@ -99,7 +99,7 @@ const saveItemSchema = Yup.object().shape({
                 .required("Opening stock is required"),
         otherwise: (schema) => schema.nullable().notRequired(),
     }),
- 
+
     purchase_price: Yup.number().when("item_type_id", {
         is: 1,
         then: (schema) =>
@@ -190,6 +190,52 @@ export default function CreateItemModal({
         }
     });
 
+    useEffect(() => {
+        if (formik.values.item_type_id === 2) { // Service
+            formik.resetForm({
+                values: {
+                    item_type_id: 2,
+                    item_name: "",
+                    category_id: null,
+                    sales_price: 0,
+                    gst_tax_rate: 0,
+                    measuring_unit_id: 1,
+                    item_code: "", // Reset to empty string for service code
+                    description: null,
+                    show_in_online_store: false,
+                    tax_type: "with_tax",
+                    purchase_price: null, // Not applicable for services
+                    opening_stock: null, // Not applicable for services
+                    hsn_code: null, // Not applicable for services
+                },
+            });
+        } else { // Product
+            formik.resetForm({
+                values: {
+                    item_type_id: 1,
+                    item_name: "",
+                    category_id: null,
+                    sales_price: 0,
+                    gst_tax_rate: 0,
+                    measuring_unit_id: 1,
+                    item_code: null, // Not applicable for products
+                    purchase_price: 0,
+                    opening_stock: 0,
+                    hsn_code: null,
+                    description: null,
+                    show_in_online_store: false,
+                    tax_type: "with_tax",
+                },
+            });
+        }
+    }, [formik.values.item_type_id]);
+
+
+
+
+
+
+
     // Update the useEffect hook to reset the active section and form values
     useEffect(() => {
         if (open) {
@@ -202,12 +248,12 @@ export default function CreateItemModal({
                         category_id: item.category_id || null,
                         measuring_unit_id: item.measuring_unit_id ?? 1,
                         item_name: item.item_name ?? "",
-                        item_code: item.item_code ?? "",
+                        item_code: item.item_type_id === 2 ? item.item_code ?? "" : null,
                         sales_price: item.sales_price ?? 0,
                         gst_tax_rate: item.gst_tax_rate ?? 0,
                         purchase_price: item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
                         opening_stock: item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
-                        hsn_code: item.hsn_code ?? null,
+                        hsn_code: item.item_type_id === 1 ? item.hsn_code ?? null : null,
                         description: item.description ?? null,
                         show_in_online_store: item.show_in_online_store ?? false,
                         tax_type: item.tax_type ?? "with_tax",
@@ -216,19 +262,19 @@ export default function CreateItemModal({
             } else {
                 // Creating a new item
                 setIsEditing(false);
-                setActiveSection("basic"); // Reset to basic details
+                setActiveSection("basic");
                 formik.resetForm({
                     values: {
-                        item_type_id: 1,
+                        item_type_id: 1, // Default to Product
                         category_id: null,
                         measuring_unit_id: 1,
                         item_name: "",
-                        item_code: "",
+                        item_code: null, // Reset for products
                         sales_price: 0,
                         gst_tax_rate: 0,
-                        purchase_price: 0,
-                        opening_stock: 0,
-                        hsn_code: null,
+                        purchase_price: 0, // Only for products
+                        opening_stock: 0, // Only for products
+                        hsn_code: null, // Only for products
                         description: null,
                         show_in_online_store: false,
                         tax_type: "with_tax",
@@ -236,10 +282,10 @@ export default function CreateItemModal({
                 });
             }
         } else {
-            // Reset active section when modal is closed
             setActiveSection("basic");
         }
     }, [open, item]);
+
 
     // Handle section change
     const handleSectionChange = (section: string) => {
@@ -349,6 +395,7 @@ export default function CreateItemModal({
                                                             type="radio"
                                                             checked={formik.values.item_type_id === 1}
                                                             onChange={() => formik.setFieldValue("item_type_id", 1)}
+                                                            disabled={isEditing} // Disable during edit mode
                                                         />
                                                         Product
                                                     </label>
@@ -357,11 +404,13 @@ export default function CreateItemModal({
                                                             type="radio"
                                                             checked={formik.values.item_type_id === 2}
                                                             onChange={() => formik.setFieldValue("item_type_id", 2)}
+                                                            disabled={isEditing} // Disable during edit mode
                                                         />
                                                         Service
                                                     </label>
                                                 </div>
                                             </div>
+
 
                                             {/* Item Name or Service Name and Category */}
                                             <div className="flex gap-4 mb-4">
@@ -498,7 +547,7 @@ export default function CreateItemModal({
                                                             type="text"
                                                             placeholder="Enter Service Code"
                                                             className="w-full p-2 border rounded"
-                                                            {...formik.getFieldProps("item_code")} // <-- changed from hsn_code to item_code
+                                                            {...formik.getFieldProps("item_code")}
                                                         />
                                                     ) : (
                                                         <div className="flex">
@@ -509,28 +558,19 @@ export default function CreateItemModal({
                                                                 {...formik.getFieldProps("opening_stock")}
                                                             />
                                                             <span className="p-2 border rounded-r bg-gray-100">
-                                                                {formik.values.measuring_unit_id === 1
-                                                                    ? "PCS"
-                                                                    : formik.values.measuring_unit_id === 2
-                                                                        ? "KG"
-                                                                        : formik.values.measuring_unit_id === 3
-                                                                            ? "LTR"
-                                                                            : "MTR"}
+                                                                {formik.values.measuring_unit_id === 1 ? "PCS" : "KG"}
                                                             </span>
                                                         </div>
                                                     )}
-
                                                 </div>
-
                                             </div>
                                         </>
                                     )}
                                     {/* Stock Details Section */}
-                                    {activeSection === "stock" && <StockDetails formik={formik} />}
-                                    {/* Pricing Details Section */}
-                                    {activeSection === "price" && <PricingDetails formik={formik} />}
-                                    {/* Other Details Section */}
-                                    {activeSection === "other" && <OtherDetails formik={formik} />}
+                                    {activeSection === "stock" && formik.values.item_type_id === 1 && <StockDetails formik={formik} />}
+                                    {activeSection === "price" && formik.values.item_type_id === 1 && <PricingDetails formik={formik} />}
+                                    {activeSection === "other" && formik.values.item_type_id === 2 && <OtherDetails formik={formik} />}
+
                                 </form>
                             </div>
                         </div>
@@ -614,3 +654,6 @@ export default function CreateItemModal({
         </>
     );
 }
+
+
+// When I am entering the item or editing the item from the action buttons the (Edit button) for products and services then the item data is getting fetched in both input fields.  ergerfg
