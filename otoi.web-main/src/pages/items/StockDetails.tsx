@@ -18,10 +18,12 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
     const itemName = formik.values.item_name;
     let itemCode = formik.values.item_code;
 
-    if (!formik.values.id && !itemCode) {
-      itemCode = Math.floor(1000000 + Math.random() * 900000000).toString();
-      formik.setFieldValue("item_code", itemCode);
+    // Use user-defined item_code
+    if (!itemCode) {
+      setBarcodeError("Please enter an Item Code to generate barcode");
+      return;
     }
+
 
     if (!itemCode) return;
 
@@ -55,6 +57,14 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
     }
   };
 
+  // For the alternative secondary unit
+
+  useEffect(() => {
+    if (formik.values.secondary_unit) {
+      formik.setFieldValue("conversion_unit", formik.values.secondary_unit);
+    }
+  }, [formik.values.secondary_unit]);
+
 
   const BarcodeModal = () => {
     const modalRef = useRef<HTMLDivElement>(null);
@@ -67,6 +77,8 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
         }
       };
 
+
+
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
@@ -76,66 +88,66 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div ref={modalRef} className="bg-white rounded-lg p-6 max-w-md w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Barcode Preview</h3>
-          <button
-            onClick={() => {
-              setIsBarcodeModalOpen(false);
-              setBarcodeError(null);
-            }}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="text-center">
-          <div className="mb-4">
-            <h4 className="font-medium text-lg">{formik.values.item_name || 'Item Name'}</h4>
-            <p className="text-gray-600">{formik.values.item_code || 'Item Code'}</p>
-          </div>
-
-          <div className="mb-6 min-h-[200px] flex items-center justify-center bg-gray-50 rounded border border-gray-200 p-4">
-            {barcodeError ? (
-              <div className="text-red-500">{barcodeError}</div>
-            ) : isLoadingBarcode ? (
-              <div className="text-gray-500">Generating barcode...</div>
-            ) : barcodeUrl ? (
-              <img
-                src={barcodeUrl}
-                alt="Item Barcode"
-                className="max-w-full h-auto"
-                onError={() => {
-                  console.error('Failed to load barcode image');
-                  setImgError(true);
-                }}
-              />
-            ) : (
-              <div className="text-gray-500">No barcode available</div>
-            )}
-            {imgError && (
-              <div className="text-red-500 mt-2">
-                Failed to load barcode image. Please try downloading it.
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Barcode Preview</h3>
             <button
-              onClick={() => handleGetBarcode(true)}
-              disabled={isLoadingBarcode}
-              className={`px-4 py-2 rounded transition-colors ${isLoadingBarcode
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+              onClick={() => {
+                setIsBarcodeModalOpen(false);
+                setBarcodeError(null);
+              }}
+              className="text-gray-500 hover:text-gray-700"
             >
-              {isLoadingBarcode ? 'Generating...' : 'Download Barcode'}
+              ✕
             </button>
+          </div>
+
+          <div className="text-center">
+            <div className="mb-4">
+              <h4 className="font-medium text-lg">{formik.values.item_name || 'Item Name'}</h4>
+              <p className="text-gray-600">{formik.values.item_code || 'Item Code'}</p>
+            </div>
+
+            <div className="mb-6 min-h-[200px] flex items-center justify-center bg-gray-50 rounded border border-gray-200 p-4">
+              {barcodeError ? (
+                <div className="text-red-500">{barcodeError}</div>
+              ) : isLoadingBarcode ? (
+                <div className="text-gray-500">Generating barcode...</div>
+              ) : barcodeUrl ? (
+                <img
+                  src={barcodeUrl}
+                  alt="Item Barcode"
+                  className="max-w-full h-auto"
+                  onError={() => {
+                    console.error('Failed to load barcode image');
+                    setImgError(true);
+                  }}
+                />
+              ) : (
+                <div className="text-gray-500">No barcode available</div>
+              )}
+              {imgError && (
+                <div className="text-red-500 mt-2">
+                  Failed to load barcode image. Please try downloading it.
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => handleGetBarcode(true)}
+                disabled={isLoadingBarcode}
+                className={`px-4 py-2 rounded transition-colors ${isLoadingBarcode
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+              >
+                {isLoadingBarcode ? 'Generating...' : 'Download Barcode'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
   };
 
   return (
@@ -146,13 +158,16 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
         {/* Item Code */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Item Code</label>
+          {barcodeError && <div className="text-red-500 text-sm">{barcodeError}</div>}
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="ex: ITM12549"
+              placeholder="ex: DECOX50P"
               className="flex-1 min-w-0 p-2 border rounded"
               {...formik.getFieldProps("item_code")}
+              required
             />
+
             <button
               type="button"
               onClick={() => handleGetBarcode()}
@@ -217,6 +232,7 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
                 {...formik.getFieldProps("secondary_unit")}
               >
                 <option value="">Select Unit</option>
+                <option value="PCS">PCS</option>
                 <option value="BOX">Box</option>
                 <option value="PACK">Pack</option>
               </select>
@@ -275,11 +291,14 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
-              id="low_stock_warning"
+              name="low_stock_warning"
               checked={formik.values.low_stock_warning}
-              onChange={formik.handleChange}
+              onChange={(e) =>
+                formik.setFieldValue("low_stock_warning", e.target.checked)
+              }
               className="h-4 w-4"
             />
+
             <label htmlFor="low_stock_warning" className="text-sm">
               Enable low stock quantity warning
             </label>
@@ -318,6 +337,8 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
           <textarea
             placeholder="Enter Description"
             className="w-full p-2 border rounded text-sm"
+            rows={3}
+            {...formik.getFieldProps("description")}
           />
         </div>
 

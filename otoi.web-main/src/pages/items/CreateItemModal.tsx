@@ -16,9 +16,9 @@ import OtherDetails from "./OtherDetails";
 interface IItem {
     id?: number;
 
-    item_type_id: number;          // 1 = Product, 2 = Service
-    category_id?: string | null;    // UUID string, optional and nullable
-    measuring_unit_id: 1 | 2 | 3 | 4;  // 1: PCS, 2: KG, 3: LTR, 4: MTR
+    item_type_id: number;
+    category_id?: string | null;
+    measuring_unit_id: 1 | 2 | 3 | 4;
 
     item_name: string;
     item_code?: string | null;
@@ -26,8 +26,8 @@ interface IItem {
     sales_price: number;
     gst_tax_rate: number;
 
-    purchase_price?: number | null;  // Product only
-    opening_stock?: number | null;   // Product only
+    purchase_price?: number | null;
+    opening_stock?: number | null;
 
     hsn_code?: string | null;
     description?: string | null;
@@ -52,9 +52,9 @@ interface ICreateItemModalProps {
 
 // Initial values for the form
 const initialValues: IItem = {
-    item_type_id: 1,              // Product by default
-    category_id: null,             // Initialize as null for UUID
-    measuring_unit_id: 1,         // Default to PCS (id: 1)
+    item_type_id: 1,
+    category_id: null,
+    measuring_unit_id: 1,
 
     item_name: "",
     item_code: null,
@@ -74,16 +74,40 @@ const initialValues: IItem = {
 
 // Validation schema
 const saveItemSchema = Yup.object().shape({
+    item_type_id: Yup.number().required(),
+ 
     item_name: Yup.string()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Item name is required"),
+
+    category_id: Yup.string().required("Category is required"),
+ 
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
         .required("Sales price is required"),
-    gst_tax_rate: Yup.number().typeError("GST tax rate must be a number"),
-    opening_stock: Yup.number().typeError("Opening stock must be a number"),
-    low_stock_quantity: Yup.number().typeError("Low stock quantity must be a number"),
+ 
+    gst_tax_rate: Yup.number()
+        .nullable()
+        .typeError("GST tax rate must be a number"),
+ 
+    opening_stock: Yup.number().when("item_type_id", {
+        is: 1,
+        then: (schema) =>
+            schema
+                .typeError("Opening stock must be a number")
+                .required("Opening stock is required"),
+        otherwise: (schema) => schema.nullable().notRequired(),
+    }),
+ 
+    purchase_price: Yup.number().when("item_type_id", {
+        is: 1,
+        then: (schema) =>
+            schema
+                .typeError("Purchase price must be a number")
+                .required("Purchase price is required"),
+        otherwise: (schema) => schema.nullable().notRequired(),
+    }),
 });
 
 export default function CreateItemModal({
@@ -114,7 +138,7 @@ export default function CreateItemModal({
             const isService = values.item_type_id === 2;
 
             try {
-                const postData: IItem = {
+                const postData: Partial<IItem> = {
                     item_name: values.item_name,
                     item_type_id: values.item_type_id,
                     category_id: values.category_id || null,  // Ensure we send null instead of empty string
@@ -123,8 +147,10 @@ export default function CreateItemModal({
                     measuring_unit_id: values.measuring_unit_id,
                     purchase_price: isService ? null : Number(values.purchase_price || 0),
                     opening_stock: isService ? null : Number(values.opening_stock || 0),
-                    item_code: values.item_code || null,
-                    hsn_code: values.hsn_code || null,
+                    // Only include item_code if it has changed from the original value
+                    // ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
+                    item_code: isService ? values.item_code || null : (values.item_code !== item?.item_code ? values.item_code || null : undefined),
+                    hsn_code: isService ? null : values.hsn_code || null,
                     description: values.description || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
                     tax_type: values.tax_type || "with_tax",
@@ -164,40 +190,64 @@ export default function CreateItemModal({
         }
     });
 
-    // Reset form when editing an item
+    // Update the useEffect hook to reset the active section and form values
     useEffect(() => {
-        if (open && item) {
-            setIsEditing(true);
-            formik.resetForm({
-                values: {
-                    item_type_id: item.item_type_id ?? 1,
-                    category_id: item.category_id || null,
-                    measuring_unit_id: item.measuring_unit_id ?? 1,
-
-                    item_name: item.item_name ?? "",
-                    item_code: item.item_code ?? null,
-
-                    sales_price: item.sales_price ?? 0,
-                    gst_tax_rate: item.gst_tax_rate ?? 0,
-
-                    purchase_price:
-                        item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
-
-                    opening_stock:
-                        item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
-
-                    hsn_code: item.hsn_code ?? null,
-                    description: item.description ?? null,
-
-                    show_in_online_store: item.show_in_online_store ?? false,
-                    tax_type: item.tax_type ?? "with_tax",
-                },
-            });
-        } else if (open && !item) {
-            setIsEditing(false);
-            formik.resetForm();
+        if (open) {
+            if (item) {
+                // Editing an item
+                setIsEditing(true);
+                formik.resetForm({
+                    values: {
+                        item_type_id: item.item_type_id ?? 1,
+                        category_id: item.category_id || null,
+                        measuring_unit_id: item.measuring_unit_id ?? 1,
+                        item_name: item.item_name ?? "",
+                        item_code: item.item_code ?? "",
+                        sales_price: item.sales_price ?? 0,
+                        gst_tax_rate: item.gst_tax_rate ?? 0,
+                        purchase_price: item.item_type_id === 1 ? item.purchase_price ?? 0 : null,
+                        opening_stock: item.item_type_id === 1 ? item.opening_stock ?? 0 : null,
+                        hsn_code: item.hsn_code ?? null,
+                        description: item.description ?? null,
+                        show_in_online_store: item.show_in_online_store ?? false,
+                        tax_type: item.tax_type ?? "with_tax",
+                    },
+                });
+            } else {
+                // Creating a new item
+                setIsEditing(false);
+                setActiveSection("basic"); // Reset to basic details
+                formik.resetForm({
+                    values: {
+                        item_type_id: 1,
+                        category_id: null,
+                        measuring_unit_id: 1,
+                        item_name: "",
+                        item_code: "",
+                        sales_price: 0,
+                        gst_tax_rate: 0,
+                        purchase_price: 0,
+                        opening_stock: 0,
+                        hsn_code: null,
+                        description: null,
+                        show_in_online_store: false,
+                        tax_type: "with_tax",
+                    },
+                });
+            }
+        } else {
+            // Reset active section when modal is closed
+            setActiveSection("basic");
         }
     }, [open, item]);
+
+    // Handle section change
+    const handleSectionChange = (section: string) => {
+        if (section === "stock" && formik.values.item_type_id === 2) return;
+        if (section === "price" && formik.values.item_type_id === 2) return;
+        setActiveSection(section);
+    };
+
 
     // Load categories
     useEffect(() => {
@@ -212,12 +262,12 @@ export default function CreateItemModal({
         if (open) loadCategories();
     }, [open]);
 
-    // Handle section change
-    const handleSectionChange = (section: string) => {
-        if (section === "stock" && formik.values.item_type_id === 2) return;
-        if (section === "price" && formik.values.item_type_id === 2) return;
-        setActiveSection(section);
-    };
+    // // Handle section change
+    // const handleSectionChange = (section: string) => {
+    //     if (section === "stock" && formik.values.item_type_id === 2) return;
+    //     if (section === "price" && formik.values.item_type_id === 2) return;
+    //     setActiveSection(section);
+    // };
 
     return (
         <>
@@ -238,30 +288,45 @@ export default function CreateItemModal({
                                         "p-2 rounded mb-4 cursor-pointer",
                                         activeSection === "basic" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
                                     )}
-                                    onClick={() => handleSectionChange("basic")}
+                                    onClick={() => setActiveSection("basic")}
                                 >
                                     <button>Basic Details <span className="text-red-500">*</span></button>
                                 </div>
                                 <h2 className="text-sm font-bold text-black-500 mb-2">Advance Details</h2>
-                                <div
-                                    className={clsx(
-                                        "p-2 rounded mb-2 cursor-pointer",
-                                        activeSection === "other" ? "bg-purple-100 text-purple-800" : "text-gray-500"
-                                    )}
-                                    onClick={() => handleSectionChange(formik.values.item_type_id === 2 ? "other" : "stock")}
-                                >
-                                    {formik.values.item_type_id === 2 ? "Other Details" : "Stock Details"}
-                                </div>
-                                <div
-                                    className={clsx(
-                                        "p-2 mb-2 rounded cursor-pointer",
-                                        activeSection === "price" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
-                                    )}
-                                    onClick={() => handleSectionChange(formik.values.item_type_id === 2 ? "" : "price")}
-                                >
-                                    {formik.values.item_type_id === 2 ? "" : "Price Details"}
-                                </div>
+                                {formik.values.item_type_id === 2 ? (
+                                    <div
+                                        className={clsx(
+                                            "p-2 rounded mb-2 cursor-pointer",
+                                            activeSection === "other" ? "bg-purple-100 text-purple-800" : "text-gray-500"
+                                        )}
+                                        onClick={() => setActiveSection("other")}
+                                    >
+                                        Other Details
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div
+                                            className={clsx(
+                                                "p-2 rounded mb-2 cursor-pointer",
+                                                activeSection === "stock" ? "bg-purple-100 text-purple-800" : "text-gray-500"
+                                            )}
+                                            onClick={() => setActiveSection("stock")}
+                                        >
+                                            Stock Details
+                                        </div>
+                                        <div
+                                            className={clsx(
+                                                "p-2 mb-2 rounded cursor-pointer",
+                                                activeSection === "price" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
+                                            )}
+                                            onClick={() => setActiveSection("price")}
+                                        >
+                                            Price Details
+                                        </div>
+                                    </>
+                                )}
                             </div>
+
 
                             {/* Right Form Section */}
                             <div className="flex-1 p-6 overflow-y-auto">
@@ -325,37 +390,55 @@ export default function CreateItemModal({
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <label className="block text-sm font-medium mb-1">Category</label>
+                                                    <label className="block text-sm font-medium mb-1">
+                                                        Category <span className="text-red-500">*</span>
+                                                    </label>
+
                                                     <select
-                                                        className="w-full p-2 border rounded"
-                                                        value={formik.values.category_id || ''}
+                                                        className={`w-full p-2 border rounded ${formik.touched.category_id && formik.errors.category_id
+                                                            ? "border-red-500"
+                                                            : "border-gray-300"
+                                                            }`}
+                                                        value={formik.values.category_id || ""}
                                                         onChange={(e) => {
                                                             if (e.target.value === "add_new") {
                                                                 setShowCategoryModal(true);
                                                                 return;
                                                             }
-                                                            formik.setFieldValue("category_id", e.target.value || null);
+
+                                                            formik.setFieldValue("category_id", e.target.value || "");
                                                         }}
+                                                        onBlur={formik.handleBlur}
+                                                        name="category_id"
                                                     >
                                                         <option value="">Select Category</option>
+
                                                         {categories.map((cat) => (
                                                             <option key={cat.uuid} value={cat.uuid}>
                                                                 {cat.name}
                                                             </option>
                                                         ))}
+
                                                         <option value="add_new">+ Add Category</option>
                                                     </select>
+
+                                                    {formik.touched.category_id && formik.errors.category_id && (
+                                                        <p className="text-red-500 text-xs mt-1">
+                                                            {formik.errors.category_id}
+                                                        </p>
+                                                    )}
                                                 </div>
+
                                             </div>
 
                                             {/* Show Item in Online Store */}
-                                            <div className="flex items-center gap-2 mb-4">
+                                            {/* <div className="flex items-center gap-2 mb-4">
                                                 <label className="font-medium">Show Item in Online Store</label>
                                                 <input
                                                     type="checkbox"
                                                     {...formik.getFieldProps("show_in_online_store")}
                                                 />
-                                            </div>
+                                            </div> */}
 
                                             {/* Sales Price and GST Tax Rate */}
                                             <div className="flex gap-4 mb-4">
@@ -415,7 +498,7 @@ export default function CreateItemModal({
                                                             type="text"
                                                             placeholder="Enter Service Code"
                                                             className="w-full p-2 border rounded"
-                                                            {...formik.getFieldProps("service_code")}
+                                                            {...formik.getFieldProps("item_code")} // <-- changed from hsn_code to item_code
                                                         />
                                                     ) : (
                                                         <div className="flex">
@@ -436,7 +519,9 @@ export default function CreateItemModal({
                                                             </span>
                                                         </div>
                                                     )}
+
                                                 </div>
+
                                             </div>
                                         </>
                                     )}

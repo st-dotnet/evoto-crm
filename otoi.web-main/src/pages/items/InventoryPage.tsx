@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -22,17 +22,19 @@ import { useNavigate } from "react-router-dom";
 import CreateItemModal from "./CreateItemModal";
 import { getItems, deleteItem, getItemById } from "../../pages/items/services/items.service";
 
+
 interface InventoryItem {
   item_id: number;
   item_name: string;
   item_code: string;
   opening_stock: number;
   sales_price: number;
-  purchase_price: number | null; // ✅ DB-safe
+  purchase_price: number | null;
   type: string;
   category: string;
   business_id: number | null;
-  // Extra fields for editing
+  description?: string | null;
+  hsn_code?: string | null;
   item_type_id?: number;
   category_id?: number;
   measuring_unit_id?: number;
@@ -59,28 +61,22 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
+
+
   const navigate = useNavigate();
 
   // Fetch items from API
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await getItems(searchQuery, 1, 10);
+      const response = await getItems("", 1, 1000); // Fetch all items at once
 
-      // Handle both array and object responses
       const itemsData = Array.isArray(response)
         ? response
         : (response && 'items' in response)
           ? response.items
           : [];
-
-      // Helper function to safely convert to number with fallback
-      const toNumber = (value: any, fallback = 0) => {
-        if (value === null || value === undefined || value === 'None') return fallback;
-        const num = Number(value);
-        return isNaN(num) ? fallback : num;
-      };
-
 
       const mappedItems = itemsData
         .map((item: any) => ({
@@ -100,9 +96,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         .sort((a, b) => b.item_id - a.item_id);
 
       setItems(mappedItems);
-
-
-      setItems(mappedItems);
     } catch (err) {
       console.error("Error fetching items:", err);
       setItems([]);
@@ -112,10 +105,40 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     }
   };
 
+
   // Fetch items on component mount or when dependencies change
+  // useEffect(() => {
+  //   fetchItems();
+  // }, [refreshStatus, searchQuery, lowStock]);
   useEffect(() => {
     fetchItems();
-  }, [refreshStatus, searchQuery, lowStock]);
+  }, [refreshStatus]); // Remove searchQuery from dependencies
+
+
+  useEffect(() => {
+    let result = [...items];
+
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      result = result.filter(
+        (item) =>
+          item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.item_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply low stock filter
+    if (lowStock) {
+      result = result.filter((item) => (item.opening_stock || 0) <= 5);
+    }
+
+    setFilteredItems(result);
+  }, [searchQuery, lowStock, items]);
+
+
+
+
 
   // Update refresh key when refreshStatus changes
   useEffect(() => {
@@ -131,6 +154,14 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     setItemToDelete(id);
     setDeleteDialogOpen(true);
   };
+
+  // Helper function to safely convert to number with fallback
+  const toNumber = (value: any, fallback = 0): number => {
+    if (value === null || value === undefined || value === 'None') return fallback;
+    const num = Number(value);
+    return isNaN(num) ? fallback : num;
+  };
+
 
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
@@ -165,6 +196,8 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         opening_stock: fullItem.opening_stock,
         sales_price: fullItem.sales_price,
         purchase_price: fullItem.purchase_price,
+        description: fullItem.description,
+        hsn_code: fullItem.hsn_code,
         type: fullItem.item_type,
         category: fullItem.category,
         business_id: fullItem.business_id,
@@ -248,6 +281,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               <span className="text-2sm text-gray-700 font-normal">
                 {info.row.original.item_code}
               </span>
+              
             </div>
           </div>
         ),
@@ -300,100 +334,119 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           <DataGridColumnHeader title="Actions" column={column} />
         ),
         enableSorting: false,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleEdit(row.original);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate(`/items/inventory/${row.original.item_id}`);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Details</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleDeleteClick(row.original.item_id);
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
         meta: {
           headerClassName: "w-28",
-          cellClassName: "text-gray-800 font-medium",
+          cellClassName: "text-gray-800 font-medium pointer-events-auto",
+          disableRowClick: true,
+        },
+        cell: ({ row }) => {
+          const [isOpen, setIsOpen] = useState(false);
+
+          return (
+            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onInteractOutside={() => setIsOpen(false)}>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEdit(row.original);
+                    setIsOpen(false);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigate(`/items/inventory/${row.original.item_id}`);
+                    setIsOpen(false);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteClick(row.original.item_id);
+                    setIsOpen(false);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
         },
       },
+
+
     ],
     []
   );
 
   // Toolbar component for search
-  const Toolbar = ({
-    defaultSearch,
-    setSearch,
-  }: {
-    defaultSearch: string;
-    setSearch: (query: string) => void;
-  }) => {
-    const [searchInput, setSearchInput] = useState(defaultSearch);
+  // const Toolbar = ({
+  //   defaultSearch,
+  //   setSearch,
+  // }: {
+  //   defaultSearch: string;
+  //   setSearch: (query: string) => void;
+  // }) => {
+  //   const [searchInput, setSearchInput] = useState(defaultSearch);
+  //   const inputRef = useRef<HTMLInputElement>(null);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        setSearch(searchInput);
-      }
-    };
+  //   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //     const value = e.target.value;
+  //     setSearchInput(value);
+  //     setSearch(value); // Update search in real-time
+  //   };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchInput(e.target.value);
-    };
+  //   // Focus the input on initial render
+  //   useEffect(() => {
+  //     if (inputRef.current) {
+  //       inputRef.current.focus();
+  //     }
+  //   }, []);
 
-    return (
-      <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-        <div className="flex flex-wrap gap-2 lg:gap-5">
-          <div className="flex">
-            <label className="input input-sm">
-              <KeenIcon icon="magnifier" />
-              <input
-                type="text"
-                placeholder="Search items"
-                value={searchInput}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-              />
-            </label>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
+  //       <div className="flex flex-wrap gap-2 lg:gap-5">
+  //         <div className="flex">
+  //           <label className="input input-sm">
+  //             <KeenIcon icon="magnifier" />
+  //             <input
+  //               ref={inputRef}
+  //               type="text"
+  //               placeholder="Search items"
+  //               value={searchInput}
+  //               onChange={handleChange}
+  //             />
+  //           </label>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // };
+
+
 
   // Render the component
   return (
@@ -463,6 +516,19 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         </button>
       </div>
 
+      <div className="mb-4">
+        <label className="input input-sm w-64">
+          <KeenIcon icon="magnifier" />
+          <input
+            type="text"
+            placeholder="Search items"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </label>
+      </div>
+
+
       {/* DataGrid */}
       <div className="grid gap-5 lg:gap-7.5">
         {loading ? (
@@ -471,17 +537,18 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           <DataGrid
             key={refreshKey}
             columns={columns}
-            data={items}
+            data={filteredItems} // Use filteredItems instead of items
             rowSelection={true}
             getRowId={(row) => row.item_id.toString()}
             pagination={{ size: 5 }}
-            toolbar={
-              <Toolbar
-                defaultSearch={searchQuery}
-                setSearch={setSearchQuery}
-              />
-            }
+          // toolbar={
+          //   <Toolbar
+          //     defaultSearch={searchQuery}
+          //     setSearch={setSearchQuery}
+          //   />
+          // }
           />
+
         )}
       </div>
 
