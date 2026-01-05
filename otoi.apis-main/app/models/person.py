@@ -12,7 +12,7 @@ class Lead(BaseMixin, db.Model):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
-    mobile = Column(String(15), nullable=False, unique=True)
+    mobile = Column(String(15), nullable=True)
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
     status = Column(Integer, nullable=False)

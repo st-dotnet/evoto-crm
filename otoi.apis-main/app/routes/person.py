@@ -1,3 +1,4 @@
+from app.models.inventory import Item
 from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models.person import Lead, LeadAddress
@@ -144,17 +145,11 @@ def get_leads():
              else:
                 # Normalize both input and mapping
                 normalized_input = status_value.lower().replace("-", "").replace(" ", "")
-                for k, v in {
-                    "1": "New",
-                    "2": "In-Progress",
-                    "3": "Quote Given",
-                    "4": "Win",
-                    "5": "Lose",
-                }.items():
-                    normalized_status = v.lower().replace("-", "").replace(" ", "")
-                    if normalized_status == normalized_input:
-                        query = query.filter(Lead.status == int(k))
-                        break
+                for key, label in STATUS_MAPPING.items():
+                    normalized_label = label.lower().replace("-", "").replace(" ", "")
+                    if normalized_label == normalized_input:
+                      query = query.filter(Lead.status == key)
+                    break
 
 
 
@@ -262,7 +257,7 @@ def download_person_template():
 
 @lead_blueprint.route("/", methods=["POST"])
 def create_lead():
-    """
+    """ 
     Create a new lead.
     ---
     parameters:
@@ -311,20 +306,32 @@ def create_lead():
         description: Lead created successfully
     """
     try:
-        data = request.json
-        print("=== DEBUG Incoming Data ===", data)
+        data = request.get_json() or {}
 
+        # ---- BASIC VALIDATION ----
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        email = (data.get("email") or "").strip()
+        mobile = (data.get("mobile") or "").strip()
         status = str(data.get("status") or "").strip()
+
+        if not first_name or not last_name:
+            return jsonify({"error": "First name and last name are required"}), 400
+
+        if not mobile and not email:
+            return jsonify({"error": "Either mobile or email is required"}), 400
+
+        # ---- STATUS LOGIC ----
         reason = None
         address_data = None
 
         if status.lower() in ["lose", "5"]:
             reason = data.get("reason")
             if not reason:
-                return jsonify({"error": "Reason is required when status is 'Lose'"}), 400
+                return jsonify({"error": "Reason is required when status is Lose"}), 400
 
         if status.lower() in ["win", "4"]:
-            address_data = data.get("address") or {
+            address_data = {
                 "address1": data.get("address1"),
                 "address2": data.get("address2"),
                 "city": data.get("city"),
@@ -332,27 +339,34 @@ def create_lead():
                 "country": data.get("country"),
                 "pin": data.get("pin"),
             }
-            if not all(address_data.get(k) for k in ["city", "state", "country", "pin"]):
-                return jsonify({"error": "Address is required when status is 'Win'"}), 400
 
-        if Lead.query.filter_by(mobile=data["mobile"]).first():
-            return jsonify({"error": "A lead with this mobile already exists"}), 400
+            if not all([address_data["city"], address_data["state"],
+                        address_data["country"], address_data["pin"]]):
+                return jsonify({"error": "Complete address is required when status is Win"}), 400
 
+        # ---- DUPLICATE MOBILE CHECK (SAFE) ----
+        if mobile:
+            if Lead.query.filter_by(mobile=mobile).first():
+                return jsonify({"error": "A lead with this mobile already exists"}), 400
+
+        # ---- CREATE LEAD ----
         lead = Lead(
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-            mobile=data["mobile"],
-            email=data.get("email"),
+            first_name=first_name,
+            last_name=last_name,
+            mobile=mobile,
+            email=email,
             gst=data.get("gst"),
             referenced_by=data.get("referenced_by"),
             status=status,
             reason=reason,
         )
+
         set_created_fields(lead)
         set_business(lead)
         db.session.add(lead)
         db.session.flush()
 
+        # ---- ADDRESS ----
         if address_data:
             address = Address(
                 address1=address_data.get("address1"),
@@ -376,12 +390,21 @@ def create_lead():
             db.session.add(lead_address)
 
         db.session.commit()
-        return jsonify({"message": "Lead created successfully", "uuid": str(lead.uuid)}), 200
+
+        return jsonify({
+            "message": "Lead created successfully",
+            "uuid": str(lead.uuid)
+        }), 201
 
     except Exception as e:
         db.session.rollback()
-        import traceback; print(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
+
 
 
 @lead_blueprint.route("/<uuid:lead_id>", methods=["PUT"])
@@ -510,6 +533,34 @@ def get_lead_by_id(lead_id):
         "reason": lead.reason,
         "addresses": addresses,
     })
+
+@lead_blueprint.route("/<lead_uuid>", methods=["DELETE"])
+def delete_lead(lead_uuid):
+    try:
+        lead = Lead.query.filter_by(uuid=lead_uuid).first()
+
+        if not lead:
+            return jsonify({"message": "Lead not found"}), 404
+
+        db.session.delete(lead)
+        db.session.commit()
+
+        return jsonify({"message": "Lead deleted successfully"}), 200
+
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({
+            "message": "Cannot delete lead. It is referenced in other records."
+        }), 409
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(str(e))
+        return jsonify({
+            "message": "Internal server error",
+            "error": str(e)
+        }), 500
+
 
 
 # #Active

@@ -53,7 +53,7 @@ class Shipping(BaseMixin, db.Model):
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
     country = Column(String(100), nullable=False)
-    pin = Column(String(20), nullable=False)  # Postal Code
+    pin = Column(String(20), nullable=False) 
     # address_type = Column(Integer, nullable=False)  # Remove or comment out this line
 
     # Make business_id nullable to resolve circular dependency
