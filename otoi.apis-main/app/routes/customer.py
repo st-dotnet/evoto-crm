@@ -1,10 +1,12 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from app.models.customer import Customer
 from app.models.person import Lead
 from app.extensions import db
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
+
 
 # GET all customers (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["GET"])
@@ -27,30 +29,34 @@ def get_customers():
     order = request.args.get("order", "asc").lower()  # Extract order ('asc' or 'desc')
 
     for field in sort.split(","):
-      if field == "name":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(func.concat(Customer.first_name, " ", Customer.last_name)))
-          else:
-              query = query.order_by(func.concat(Customer.first_name, " ", Customer.last_name))      
-      if field == "gst":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(Customer.gst))
-          else:
-              query = query.order_by(Customer.gst)
-      if field == "mobile":
-          # Sort by concatenated first_name and last_name
-          if order == "desc":
-              query = query.order_by(db.desc(Customer.mobile))
-          else:
-              query = query.order_by(Customer.mobile)        
-      else:
-        # Handle other fields
-        if field.startswith("-"):
-            query = query.order_by(db.desc(getattr(Customer, field[1:], "uuid")))
+        if field == "name":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(
+                    db.desc(func.concat(Customer.first_name, " ", Customer.last_name))
+                )
+            else:
+                query = query.order_by(
+                    func.concat(Customer.first_name, " ", Customer.last_name)
+                )
+        if field == "gst":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(db.desc(Customer.gst))
+            else:
+                query = query.order_by(Customer.gst)
+        if field == "mobile":
+            # Sort by concatenated first_name and last_name
+            if order == "desc":
+                query = query.order_by(db.desc(Customer.mobile))
+            else:
+                query = query.order_by(Customer.mobile)
         else:
-            query = query.order_by(getattr(Customer, field, "uuid"))
+            # Handle other fields
+            if field.startswith("-"):
+                query = query.order_by(db.desc(getattr(Customer, field[1:], "uuid")))
+            else:
+                query = query.order_by(getattr(Customer, field, "uuid"))
 
     # Pagination
     page = int(request.args.get("page", 1))
@@ -59,39 +65,44 @@ def get_customers():
     customers = pagination.items
 
     # Shape response to match frontend expectations: { data: [...], pagination: { total, ... } }
-    return jsonify({
-        "data": [
-            {
-                "id": str(c.uuid),  # alias for row key expected by frontend
-                "uuid": str(c.uuid),
-                "customer_id": str(c.uuid),
-                "first_name": c.first_name,
-                "last_name": c.last_name,
-                "mobile": c.mobile,
-                "email": c.email,
-                "gst": c.gst,
-                "status": c.status,
-                "address1": c.address1,
-                "address2": c.address2,
-                "city": c.city,
-                "state": c.state,
-                "country": c.country,
-                "pin": c.pin,
-            }
-            for c in customers
-        ],
-        "pagination": {
-            "total": pagination.total,
-            "items_per_page": per_page,
-            "current_page": page,
-            "last_page": pagination.pages,
-            "from": (pagination.page - 1) * per_page + 1 if pagination.total > 0 else 0,
-            "to": min(pagination.page * per_page, pagination.total),
-            "prev_page_url": None,
-            "next_page_url": None,
-            "first_page_url": None,
+    return jsonify(
+        {
+            "data": [
+                {
+                    "id": str(c.uuid),  # alias for row key expected by frontend
+                    "uuid": str(c.uuid),
+                    "customer_id": str(c.uuid),
+                    "first_name": c.first_name,
+                    "last_name": c.last_name,
+                    "mobile": c.mobile,
+                    "email": c.email,
+                    "gst": c.gst,
+                    "status": c.status,
+                    "address1": c.address1,
+                    "address2": c.address2,
+                    "city": c.city,
+                    "state": c.state,
+                    "country": c.country,
+                    "pin": c.pin,
+                }
+                for c in customers
+            ],
+            "pagination": {
+                "total": pagination.total,
+                "items_per_page": per_page,
+                "current_page": page,
+                "last_page": pagination.pages,
+                "from": (
+                    (pagination.page - 1) * per_page + 1 if pagination.total > 0 else 0
+                ),
+                "to": min(pagination.page * per_page, pagination.total),
+                "prev_page_url": None,
+                "next_page_url": None,
+                "first_page_url": None,
+            },
         }
-    })
+    )
+
 
 # CREATE a new customer (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["POST"])
@@ -117,8 +128,11 @@ def create_customer():
     country = (data.get("country") or "").strip()
     pin = (data.get("pin") or "").strip()
 
-    if not first_name or not last_name or not mobile:
-        return jsonify({"error": "first_name, last_name and mobile are required"}), 400
+    if not first_name or not last_name or (not mobile and not email): 
+        return jsonify({
+        "error": "first_name, last_name and either mobile or email are required"
+    }), 400
+
 
     # Resolve lead: if lead_id is provided use it, else create/find a Lead
     lead_id = data.get("lead_id")
@@ -166,22 +180,27 @@ def create_customer():
         existing_customer.pin = pin
         db.session.commit()
 
-        return jsonify({
-            "uuid": str(existing_customer.uuid),
-            "customer_id": str(existing_customer.uuid),
-            "first_name": existing_customer.first_name,
-            "last_name": existing_customer.last_name,
-            "mobile": existing_customer.mobile,
-            "email": existing_customer.email,
-            "gst": existing_customer.gst,
-            "status": existing_customer.status,
-            "address1": existing_customer.address1,
-            "address2": existing_customer.address2,
-            "city": existing_customer.city,
-            "state": existing_customer.state,
-            "country": existing_customer.country,
-            "pin": existing_customer.pin,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "uuid": str(existing_customer.uuid),
+                    "customer_id": str(existing_customer.uuid),
+                    "first_name": existing_customer.first_name,
+                    "last_name": existing_customer.last_name,
+                    "mobile": existing_customer.mobile,
+                    "email": existing_customer.email,
+                    "gst": existing_customer.gst,
+                    "status": existing_customer.status,
+                    "address1": existing_customer.address1,
+                    "address2": existing_customer.address2,
+                    "city": existing_customer.city,
+                    "state": existing_customer.state,
+                    "country": existing_customer.country,
+                    "pin": existing_customer.pin,
+                }
+            ),
+            200,
+        )
 
     # Create customer record (no existing found)
     customer = Customer(
@@ -202,22 +221,28 @@ def create_customer():
     db.session.add(customer)
     db.session.commit()
 
-    return jsonify({
-        "uuid": str(customer.uuid),
-        "customer_id": str(customer.uuid),
-        "first_name": customer.first_name,
-        "last_name": customer.last_name,
-        "mobile": customer.mobile,
-        "email": customer.email,
-        "gst": customer.gst,
-        "status": customer.status,
-        "address1": customer.address1,
-        "address2": customer.address2,
-        "city": customer.city,
-        "state": customer.state,
-        "country": customer.country,
-        "pin": customer.pin,
-    }), 201
+    return (
+        jsonify(
+            {
+                "uuid": str(customer.uuid),
+                "customer_id": str(customer.uuid),
+                "first_name": customer.first_name,
+                "last_name": customer.last_name,
+                "mobile": customer.mobile,
+                "email": customer.email,
+                "gst": customer.gst,
+                "status": customer.status,
+                "address1": customer.address1,
+                "address2": customer.address2,
+                "city": customer.city,
+                "state": customer.state,
+                "country": customer.country,
+                "pin": customer.pin,
+            }
+        ),
+        201,
+    )
+
 
 # GET a single customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["GET"])
@@ -226,29 +251,32 @@ def get_customer(customer_id):
     Get customer by id.
     ---
     tags:
-      - get customer by id 
+      - get customer by id
     responses:
       200:
         description: get customer by id .
-        
+
     """
     customer = Customer.query.get_or_404(customer_id)
-    return jsonify({
-        "uuid": str(customer.uuid),
-        "customer_id": str(customer.uuid),
-        "first_name": customer.first_name,
-        "last_name": customer.last_name,
-        "mobile": customer.mobile,
-        "email": customer.email,
-        "gst": customer.gst,
-        "status": customer.status,
-        "address1": customer.address1,
-        "address2": customer.address2,
-        "city": customer.city,
-        "state": customer.state,
-        "country": customer.country,
-        "pin": customer.pin,
-    })
+    return jsonify(
+        {
+            "uuid": str(customer.uuid),
+            "customer_id": str(customer.uuid),
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,
+            "gst": customer.gst,
+            "status": customer.status,
+            "address1": customer.address1,
+            "address2": customer.address2,
+            "city": customer.city,
+            "state": customer.state,
+            "country": customer.country,
+            "pin": customer.pin,
+        }
+    )
+
 
 # UPDATE a customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
@@ -259,7 +287,7 @@ def update_customer(customer_id):
     responses:
       200:
         description: update customer.
-        
+
     """
     data = request.get_json() or {}
     customer = Customer.query.get_or_404(customer_id)
@@ -282,19 +310,53 @@ def update_customer(customer_id):
 
     db.session.commit()
 
-    return jsonify({
-        "uuid": str(customer.uuid),
-        "customer_id": str(customer.uuid),
-        "first_name": customer.first_name,
-        "last_name": customer.last_name,
-        "mobile": customer.mobile,
-        "email": customer.email,
-        "gst": customer.gst,
-        "status": customer.status,
-        "address1": customer.address1,
-        "address2": customer.address2,
-        "city": customer.city,
-        "state": customer.state,
-        "country": customer.country,
-        "pin": customer.pin,
-    }), 200
+    return (
+        jsonify(
+            {
+                "uuid": str(customer.uuid),
+                "customer_id": str(customer.uuid),
+                "first_name": customer.first_name,
+                "last_name": customer.last_name,
+                "mobile": customer.mobile,
+                "email": customer.email,
+                "gst": customer.gst,
+                "status": customer.status,
+                "address1": customer.address1,
+                "address2": customer.address2,
+                "city": customer.city,
+                "state": customer.state,
+                "country": customer.country,
+                "pin": customer.pin,
+            }
+        ),
+        200,
+    )
+ 
+@customer_blueprint.route("/<customer_uuid>", methods=["DELETE"])
+def delete_customer(customer_uuid):
+    print(f"Delete request received for customer: {customer_uuid}")
+    try:
+        customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        if not customer:
+            return jsonify({"message": "Customer not found"}), 404
+
+        db.session.delete(customer)
+        db.session.commit()
+
+        return jsonify({"message": "Customer deleted successfully"}), 200
+
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({
+            "message": "Cannot delete customer. It is referenced in other records."
+        }), 409
+
+    except Exception as e:
+        db.session.rollback()
+        print(str(e))
+        return jsonify({
+            "message": "Internal server error",
+            "error": str(e)
+        }), 500
+
+ 

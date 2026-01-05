@@ -136,10 +136,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     setFilteredItems(result);
   }, [searchQuery, lowStock, items]);
 
-
-
-
-
   // Update refresh key when refreshStatus changes
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -183,6 +179,8 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   // Edit an item
   const handleEdit = async (item: InventoryItem) => {
+    console.log("Edit clicked for item:", item.item_id); // Debug log
+
     try {
       setLoading(true);
 
@@ -243,218 +241,185 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   };
 
   // Define columns for DataGrid
-  const columns = useMemo<ColumnDef<InventoryItem>[]>(
-    () => [
-      {
-        accessorKey: "item_id",
-        header: () => <DataGridRowSelectAll />,
-        cell: ({ row }) => <DataGridRowSelect row={row} />,
-        enableSorting: false,
-        enableHiding: false,
-        meta: {
-          headerClassName: "w-0",
-        },
+  const columns = useMemo<ColumnDef<InventoryItem>[]>(() => [
+    {
+      accessorKey: "item_id",
+      header: () => (
+        <div className="flex items-center justify-center h-full">
+          <DataGridRowSelectAll />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center h-full">
+          <DataGridRowSelect row={row} />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      meta: {
+        headerClassName: "w-28 text-center align-middle",
+        cellClassName: "text-center align-middle pointer-events-auto",
+        disableRowClick: true,
       },
-      {
-        accessorFn: (row) => row.item_name,
-        id: "item_name",
-        header: ({ column }) => (
-          <DataGridColumnHeader
-            title="Item Name"
-            filter={<ColumnInputFilter column={column} />}
-            column={column}
-          />
-        ),
-        enableSorting: true,
-        cell: (info) => (
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col">
-              <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
-                onClick={(e) => {
+    },
+    {
+      accessorFn: (row) => row.item_name,
+      id: "item_name",
+      header: ({ column }) => (
+        <DataGridColumnHeader
+          title="Item Name"
+          filter={<ColumnInputFilter column={column} />}
+          column={column}
+        />
+      ),
+      enableSorting: true,
+      cell: (info) => (
+        <div className="flex items-center gap-2.5">
+          <div className="flex flex-col">
+            <a
+              className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/items/inventory/${info.row.original.item_id}`);
+              }}
+            >
+              {info.row.original.item_name}
+            </a>
+            <span className="text-2sm text-gray-700 font-normal">
+              {info.row.original.item_code}
+            </span>
+
+          </div>
+        </div>
+      ),
+      meta: {
+        headerClassName: "min-w-[300px]",
+      },
+    },
+    {
+      accessorFn: (row) => row.opening_stock,
+      id: "opening_stock",
+      header: ({ column }) => (
+        <DataGridColumnHeader title="Stock Quantity" column={column} />
+      ),
+      enableSorting: true,
+      cell: (info) => info.row.original.opening_stock,
+      meta: {
+        headerClassName: "min-w-[137px]",
+        cellClassName: "text-gray-800 font-medium",
+      },
+    },
+    {
+      accessorFn: (row) => row.sales_price,
+      id: "sales_price",
+      header: ({ column }) => (
+        <DataGridColumnHeader title="Selling Price" column={column} />
+      ),
+      enableSorting: true,
+      cell: (info) => {
+        const value = info.row.original.sales_price;
+        return `₹${value?.toLocaleString('en-IN') || '0'}`;
+      },
+      meta: {
+        headerClassName: "min-w-[137px]",
+        cellClassName: "text-gray-800 font-medium",
+      },
+    },
+    {
+      accessorFn: (row) => row.purchase_price,
+      id: "purchase_price",
+      header: ({ column }) => (
+        <DataGridColumnHeader title="Purchase Price" column={column} />
+      ),
+      enableSorting: true,
+      cell: (info) => {
+        const value = info.row.original.purchase_price;
+        return value ? `₹${value.toLocaleString('en-IN')}` : 'N/A';
+      },
+      meta: {
+        headerClassName: "min-w-[137px]",
+        cellClassName: "text-gray-800 font-medium",
+      },
+    },
+    {
+      id: "actions",
+      header: ({ column }) => (
+        <DataGridColumnHeader title="Actions" column={column} />
+      ),
+      enableSorting: false,
+      meta: {
+        headerClassName: "w-28",
+        cellClassName: "text-gray-800 font-medium pointer-events-auto",
+        disableRowClick: true,
+      },
+      cell: ({ row }) => {
+        // const [isOpen, setIsOpen] = useState(false);
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={(e) => {
                   e.preventDefault();
-                  navigate(`/items/inventory/${info.row.original.item_id}`);
+                  e.stopPropagation();
+                  handleEdit(row.original);
                 }}
               >
-                {info.row.original.item_name}
-              </a>
-              <span className="text-2sm text-gray-700 font-normal">
-                {info.row.original.item_code}
-              </span>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
 
-            </div>
-          </div>
-        ),
-        meta: {
-          headerClassName: "min-w-[300px]",
-        },
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate(`/items/inventory/${row.original.item_id}`);
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Details
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteClick(row.original.item_id);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                <span className="text-red-500">Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+        );
       },
-      {
-        accessorFn: (row) => row.opening_stock,
-        id: "opening_stock",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Stock Quantity" column={column} />
-        ),
-        enableSorting: true,
-        cell: (info) => info.row.original.opening_stock,
-        meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
-        },
-      },
-      {
-        accessorFn: (row) => row.sales_price,
-        id: "sales_price",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Selling Price" column={column} />
-        ),
-        enableSorting: true,
-        cell: (info) => info.row.original.sales_price,
-        meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
-        },
-      },
-      {
-        accessorFn: (row) => row.purchase_price,
-        id: "purchase_price",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Purchase Price" column={column} />
-        ),
-        enableSorting: true,
-        cell: (info) => info.row.original.purchase_price ?? "N/A",
-        meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
-        },
-      },
-      {
-        id: "actions",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Actions" column={column} />
-        ),
-        enableSorting: false,
-        meta: {
-          headerClassName: "w-28",
-          cellClassName: "text-gray-800 font-medium pointer-events-auto",
-          disableRowClick: true,
-        },
-        cell: ({ row }) => {
-          const [isOpen, setIsOpen] = useState(false);
-
-          return (
-            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onInteractOutside={() => setIsOpen(false)}>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleEdit(row.original);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    navigate(`/items/inventory/${row.original.item_id}`);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Details
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDeleteClick(row.original.item_id);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
+    },
 
 
-    ],
+  ],
     []
   );
 
-  // Toolbar component for search
-  // const Toolbar = ({
-  //   defaultSearch,
-  //   setSearch,
-  // }: {
-  //   defaultSearch: string;
-  //   setSearch: (query: string) => void;
-  // }) => {
-  //   const [searchInput, setSearchInput] = useState(defaultSearch);
-  //   const inputRef = useRef<HTMLInputElement>(null);
-
-  //   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     const value = e.target.value;
-  //     setSearchInput(value);
-  //     setSearch(value); // Update search in real-time
-  //   };
-
-  //   // Focus the input on initial render
-  //   useEffect(() => {
-  //     if (inputRef.current) {
-  //       inputRef.current.focus();
-  //     }
-  //   }, []);
-
-  //   return (
-  //     <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-  //       <div className="flex flex-wrap gap-2 lg:gap-5">
-  //         <div className="flex">
-  //           <label className="input input-sm">
-  //             <KeenIcon icon="magnifier" />
-  //             <input
-  //               ref={inputRef}
-  //               type="text"
-  //               placeholder="Search items"
-  //               value={searchInput}
-  //               onChange={handleChange}
-  //             />
-  //           </label>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // };
-
-
-
   // Render the component
   return (
-    <div className="container-fluid">
+    <div className="container-fluid p-6">
       {/* Header */}
-      <div className="d-flex justify-content-between mb-6">
-        <h1 className="fw-bold">Items</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Items</h1>
       </div>
+
 
       {/* Summary Cards */}
       <div className="row g-4 mb-5" style={{ display: "flex", gap: "20em" }}>
@@ -530,27 +495,26 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
 
       {/* DataGrid */}
-      <div className="grid gap-5 lg:gap-7.5">
+      <div className="bg-white border rounded-lg overflow-hidden flex flex-col pt-4 mt-6">
+
         {loading ? (
           <div className="text-center py-10">Loading...</div>
         ) : (
-          <DataGrid
-            key={refreshKey}
-            columns={columns}
-            data={filteredItems} // Use filteredItems instead of items
-            rowSelection={true}
-            getRowId={(row) => row.item_id.toString()}
-            pagination={{ size: 5 }}
-          // toolbar={
-          //   <Toolbar
-          //     defaultSearch={searchQuery}
-          //     setSearch={setSearchQuery}
-          //   />
-          // }
-          />
+          <div className="relative mt-6">
+            <DataGrid
+              key={refreshKey}
+              columns={columns}
+              data={filteredItems}
+              rowSelection
+              getRowId={(row) => row.item_id.toString()}
+              pagination={{ size: 5 }}
+            />
+          </div>
+
 
         )}
       </div>
+
 
       {/* Modal */}
       <CreateItemModal

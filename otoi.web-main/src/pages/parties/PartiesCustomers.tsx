@@ -90,7 +90,6 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | 
               <ToolbarPageTitle />
               <ToolbarDescription>
                 <div className="flex items-center flex-wrap gap-1.5 font-medium">
-                  <span className="text-md text-gray-600">All Leads:</span>
                 </div>
               </ToolbarDescription>
             </ToolbarHeading>
