@@ -23,9 +23,9 @@ const DataGridPagination = () => {
   // Replace placeholders in paginationInfo
   const paginationInfo = props.pagination?.info
     ? props.pagination.info
-        .replace('{from}', from.toString())
-        .replace('{to}', to.toString())
-        .replace('{count}', totalRows.toString())
+      .replace('{from}', from.toString())
+      .replace('{to}', to.toString())
+      .replace('{count}', totalRows.toString())
     : `${from} - ${to} of ${totalRows}`;
 
   // Pagination limit logic
@@ -90,8 +90,7 @@ const DataGridPagination = () => {
 
   return (
     <div
-      className="flex flex-col md:flex-row justify-between items-center gap-5 md:gap-4"
-      data-pagination
+      className="flex flex-col md:flex-row justify-between items-center gap-5 md:gap-4 px-4 py-3 bg-background border-t sticky bottom-0" data-pagination
     >
       <div className="flex items-center space-x-2 order-2 md:order-1 pb-2 md:pb-0">
         <div className="text-sm text-muted-foreground">Rows per page</div>
