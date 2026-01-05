@@ -3,9 +3,10 @@ import { useFormik } from "formik";
 
 interface IStockDetailsProps {
   formik: any;
+  isEditing?: boolean;
 }
 
-export default function StockDetails({ formik }: IStockDetailsProps) {
+export default function StockDetails({ formik, isEditing = false }: IStockDetailsProps) {
   const [showAlternativeUnit, setShowAlternativeUnit] = useState(false);
   const [barcodeUrl, setBarcodeUrl] = useState<string | null>(null);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
@@ -27,10 +28,11 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
 
     if (!itemCode) return;
 
-    const baseUrl = "http://127.0.0.1:5000"; // Replace with your backend port if different
+    const baseUrl = import.meta.env.VITE_APP_API_URL;
     const url = !formik.values.id
-      ? `${baseUrl}/api/barcode/preview?item_code=${encodeURIComponent(itemCode)}&item_name=${encodeURIComponent(itemName || "")}${download ? "&download=true" : ""}`
-      : `${baseUrl}/api/items/${formik.values.id}/barcode${download ? "?download=true" : ""}`;
+      ? `${baseUrl}/barcode/preview?item_code=${encodeURIComponent(itemCode)}&item_name=${encodeURIComponent(itemName || "")}${download ? "&download=true" : ""}`
+      : `${baseUrl}/items/${formik.values.id}/barcode${download ? "?download=true" : ""}`;
+
 
     setIsLoadingBarcode(true);
     setBarcodeError(null);
@@ -278,14 +280,27 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
           </div>
         </div>
 
-        {/* As of Date */}
+        {/* As of Date - Auto-set to current date */}
         <div className="space-y-1">
           <label className="text-sm font-medium">As of Date</label>
-          <input
-            type="date"
-            className="w-full p-2 border rounded"
-            {...formik.getFieldProps("as_of_date")}
-          />
+          {isEditing ? (
+            <div className="w-full p-2 border rounded bg-gray-50">
+              {new Date(formik.values.as_of_date || new Date()).toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </div>
+          ) : (
+            <input
+              type="date"
+              className="w-full p-2 border rounded"
+              value={formik.values.as_of_date || new Date().toISOString().split('T')[0]}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              name="as_of_date"
+            />
+          )}
         </div>
 
         {/* Low Stock Warning */}
