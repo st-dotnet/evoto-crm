@@ -31,6 +31,7 @@ interface IItem {
 
     hsn_code?: string | null;
     description?: string | null;
+    as_of_date?: string;
 
     show_in_online_store?: boolean;
     tax_type?: "with_tax" | "without_tax";
@@ -54,6 +55,7 @@ interface ICreateItemModalProps {
 const initialValues: IItem = {
     item_type_id: 1,
     category_id: null,
+    as_of_date: new Date().toISOString().split('T')[0],
     measuring_unit_id: 1,
 
     item_name: "",
@@ -567,7 +569,9 @@ export default function CreateItemModal({
                                         </>
                                     )}
                                     {/* Stock Details Section */}
-                                    {activeSection === "stock" && formik.values.item_type_id === 1 && <StockDetails formik={formik} />}
+                                    {activeSection === 'stock' && (
+                                        <StockDetails formik={formik} isEditing={isEditing} />
+                                    )}
                                     {activeSection === "price" && formik.values.item_type_id === 1 && <PricingDetails formik={formik} />}
                                     {activeSection === "other" && formik.values.item_type_id === 2 && <OtherDetails formik={formik} />}
 
