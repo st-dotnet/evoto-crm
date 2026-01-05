@@ -248,12 +248,15 @@ export default function StockDetails({ formik }: IStockDetailsProps) {
                 />
                 <select
                   className="w-24 p-2 border rounded bg-gray-100 cursor-not-allowed appearance-none"
-                  {...formik.getFieldProps("conversion_unit") } disabled
+                  {...formik.getFieldProps("conversion_unit")}
+                  disabled
                 >
                   <option value="PCS">PCS</option>
                   <option value="BOX">BOX</option>
                   <option value="PACK">PACK</option>
                 </select>
+
+
               </div>
             </div>
           </>

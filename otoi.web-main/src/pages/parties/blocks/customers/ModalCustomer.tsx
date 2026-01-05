@@ -13,10 +13,12 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
+import { toast } from "sonner";
 
 interface IModalCustomerProps {
     open: boolean;
-    onOpenChange: () => void;
+    onOpenChange: (open: boolean) => void; // Update this line
+    onSuccess?: () => void;
     customer: Person | null;
 }
 
@@ -81,36 +83,25 @@ const initialValues: Person = {
 const saveCustomerSchema = Yup.object().shape({
     first_name: Yup.string().min(3).max(50).required("First Name is required"),
     last_name: Yup.string().min(3).max(50).required("Last Name is required"),
-    mobile: Yup.string()
-        .test(
-            "mobile-or-email",
-            "Either Mobile or Email is required",
-            function (value) {
-                const { email } = this.parent;
-                if (!value && !email) {
-                    return false;
-                }
-                return true;
-            }
-        )
-        .test(
-            "mobile-length",
-            "Mobile number must be exactly 10 digits",
-            (value) => !value || value.length === 10
-        ),
-    email: Yup.string()
-        .email("Invalid email")
-        .test(
-            "mobile-or-email",
-            "Either Mobile or Email is required",
-            function (value) {
-                const { mobile } = this.parent;
-                if (!value && !mobile) {
-                    return false;
-                }
-                return true;
-            }
-        ),
+    mobile: Yup.string().when("email", {
+        is: (email: string) => !email,
+        then: (schema) =>
+            schema
+                .required("Mobile or Email is required")
+                .test(
+                    "mobile-length",
+                    "Mobile number must be exactly 10 digits",
+                    (value) => !!value && value.length === 10
+                ),
+        otherwise: (schema) =>
+            schema.test(
+                "mobile-length",
+                "Mobile number must be exactly 10 digits",
+                (value) => !value || value.length === 10
+            ),
+    }),
+
+    email: Yup.string().email("Invalid email"),
     gst: Yup.string().min(15).max(15),
     pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
     shipping_pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
@@ -119,9 +110,17 @@ const saveCustomerSchema = Yup.object().shape({
         then: (schema) => schema.required("Reason is required when status is Lose"),
         otherwise: (schema) => schema,
     })
-});
+}).test(
+    "mobile-or-email",
+    "Either Mobile or Email is required",
+    function (values) {
+        const { mobile, email } = values;
+        return !!mobile || !!email;
+    }
+);
 
-const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) => {
+
+const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustomerProps) => {
     const [loading, setLoading] = useState(false);
     const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
     const [statusList, setStatusList] = useState<Status[]>([]);
@@ -132,38 +131,47 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
         axios.get(`${import.meta.env.VITE_APP_API_URL}/status-list/`).then((res) => setStatusList(res.data));
     }, []);
 
-    const formik = useFormik({
-        initialValues,
-        validationSchema: saveCustomerSchema,
-        onSubmit: async (values, { setStatus, setSubmitting, setTouched }) => {
-            setTouched({
-                first_name: true,
-                last_name: true,
-                mobile: true,
-                email: true,
-                gst: true,
-                pin: true,
-                reason: true,
-            });
-            setLoading(true);
-            try {
-                const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-                const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
-                if (customer?.uuid) {
-                    await axios.put(`${apiBase}/${customer.uuid}`, values);
-                } else {
-                    await axios.post(`${apiBase}/`, values);
-                }
-                onOpenChange();
-            } catch (err) {
-                console.error(err);
-                setStatus("Unable to save customer");
-                setSubmitting(false);
-            } finally {
-                setLoading(false);
+const formik = useFormik({
+    initialValues,
+    validationSchema: saveCustomerSchema,
+    onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
+        setTouched({
+            first_name: true,
+            last_name: true,
+            mobile: true,
+            email: true,
+            gst: true,
+            pin: true,
+            reason: true,
+        });
+        setLoading(true);
+        try {
+            const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+            const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
+
+            if (customer?.uuid) {
+                await axios.put(`${apiBase}/${customer.uuid}`, values);
+            } else {
+                await axios.post(`${apiBase}/`, values);
             }
-        },
-    });
+
+            if (onSuccess) {
+                onSuccess(); // Call the onSuccess callback if provided
+            }
+            onOpenChange(false); // Close the modal
+            resetForm({ values: initialValues }); // Reset to initial values
+        } catch (err) {
+            console.error(err);
+            setStatus("Unable to save customer");
+            toast.error("Failed to save customer. Please try again.");
+            setSubmitting(false);
+        } finally {
+            setLoading(false);
+        }
+    },
+});
+
+
 
     useEffect(() => {
         if (open && customer) {
@@ -201,7 +209,7 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                         <DialogTitle className="text-lg font-semibold text-gray-800">
                             {customer ? "Edit Customer" : "Add Customer"}
                         </DialogTitle>
-                        <DialogClose onClick={onOpenChange} className="right-2 top-1 rounded-sm opacity-70" />
+                        <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
                     </DialogHeader>
                     <DialogBody className="p-6">
                         <form
@@ -247,19 +255,15 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                     {...formik.getFieldProps("mobile")}
                                     className="input"
                                     type="text"
-                                    onInput={(e) => {
-                                        const input = e.target as HTMLInputElement;
-                                        if (input.value.length > 10) {
-                                            input.value = input.value.slice(0, 10);
-                                        }
+                                    onChange={(e) => {
+                                        // Limit input to 10 digits
+                                        const value = e.target.value.slice(0, 10);
+                                        // Manually update Formik's state
+                                        formik.setFieldValue("mobile", value);
                                     }}
                                 />
-                                {formik.touched.mobile && formik.errors.mobile && (
-                                    <span role="alert" className="text-xs text-red-500">
-                                        {formik.errors.mobile}
-                                    </span>
-                                )}
                             </div>
+
                             {/* Email */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="block text-sm font-medium text-gray-700">Email</label>
@@ -505,7 +509,7 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                                     return (
                                         <div className="flex flex-col gap-1.5 col-span-full">
                                             <label className="block text-sm font-medium text-gray-700">
-                                                Reason<span style={{color:"red"}}>*</span>
+                                                Reason<span style={{ color: "red" }}>*</span>
                                             </label>
                                             <textarea
                                                 placeholder="Reason"
@@ -526,7 +530,7 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
                             <div className="col-span-full flex justify-end gap-2 pt-4">
                                 <button
                                     type="button"
-                                    onClick={onOpenChange}
+                                    onClick={() => onOpenChange(false)}
                                     className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
                                 >
                                     Cancel
@@ -548,3 +552,5 @@ const ModalCustomer = ({ open, onOpenChange, customer }: IModalCustomerProps) =>
 };
 
 export { ModalCustomer };
+
+
