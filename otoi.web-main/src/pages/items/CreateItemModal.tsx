@@ -193,50 +193,47 @@ export default function CreateItemModal({
     });
 
     useEffect(() => {
-        if (formik.values.item_type_id === 2) { // Service
-            formik.resetForm({
-                values: {
-                    item_type_id: 2,
-                    item_name: "",
-                    category_id: null,
-                    sales_price: 0,
-                    gst_tax_rate: 0,
-                    measuring_unit_id: 1,
-                    item_code: "", // Reset to empty string for service code
-                    description: null,
-                    show_in_online_store: false,
-                    tax_type: "with_tax",
-                    purchase_price: null, // Not applicable for services
-                    opening_stock: null, // Not applicable for services
-                    hsn_code: null, // Not applicable for services
-                },
-            });
-        } else { // Product
-            formik.resetForm({
-                values: {
-                    item_type_id: 1,
-                    item_name: "",
-                    category_id: null,
-                    sales_price: 0,
-                    gst_tax_rate: 0,
-                    measuring_unit_id: 1,
-                    item_code: null, // Not applicable for products
-                    purchase_price: 0,
-                    opening_stock: 0,
-                    hsn_code: null,
-                    description: null,
-                    show_in_online_store: false,
-                    tax_type: "with_tax",
-                },
-            });
+        // Only reset the form for new items, not when editing
+        if (!isEditing) {
+            if (formik.values.item_type_id === 2) { // Service
+                formik.resetForm({
+                    values: {
+                        item_type_id: 2,
+                        item_name: "",
+                        category_id: null,
+                        sales_price: 0,
+                        gst_tax_rate: 0,
+                        measuring_unit_id: 1,
+                        item_code: "",
+                        description: null,
+                        show_in_online_store: false,
+                        tax_type: "with_tax",
+                        purchase_price: null,
+                        opening_stock: null,
+                        hsn_code: null,
+                    },
+                });
+            } else { // Product
+                formik.resetForm({
+                    values: {
+                        item_type_id: 1,
+                        item_name: "",
+                        category_id: null,
+                        sales_price: 0,
+                        gst_tax_rate: 0,
+                        measuring_unit_id: 1,
+                        item_code: null,
+                        purchase_price: 0,
+                        opening_stock: 0,
+                        hsn_code: null,
+                        description: null,
+                        show_in_online_store: false,
+                        tax_type: "with_tax",
+                    },
+                });
+            }
         }
-    }, [formik.values.item_type_id]);
-
-
-
-
-
-
+    }, [formik.values.item_type_id, isEditing]);
 
     // Update the useEffect hook to reset the active section and form values
     useEffect(() => {
@@ -250,7 +247,7 @@ export default function CreateItemModal({
                         category_id: item.category_id || null,
                         measuring_unit_id: item.measuring_unit_id ?? 1,
                         item_name: item.item_name ?? "",
-                        item_code: item.item_type_id === 2 ? item.item_code ?? "" : null,
+                        item_code: item.item_code ?? (item.item_type_id === 2 ? "" : null),
                         sales_price: item.sales_price ?? 0,
                         gst_tax_rate: item.gst_tax_rate ?? 0,
                         purchase_price: item.item_type_id === 1 ? item.purchase_price ?? 0 : null,

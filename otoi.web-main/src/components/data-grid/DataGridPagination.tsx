@@ -90,7 +90,7 @@ const DataGridPagination = () => {
 
   return (
     <div
-      className="flex flex-col md:flex-row justify-between items-center gap-5 md:gap-4"
+      className="flex flex-col md:flex-row justify-between items-center gap-5 md:gap-4 px-4 py-3 bg-background border-t sticky bottom-0"
       data-pagination
     >
       <div className="flex items-center space-x-2 order-2 md:order-1 pb-2 md:pb-0">
