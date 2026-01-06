@@ -132,16 +132,10 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Refresh when refreshStatus changes from parent
   useEffect(() => {
-    // Manually trigger a re-fetch when refreshKey changes
-    const params = {
-      pageIndex: 0,
-      pageSize: 5,
-      sorting: [],
-      columnFilters: [],
-    };
-    fetchUsers(params);
-  }, [refreshKey]);
+    setRefreshKey((prev) => prev + 1);
+  }, [refreshStatus]);
 
 
 
@@ -181,6 +175,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
   const handleClose = () => {
     setPersonModalOpen(false);
+    setRefreshKey((prev) => prev + 1); // Trigger refresh on close
   };
 
   const columns = useMemo<ColumnDef<Customer>[]>(
@@ -374,7 +369,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       }
 
       const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
+        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}&t=${Date.now()}`,
       );
       const payload: any = response.data as any;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
