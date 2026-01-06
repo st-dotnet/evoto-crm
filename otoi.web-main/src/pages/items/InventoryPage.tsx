@@ -146,8 +146,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const lowStockCount = items.filter((item) => (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
-  const handleDeleteClick = (id: number, onClose?: () => void) => {
-    if (onClose) onClose();
+  const handleDeleteClick = (id: number) => {
     setItemToDelete(id);
     setDeleteDialogOpen(true);
   };
@@ -180,7 +179,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   // Edit an item
   const handleEdit = async (item: InventoryItem) => {
-    // console.log("Edit clicked for item:", item.item_id); // Debug log
+    console.log("Edit clicked for item:", item.item_id); // Debug log
 
     try {
       setLoading(true);
@@ -335,7 +334,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       enableSorting: true,
       cell: (info) => {
         const value = info.row.original.purchase_price;
-        return value ? `₹${value.toLocaleString('en-IN')}` : '₹0';
+        return value ? `₹${value.toLocaleString('en-IN')}` : 'N/A';
       },
       meta: {
         headerClassName: "min-w-[137px]",
@@ -354,10 +353,10 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         disableRowClick: true,
       },
       cell: ({ row }) => {
-        const [isOpen, setIsOpen] = useState(false);
+        // const [isOpen, setIsOpen] = useState(false);
 
         return (
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -395,7 +394,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                 onSelect={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleDeleteClick(row.original.item_id, () => setIsOpen(false));
+                  handleDeleteClick(row.original.item_id);
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -433,7 +432,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                   <i className="bi bi-graph-up text-primary fs-5"></i>
                   <span className="fw-semibold text-primary">Stock Value</span>
                 </div>
-                <div className="fs-3 fw-bold">₹ {stockValue.toLocaleString('en-IN')}</div>
+                <div className="fs-3 fw-bold">₹ {stockValue}</div>
               </div>
               <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
             </div>
@@ -496,7 +495,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
 
       {/* DataGrid */}
-      <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4">
+      <div className="bg-white border rounded-lg overflow-hidden flex flex-col pt-4 mt-6">
 
         {loading ? (
           <div className="text-center py-10">Loading...</div>

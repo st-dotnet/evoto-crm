@@ -7,7 +7,6 @@ interface ICustomFieldsProps {
 
 export default function CustomFields({ formik }: ICustomFieldsProps) {
     return (
-<<<<<<< Updated upstream
         <div className="w-full border rounded-lg p-4">
             <div className="text-center py-8">
                 <div className="mb-4">
@@ -18,18 +17,6 @@ export default function CustomFields({ formik }: ICustomFieldsProps) {
                     /> */}
                     <p className="text-sm text-gray-500">
                         You don't have any custom fields created yet.
-=======
-        <div className="border rounded-lg p-4 flex flex-col items-center justify-center">
-            <div className="text-center py-8">
-                <div className="mb-4">
-                    <img
-                        src="https://via.placeholder.com/50"
-                        alt="No custom fields"
-                        className="mx-auto mb-2"
-                    />
-                    <p className="text-sm text-gray-500">
-                        You don't have any custom fields created yet
->>>>>>> Stashed changes
                     </p>
                 </div>
                 <button
@@ -41,8 +28,4 @@ export default function CustomFields({ formik }: ICustomFieldsProps) {
             </div>
         </div>
     );
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes

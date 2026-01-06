@@ -192,9 +192,7 @@ export default function CreateItemModal({
         }
     });
 
-useEffect(() => {
-    // Only reset the form for new items, not when editing
-    if (!isEditing) {
+    useEffect(() => {
         if (formik.values.item_type_id === 2) { // Service
             formik.resetForm({
                 values: {
@@ -204,13 +202,13 @@ useEffect(() => {
                     sales_price: 0,
                     gst_tax_rate: 0,
                     measuring_unit_id: 1,
-                    item_code: "",
+                    item_code: "", // Reset to empty string for service code
                     description: null,
                     show_in_online_store: false,
                     tax_type: "with_tax",
-                    purchase_price: null,
-                    opening_stock: null,
-                    hsn_code: null,
+                    purchase_price: null, // Not applicable for services
+                    opening_stock: null, // Not applicable for services
+                    hsn_code: null, // Not applicable for services
                 },
             });
         } else { // Product
@@ -222,7 +220,7 @@ useEffect(() => {
                     sales_price: 0,
                     gst_tax_rate: 0,
                     measuring_unit_id: 1,
-                    item_code: null,
+                    item_code: null, // Not applicable for products
                     purchase_price: 0,
                     opening_stock: 0,
                     hsn_code: null,
@@ -232,8 +230,7 @@ useEffect(() => {
                 },
             });
         }
-    }
-}, [formik.values.item_type_id, isEditing]);
+    }, [formik.values.item_type_id]);
 
 
 
@@ -253,7 +250,7 @@ useEffect(() => {
                         category_id: item.category_id || null,
                         measuring_unit_id: item.measuring_unit_id ?? 1,
                         item_name: item.item_name ?? "",
-                        item_code: item.item_code ?? (item.item_type_id === 2 ? "" : null),
+                        item_code: item.item_type_id === 2 ? item.item_code ?? "" : null,
                         sales_price: item.sales_price ?? 0,
                         gst_tax_rate: item.gst_tax_rate ?? 0,
                         purchase_price: item.item_type_id === 1 ? item.purchase_price ?? 0 : null,

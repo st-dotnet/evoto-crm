@@ -83,47 +83,25 @@ const initialValues: Person = {
 const saveCustomerSchema = Yup.object().shape({
     first_name: Yup.string().min(3).max(50).required("First Name is required"),
     last_name: Yup.string().min(3).max(50).required("Last Name is required"),
-    mobile: Yup.string()
-        .test(
-            "mobile-format",
-            "Mobile number must contain only numbers",
-            (value) => !value || /^[0-9]+$/.test(value)
-        )
-        .test(
-            "mobile-length",
-            "Mobile number must be exactly 10 digits",
-            (value) => !value || value.length === 10
-        )
-        .test(
-            "mobile-unique",
-            "A customer with this mobile number already exists",
-            async function(value) {
-                if (!value || value.length !== 10) return true; // Skip if empty or invalid length
-                try {
-                    const exists = await checkMobileExists(value);
-                    return !exists;
-                } catch (error) {
-                    console.error("Error validating mobile:", error);
-                    return true; // Don't block form submission if there's an error
-                }
-            }
-        ),
-    email: Yup.string()
-        .email("Invalid email")
-        .test(
-            "email-or-mobile",
-            "Either Mobile or Email is required",
-            function (value) {
-                const { mobile } = this.parent;
-                if (!value && !mobile) {
-                    return this.createError({
-                        path: 'email',
-                        message: 'Either Mobile or Email is required'
-                    });
-                }
-                return true;
-            }
-        ),
+    mobile: Yup.string().when("email", {
+        is: (email: string) => !email,
+        then: (schema) =>
+            schema
+                .required("Mobile or Email is required")
+                .test(
+                    "mobile-length",
+                    "Mobile number must be exactly 10 digits",
+                    (value) => !!value && value.length === 10
+                ),
+        otherwise: (schema) =>
+            schema.test(
+                "mobile-length",
+                "Mobile number must be exactly 10 digits",
+                (value) => !value || value.length === 10
+            ),
+    }),
+
+    email: Yup.string().email("Invalid email"),
     gst: Yup.string().min(15).max(15),
     pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
     shipping_pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
@@ -132,7 +110,14 @@ const saveCustomerSchema = Yup.object().shape({
         then: (schema) => schema.required("Reason is required when status is Lose"),
         otherwise: (schema) => schema,
     })
-});
+}).test(
+    "mobile-or-email",
+    "Either Mobile or Email is required",
+    function (values) {
+        const { mobile, email } = values;
+        return !!mobile || !!email;
+    }
+);
 
 
 const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustomerProps) => {
@@ -146,45 +131,45 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
         axios.get(`${import.meta.env.VITE_APP_API_URL}/status-list/`).then((res) => setStatusList(res.data));
     }, []);
 
-    const formik = useFormik({
-        initialValues,
-        validationSchema: saveCustomerSchema,
-        onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
-            setTouched({
-                first_name: true,
-                last_name: true,
-                mobile: true,
-                email: true,
-                gst: true,
-                pin: true,
-                reason: true,
-            });
-            setLoading(true);
-            try {
-                const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-                const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
+const formik = useFormik({
+    initialValues,
+    validationSchema: saveCustomerSchema,
+    onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
+        setTouched({
+            first_name: true,
+            last_name: true,
+            mobile: true,
+            email: true,
+            gst: true,
+            pin: true,
+            reason: true,
+        });
+        setLoading(true);
+        try {
+            const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+            const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
 
-                if (customer?.uuid) {
-                    await axios.put(`${apiBase}/${customer.uuid}`, values);
-                } else {
-                    await axios.post(`${apiBase}/`, values);
-                }
-
-                if (onSuccess) {
-                    onSuccess(); // Call the onSuccess callback if provided
-                }
-                onOpenChange(false); // Close the modal
-                resetForm({ values: initialValues }); // Reset to initial values
-            } catch (err) {
-                console.error(err);
-                setStatus("Unable to save customer");
-                toast.error("Failed to save customer. Please try again.");
-                setSubmitting(false);
-            } finally {
-                setLoading(false);
+            if (customer?.uuid) {
+                await axios.put(`${apiBase}/${customer.uuid}`, values);
+            } else {
+                await axios.post(`${apiBase}/`, values);
             }
-        },
-    });
+
+            if (onSuccess) {
+                onSuccess(); // Call the onSuccess callback if provided
+            }
+            onOpenChange(false); // Close the modal
+            resetForm({ values: initialValues }); // Reset to initial values
+        } catch (err) {
+            console.error(err);
+            setStatus("Unable to save customer");
+            toast.error("Failed to save customer. Please try again.");
+            setSubmitting(false);
+        } finally {
+            setLoading(false);
+        }
+    },
+});
 
 
 
@@ -216,39 +201,9 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
         }
     }, [sameAsBilling, formik.values]);
 
-    // Function to check if mobile number already exists
-    const checkMobileExists = async (mobile: string): Promise<boolean> => {
-        if (!mobile || mobile.length !== 10) return false;
-        try {
-            const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-            const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
-            const response = await axios.get(`${apiBase}/check-mobile/${mobile}`, {
-                params: {
-                    exclude: customer?.uuid || ''
-                }
-            });
-            return response.data.exists;
-        } catch (error) {
-            console.error("Error checking mobile number:", error);
-            return false;
-        }
-    };
-
-    // Reset form when modal is opened/closed
-    useEffect(() => {
-        if (!open) {
-            formik.resetForm();
-        }
-    }, [open]);
-
     return (
         <Fragment>
-            <Dialog open={open} onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                    formik.resetForm();
-                }
-                onOpenChange(isOpen);
-            }}>
+            <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
                     <DialogHeader className="bg-gray-50 p-6 border-b">
                         <DialogTitle className="text-lg font-semibold text-gray-800">
@@ -298,36 +253,15 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                 </label>
                                 <input
                                     {...formik.getFieldProps("mobile")}
-                                    className={clsx("input", {
-                                        "border-red-500 focus:ring-red-500 focus:border-red-500": 
-                                            formik.touched.mobile && formik.errors.mobile
-                                    })}
+                                    className="input"
                                     type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
                                     onChange={(e) => {
-                                        // Only allow numbers
-                                        const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                                        // Limit input to 10 digits
+                                        const value = e.target.value.slice(0, 10);
+                                        // Manually update Formik's state
                                         formik.setFieldValue("mobile", value);
-                                        // Mark as touched to show errors
-                                        if (!formik.touched.mobile) {
-                                            formik.setFieldTouched("mobile", true);
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        formik.setFieldTouched("mobile", true);
-                                        // If both mobile and email are empty, validate email as well
-                                        if (!formik.values.mobile && !formik.values.email) {
-                                            formik.setFieldTouched("email", true);
-                                            formik.validateField("email");
-                                        }
                                     }}
                                 />
-                                {formik.touched.mobile && formik.errors.mobile && (
-                                    <span role="alert" className="text-xs text-red-500">
-                                        {formik.errors.mobile}
-                                    </span>
-                                )}
                             </div>
 
                             {/* Email */}
