@@ -83,25 +83,33 @@ const initialValues: Person = {
 const saveCustomerSchema = Yup.object().shape({
     first_name: Yup.string().min(3).max(50).required("First Name is required"),
     last_name: Yup.string().min(3).max(50).required("Last Name is required"),
-    mobile: Yup.string().when("email", {
-        is: (email: string) => !email,
-        then: (schema) =>
-            schema
-                .required("Mobile or Email is required")
-                .test(
-                    "mobile-length",
-                    "Mobile number must be exactly 10 digits",
-                    (value) => !!value && value.length === 10
-                ),
-        otherwise: (schema) =>
-            schema.test(
-                "mobile-length",
-                "Mobile number must be exactly 10 digits",
-                (value) => !value || value.length === 10
-            ),
-    }),
-
-    email: Yup.string().email("Invalid email"),
+    mobile: Yup.string()
+        .test(
+            "mobile-format",
+            "Mobile number must contain only numbers",
+            (value) => !value || /^[0-9]+$/.test(value)
+        )
+        .test(
+            "mobile-length",
+            "Mobile number must be exactly 10 digits",
+            (value) => !value || value.length === 10
+        ),
+    email: Yup.string()
+        .email("Invalid email")
+        .test(
+            "email-or-mobile",
+            "Either Mobile or Email is required",
+            function (value) {
+                const { mobile } = this.parent;
+                if (!value && !mobile) {
+                    return this.createError({
+                        path: 'email',
+                        message: 'Either Mobile or Email is required'
+                    });
+                }
+                return true;
+            }
+        ),
     gst: Yup.string().min(15).max(15),
     pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
     shipping_pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
@@ -110,14 +118,7 @@ const saveCustomerSchema = Yup.object().shape({
         then: (schema) => schema.required("Reason is required when status is Lose"),
         otherwise: (schema) => schema,
     })
-}).test(
-    "mobile-or-email",
-    "Either Mobile or Email is required",
-    function (values) {
-        const { mobile, email } = values;
-        return !!mobile || !!email;
-    }
-);
+})
 
 
 const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustomerProps) => {
@@ -131,45 +132,51 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
         axios.get(`${import.meta.env.VITE_APP_API_URL}/status-list/`).then((res) => setStatusList(res.data));
     }, []);
 
-const formik = useFormik({
-    initialValues,
-    validationSchema: saveCustomerSchema,
-    onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
-        setTouched({
-            first_name: true,
-            last_name: true,
-            mobile: true,
-            email: true,
-            gst: true,
-            pin: true,
-            reason: true,
-        });
-        setLoading(true);
-        try {
-            const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-            const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
+    const formik = useFormik({
+        initialValues,
+        validationSchema: saveCustomerSchema,
+        onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
+            setTouched({
+                first_name: true,
+                last_name: true,
+                mobile: true,
+                email: true,
+                gst: true,
+                pin: true,
+                reason: true,
+            });
+            setLoading(true);
+            try {
+                const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+                const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
 
-            if (customer?.uuid) {
-                await axios.put(`${apiBase}/${customer.uuid}`, values);
-            } else {
-                await axios.post(`${apiBase}/`, values);
-            }
+                if (customer?.uuid) {
+                    await axios.put(`${apiBase}/${customer.uuid}`, values);
+                } else {
+                    await axios.post(`${apiBase}/`, values);
+                }
 
-            if (onSuccess) {
-                onSuccess(); // Call the onSuccess callback if provided
+                if (onSuccess) {
+                    onSuccess(); 
+                }
+                onOpenChange(false); 
+                resetForm({ values: initialValues }); 
+            } catch (err) {
+                console.error(err);
+                setStatus("Unable to save customer");
+                toast.error("Failed to save customer. Please try again.");
+                setSubmitting(false);
+            } finally {
+                setLoading(false);
             }
-            onOpenChange(false); // Close the modal
-            resetForm({ values: initialValues }); // Reset to initial values
-        } catch (err) {
-            console.error(err);
-            setStatus("Unable to save customer");
-            toast.error("Failed to save customer. Please try again.");
-            setSubmitting(false);
-        } finally {
-            setLoading(false);
+        },
+    });
+
+    useEffect(() => {
+        if (!open) {
+            formik.resetForm();
         }
-    },
-});
+    }, [open]);
 
 
 
@@ -203,7 +210,12 @@ const formik = useFormik({
 
     return (
         <Fragment>
-            <Dialog open={open} onOpenChange={onOpenChange}>
+            <Dialog open={open} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    formik.resetForm();
+                }
+                onOpenChange(isOpen);
+            }}>
                 <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
                     <DialogHeader className="bg-gray-50 p-6 border-b">
                         <DialogTitle className="text-lg font-semibold text-gray-800">
@@ -253,15 +265,36 @@ const formik = useFormik({
                                 </label>
                                 <input
                                     {...formik.getFieldProps("mobile")}
-                                    className="input"
-                                    type="text"
+                                    className={clsx("input", {
+                                        "border-red-500 focus:ring-red-500 focus:border-red-500":
+                                            formik.touched.mobile && formik.errors.mobile
+                                    })} type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     onChange={(e) => {
                                         // Limit input to 10 digits
-                                        const value = e.target.value.slice(0, 10);
-                                        // Manually update Formik's state
+                                        // Only allow numbers
+                                        const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                                         formik.setFieldValue("mobile", value);
+                                        // Mark as touched to show errors
+                                        if (!formik.touched.mobile) {
+                                            formik.setFieldTouched("mobile", true);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        formik.setFieldTouched("mobile", true);
+                                        // If both mobile and email are empty, validate email as well
+                                        if (!formik.values.mobile && !formik.values.email) {
+                                            formik.setFieldTouched("email", true);
+                                            formik.validateField("email");
+                                        }
                                     }}
                                 />
+                                {formik.touched.mobile && formik.errors.mobile && (
+                                    <span role="alert" className="text-xs text-red-500">
+                                        {formik.errors.mobile}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Email */}
