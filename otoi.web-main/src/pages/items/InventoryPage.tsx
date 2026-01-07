@@ -484,37 +484,39 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         </button>
       </div>
 
-      <div className="mb-4">
-        <label className="input input-sm w-64">
-          <KeenIcon icon="magnifier" />
-          <input
-            type="text"
-            placeholder="Search items"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </label>
-      </div>
+     
 
-
-      {/* DataGrid */}
-      <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4">
-        {loading ? (
-          <div className="text-center py-10">Loading...</div>
-        ) : (
-          <div className="relative mt-6">
-            <DataGrid
-              key={refreshKey}
-              columns={columns}
-              data={filteredItems}
-              rowSelection
-              getRowId={(row) => row.item_id.toString()}
-              pagination={{ size: 5 }}
+      {/* Search Bar */}
+      <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4 h-full">
+        <div className="p-4 border-b">
+          <label className="input input-sm w-64">
+            <KeenIcon icon="magnifier" />
+            <input
+              type="text"
+              placeholder="Search items"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </label>
+        </div>
 
-
-        )}
+        {/* DataGrid Container */}
+        <div className="flex-grow overflow-hidden">
+          {loading ? (
+            <div className="text-center py-10">Loading...</div>
+          ) : (
+            <div className="h-full">
+              <DataGrid
+                key={refreshKey}
+                columns={columns}
+                data={filteredItems}
+                rowSelection
+                getRowId={(row) => row.item_id.toString()}
+                pagination={{ size: 5 }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
 

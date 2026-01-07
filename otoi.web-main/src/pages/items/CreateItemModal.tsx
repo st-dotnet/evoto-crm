@@ -1,4 +1,3 @@
-// src/components/CreateItemModal.tsx
 import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -610,42 +609,59 @@ export default function CreateItemModal({
 
             {/* CREATE CATEGORY MODAL */}
             <Dialog open={showCategoryModal} onOpenChange={() => setShowCategoryModal(false)}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Create New Category</DialogTitle>
+                <DialogContent className="max-w-md rounded-2xl p-6 shadow-lg">
+                    <DialogHeader className="mb-4">
+                        <DialogTitle className="text-lg font-semibold text-gray-800">
+                            Create New Category
+                        </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Ex: Snacks"
-                            value={newCategory}
-                            onChange={(e) => setNewCategory(e.target.value)}
-                        />
-                        <div className="flex justify-end gap-3">
+
+                    <div className="space-y-5">
+                        <div>
+                            <input
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+                     focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                placeholder="Ex: Snacks"
+                                value={newCategory}
+                                onChange={(e) => setNewCategory(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2">
                             <Button
-                                className="px-4 py-2 bg-gray-200 rounded"
+                                variant="outline"
+                                className="rounded-lg px-4 py-2 text-sm "
                                 onClick={() => setShowCategoryModal(false)}
+                                style={{ background: 'white' }}
                             >
                                 Cancel
                             </Button>
+
                             <Button
-                                className="px-4 py-2 bg-blue-600 text-white rounded"
+                                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white
+                     hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 disabled={!newCategory}
                                 onClick={async () => {
                                     try {
                                         await createItemCategory(newCategory);
                                         const updatedCategories = await getItemCategories();
                                         setCategories(updatedCategories);
-                                        const newCategoryId = updatedCategories.find((c: ICategory) => c.name === newCategory)?.uuid;
+
+                                        const newCategoryId = updatedCategories.find(
+                                            (c: ICategory) => c.name === newCategory
+                                        )?.uuid;
+
                                         if (newCategoryId) {
                                             formik.setFieldValue("category_id", newCategoryId);
                                         }
+
                                         setNewCategory("");
                                         setShowCategoryModal(false);
                                     } catch (error) {
                                         console.error("Failed to create category", error);
                                     }
                                 }}
+                                style={{ background: '#1B84FF' }}
                             >
                                 Add
                             </Button>
@@ -657,5 +673,3 @@ export default function CreateItemModal({
     );
 }
 
-
-// When I am entering the item or editing the item from the action buttons the (Edit button) for products and services then the item data is getting fetched in both input fields.  ergerfg
