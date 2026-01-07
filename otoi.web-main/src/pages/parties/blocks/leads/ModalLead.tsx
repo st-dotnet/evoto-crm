@@ -19,7 +19,7 @@ import { toast } from "react-toastify";
 // Props for the modal
 interface IModalLeadProps {
   open: boolean;
-  onOpenChange: () => void;
+  onOpenChange: (open: boolean) => void;
   lead: Lead | null;
 }
 
@@ -151,7 +151,6 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         const apiBaseLeads = baseUrl.endsWith("/")
           ? `${baseUrl}leads`
           : `${baseUrl}/leads`;
-
         let response;
 
         if (lead?.uuid) {
@@ -174,16 +173,14 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
           if (createdUuid) {
             navigate(`/lead/${createdUuid}`);
           } else {
-            onOpenChange();
+            onOpenChange(false);
           }
         }
 
-        onOpenChange();
-      } catch (error: any) {
-        console.error(error);
-
+        onOpenChange(false);
+      } catch (error: any) { 
         setStatus(
-          error?.response?.data?.message ||
+          error?.response?.data?.message ||error?.response?.data?.error||
           "Something went wrong. Please try again."
         );
       } finally {
@@ -218,15 +215,26 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     }
   }, [open, lead]);
 
+  useEffect(() => {
+    if (!open) {
+      formik.resetForm();
+    }
+  }, [open]);
+
   return (
     <Fragment>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          formik.resetForm();
+        }
+        onOpenChange(isOpen);
+      }}>
         <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
           <DialogHeader className="bg-gray-50 p-6 border-b">
             <DialogTitle className="text-lg font-semibold text-gray-800">
               {lead ? "Edit Lead" : "Add Lead"}
             </DialogTitle>
-            <DialogClose onClick={onOpenChange} className="right-2 top-1 rounded-sm opacity-70" />
+            <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
           </DialogHeader>
           <DialogBody className="p-6">
             <div className="max-w-[auto] w-full">
@@ -524,7 +532,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 <div className="flex justify-end col-span-full pt-4 gap-2">
                   <button
                     type="button"
-                    onClick={onOpenChange}
+                    onClick={() => onOpenChange(false)}
                     className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
                   >
                     Cancel

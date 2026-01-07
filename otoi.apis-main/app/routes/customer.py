@@ -334,7 +334,6 @@ def update_customer(customer_id):
  
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
-    print(f"Delete request received for customer: {customer_id}")
     try:
         customer = Customer.query.filter_by(uuid=customer_id).first()
         if not customer:
