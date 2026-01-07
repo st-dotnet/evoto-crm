@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle } from "lucide-react";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle } from "lucide-react";
 
 import {
   ColumnDef,
@@ -36,11 +36,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
+import { Button } from "@/components/ui/button";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -67,11 +76,12 @@ const PartiesVendorsContent = ({
   const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
   const [refreshKey, setRefreshKey] = useState(0);
   const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Vendor | null>(null);
+  const [selectedVendors, setSelectedVendors] = useState<Vendor | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<
     ActivityLead | null
   >(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const navigate = useNavigate();
 
@@ -109,7 +119,7 @@ const PartiesVendorsContent = ({
 
   const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
     event.preventDefault();
-    setSelectedPerson(rowData);
+    setSelectedVendors(rowData);
     setPersonModalOpen(true);
   };
 
@@ -117,6 +127,26 @@ const PartiesVendorsContent = ({
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
+
+
+   const deleteVendors = async (uuid: string) => {
+
+    if (!uuid) return;
+  
+      try {
+        await axios.delete(
+          `${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`
+        );
+  
+        toast.success("Vendor deleted successfully");
+        setShowDeleteDialog(false);
+        setRefreshKey((prev) => prev + 1);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message || "Delete failed"
+        );
+      }
+    };
 
   const columns = useMemo<ColumnDef<Vendor>[]>(
     () => [
@@ -215,7 +245,7 @@ const PartiesVendorsContent = ({
                 <Eye className="mr-2 h-4 w-4" />
                 Details
               </DropdownMenuItem> */}
-              <DropdownMenuItem
+              {/* <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedCustomerForActivity({
@@ -230,11 +260,18 @@ const PartiesVendorsContent = ({
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Activity
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+              </DropdownMenuItem> */}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedVendors(row.original);
+                  setShowDeleteDialog(true);
+                }}
+              >
                 <Trash2 className="mr-2 h-4 w-4 text-red-500" />
                 <span className="text-red-500">Delete</span>
               </DropdownMenuItem>
+
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -416,13 +453,49 @@ const PartiesVendorsContent = ({
       <ModalVendor
         open={personModalOpen}
         onOpenChange={handleClose}
-        vendor={selectedPerson}
+        vendor={selectedVendors}
       />
       <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}
         lead={selectedCustomerForActivity}
       />
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[420px] p-6">
+          <DialogHeader className="flex flex-col items-center text-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            </div>
+
+            <DialogTitle className="text-lg font-semibold">
+              Delete Vendors
+            </DialogTitle>
+
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this vendors?
+            </DialogDescription>
+
+          </DialogHeader>
+
+          <DialogFooter className="mt-3 flex justify-end gap-3">
+
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={() => deleteVendors(selectedVendors?.uuid || "")}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

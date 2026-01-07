@@ -23,9 +23,9 @@ const DataGridPagination = () => {
   // Replace placeholders in paginationInfo
   const paginationInfo = props.pagination?.info
     ? props.pagination.info
-        .replace('{from}', from.toString())
-        .replace('{to}', to.toString())
-        .replace('{count}', totalRows.toString())
+      .replace('{from}', from.toString())
+      .replace('{to}', to.toString())
+      .replace('{count}', totalRows.toString())
     : `${from} - ${to} of ${totalRows}`;
 
   // Pagination limit logic

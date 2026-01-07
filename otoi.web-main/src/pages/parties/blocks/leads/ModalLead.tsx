@@ -14,11 +14,12 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
+import { toast } from "react-toastify";
 
 // Props for the modal
 interface IModalLeadProps {
   open: boolean;
-  onOpenChange: () => void;
+  onOpenChange: (open: boolean) => void;
   lead: Lead | null;
 }
 
@@ -69,6 +70,16 @@ const initialValues: Lead = {
   reason: "",
 };
 
+
+const STATUS_LABEL_TO_VALUE: Record<string, string> = {
+  "New": "1",
+  "In-Progress": "2",
+  "Quote Given": "3",
+  "Win": "4",
+  "Lose": "5",
+};
+
+
 // Validation Schema
 const saveLeadSchema = Yup.object().shape({
   first_name: Yup.string()
@@ -80,34 +91,13 @@ const saveLeadSchema = Yup.object().shape({
     .max(50, "Maximum 50 symbols")
     .required("Last Name is required"),
   mobile: Yup.string()
-    .test(
-      "mobile-or-email",
-      "Either Mobile or Email is required",
-      function (value) {
-        const { email } = this.parent;
-        if (!value && !email) {
-          return false;
-        }
-        return true;
-      }
-    )
-    .test(
-      "mobile-length",
-      "Mobile number must be exactly 10 digits",
-      (value) => !value || value.length === 10
-    ),
-  email: Yup.string()
-    .email("Invalid email")
-    .test(
-      "mobile-or-email",
-      "Either Mobile or Email is required",
-      function (value) {
-        const { mobile } = this.parent;
-        if (!value && !mobile) {
-          return false;
-        }
-        return true;
-      }
+    .nullable()
+    .test("mobile-or-email", "Either Mobile or Email is required", function (value) {
+      const { email } = this.parent;
+      return !!(value || email);
+    })
+    .test("mobile-length", "Mobile must be 10 digits", (value) =>
+      !value || value.length === 10
     ),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
@@ -139,12 +129,13 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     validationSchema: saveLeadSchema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
+
       try {
         const postData = {
           first_name: values.first_name,
           last_name: values.last_name,
-          mobile: values.mobile,
-          email: values.email,
+          mobile: values.mobile || null,
+          email: values.email || null,
           gst: values.gst,
           status: values.status,
           city: values.city,
@@ -157,25 +148,48 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         };
 
         const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-        const apiBaseLeads = baseUrl.endsWith("/") ? `${baseUrl}leads` : `${baseUrl}/leads`;
+        const apiBaseLeads = baseUrl.endsWith("/")
+          ? `${baseUrl}leads`
+          : `${baseUrl}/leads`;
+        let response;
 
         if (lead?.uuid) {
-          await axios.put(`${apiBaseLeads}/${lead.uuid}`, postData);
+          response = await axios.put(
+            `${apiBaseLeads}/${lead.uuid}`,
+            postData
+          );
+
+          toast.success("Lead updated successfully");
         } else {
-          await axios.post(`${apiBaseLeads}/`, postData);
+          response = await axios.post(
+            `${apiBaseLeads}/`,
+            postData
+          );
+
+          toast.success("Lead created successfully");
+
+          // If API returns created lead
+          const createdUuid = response.data?.uuid;
+          if (createdUuid) {
+            navigate(`/lead/${createdUuid}`);
+          } else {
+            onOpenChange(false);
+          }
         }
 
-        onOpenChange();
-        navigate("/leads", { replace: true });
-      } catch (error) {
-        console.error(error);
-        setStatus("The lead details are incorrect");
+        onOpenChange(false);
+      } catch (error: any) { 
+        setStatus(
+          error?.response?.data?.message ||error?.response?.data?.error||
+          "Something went wrong. Please try again."
+        );
       } finally {
         setSubmitting(false);
         setLoading(false);
       }
     },
   });
+
 
   // Reset form when editing a lead
   useEffect(() => {
@@ -188,9 +202,9 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
           mobile: lead.mobile || "",
           email: lead.email || "",
           gst: lead.gst || "",
-          status: lead.status || "",
           city: address.city || "",
           state: address.state || "",
+          status: STATUS_LABEL_TO_VALUE[lead.status || ""] || "",
           country: address.country || "",
           pin: address.pin || "",
           address1: address.address1 || "",
@@ -201,15 +215,26 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     }
   }, [open, lead]);
 
+  useEffect(() => {
+    if (!open) {
+      formik.resetForm();
+    }
+  }, [open]);
+
   return (
     <Fragment>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          formik.resetForm();
+        }
+        onOpenChange(isOpen);
+      }}>
         <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
           <DialogHeader className="bg-gray-50 p-6 border-b">
             <DialogTitle className="text-lg font-semibold text-gray-800">
               {lead ? "Edit Lead" : "Add Lead"}
             </DialogTitle>
-            <DialogClose onClick={onOpenChange} className="right-2 top-1 rounded-sm opacity-70" />
+            <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
           </DialogHeader>
           <DialogBody className="p-6">
             <div className="max-w-[auto] w-full">
@@ -507,7 +532,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 <div className="flex justify-end col-span-full pt-4 gap-2">
                   <button
                     type="button"
-                    onClick={onOpenChange}
+                    onClick={() => onOpenChange(false)}
                     className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
                   >
                     Cancel

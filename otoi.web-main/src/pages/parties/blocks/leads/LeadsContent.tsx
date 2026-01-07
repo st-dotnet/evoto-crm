@@ -27,13 +27,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle } from "lucide-react";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { ModalLead } from "./ModalLead";
 import { useNavigate } from "react-router-dom";
 import { ActivityForm } from "./ActivityForm";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader
+} from "@/components/ui/dialog";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -52,6 +61,95 @@ interface ActivityLead {
   activity_type?: string;
 }
 
+import { debounce } from "@/lib/helpers";
+
+const Toolbar = ({
+  defaultSearch,
+  setSearch,
+  defaultStatusType,
+  setDefaultStatusType,
+}: {
+  defaultSearch: string;
+  setSearch: (query: string) => void;
+  defaultStatusType: string;
+  setDefaultStatusType: (query: string) => void;
+}) => {
+  const [searchInput, setSearchInput] = useState(defaultSearch);
+  const [searchStatusType, setStatusType] = useState(defaultStatusType);
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearch(query);
+      }, 500),
+    [setSearch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      debouncedSearch.cancel?.();
+      setSearch(searchInput);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    debouncedSearch(value);
+  };
+
+  return (
+    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
+      <div className="flex flex-wrap gap-2 lg:gap-5">
+        <div className="flex">
+          <label className="input input-sm">
+            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
+              <KeenIcon icon="magnifier" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search leads"
+              value={searchInput}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+            />
+          </label>
+        </div>
+        {/* Status Filter */}
+        <div className="flex flex-wrap gap-2.5">
+          <label className="select-sm"> Status Type </label>
+          <Select
+            defaultValue=""
+            value={searchStatusType}
+            onValueChange={(value) => {
+              setStatusType(value);
+              setDefaultStatusType(value);
+            }}
+          >
+            <SelectTrigger className="w-28" size="sm">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent className="w-32">
+              <SelectItem value="-1">All</SelectItem>
+              <SelectItem value="1">New</SelectItem>
+              <SelectItem value="2">In Progress</SelectItem>
+              <SelectItem value="3">Quote Given</SelectItem>
+              <SelectItem value="4">Win</SelectItem>
+              <SelectItem value="5">Lose</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchStatusTypeQuery, setStatusTypeQuery] = useState("-1");
@@ -61,6 +159,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [selectedLeadForActivity, setSelectedLeadForActivity] =
     useState<ActivityLead | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const navigate = useNavigate();
 
@@ -104,6 +203,22 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const handleClose = () => {
     setLeadModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
+  };
+
+
+  const deleteLead = async (uuid: string) => {
+
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_APP_API_URL}/leads/${uuid}`
+      );
+
+      toast("Lead deleted successfully");
+      setShowDeleteDialog(false);
+      setRefreshKey((prev) => prev + 1);
+    } catch {
+      toast("Delete failed");
+    }
   };
 
   const columns = useMemo<ColumnDef<Lead>[]>(
@@ -191,7 +306,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
               <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
                 <MoreVertical className="h-4 w-4" />
               </button>
-              
+
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
@@ -212,7 +327,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                 <Eye className="mr-2 h-4 w-4" />
                 Details
               </DropdownMenuItem>
-              <DropdownMenuItem
+              {/* <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedLeadForActivity({
@@ -227,8 +342,14 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
               >
                <PlusCircle className="mr-2 h-4 w-4" />
                 <span>Create Activity</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+              </DropdownMenuItem> */}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedLead(row.original);
+                  setShowDeleteDialog(true);
+                }}
+              >
                 <Trash2 className="mr-2 h-4 w-4 text-red-500" />
                 <span className="text-red-500">Delete</span>
               </DropdownMenuItem>
@@ -244,6 +365,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     []
   );
 
+
+
   const fetchLeads = async (params: TDataGridRequestParams) => {
     try {
       const queryParams = new URLSearchParams();
@@ -258,7 +381,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         queryParams.set("query", searchQuery);
       }
       if (searchStatusTypeQuery != "-1") {
-        queryParams.set("status_type", searchStatusTypeQuery);
+        queryParams.set("status", searchStatusTypeQuery);
       }
 
       // Column filters
@@ -308,69 +431,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const Toolbar = ({
-    defaultSearch,
-    setSearch,
-    defaultStatusType,
-    setDefaultStatusType,
-  }: {
-    defaultSearch: string;
-    setSearch: (query: string) => void;
-    defaultStatusType: string;
-    setDefaultStatusType: (query: string) => void;
-  }) => {
-    const [searchInput, setSearchInput] = useState(defaultSearch);
-    const [searchStatusType, setStatusType] = useState(defaultStatusType);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        setSearch(searchInput);
-      }
-    };
-
-    return (
-      <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-        <div className="flex flex-wrap gap-2 lg:gap-5">
-          <div className="flex">
-            <label className="input input-sm">
-              <KeenIcon icon="magnifier" />
-              <input
-                type="text"
-                placeholder="Search leads"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            </label>
-          </div>
-          {/* Status Filter */}
-          <div className="flex flex-wrap gap-2.5">
-            <label className="select-sm"> Status Type </label>
-            <Select
-              defaultValue=""
-              value={searchStatusType}
-              onValueChange={(value) => {
-                setStatusType(value);
-                setDefaultStatusType(value);
-              }}
-            >
-              <SelectTrigger className="w-28" size="sm">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent className="w-32">
-                <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">New</SelectItem>
-                <SelectItem value="2">In Progress</SelectItem>
-                <SelectItem value="3">Quote Given</SelectItem>
-                <SelectItem value="4">Win</SelectItem>
-                <SelectItem value="5">Lose</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
@@ -403,6 +464,46 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         onOpenChange={() => setActivityModalOpen(false)}
         lead={selectedLeadForActivity}
       />
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[420px] p-6">
+          <DialogHeader className="flex flex-col items-center text-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            </div>
+
+            <DialogTitle className="text-lg font-semibold">
+              Delete Lead
+            </DialogTitle>
+
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this lead?
+            </DialogDescription>
+
+          </DialogHeader>
+
+          <DialogFooter className="mt-3 flex justify-end gap-3">
+
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={() => deleteLead(selectedLead?.uuid || "")}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
     </div>
   );
 };

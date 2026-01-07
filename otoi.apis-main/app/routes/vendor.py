@@ -7,7 +7,6 @@ vendor_blueprint = Blueprint("vendor", __name__, url_prefix="/vendors")
 
 # GET all vendors (support both with and without trailing slash)
 @vendor_blueprint.route("/", methods=["GET"])
-@vendor_blueprint.route("", methods=["GET"])
 def get_vendors():
     query = Vendor.query
 
@@ -113,7 +112,6 @@ def get_vendor(vendor_id):
 
 # CREATE a new vendor (support both with and without trailing slash)
 @vendor_blueprint.route("/", methods=["POST"])
-@vendor_blueprint.route("", methods=["POST"])
 def create_vendor():
     data = request.get_json() or {}
     company_name = (data.get("company_name") or "").strip()
@@ -226,3 +224,14 @@ def update_vendor(vendor_id):
         "country": vendor.country,
         "pin": vendor.pin,
     }), 200
+
+
+
+@vendor_blueprint.route("/<uuid:vendor_id>", methods=["DELETE"])
+def delete_vendor(vendor_id):
+    ...
+
+    vendor = Vendor.query.get_or_404(vendor_id)
+    db.session.delete(vendor)
+    db.session.commit()
+    return jsonify({"message": "Vendor deleted successfully"}), 200 
