@@ -610,36 +610,34 @@ export default function CreateItemModal({
             {/* CREATE CATEGORY MODAL */}
             <Dialog open={showCategoryModal} onOpenChange={() => setShowCategoryModal(false)}>
                 <DialogContent className="max-w-md rounded-2xl p-6 shadow-lg">
-                    <DialogHeader className="mb-4">
-                        <DialogTitle className="text-lg font-semibold text-gray-800">
-                            Create New Category
-                        </DialogTitle>
-                    </DialogHeader>
+
+                    {/* Remove DialogHeader spacing issue */}
+                    <DialogTitle className="mb-4 text-lg font-semibold text-gray-800">
+                        Create New Category
+                    </DialogTitle>
 
                     <div className="space-y-5">
-                        <div>
-                            <input
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-                     focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                placeholder="Ex: Snacks"
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                            />
-                        </div>
+                        <input
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            placeholder="Ex: Snacks"
+                            value={newCategory}
+                            onChange={(e) => setNewCategory(e.target.value)}
+                        />
 
                         <div className="flex justify-end gap-3 pt-2">
                             <Button
                                 variant="outline"
-                                className="rounded-lg px-4 py-2 text-sm "
+                                className="rounded-lg px-4 py-2 text-sm"
                                 onClick={() => setShowCategoryModal(false)}
-                                style={{ background: 'white' }}
+                                style={{ background: "white" }}
                             >
                                 Cancel
                             </Button>
 
                             <Button
                                 className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white
-                     hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 disabled={!newCategory}
                                 onClick={async () => {
                                     try {
@@ -661,7 +659,7 @@ export default function CreateItemModal({
                                         console.error("Failed to create category", error);
                                     }
                                 }}
-                                style={{ background: '#1B84FF' }}
+                                style={{ background: "#1B84FF" }}
                             >
                                 Add
                             </Button>
@@ -669,6 +667,7 @@ export default function CreateItemModal({
                     </div>
                 </DialogContent>
             </Dialog>
+
         </>
     );
 }

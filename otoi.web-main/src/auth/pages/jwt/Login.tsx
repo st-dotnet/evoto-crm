@@ -129,7 +129,7 @@ const Login = () => {
           <label className="form-label text-gray-900">Email</label>
           <label className="input">
             <input
-              placeholder="Enter username"
+              placeholder="Enter Email"
               autoComplete="off"
               {...formik.getFieldProps("email")}
               className={clsx("form-control", {
