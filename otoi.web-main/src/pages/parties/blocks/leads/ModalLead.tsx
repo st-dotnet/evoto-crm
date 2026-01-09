@@ -332,7 +332,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {/* Status */}
                 <div className="flex flex-col gap-1.5 col-span">
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <label className="block text-sm font-medium text-gray-700">Status<span style={{ color: "red" }}>*</span></label>
                   <select
                     {...formik.getFieldProps("status")}
                     className={clsx(

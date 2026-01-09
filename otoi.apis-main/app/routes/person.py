@@ -452,11 +452,12 @@ def update_lead(lead_id):
         lead.mobile = data.get("mobile", lead.mobile)
         lead.email = data.get("email", lead.email)
         lead.gst = data.get("gst", lead.gst)
-        if "status" in data:
-            status_id = resolve_status_id(data["status"])
-            if status_id is None:
-                return jsonify({"error": "Valid status type is required"}), 400
-            lead.status = status_id
+        lead.status = data.get("status", lead.status)
+        # if "status" in data:
+        #     status_id = resolve_status_id(data["status"])
+        #     if status_id is None:
+        #         return jsonify({"error": "Valid status type is required"}), 400
+        #     lead.status = status_id
 
         lead.reason = data.get("reason", lead.reason)
 
