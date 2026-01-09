@@ -160,8 +160,62 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [selectedLeadForActivity, setSelectedLeadForActivity] =
     useState<ActivityLead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const fetchAllLeads = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get<QueryLeadApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/leads/?items_per_page=1000`
+      );
+      setLeads(response.data.data);
+    } catch (error) {
+      toast("Failed to fetch leads");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllLeads();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    let result = [...leads];
+
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter(
+        (lead) =>
+          (lead.first_name || "").toLowerCase().includes(lowerQuery) ||
+          (lead.last_name || "").toLowerCase().includes(lowerQuery) ||
+          (lead.email || "").toLowerCase().includes(lowerQuery) ||
+          (lead.mobile || "").includes(searchQuery)
+      );
+    }
+
+    // Apply status filter
+    if (searchStatusTypeQuery !== "-1") {
+      const statusMap: Record<string, string> = {
+        "1": "New",
+        "2": "In Progress",
+        "3": "Quote Given",
+        "4": "Win",
+        "5": "Lose",
+      };
+      const targetStatus = statusMap[searchStatusTypeQuery];
+      if (targetStatus) {
+        result = result.filter((lead) => lead.status === targetStatus);
+      }
+    }
+
+    setFilteredItems(result);
+  }, [searchQuery, searchStatusTypeQuery, leads]);
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -202,7 +256,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   const handleClose = () => {
     setLeadModalOpen(false);
-    setRefreshKey((prevKey) => prevKey + 1);
+    fetchAllLeads();
   };
 
 
@@ -215,7 +269,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
       toast("Lead deleted successfully");
       setShowDeleteDialog(false);
-      setRefreshKey((prev) => prev + 1);
+      fetchAllLeads();
     } catch {
       toast("Delete failed");
     }
@@ -261,7 +315,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                   navigate(`/lead/${info.row.original.uuid}`);
                 }}
               >
-                {info.row.original.email}
+                {info.row.original.email || "\u00A0"}
               </a>
             </div>
           </div>
@@ -297,37 +351,38 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Actions" column={column} />
+          <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
         ),
         enableSorting: false,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                <MoreVertical className="h-4 w-4" />
-              </button>
+          <div className="flex justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                  <MoreVertical className="h-4 w-4" />
+                </button>
 
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  openLeadModal(e, row.original);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${row.original.uuid}`);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Details
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openLeadModal(e, row.original);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/lead/${row.original.uuid}`);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedLeadForActivity({
@@ -343,18 +398,19 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                <PlusCircle className="mr-2 h-4 w-4" />
                 <span>Create Activity</span>
               </DropdownMenuItem> */}
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSelectedLead(row.original);
-                  setShowDeleteDialog(true);
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedLead(row.original);
+                    setShowDeleteDialog(true);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ),
         meta: {
           headerClassName: "w-28",
@@ -424,11 +480,9 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   // search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setRefreshKey((prev) => prev + 1);
   };
   const handleStatusTypeSearch = (query: string) => {
     setStatusTypeQuery(query);
-    setRefreshKey((prev) => prev + 1);
   };
 
 
@@ -438,8 +492,9 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       <DataGrid
         key={refreshKey}
         columns={columns}
-        serverSide={true}
-        onFetchData={fetchLeads}
+        serverSide={false}
+        data={filteredItems}
+        loading={loading}
         rowSelection={true}
         getRowId={(row: any) => row.id}
         onRowSelectionChange={handleRowSelection}

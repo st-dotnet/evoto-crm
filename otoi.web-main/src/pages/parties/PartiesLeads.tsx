@@ -68,20 +68,26 @@ const LeadsPage = () => {
     formData.append("csv_file", file);
 
     axios
-      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_leads`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      .post(
+        `${import.meta.env.VITE_APP_API_URL}/csv_import/import_leads`,
+        formData
+      )
       .then((response) => {
         alert(response.data.message);
         setRefreshKey((prevKey) => prevKey + 1);
+        event.target.value = "";
       })
       .catch((error) => {
-        console.error("Failed to import CSV", error);
-        alert("Failed to import CSV");
+        const backendMessage =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "CSV import failed";
+
+        console.error("CSV Import Error:", error);
+        alert(backendMessage);
       });
   };
+
 
   return (
     <Fragment>

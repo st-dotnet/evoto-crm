@@ -10,6 +10,15 @@ export const LeadDetails = () => {
   const [lead, setLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "activities" | "intelligence">("overview");
 
+
+  const STATUS_LABEL_TO_VALUE: Record<string, string> = {
+  "1": "New",
+  "2": "In-Progress",
+  "3": "Quote Given",
+  "4": "Win",
+  "5": "Lose",
+};
+
   useEffect(() => {
     const fetchLead = async () => {
       try {
@@ -82,7 +91,7 @@ export const LeadDetails = () => {
             <p><strong>Email:</strong> {lead.email || "--"}</p>
             <p><strong>Mobile:</strong> {lead.mobile || "--"}</p>
             <p><strong>GST:</strong> {lead.gst || "--"}</p>
-            <p><strong>Status:</strong> {lead.status || "--"}</p>
+            <p><strong>Status:</strong> {STATUS_LABEL_TO_VALUE[lead.status || ""] ||"--"}</p>
             <p><strong>Created:</strong> {lead.created_at || "--"}</p>
           </div>
         </div>

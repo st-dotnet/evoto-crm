@@ -22,6 +22,7 @@ export type TDataGridRequestParams = {
 export interface TDataGridProps<TData extends object> {
   columns: any[];
   data?: TData[];
+  loading?: boolean;
   rowSelection?: boolean;
   getRowId?: TableOptions<TData>['getRowId'];
   onRowSelectionChange?: (state: RowSelectionState, table?: Table<TData>) => void;

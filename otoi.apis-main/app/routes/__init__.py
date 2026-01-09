@@ -1,6 +1,6 @@
-# import os
-# from flask import Flask
-# from flask_cors import CORS
+import os
+from flask import Flask
+from flask_cors import CORS
 from app.routes.auth import auth_blueprint
 from app.routes.user import user_blueprint
 from app.routes.person import lead_blueprint

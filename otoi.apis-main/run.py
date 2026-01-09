@@ -74,5 +74,5 @@ if os.getenv("FLASK_ENV") == "development":
 
 # For local testing (not used in IIS, which loads run.app)
 if __name__ == "__main__":
-    app.run(port=75, debug=True)
+    app.run(port=5000, debug=True)
 

@@ -346,7 +346,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     {
       id: "actions",
       header: ({ column }) => (
-        <DataGridColumnHeader title="Actions" column={column} />
+        <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
       ),
       enableSorting: false,
       meta: {
@@ -360,6 +360,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
 
         return (
+          <div className="flex justify-center">
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
               <button
@@ -406,6 +407,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
 
         );
       },

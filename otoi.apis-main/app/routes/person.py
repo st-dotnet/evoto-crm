@@ -322,6 +322,8 @@ def create_lead():
             return jsonify({"error": "Either mobile or email is required"}), 400
 
         # ---- STATUS LOGIC ----
+        if not status:
+            return jsonify({"error": "Status type is required"}), 400  
         reason = None
         address_data = None
 
@@ -342,7 +344,7 @@ def create_lead():
 
             if not all([address_data["city"], address_data["state"],
                         address_data["country"], address_data["pin"]]):
-                return jsonify({"error": "Complete address is required when status is Win"}), 400
+                return jsonify({"error": "Complete address is required when status is Win"}), 400        
 
         # ---- DUPLICATE MOBILE CHECK (SAFE) ----
         if mobile:
@@ -401,9 +403,9 @@ def create_lead():
         import traceback
         print(traceback.format_exc())
         return jsonify({
-            "error": "Internal server error",
+            "error": "Status type is required",
             "details": str(e)
-        }), 500
+        }), 400
 
 
 
@@ -450,7 +452,12 @@ def update_lead(lead_id):
         lead.mobile = data.get("mobile", lead.mobile)
         lead.email = data.get("email", lead.email)
         lead.gst = data.get("gst", lead.gst)
-        lead.status = data.get("status", lead.status)
+        if "status" in data:
+            status_id = resolve_status_id(data["status"])
+            if status_id is None:
+                return jsonify({"error": "Valid status type is required"}), 400
+            lead.status = status_id
+
         lead.reason = data.get("reason", lead.reason)
 
         set_updated_fields(lead)

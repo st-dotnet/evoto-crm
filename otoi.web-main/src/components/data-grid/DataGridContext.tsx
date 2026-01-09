@@ -68,7 +68,7 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
   const mergedProps = deepMerge(defaultValues, props);
 
   const [data, setData] = useState<TData[]>(mergedProps.data || []);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(mergedProps.loading || false);
   const [totalRows, setTotalRows] = useState<number>(mergedProps.data ? mergedProps.data.length : 0);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: props.pagination?.page ?? 0,
@@ -114,7 +114,13 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
       setTotalRows(mergedProps.data ? mergedProps.data.length : 0);
       setLoading(false); // Hide loading bar after data is set
     }
-  }
+  };
+
+  useEffect(() => {
+    if (mergedProps.loading !== undefined) {
+      setLoading(mergedProps.loading);
+    }
+  }, [mergedProps.loading]);
 
   // Trigger debounced fetch for server-side data; load local data if serverSide is false
   useEffect(() => {
