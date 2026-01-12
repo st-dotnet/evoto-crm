@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 interface IModalCustomerProps {
     open: boolean;
-    onOpenChange: (open: boolean) => void; // Update this line
+    onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
     customer: Person | null;
 }
@@ -83,18 +83,39 @@ const initialValues: Person = {
 const saveCustomerSchema = Yup.object().shape({
     first_name: Yup.string().min(3).max(50).required("First Name is required"),
     last_name: Yup.string().min(3).max(50).required("Last Name is required"),
+
     mobile: Yup.string()
+        .nullable()
         .test(
-            "mobile-format",
-            "Mobile number must contain only numbers",
-            (value) => !value || /^[0-9]+$/.test(value)
+            'mobile-or-email',
+            'Either Mobile or Email is required',
+            function (value) {
+                const { email } = this.parent;
+                if (!value && !email) {
+                    return this.createError({
+                        path: "email",
+                        message: "Either Mobile or Email is required",
+                    });
+                }
+                return true;
+            }
         )
         .test(
-            "mobile-length",
-            "Mobile number must be exactly 10 digits",
-            (value) => !value || value.length === 10
+            'mobile-format',
+            'Mobile number must be a valid 10-digit number',
+            function (value) {
+                if (!value) return true; 
+
+                const digitsOnly = value.replace(/-/g, '');
+                return digitsOnly.length === 10 && /^\d{10}$/.test(digitsOnly);
+            }
         ),
+
+
+
+
     email: Yup.string()
+        .nullable()
         .email("Invalid email")
         .test(
             "email-or-mobile",
@@ -103,22 +124,35 @@ const saveCustomerSchema = Yup.object().shape({
                 const { mobile } = this.parent;
                 if (!value && !mobile) {
                     return this.createError({
-                        path: 'email',
-                        message: 'Either Mobile or Email is required'
+                        path: "email",
+                        message: "Either Mobile or Email is required",
                     });
                 }
                 return true;
             }
         ),
-    gst: Yup.string().min(15).max(15),
-    pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
-    shipping_pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+
+    gst: Yup.string()
+        .nullable()
+        .min(15, "GST must be 15 characters")
+        .max(15, "GST must be 15 characters"),
+
+    pin: Yup.string()
+        .nullable()
+        .matches(/^[0-9]+$/, "Pin must be a number"),
+
+    shipping_pin: Yup.string()
+        .nullable()
+        .matches(/^[0-9]+$/, "Pin must be a number"),
+
     reason: Yup.string().when("status", {
         is: (status: string) => status === "5",
-        then: (schema) => schema.required("Reason is required when status is Lose"),
-        otherwise: (schema) => schema,
-    })
-})
+        then: (schema) =>
+            schema.required("Reason is required when status is Lose"),
+        otherwise: (schema) => schema.nullable(),
+    }),
+});
+
 
 
 const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustomerProps) => {
@@ -145,32 +179,73 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                 pin: true,
                 reason: true,
             });
+
             setLoading(true);
+
             try {
                 const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-                const apiBase = baseUrl.endsWith("/") ? `${baseUrl}customers` : `${baseUrl}/customers`;
+                const apiBase = baseUrl.endsWith("/")
+                    ? `${baseUrl}customers`
+                    : `${baseUrl}/customers`;
+
+                const payload = { ...values } as Record<string, any>;
+                Object.keys(payload).forEach((key) => {
+                    if (payload[key] === "") {
+                        payload[key] = null;
+                    }
+                });
 
                 if (customer?.uuid) {
-                    await axios.put(`${apiBase}/${customer.uuid}`, values);
+                    // Editing existing customer
+                    await axios.put(`${apiBase}/${customer.uuid}`, payload);
+                    toast.success('Customer updated successfully');
                 } else {
-                    await axios.post(`${apiBase}/`, values);
+                    // Creating new customer
+                    await axios.post(`${apiBase}/`, payload);
+                    toast.success('Customer created successfully');
                 }
 
-                if (onSuccess) {
-                    onSuccess(); 
+                onSuccess?.();
+                onOpenChange(false);
+                resetForm({ values: initialValues });
+
+            } catch (err: any) {
+
+                if (err.response?.status === 400 && err.response.data?.error) {
+                    const errorCode = err.response.data.error;
+                    let errorMessage = "An error occurred";
+
+                    switch (errorCode) {
+                        case 'mobile_exists':
+                            errorMessage = "A customer with this mobile number already exists";
+                            break;
+                        case 'gst_exists':
+                            errorMessage = "A customer with this GST number already exists";
+                            break;
+                        case 'database_error':
+                            errorMessage = "A database error occurred while saving the customer";
+                            break;
+                        default:
+                            errorMessage = err.response.data.error || "An unexpected error occurred";
+                    }
+
+                    toast.error(errorMessage);
+                    setStatus(errorMessage);
+                } else {
+                    const errorMessage = err.message?.includes('Network Error')
+                        ? "Network error. Please check your connection and try again."
+                        : "Failed to save customer. Please try again.";
+
+                    toast.error(errorMessage);
+                    setStatus(errorMessage);
                 }
-                onOpenChange(false); 
-                resetForm({ values: initialValues }); 
-            } catch (err) {
-                console.error(err);
-                setStatus("Unable to save customer");
-                toast.error("Failed to save customer. Please try again.");
-                setSubmitting(false);
             } finally {
+                setSubmitting(false);
                 setLoading(false);
             }
-        },
+        }
     });
+
 
     useEffect(() => {
         if (!open) {
@@ -268,17 +343,30 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                     className={clsx("input", {
                                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                                             formik.touched.mobile && formik.errors.mobile
-                                    })} type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
+                                    })}
+                                    type="text"
+                                    inputMode="tel"
                                     onChange={(e) => {
-                                        // Limit input to 10 digits
-                                        // Only allow numbers
-                                        const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                                        // Allow numbers and hyphens, but not more than one hyphen in a row
+                                        let value = e.target.value.replace(/[^0-9-]/g, '');
+                                        value = value.replace(/--+/g, '-');
+
+                                        // Limit total length to 15 characters (including hyphens)
+                                        value = value.slice(0, 11);
+
                                         formik.setFieldValue("mobile", value);
+
                                         // Mark as touched to show errors
                                         if (!formik.touched.mobile) {
                                             formik.setFieldTouched("mobile", true);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        // Prevent typing a hyphen at the start or after another hyphen
+                                        if (e.key === '-' &&
+                                            (formik.values.mobile.length === 0 ||
+                                                formik.values.mobile.endsWith('-'))) {
+                                            e.preventDefault();
                                         }
                                     }}
                                     onBlur={() => {
