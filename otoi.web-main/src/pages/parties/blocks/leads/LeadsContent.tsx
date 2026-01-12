@@ -35,6 +35,7 @@ import { ModalLead } from "./ModalLead";
 import { useNavigate } from "react-router-dom";
 import { ActivityForm } from "./ActivityForm";
 import { Button } from "@/components/ui/button";
+import { SpinnerDotted } from 'spinners-react';
 import {
   Dialog,
   DialogContent,
@@ -138,7 +139,7 @@ const Toolbar = ({
             <SelectContent className="w-32">
               <SelectItem value="-1">All</SelectItem>
               <SelectItem value="1">New</SelectItem>
-              <SelectItem value="2">In Progress</SelectItem>
+              <SelectItem value="2">In-Progress</SelectItem>
               <SelectItem value="3">Quote Given</SelectItem>
               <SelectItem value="4">Win</SelectItem>
               <SelectItem value="5">Lose</SelectItem>
@@ -188,15 +189,17 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     let result = [...leads];
 
     // Apply search filter
-    if (searchQuery.trim() !== "") {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(
-        (lead) =>
-          (lead.first_name || "").toLowerCase().includes(lowerQuery) ||
-          (lead.last_name || "").toLowerCase().includes(lowerQuery) ||
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery !== "") {
+      const lowerQuery = trimmedQuery.toLowerCase();
+      result = result.filter((lead) => {
+        const fullName = `${lead.first_name || ""} ${lead.last_name || ""}`.toLowerCase();
+        return (
+          fullName.includes(lowerQuery) ||
           (lead.email || "").toLowerCase().includes(lowerQuery) ||
-          (lead.mobile || "").includes(searchQuery)
-      );
+          (lead.mobile || "").includes(trimmedQuery)
+        );
+      });
     }
 
     // Apply status filter
@@ -489,6 +492,13 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
+      {loading && leads.length === 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
       <DataGrid
         key={refreshKey}
         columns={columns}

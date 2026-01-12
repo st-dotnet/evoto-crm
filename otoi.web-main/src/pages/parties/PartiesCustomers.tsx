@@ -29,11 +29,11 @@ const PartiesCustomersPage = () => {
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | null = null) => {
-  event.preventDefault();
-  setSelectedPerson(rowData);
-  setPersonModalOpen(true);
-};
+  const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | null = null) => {
+    event.preventDefault();
+    setSelectedPerson(rowData);
+    setPersonModalOpen(true);
+  };
 
   //  Download Excel Template
   const handleDownloadTemplate = async () => {
@@ -57,7 +57,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | 
   };
 
 
-    //  Import CSV
+  //  Import CSV
   const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -66,11 +66,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | 
     formData.append("csv_file", file);
 
     axios
-      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_csv`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_csv`, formData)
       .then((response) => {
         alert(response.data.message);
         setRefreshKey((prevKey) => prevKey + 1);
@@ -108,7 +104,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | 
               >
                 Import CSV
               </button>
-               {/* Download Template Button */}
+              {/* Download Template Button */}
               <button
                 className="btn btn-sm btn-success"
                 onClick={handleDownloadTemplate}
@@ -125,7 +121,7 @@ const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | 
 
       <Container>
         <PartiesCustomerContent refreshStatus={refreshKey} />
-        <ModalCustomer open={personModalOpen} onOpenChange={handleClose} customer={null}/>
+        <ModalCustomer open={personModalOpen} onOpenChange={handleClose} customer={null} />
       </Container>
     </Fragment>
   );

@@ -11,6 +11,11 @@ import {
 
 import { PartiesVendorsContent } from "./PartiesVendorsContent";
 import { useLayout } from "@/providers";
+// import { useNavigate } from "react-router-dom";
+// import { toast } from "sonner";
+// import axios from "axios";
+// import { useRef } from "react";
+
 // Define Vendor type locally since import path does not exist
 export interface Vendor {
   uuid?: string;
@@ -41,11 +46,11 @@ const PartiesVendorsPage = () => {
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
-  event.preventDefault();
-  setSelectedPerson(rowData);
-  setPersonModalOpen(true);
-};
+  const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
+    event.preventDefault();
+    setSelectedPerson(rowData);
+    setPersonModalOpen(true);
+  };
   return (
     <Fragment>
       {currentLayout?.name === "demo1-layout" && (

@@ -94,7 +94,10 @@ const saveVendorSchema = Yup.object().shape({
         return true;
       }
     ),
-  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
+  gst: Yup.string()
+    .min(15, "Minimum 15 symbols")
+    .max(15, "Maximum 15 symbols")
+    .required("GST is required"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
 });
 
@@ -125,11 +128,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
         navigate("/parties/vendors", { replace: true });
         setLoading(false);
       } catch (error: any) {
-        console.error(error);
         setStatus(
-          error?.response?.data?.message ||
-          "The vendor details are incorrect"
+          error?.response?.data?.message ||error?.response?.data?.error||
+          "Something went wrong. Please try again."
         );
+      } finally {
         setSubmitting(false);
         setLoading(false);
       }

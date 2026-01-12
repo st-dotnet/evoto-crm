@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from flask import Blueprint, jsonify, request
 from app.models.vendor import Vendor
 from app.extensions import db
@@ -110,10 +111,11 @@ def get_vendor(vendor_id):
         "pin": vendor.pin,
     })
 
-# CREATE a new vendor (support both with and without trailing slash)
+# CREATE a new vendor
 @vendor_blueprint.route("/", methods=["POST"])
 def create_vendor():
     data = request.get_json() or {}
+
     company_name = (data.get("company_name") or "").strip()
     vendor_name = (data.get("vendor_name") or "").strip()
     mobile = (data.get("mobile") or "").strip()
@@ -126,42 +128,24 @@ def create_vendor():
     country = (data.get("country") or "").strip()
     pin = (data.get("pin") or "").strip()
 
-    if not company_name  or not mobile or not city or not state or not country or not pin:
-        return jsonify({"error": "company_name, mobile, city, state, country, pin are required"}), 400
-
-    existing_vendor = None
-    if data.get("uuid"):
-        existing_vendor = Vendor.query.get(data.get("uuid"))
-    if not existing_vendor:
-        existing_vendor = Vendor.query.filter_by(mobile=mobile).first()
-
-    if existing_vendor:
-        existing_vendor.company_name = company_name
-        existing_vendor.vendor_name = vendor_name
-        existing_vendor.mobile = mobile
-        existing_vendor.email = email
-        existing_vendor.gst = gst
-        existing_vendor.address1 = address1
-        existing_vendor.address2 = address2
-        existing_vendor.city = city
-        existing_vendor.state = state
-        existing_vendor.country = country
-        existing_vendor.pin = pin
-        db.session.commit()
+    # ---------- REQUIRED FIELD VALIDATION ----------
+    if not company_name or not city or not state or not country or not pin or not gst:
         return jsonify({
-            "uuid": str(existing_vendor.uuid),
-            "company_name": existing_vendor.company_name,
-            "vendor_name": existing_vendor.vendor_name,
-            "mobile": existing_vendor.mobile,
-            "email": existing_vendor.email,
-            "gst": existing_vendor.gst,
-            "address1": existing_vendor.address1,
-            "address2": existing_vendor.address2,
-            "city": existing_vendor.city,
-            "state": existing_vendor.state,
-            "country": existing_vendor.country,
-            "pin": existing_vendor.pin,
-        }), 200
+            "error": "company_name, gst, city, state, country, and pin are required"
+        }), 400
+
+    # ---------- MOBILE OR EMAIL REQUIRED ----------
+    if not mobile and not email:
+        return jsonify({
+            "error": "Either mobile or email is required"
+        }), 400
+
+    # DUPLICATE CHECKS (CREATE ONLY)
+    if mobile and Vendor.query.filter(Vendor.mobile == mobile).first():
+        return jsonify({"error": "Mobile number already exists"}), 400
+
+    if gst and Vendor.query.filter(func.upper(Vendor.gst) == gst).first():
+        return jsonify({"error": "GST already exists"}), 400
 
     vendor = Vendor(
         company_name=company_name,
@@ -176,8 +160,14 @@ def create_vendor():
         country=country,
         pin=pin,
     )
-    db.session.add(vendor)
-    db.session.commit()
+
+    try:
+        db.session.add(vendor)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Duplicate mobile or GST"}), 400
+
     return jsonify({
         "uuid": str(vendor.uuid),
         "company_name": vendor.company_name,
@@ -198,18 +188,41 @@ def create_vendor():
 def update_vendor(vendor_id):
     data = request.get_json() or {}
     vendor = Vendor.query.get_or_404(vendor_id)
+
+    mobile = (data.get("mobile") or "").strip()
+    gst = (data.get("gst") or "").strip()
+
+    # ---------- DUPLICATE MOBILE CHECK ----------
+    if mobile:
+        duplicate = Vendor.query.filter(Vendor.mobile == mobile).first()
+        if duplicate and duplicate.uuid != vendor.uuid:
+            return jsonify({
+                "error": "A vendor with this mobile already exists"
+            }), 400
+
+    # ---------- DUPLICATE GST CHECK ----------
+    if gst:
+        gst_upper = gst.strip().upper()
+        duplicate = Vendor.query.filter(func.upper(Vendor.gst) == gst_upper).first()
+        if duplicate and duplicate.uuid != vendor.uuid:
+            return jsonify({
+                "error": "A vendor with this GST already exists"
+            }), 400
+
     vendor.company_name = data.get("company_name", vendor.company_name)
     vendor.vendor_name = data.get("vendor_name", vendor.vendor_name)
-    vendor.mobile = data.get("mobile", vendor.mobile)
+    vendor.mobile = mobile or vendor.mobile
     vendor.email = data.get("email", vendor.email)
-    vendor.gst = data.get("gst", vendor.gst)
+    vendor.gst = gst or vendor.gst
     vendor.address1 = data.get("address1", vendor.address1)
     vendor.address2 = data.get("address2", vendor.address2)
     vendor.city = data.get("city", vendor.city)
     vendor.state = data.get("state", vendor.state)
     vendor.country = data.get("country", vendor.country)
     vendor.pin = data.get("pin", vendor.pin)
+    
     db.session.commit()
+    
     return jsonify({
         "uuid": str(vendor.uuid),
         "company_name": vendor.company_name,

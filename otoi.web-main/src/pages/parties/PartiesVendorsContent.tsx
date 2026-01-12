@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { debounce } from "@/lib/helpers";
 
 import {
   Vendor,
@@ -69,6 +70,118 @@ interface ActivityLead {
   activity_type?: string;
 }
 
+const ColumnInputFilter = <TData, TValue>({
+  column,
+}: IColumnFilterProps<TData, TValue>) => {
+  const [inputValue, setInputValue] = useState(
+    (column.getFilterValue() as string) ?? ""
+  );
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      column.setFilterValue(inputValue);
+    }
+  };
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(event.target.value);
+  };
+
+  return (
+    <Input
+      placeholder="Filter..."
+      value={inputValue}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      className="h-9 w-full max-w-40"
+    />
+  );
+};
+
+const Toolbar = ({
+  defaultSearch,
+  setSearch,
+  defaultPersonType,
+  setDefaultPersonType,
+}: {
+  defaultSearch: string;
+  setSearch: (query: string) => void;
+  defaultPersonType: string;
+  setDefaultPersonType: (query: string) => void;
+}) => {
+  const [searchInput, setSearchInput] = useState(defaultSearch);
+  const [searchPersonType, setPersonType] = useState(defaultPersonType);
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearch(query);
+      }, 500),
+    [setSearch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      debouncedSearch.cancel?.();
+      setSearch(searchInput);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    debouncedSearch(value);
+  };
+
+  const handlePersonTypeChange = (personType: string) => {
+    setPersonType(personType);
+    setDefaultPersonType(personType);
+  };
+
+  return (
+    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
+      <div className="flex flex-wrap gap-2 lg:gap-5">
+        <div className="flex">
+          <label className="input input-sm">
+            <KeenIcon icon="magnifier" />
+            <input
+              type="text"
+              placeholder="Search vendors"
+              value={searchInput}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+            />
+          </label>
+        </div>
+        {/* <div className="flex flex-wrap gap-2.5">
+          <label className="select-sm"> Person Type </label>
+          <Select
+            defaultValue=""
+            value={searchPersonType}
+            onValueChange={(value) => handlePersonTypeChange(value)}
+          >
+            <SelectTrigger className="w-28" size="sm">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent className="w-32">
+              <SelectItem value="-1">All</SelectItem>
+              <SelectItem value="1">Customer</SelectItem>
+              <SelectItem value="2">Vendor</SelectItem>
+              <SelectItem value="3">Provider</SelectItem>
+            </SelectContent>
+          </Select>
+        </div> */}
+      </div>
+    </div>
+  );
+};
+
 const PartiesVendorsContent = ({
   refreshStatus,
 }: IPartiesVendorsContentProps) => {
@@ -82,40 +195,50 @@ const PartiesVendorsContent = ({
     ActivityLead | null
   >(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus]);
-
-  const ColumnInputFilter = <TData, TValue>({
-    column,
-  }: IColumnFilterProps<TData, TValue>) => {
-    const [inputValue, setInputValue] = useState(
-      (column.getFilterValue() as string) ?? ""
-    );
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        column.setFilterValue(inputValue);
-      }
-    };
-
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(event.target.value);
-    };
-
-    return (
-      <Input
-        placeholder="Filter..."
-        value={inputValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        className="h-9 w-full max-w-40"
-      />
-    );
+  const fetchAllVendors = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get<VendorsQueryApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/vendors/?items_per_page=1000`
+      );
+      setVendors(response.data.data);
+    } catch (error) {
+      toast.error("Failed to fetch vendors");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchAllVendors();
+  }, [refreshStatus, refreshKey]);
+
+  useEffect(() => {
+    let result = [...vendors];
+
+    // Apply search filter
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery !== "") {
+      const lowerQuery = trimmedQuery.toLowerCase();
+      result = result.filter(
+        (v) =>
+          (v.company_name || "").toLowerCase().includes(lowerQuery) ||
+          (v.vendor_name || "").toLowerCase().includes(lowerQuery) ||
+          (v.email || "").toLowerCase().includes(lowerQuery) ||
+          (v.mobile || "").includes(trimmedQuery) ||
+          (v.gst || "").toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    setFilteredItems(result);
+  }, [searchQuery, vendors]);
+
 
   const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
     event.preventDefault();
@@ -129,24 +252,24 @@ const PartiesVendorsContent = ({
   };
 
 
-   const deleteVendors = async (uuid: string) => {
+  const deleteVendors = async (uuid: string) => {
 
     if (!uuid) return;
-  
-      try {
-        await axios.delete(
-          `${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`
-        );
-  
-        toast.success("Vendor deleted successfully");
-        setShowDeleteDialog(false);
-        setRefreshKey((prev) => prev + 1);
-      } catch (error: any) {
-        toast.error(
-          error?.response?.data?.message || "Delete failed"
-        );
-      }
-    };
+
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`
+      );
+
+      toast.success("Vendor deleted successfully");
+      setShowDeleteDialog(false);
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Delete failed"
+      );
+    }
+  };
 
   const columns = useMemo<ColumnDef<Vendor>[]>(
     () => [
@@ -220,32 +343,33 @@ const PartiesVendorsContent = ({
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Activity" column={column} />
+          <DataGridColumnHeader title="Activity" column={column} className="justify-center" />
         ),
         enableSorting: false,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                openPersonModal(e, row.original);
-              }}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem onClick={(e) => {
+          <div className="flex justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => {
+                  e.preventDefault();
+                  openPersonModal(e, row.original);
+                }}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
                 navigate(`/vendor/${row.original.uuid}`);
               }}>
                 <Eye className="mr-2 h-4 w-4" />
                 Details
               </DropdownMenuItem> */}
-              {/* <DropdownMenuItem
+                {/* <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setSelectedCustomerForActivity({
@@ -261,19 +385,20 @@ const PartiesVendorsContent = ({
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Activity
               </DropdownMenuItem> */}
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSelectedVendors(row.original);
-                  setShowDeleteDialog(true);
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedVendors(row.original);
+                    setShowDeleteDialog(true);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
+                </DropdownMenuItem>
 
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>  
         ),
         meta: {
           headerClassName: "w-28",
@@ -354,88 +479,21 @@ const PartiesVendorsContent = ({
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setRefreshKey((prev) => prev + 1);
   };
 
   const handlePersonTypeSearch = (query: string) => {
     setPersonTypeQuery(query);
-    setRefreshKey((prev) => prev + 1);
   };
 
-  const Toolbar = ({
-    defaultSearch,
-    setSearch,
-    defaultPersonType,
-    setDefaultPersonType,
-  }: {
-    defaultSearch: string;
-    setSearch: (query: string) => void;
-    defaultPersonType: string;
-    setDefaultPersonType: (query: string) => void;
-  }) => {
-    const [searchInput, setSearchInput] = useState(defaultSearch);
-    const [searchPersonType, setPersonType] = useState(defaultPersonType);
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        setSearch(searchInput);
-      }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchInput(e.target.value);
-    };
-
-    const handlePersonTypeChange = (personType: string) => {
-      setPersonType(personType);
-      setDefaultPersonType(personType);
-    };
-
-    return (
-      <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-        <div className="flex flex-wrap gap-2 lg:gap-5">
-          <div className="flex">
-            <label className="input input-sm">
-              <KeenIcon icon="magnifier" />
-              <input
-                type="text"
-                placeholder="Search users"
-                value={searchInput}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-              />
-            </label>
-          </div>
-          {/* <div className="flex flex-wrap gap-2.5">
-            <label className="select-sm"> Person Type </label>
-            <Select
-              defaultValue=""
-              value={searchPersonType}
-              onValueChange={(value) => handlePersonTypeChange(value)}
-            >
-              <SelectTrigger className="w-28" size="sm">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent className="w-32">
-                <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">Customer</SelectItem>
-                <SelectItem value="2">Vendor</SelectItem>
-                <SelectItem value="3">Provider</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
-        </div>
-      </div>
-    );
-  };
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
+    <div>
       <DataGrid
         key={refreshKey}
         columns={columns}
-        serverSide={true}
-        onFetchData={fetchUsers}
+        serverSide={false}
+        data={filteredItems}
+        loading={loading}
         rowSelection={true}
         getRowId={(row: any) => row.id}
         onRowSelectionChange={handleRowSelection}
@@ -496,7 +554,7 @@ const PartiesVendorsContent = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 };
 

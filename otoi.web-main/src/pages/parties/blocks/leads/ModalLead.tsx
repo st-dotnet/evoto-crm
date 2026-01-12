@@ -60,7 +60,7 @@ const initialValues: Lead = {
   mobile: "",
   email: "",
   gst: "",
-  status: "",
+  status: "1",
   address1: "",
   address2: "",
   city: "",
@@ -101,6 +101,7 @@ const saveLeadSchema = Yup.object().shape({
     ),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+  status: Yup.string().required("Status is required"),
 });
 
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
@@ -178,9 +179,9 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         }
 
         onOpenChange(false);
-      } catch (error: any) { 
+      } catch (error: any) {
         setStatus(
-          error?.response?.data?.message ||error?.response?.data?.error||
+          error?.response?.data?.message || error?.response?.data?.error ||
           "Something went wrong. Please try again."
         );
       } finally {

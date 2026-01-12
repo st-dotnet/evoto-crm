@@ -12,6 +12,8 @@ import { LeadsContent } from ".//blocks/leads/LeadsContent";
 import { useLayout } from "@/providers";
 import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
+import { toast } from "sonner";
+import { SpinnerDotted } from 'spinners-react';
 
 export interface ILeadModalContentProps {
   state: boolean;
@@ -22,6 +24,7 @@ const LeadsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
@@ -41,6 +44,7 @@ const LeadsPage = () => {
   // Download Excel Template
   const handleDownloadTemplate = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(
         `${import.meta.env.VITE_APP_API_URL}/leads/download-template`,
         {
@@ -56,6 +60,9 @@ const LeadsPage = () => {
       link.remove();
     } catch (error) {
       console.error("Failed to download template", error);
+      toast.error("Failed to download template");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,6 +71,7 @@ const LeadsPage = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setLoading(true);
     const formData = new FormData();
     formData.append("csv_file", file);
 
@@ -73,7 +81,7 @@ const LeadsPage = () => {
         formData
       )
       .then((response) => {
-        alert(response.data.message);
+        toast.success(response.data.message);
         setRefreshKey((prevKey) => prevKey + 1);
         event.target.value = "";
       })
@@ -84,7 +92,10 @@ const LeadsPage = () => {
           "CSV import failed";
 
         console.error("CSV Import Error:", error);
-        alert(backendMessage);
+        toast.error(backendMessage);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -144,6 +155,14 @@ const LeadsPage = () => {
           lead={selectedLead}
         />
       </Container>
+
+      {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 dark:bg-black/50 overflow-hidden">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
     </Fragment>
   );
 };
