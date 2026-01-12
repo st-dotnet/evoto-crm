@@ -35,6 +35,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { SpinnerDotted } from 'spinners-react';
+
 // import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 import {
   Dialog,
@@ -63,9 +65,73 @@ interface ActivityLead {
   activity_type?: string;
 }
 
+import { debounce } from "@/lib/helpers";
+
+const Toolbar = ({
+  defaultSearch,
+  setSearch,
+  defaultStatusType,
+  setDefaultStatusType,
+}: {
+  defaultSearch: string;
+  setSearch: (query: string) => void;
+  defaultStatusType: string;
+  setDefaultStatusType: (query: string) => void;
+}) => {
+  const [searchInput, setSearchInput] = useState(defaultSearch);
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearch(query);
+      }, 500),
+    [setSearch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      debouncedSearch.cancel?.();
+      setSearch(searchInput);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    debouncedSearch(value);
+  };
+
+  return (
+    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
+      <div className="flex flex-wrap gap-2 lg:gap-5">
+        <div className="flex">
+          <label className="input input-sm w-64">
+            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
+              <KeenIcon icon="magnifier" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search customers..."
+              value={searchInput}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              className="w-full focus:outline-none"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
   const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
   const [refreshKey, setRefreshKey] = useState(0);
   const [personModalOpen, setPersonModalOpen] = useState(false);
@@ -75,65 +141,73 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [customersData, setCustomersData] = useState<Customer[]>([]);
-
+  const [filteredItems, setFilteredItems] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const handleDeleteClick = (uuid: string) => {
     setCustomerToDelete(uuid);
     setShowDeleteDialog(true);
   };
 
-  const navigate = useNavigate();
-
-
-
-  const dataGridRef = useRef<any>(null);
-
   const deleteCustomer = async () => {
     if (!customerToDelete) return;
-
-    // Optimistically remove the customer from the UI
-    setCustomersData((prev) => prev.filter((customer) => customer.uuid !== customerToDelete));
 
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/customers/${customerToDelete}`);
       toast.success("Customer deleted successfully");
-      // Trigger a re-fetch to sync with the server
-      setRefreshKey((prev) => prev + 1);
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Delete failed");
-      // Revert the UI if the request fails
-      setRefreshKey((prev) => prev + 1); // Re-fetch to revert
-    } finally {
       setShowDeleteDialog(false);
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Delete failed");
+    } finally {
       setCustomerToDelete(null);
     }
   };
 
 
+  const navigate = useNavigate();
 
-
-
-  function useDebounce<T>(value: T, delay = 400): T {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-      const handler = setTimeout(() => setDebouncedValue(value), delay);
-      return () => clearTimeout(handler);
-    }, [value, delay]);
-
-    return debouncedValue;
-  }
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const fetchAllCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get<CustomersQueryApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/customers/?items_per_page=1000`
+      );
+      const rows = response.data.data;
+      setCustomersData(rows);
+    } catch (error) {
+      toast.error("Failed to fetch customers");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Manually trigger a re-fetch when refreshKey changes
+    fetchAllCustomers();
+  }, [refreshStatus, refreshKey]);
+
+  useEffect(() => {
+    let result = [...customersData];
+
+    // Apply search filter
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery !== "") {
+      const lowerQuery = trimmedQuery.toLowerCase();
+      result = result.filter((customer) => {
+        const fullName = `${customer.first_name || ""} ${customer.last_name || ""}`.toLowerCase();
+        return (
+          fullName.includes(lowerQuery) ||
+          (customer.email || "").toLowerCase().includes(lowerQuery) ||
+          (customer.mobile || "").includes(trimmedQuery) ||
+          (customer.gst || "").toLowerCase().includes(lowerQuery)
+        );
+      });
+    }
+
+    setFilteredItems(result);
+  }, [searchQuery, customersData]);
+
+  useEffect(() => {
     setRefreshKey((prev) => prev + 1);
   }, [refreshStatus]);
 
@@ -173,11 +247,11 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     setPersonModalOpen(true);
   };
 
-  const handleClose = () => {
-    setPersonModalOpen(false);
-    setRefreshKey((prev) => prev + 1); // Trigger refresh on close
+  // const handleClose = () => {
+  //   setPersonModalOpen(false);
+  //   setRefreshKey((prev) => prev + 1); // Trigger refresh on close
 
-  };
+  // };
 
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
@@ -221,7 +295,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                   navigate(`/customer/${info.row.original.id}`);
                 }}
               >
-                {info.row.original.email}
+                {info.row.original.email || "\u00A0"}
               </a>
             </div>
           </div>
@@ -278,58 +352,50 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Activity" column={column} />
+          <DataGridColumnHeader title="Activity" column={column} className="justify-center" />
         ),
         enableSorting: false,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.preventDefault(); openPersonModal(e, row.original); }}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/customer/${row.original.id}`);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Details</span>
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSelectedCustomerForActivity({
-                    id: row.original.uuid,
-                    status: row.original.status,
-                    address: row.original.address1,
-                    created_at: row.original.created_at,
-                    activity_type: row.original.activity_type,
-                  });
-                  setActivityModalOpen(true);
-                }}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                <span>Create Activity</span>
-              </DropdownMenuItem> */}
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleDeleteClick(row.original.uuid);
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
+          <div className="flex justify-center" >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSelectedPerson(row.original);
+                    setPersonModalOpen(true);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
 
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    navigate(`/customer/${row.original.id}`);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onSelect={() => {
+                    handleDeleteClick(row.original.uuid);
+                  }}
+                  className="text-red-500 focus:text-red-500"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+
+            </DropdownMenu>
+          </div>
         ),
         meta: {
           headerClassName: "w-28",
@@ -405,130 +471,67 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     const selectedRowIds = Object.keys(state);
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} are selected.`, {
-        description: `Selected row IDs: ${selectedRowIds}`,
-        action: {
-          label: "Undo",
-          onClick: () => console.log("Undo"),
-        },
       });
     }
   };
 
-  const Toolbar = ({
-    defaultSearch,
-    setSearch,
-    defaultPersonType,
-    setDefaultPersonType,
-  }: {
-    defaultSearch: string;
-    setSearch: (query: string) => void;
-    defaultPersonType: string;
-    setDefaultPersonType: (query: string) => void;
-  }) => {
-    const [searchPersonType, setPersonType] = useState(defaultPersonType);
-    const inputRef = React.useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, []);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setSearchInput(value);
-
-      if (value.trim()) {
-        setSearch(value.trim());
-      } else {
-        setSearch('');
-      }
-    };
-
-    const handlePersonTypeChange = (personType: string) => {
-      setPersonType(personType);
-      setDefaultPersonType(personType);
-    };
-
-    return (
-      <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-        <div className="flex flex-wrap gap-2 lg:gap-5">
-          <div className="flex">
-            <label className="input input-sm w-64">
-              <KeenIcon icon="magnifier" />
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder="Search customers..."
-                value={searchInput}
-                onChange={handleChange}
-                className="w-full focus:outline-none"
-                autoFocus
-              />
-            </label>
-          </div>
-          {/* <div className="flex flex-wrap gap-2.5">
-            <label className="select-sm"> Person Type </label>
-            <Select
-              defaultValue=""
-              value={searchPersonType}
-              onValueChange={(value) => handlePersonTypeChange(value)}
-            >
-              <SelectTrigger className="w-28" size="sm">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent className="w-32">
-                <SelectItem value="-1">All</SelectItem>
-                <SelectItem value="1">Customer</SelectItem>
-                <SelectItem value="2">Vendor</SelectItem>
-                <SelectItem value="3">Provider</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      <DataGrid
-        key={refreshKey} // This forces the DataGrid to remount and re-fetch data
-        columns={columns}
-        serverSide={true}
-        onFetchData={fetchUsers}
-        rowSelection={true}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={setSearchQuery}
-            defaultPersonType={searchPersonTypeQuery}
-            setDefaultPersonType={setPersonTypeQuery}
-          />
-        }
-        layout={{ card: true }}
-      />
+      {loading && customersData.length === 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
+      {!loading && (
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={false}
+          data={filteredItems}
+          loading={loading}
+          rowSelection={true}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={setSearchQuery}
+              defaultStatusType={searchPersonTypeQuery}
+              setDefaultStatusType={setPersonTypeQuery}
+            />
+          }
+          layout={{ card: true }}
+        />
+      )}
 
 
       <ModalCustomer
         open={personModalOpen}
-        onOpenChange={(open: boolean) => { // Explicitly type the argument
+        onOpenChange={(open: boolean) => {
+          setPersonModalOpen(open);
+
           if (!open) {
-            handleClose(); // Close the modal
+            setSelectedPerson(null);
+            setRefreshKey((prev) => prev + 1);
           }
         }}
         onSuccess={() => {
-          setRefreshKey((prev) => prev + 1); // Refresh when customer is added
+          setPersonModalOpen(false);
+          setRefreshKey((prev) => prev + 1);
         }}
-        customer={selectedPerson ? { ...selectedPerson, person_type_id: (selectedPerson as any).person_type_id ?? 1 } : null}
+        customer={
+          selectedPerson
+            ? {
+              ...selectedPerson,
+              person_type_id: (selectedPerson as any).person_type_id ?? 1
+            }
+            : null
+        }
       />
-
-
-
-
 
       <ActivityForm
         open={activityModalOpen}

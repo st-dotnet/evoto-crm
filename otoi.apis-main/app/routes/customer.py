@@ -4,6 +4,8 @@ from app.models.person import Lead
 from app.extensions import db
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import HTTPException
+
 
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
 
@@ -25,8 +27,8 @@ def get_customers():
               type: array
     """
     query = Customer.query
-    sort = request.args.get("sort", "uuid")
-    order = request.args.get("order", "asc").lower()  # Extract order ('asc' or 'desc')
+    sort = request.args.get("sort", "created_at")  # Default sort by created_at
+    order = request.args.get("order", "desc").upper()  # Default order is now 'desc'
 
     for field in sort.split(","):
         if field == "name":
@@ -107,34 +109,58 @@ def get_customers():
 # CREATE a new customer (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["POST"])
 def create_customer():
-    """
-    Create or update a customer linked to a Lead.
-    If a lead_id is provided, that lead is used; otherwise we try to
-    find/create a Lead based on the mobile number.
-    """
     data = request.get_json() or {}
 
-    # Basic validation
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
-    mobile = (data.get("mobile") or "").strip()
-    email = (data.get("email") or "").strip()
-    gst = (data.get("gst") or "").strip()
-    status = (data.get("status") or "").strip() or "1"  # default New
+    mobile = (data.get("mobile") or "").strip() or None
+    email = (data.get("email") or "").strip() or None
+    gst = (data.get("gst") or "").strip() or None
+    status = (data.get("status") or "").strip() or "1"
     address1 = (data.get("address1") or "").strip()
-    address2 = (data.get("address2") or "").strip()
+    address2 = (data.get("address2") or "").strip() or None
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
     country = (data.get("country") or "").strip()
     pin = (data.get("pin") or "").strip()
+    uuid_to_ignore = data.get("uuid")  # For updates
 
-    if not first_name or not last_name or (not mobile and not email): 
-        return jsonify({
-        "error": "first_name, last_name and either mobile or email are required"
-    }), 400
+    # Validate required fields
+    if not first_name or not last_name:
+        return jsonify({"error": "first_name and last_name are required"}), 400
 
+    if not mobile and not email:
+        return jsonify({"error": "Either mobile or email is required"}), 400
 
-    # Resolve lead: if lead_id is provided use it, else create/find a Lead
+    # -------------------
+    # DUPLICATE CHECKS
+    # -------------------
+    if mobile:
+        query = Customer.query.filter(Customer.mobile == mobile)
+        if uuid_to_ignore:
+            query = query.filter(Customer.uuid != uuid_to_ignore)
+        existing_mobile = query.first()
+        if existing_mobile:
+            return (
+                jsonify({"error": "Customer with this mobile number already exists"}),
+                400,
+            )
+
+    if gst and gst.strip():  # Check if GST is provided and not empty
+        gst = gst.strip().upper()  # Normalize GST to uppercase
+        gst_query = Customer.query.filter(func.upper(Customer.gst) == gst)
+        if uuid_to_ignore:
+            gst_query = gst_query.filter(Customer.uuid != uuid_to_ignore)
+        existing_gst = gst_query.first()
+        if existing_gst:
+            return (
+                jsonify({"error": "Customer with this GST number already exists"}),
+                400,
+            )
+
+    # -------------------
+    # RESOLVE LEAD
+    # -------------------
     lead_id = data.get("lead_id")
     lead = None
     if lead_id:
@@ -142,42 +168,63 @@ def create_customer():
         if not lead:
             return jsonify({"error": "Lead not found for provided lead_id"}), 404
     else:
-        lead = Lead.query.filter(Lead.mobile == mobile).first()
-        if not lead:
-            lead = Lead(
-                first_name=first_name,
-                last_name=last_name,
-                mobile=mobile,
-                email=email or None,
-                gst=gst or None,
-                status=status,
-                reason=(data.get("reason") or None),
-            )
-            db.session.add(lead)
-            db.session.flush()  # get uuid
+        # Only create/find lead if we have either mobile or email
+        if mobile or email:
+            # Try to find existing lead by mobile or email
+            if mobile:
+                lead = Lead.query.filter(Lead.mobile == mobile).first()
+            if not lead and email:
+                lead = Lead.query.filter(Lead.email == email).first()
 
-    # If a customer uuid is provided, try to update existing
+            # If no existing lead found, create a new one
+            if not lead:
+                # This check is redundant since we already validated this at the start
+
+                lead_data = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "gst": gst,
+                    "status": status,
+                    "reason": (data.get("reason") or None),
+                }
+
+                # Only add mobile/email if they are provided
+                if mobile:
+                    lead_data["mobile"] = mobile
+                if email:
+                    lead_data["email"] = email
+
+                lead = Lead(**lead_data)
+                db.session.add(lead)
+                try:
+                    db.session.flush()
+                except Exception as e:
+                    db.session.rollback()
+                    return jsonify({"error": f"Failed to create lead: {str(e)}"}), 400
+        else:
+            return jsonify({"error": "Either mobile or email is required"}), 400
+
+    # -------------------
+    # UPDATE EXISTING CUSTOMER IF UUID PROVIDED
+    # -------------------
     existing_customer = None
-    if data.get("uuid"):
-        existing_customer = Customer.query.get(data.get("uuid"))
-    if not existing_customer and lead is not None:
-        # Or find by lead_id if already linked
-        existing_customer = Customer.query.filter_by(lead_id=lead.uuid).first()
+    if uuid_to_ignore:
+        existing_customer = Customer.query.get(uuid_to_ignore)
 
     if existing_customer:
-        # Update existing (idempotent POST for current frontend behavior)
         existing_customer.first_name = first_name
         existing_customer.last_name = last_name
         existing_customer.mobile = mobile
-        existing_customer.email = email or None
-        existing_customer.gst = gst or None
+        existing_customer.email = email
+        existing_customer.gst = gst
         existing_customer.status = status
         existing_customer.address1 = address1
-        existing_customer.address2 = address2 or None
+        existing_customer.address2 = address2
         existing_customer.city = city
         existing_customer.state = state
         existing_customer.country = country
         existing_customer.pin = pin
+
         db.session.commit()
 
         return (
@@ -202,17 +249,19 @@ def create_customer():
             200,
         )
 
-    # Create customer record (no existing found)
+    # -------------------
+    # CREATE NEW CUSTOMER
+    # -------------------
     customer = Customer(
-        lead_id=lead.uuid if lead is not None else None,
+        lead_id=lead.uuid if lead else None,
         first_name=first_name,
         last_name=last_name,
         mobile=mobile,
-        email=email or None,
-        gst=gst or None,
+        email=email,
+        gst=gst,
         status=status,
         address1=address1,
-        address2=address2 or None,
+        address2=address2,
         city=city,
         state=state,
         country=country,
@@ -277,61 +326,106 @@ def get_customer(customer_id):
         }
     )
 
-
-# UPDATE a customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
 def update_customer(customer_id):
-    """
-    tags:
-      - Update customer
-    responses:
-      200:
-        description: update customer.
+    try:
+        data = request.get_json() or {}
+        current_app.logger.info(f"Starting update for customer ID: {customer_id}")
+        current_app.logger.info(f"Received data: {data}")
 
-    """
-    data = request.get_json() or {}
-    customer = Customer.query.get_or_404(customer_id)
+        customer = Customer.query.filter_by(uuid=customer_id).first()
+        if not customer:
+            return jsonify({"error": "Customer not found"}), 404
 
-    # Update primitive fields safely
-    customer.first_name = data.get("first_name", customer.first_name)
-    customer.last_name = data.get("last_name", customer.last_name)
-    customer.mobile = data.get("mobile", customer.mobile)
-    customer.email = data.get("email", customer.email)
-    customer.gst = data.get("gst", customer.gst)
-    customer.status = data.get("status", customer.status)
+        status = str(data.get("status", customer.status))
+        print("ABCCC")
+        # ---------------- DUPLICATE CHECKS ----------------
+        if "mobile" in data and data["mobile"]:
+            mobile = str(data["mobile"]).strip()
+            if mobile != customer.mobile:  # Only check if mobile is being changed
+                existing = Customer.query.filter(
+                    Customer.mobile == mobile,
+                    Customer.uuid != customer_id
+                ).first()
+                if existing:
+                    return jsonify({"error": "Customer with this mobile number already exists"}), 400
 
-    # Address fields
-    customer.address1 = data.get("address1", customer.address1)
-    customer.address2 = data.get("address2", customer.address2)
-    customer.city = data.get("city", customer.city)
-    customer.state = data.get("state", customer.state)
-    customer.country = data.get("country", customer.country)
-    customer.pin = data.get("pin", customer.pin)
+        if "gst" in data and data["gst"]:
+            gst = str(data["gst"]).strip().upper()
+            if gst != (customer.gst or "").upper():  # Only check if GST is being changed
+                existing = Customer.query.filter(
+                    func.upper(Customer.gst) == gst,
+                    Customer.uuid != customer_id
+                ).first()
+                if existing:
+                    return jsonify({"error": "Customer with this GST number already exists"}), 400
 
-    db.session.commit()
+        # ---------------- BASIC FIELDS ----------------
+        basic_fields = ["first_name", "last_name", "mobile", "email", "gst", "status"]
+        for field in basic_fields:
+            if field in data:
+                value = str(data[field]).strip() if data[field] is not None else None
+                if field in ["first_name", "last_name"] and not value:
+                    return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
+                setattr(customer, field, value)
 
-    return (
-        jsonify(
-            {
-                "uuid": str(customer.uuid),
-                "customer_id": str(customer.uuid),
-                "first_name": customer.first_name,
-                "last_name": customer.last_name,
-                "mobile": customer.mobile,
-                "email": customer.email,
-                "gst": customer.gst,
-                "status": customer.status,
-                "address1": customer.address1,
-                "address2": customer.address2,
-                "city": customer.city,
-                "state": customer.state,
-                "country": customer.country,
-                "pin": customer.pin,
-            }
-        ),
-        200,
-    )
- 
+        # ---------------- ADDRESS UPDATE ----------------
+        if status != "1":
+            address_fields = ["address1", "city", "state", "country", "pin"]
+            for field in address_fields:
+                if field in data:
+                    value = str(data[field]).strip() if data[field] else None
+                    if not value:
+                        return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
+                    setattr(customer, field, value)
+
+            if "address2" in data:
+                customer.address2 = (
+                    str(data["address2"]).strip()
+                    if data["address2"] is not None
+                    else None
+                )
+
+        # ---------------- 🔥 NORMALIZATION (CRITICAL FIX) ----------------
+        # Match deployed behavior: NEVER save NULL for NOT NULL columns
+        for field in ["address1", "city", "state", "country", "pin"]:
+            if getattr(customer, field) is None:
+                setattr(customer, field, "")
+
+        # address2 can remain NULL (allowed)
+        if customer.address2 is None:
+            customer.address2 = None
+
+        # ---------------- COMMIT ----------------
+        db.session.commit()
+
+        return jsonify({
+            "uuid": str(customer.uuid),
+            "customer_id": str(customer.uuid),
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,
+            "gst": customer.gst,
+            "status": customer.status,
+            "address1": customer.address1,
+            "address2": customer.address2,
+            "city": customer.city,
+            "state": customer.state,
+            "country": customer.country,
+            "pin": customer.pin,
+        }), 200
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.error(str(e))
+        return jsonify({"error": "Database constraint violation"}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(str(e))
+        return jsonify({"error": "Unexpected error while updating customer"}), 500
+
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     try:
@@ -346,16 +440,16 @@ def delete_customer(customer_id):
 
     except IntegrityError as e:
         db.session.rollback()
-        return jsonify({
-            "message": "Cannot delete customer. It is referenced in other records."
-        }), 409
+        return (
+            jsonify(
+                {
+                    "message": "Cannot delete customer. It is referenced in other records."
+                }
+            ),
+            409,
+        )
 
     except Exception as e:
         db.session.rollback()
         print(str(e))
-        return jsonify({
-            "message": "Internal server error",
-            "error": str(e)
-        }), 500
-
- 
+        return jsonify({"message": "Internal server error", "error": str(e)}), 500

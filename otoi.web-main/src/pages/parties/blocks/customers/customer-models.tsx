@@ -32,6 +32,8 @@ export type PersonType = {
 };
 
 export type Customer = {
+  shipping_address1: any;
+  person_type_id: number;
   id: number;
   uuid: string;
   person_id: string;
