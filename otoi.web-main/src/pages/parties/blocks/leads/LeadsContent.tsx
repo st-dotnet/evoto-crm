@@ -499,6 +499,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
           </div>
         </div>
       )}
+      {!loading && (
       <DataGrid
         key={refreshKey}
         columns={columns}
@@ -519,6 +520,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         }
         layout={{ card: true }}
       />
+      )}
       <ModalLead
         open={leadModalOpen}
         onOpenChange={handleClose}
