@@ -352,7 +352,7 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                         value = value.replace(/--+/g, '-');
 
                                         // Limit total length to 15 characters (including hyphens)
-                                        value = value.slice(0, 11);
+                                        value = value.slice(0, 10);
 
                                         formik.setFieldValue("mobile", value);
 
