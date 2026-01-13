@@ -8,6 +8,7 @@ import {
 
 import { ModalVendor } from "./blocks/vendors/ModalVendor";
 import { ActivityForm } from "./blocks/leads/ActivityForm";
+import { SpinnerDotted } from 'spinners-react';
 
 import {
   DataGrid,
@@ -398,7 +399,7 @@ const PartiesVendorsContent = ({
 
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>  
+          </div>
         ),
         meta: {
           headerClassName: "w-28",
@@ -487,7 +488,15 @@ const PartiesVendorsContent = ({
 
 
   return (
-    <div>
+    <div className="grid gap-5 lg:gap-7.5">
+      {loading && filteredItems.length === 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
+      {!loading && (
       <DataGrid
         key={refreshKey}
         columns={columns}
@@ -508,6 +517,7 @@ const PartiesVendorsContent = ({
         }
         layout={{ card: true }}
       />
+      )}
       <ModalVendor
         open={personModalOpen}
         onOpenChange={handleClose}
