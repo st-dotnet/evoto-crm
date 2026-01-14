@@ -108,10 +108,10 @@ const Toolbar = ({
   };
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-      <div className="flex flex-wrap gap-2 lg:gap-5">
-        <div className="flex">
-          <label className="input input-sm w-64">
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
+        <div className="flex grow md:grow-0">
+          <label className="input input-sm w-full md:w-64 lg:w-72">
             <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
               <KeenIcon icon="magnifier" />
             </span>
