@@ -361,52 +361,52 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
         return (
           <div className="flex justify-center">
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
+            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleEdit(row.original);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEdit(row.original);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate(`/items/inventory/${row.original.item_id}`);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Details
-              </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigate(`/items/inventory/${row.original.item_id}`);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleDeleteClick(row.original.item_id, () => setIsOpen(false));
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteClick(row.original.item_id, () => setIsOpen(false));
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
         );
@@ -428,55 +428,46 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
 
       {/* Summary Cards */}
-      <div className="row g-4 mb-5" style={{ display: "flex", gap: "20em" }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
         {/* Stock Value */}
-        <div className="col-md-4" style={{ width: "30em" }}>
-          <div className="card border rounded-3">
-            <div className="card-body py-4 px-5 d-flex justify-content-between align-items-center">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <i className="bi bi-graph-up text-primary fs-5"></i>
-                  <span className="fw-semibold text-primary">Stock Value</span>
-                </div>
-                <div className="fs-3 fw-bold">₹ {stockValue.toLocaleString('en-IN')}</div>              </div>
-              <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
+        <div className="card border rounded-3 grow">
+          <div className="card-body py-4 px-5 flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <i className="bi bi-graph-up text-primary fs-5"></i>
+                <span className="font-semibold text-primary">Stock Value</span>
+              </div>
+              <div className="text-2xl lg:text-3xl font-bold">₹ {stockValue.toLocaleString('en-IN')}</div>
             </div>
+            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
         </div>
 
         {/* Low Stock */}
-        <div className="col-md-4" style={{ width: "30em" }}>
-          <div className="card border rounded-3">
-            <div className="card-body py-4 px-5 d-flex justify-content-between align-items-center">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <i className="bi bi-box-seam text-warning fs-5"></i>
-                  <span className="fw-semibold text-warning">Low Stock</span>
-                </div>
-                <div className="fs-3 fw-bold">{lowStockCount}</div>
+        <div className="card border rounded-3 grow">
+          <div className="card-body py-4 px-5 flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <i className="bi bi-box-seam text-warning fs-5"></i>
+                <span className="font-semibold text-warning">Low Stock</span>
               </div>
-              <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
+              <div className="text-2xl lg:text-3xl font-bold">{lowStockCount}</div>
             </div>
+            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
         </div>
       </div>
 
       {/* Search and Buttons */}
-      <div className="d-flex gap-3 mb-5" style={{ display: 'flex' }} >
-        {/* <input
-          className="form-control w-250px"
-          placeholder="Search Item"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        /> */}
+      <div className="flex flex-wrap gap-2.5 mb-5">
         <button
-          className={`btn ${lowStock ? "btn-primary" : "btn-light"}`}
+          className={`btn btn-sm ${lowStock ? "btn-primary" : "btn-light"}`}
           onClick={() => setLowStock(!lowStock)}
         >
-          Show Low Stock
+          {lowStock ? "Showing Low Stock" : "Show Low Stock"}
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-sm btn-primary"
           onClick={() => {
             setSelectedItem(null);
             setShowModal(true);
@@ -486,12 +477,12 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         </button>
       </div>
 
-     
+
 
       {/* Search Bar */}
       <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4 h-full">
         <div className="p-4 border-b">
-          <label className="input input-sm w-64">
+          <label className="input input-sm w-full md:w-64">
             <KeenIcon icon="magnifier" />
             <input
               type="text"
