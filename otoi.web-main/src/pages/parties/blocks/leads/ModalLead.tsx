@@ -99,6 +99,18 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
+  email: Yup.string()
+    .nullable()
+    .email("Invalid email format")
+    .test("mobile-or-email", "Either Mobile or Email is required", function (value) {
+      const { mobile } = this.parent;
+      return !!(value || mobile);
+    })
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Invalid email format"
+    ),
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
   status: Yup.string().required("Status is required"),

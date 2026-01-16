@@ -90,6 +90,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               ? toNumber(item.purchase_price, 0)
               : null,
           type: item.item_type || item.type || "Product",
+          item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
           category: item.category || "Uncategorized",
           business_id: item.business_id || null,
         }))
@@ -128,9 +129,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       );
     }
 
-    // Apply low stock filter
+    // Apply low stock filter (Products only)
     if (lowStock) {
-      result = result.filter((item) => (item.opening_stock || 0) <= 5);
+      result = result.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5);
     }
 
     setFilteredItems(result);
@@ -141,9 +142,12 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     setRefreshKey((prev) => prev + 1);
   }, [refreshStatus]);
 
-  // Calculate stock value and low stock count
-  const stockValue = items.reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
-  const lowStockCount = items.filter((item) => (item.opening_stock || 0) <= 5).length;
+  // Calculate stock value and low stock count (Products only)
+  const stockValue = items
+    .filter(item => item.item_type_id === 1)
+    .reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
+
+  const lowStockCount = items.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
   const handleDeleteClick = (id: number, onClose?: () => void) => {

@@ -246,9 +246,9 @@ def create_item():
             gst_tax_rate=data.get("gst_tax_rate", 0),
             purchase_price=purchase_price,
             opening_stock=opening_stock,
-            item_code=item_code,  # <-- user-defined
-            hsn_code=data.get("hsn_code") if item_type == "Product" else None,
-            # sac_code=data.get("sac_code") if item_type == "Service" else None,
+            low_stock_warning=data.get("low_stock_warning", False) if item_type == "Product" else False,
+            low_stock_quantity=data.get("low_stock_quantity") if item_type == "Product" else None,
+            enable_low_quantity_warning=data.get("low_stock_warning", False) if item_type == "Product" else False,
             description=data.get("description") or ""
         )
  
@@ -511,6 +511,23 @@ def update_item(id):
                 except (ValueError, TypeError):
                     errors.setdefault(field, []).append("Must be a valid number")
 
+        if "item_code" in data:
+            new_code = data["item_code"].strip()
+            if not new_code:
+                errors.setdefault("item_code", []).append("Item code cannot be empty")
+            elif new_code != item.item_code:
+                existing = db.session.query(Item).filter(
+                    Item.item_code == new_code,
+                    Item.id != id,
+                    Item.is_deleted.is_(False)
+                ).first()
+                if existing:
+                    errors.setdefault("item_code", []).append(
+                        "Item Code already exists for another item"
+                    )
+                else:
+                    item.item_code = new_code
+
         if errors:
             return jsonify({
                 "error": "Validation error",
@@ -526,18 +543,25 @@ def update_item(id):
             "opening_stock",
             "description",
             "hsn_code",
+            "low_stock_warning",
+            "low_stock_quantity",
         ]
 
         for field in update_fields:
             if field in data:
                 setattr(item, field, data[field])
+                if field == "low_stock_warning":
+                    item.enable_low_quantity_warning = data[field]
 
         if data.get("item_type_id") == 2:  # Service
             item.purchase_price = None
             item.opening_stock = None
-
-        set_updated_fields(item)
-
+            item.low_stock_warning = False
+            item.low_stock_quantity = None
+            item.enable_low_quantity_warning = False
+        else: # Product - ensure low stock warning is synced with compatibility field
+            if "low_stock_warning" in data:
+                item.enable_low_quantity_warning = data["low_stock_warning"]
         db.session.commit()
 
         return jsonify({

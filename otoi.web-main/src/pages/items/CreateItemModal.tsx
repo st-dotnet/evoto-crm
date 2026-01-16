@@ -36,6 +36,8 @@ interface IItem {
     tax_type?: "with_tax" | "without_tax";
     item_id?: number;
 
+    low_stock_warning?: boolean;
+    low_stock_quantity?: number | null;
 }
 
 interface ICategory {
@@ -71,6 +73,9 @@ const initialValues: IItem = {
 
     show_in_online_store: false,
     tax_type: "with_tax",
+
+    low_stock_warning: false,
+    low_stock_quantity: null,
 };
 
 // Validation schema
@@ -83,6 +88,8 @@ const saveItemSchema = Yup.object().shape({
         .required("Item name is required"),
 
     category_id: Yup.string().required("Category is required"),
+
+    item_code: Yup.string().required("Item code is required"),
 
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
@@ -107,6 +114,16 @@ const saveItemSchema = Yup.object().shape({
             schema
                 .typeError("Purchase price must be a number")
                 .required("Purchase price is required"),
+        otherwise: (schema) => schema.nullable().notRequired(),
+    }),
+
+    low_stock_quantity: Yup.number().when(["low_stock_warning", "item_type_id"], {
+        is: (low_stock_warning: boolean, item_type_id: number) => low_stock_warning && item_type_id === 1,
+        then: (schema) =>
+            schema
+                .typeError("Low stock quantity must be a number")
+                .min(0, "Quantity cannot be negative")
+                .required("Low stock quantity is required"),
         otherwise: (schema) => schema.nullable().notRequired(),
     }),
 });
@@ -149,18 +166,21 @@ export default function CreateItemModal({
                     measuring_unit_id: values.measuring_unit_id,
                     purchase_price: isService ? null : Number(values.purchase_price || 0),
                     opening_stock: isService ? null : Number(values.opening_stock || 0),
-                    // Only include item_code if it has changed from the original value
-                    // ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
-                    item_code: isService ? values.item_code || null : (values.item_code !== item?.item_code ? values.item_code || null : undefined),
+                    item_code: values.item_code || null,
                     hsn_code: isService ? null : values.hsn_code || null,
                     description: values.description || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
                     tax_type: values.tax_type || "with_tax",
+
+                    low_stock_warning: isService ? false : Boolean(values.low_stock_warning),
+                    low_stock_quantity: !isService && values.low_stock_warning ? Number(values.low_stock_quantity || 0) : null,
                 };
 
-                if (item?.item_id) {
+                const currentItemId = item?.id || item?.item_id;
+
+                if (currentItemId) {
                     // EDITING an existing item
-                    const response = await updateItem(item?.item_id, postData);
+                    const response = await updateItem(currentItemId, postData);
                     if (response?.success) {
                         toast.success("Item updated successfully");
                         onSuccess();
@@ -284,6 +304,36 @@ export default function CreateItemModal({
             setActiveSection("basic");
         }
     }, [open, item]);
+
+    // Switch to section with errors if submit fails
+    useEffect(() => {
+        if (formik.submitCount > 0 && !formik.isValid) {
+            const errorKeys = Object.keys(formik.errors);
+
+            // Identify which section the errors belong to
+            const isProduct = formik.values.item_type_id === 1;
+
+            // Stock/Price Details fields (for Products)
+            const stockFields = ["item_code", "opening_stock", "purchase_price", "hsn_code"];
+            const hasStockError = isProduct && errorKeys.some(key => stockFields.includes(key));
+
+            // Basic Details fields
+            const basicFields = ["item_name", "category_id", "sales_price", "item_code"];
+            // Note: item_code is in Basic for Services (type 2), but Stock for Products (type 1)
+            const hasBasicError = errorKeys.some(key => {
+                if (key === "item_code") return !isProduct;
+                return basicFields.includes(key);
+            });
+
+            if (hasBasicError && activeSection !== "basic") {
+                setActiveSection("basic");
+                toast.error("Please fill required Basic Details");
+            } else if (hasStockError && activeSection !== "stock") {
+                setActiveSection("stock");
+                toast.error("Please fill required Stock Details");
+            }
+        }
+    }, [formik.submitCount, formik.isValid]);
 
 
     // Handle section change
@@ -416,9 +466,9 @@ export default function CreateItemModal({
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">
                                                         {formik.values.item_type_id === 2 ? (
-                                                            <>Service Name <span style={{ color: 'red' }}>*</span></>
+                                                            <>Service Name <span className="text-red-500">*</span></>
                                                         ) : (
-                                                            <>Item Name <span style={{ color: 'red' }}>*</span></>
+                                                            <>Item Name <span className="text-red-500">*</span></>
                                                         )}
 
                                                     </label>
@@ -539,15 +589,29 @@ export default function CreateItemModal({
                                                 </div>
                                                 <div className="flex-1">
                                                     <label className="block text-sm font-medium mb-1">
-                                                        {formik.values.item_type_id === 2 ? "Service Code" : "Opening Stock"}
+                                                        {formik.values.item_type_id === 2 ? (
+                                                            <>Service Code <span className="text-red-500">*</span></>
+                                                        ) : (
+                                                            "Opening Stock"
+                                                        )}
                                                     </label>
                                                     {formik.values.item_type_id === 2 ? (
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Enter Service Code"
-                                                            className="w-full p-2 border rounded"
-                                                            {...formik.getFieldProps("item_code")}
-                                                        />
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Enter Service Code"
+                                                                className={clsx(
+                                                                    "w-full p-2 border rounded",
+                                                                    { "border-red-500": formik.touched.item_code && formik.errors.item_code }
+                                                                )}
+                                                                {...formik.getFieldProps("item_code")}
+                                                            />
+                                                            {formik.touched.item_code && formik.errors.item_code && (
+                                                                <div className="text-red-500 text-xs mt-1">
+                                                                    {formik.errors.item_code}
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <div className="flex">
                                                             <input

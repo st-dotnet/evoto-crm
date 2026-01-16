@@ -86,6 +86,8 @@ class Item(BaseMixin, db.Model):
     description = Column(Text, nullable=True)
 
     enable_low_quantity_warning = Column(Boolean, default=False)
+    low_stock_warning = Column(Boolean, default=False)
+    low_stock_quantity = Column(Float, nullable=True)
 
     # Soft delete column
     is_deleted = Column(Boolean, default=False)
