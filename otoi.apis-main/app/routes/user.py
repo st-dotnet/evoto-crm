@@ -478,9 +478,27 @@ def create_user():
 
         return jsonify({"message": "User created successfully", "id": user.id}), 201
 
+    except IntegrityError as e:
+        db.session.rollback()
+        # Handle database integrity errors (e.g., duplicate entries)
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        if 'unique' in error_msg.lower() or 'duplicate' in error_msg.lower():
+            if 'email' in error_msg.lower():
+                return jsonify({"error": "Email address already exists"}), 400
+            elif 'username' in error_msg.lower():
+                return jsonify({"error": "Username already exists"}), 400
+            else:
+                return jsonify({"error": "A user with this information already exists"}), 400
+        return jsonify({"error": "Unable to create user. Please check your input and try again."}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": f"Failed to create user: {str(e)}"}), 500
+        # Log the actual error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in create_user: {str(e)}")
+        print(error_details)
+        # Return user-friendly message
+        return jsonify({"error": "Unable to create user. Please try again or contact support."}), 500
 
 # --- Update User (Admin only) ---
 @user_blueprint.route("/<int:user_id>", methods=["PUT", "OPTIONS"])
@@ -663,14 +681,25 @@ def update_user(user_id):
 
     except IntegrityError as e:
         db.session.rollback()
-        return jsonify({"error": "Database integrity error. Please check for duplicate entries."}), 400
+        # Handle database integrity errors
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        if 'unique' in error_msg.lower() or 'duplicate' in error_msg.lower():
+            if 'email' in error_msg.lower():
+                return jsonify({"error": "Email address already exists"}), 400
+            elif 'username' in error_msg.lower():
+                return jsonify({"error": "Username already exists"}), 400
+            else:
+                return jsonify({"error": "A user with this information already exists"}), 400
+        return jsonify({"error": "Unable to update user. Please check your input and try again."}), 400
     except Exception as e:
         db.session.rollback()
+        # Log the actual error for debugging
         import traceback
         error_details = traceback.format_exc()
         print(f"Error in update_user: {str(e)}")
         print(error_details)
-        return jsonify({"error": f"Failed to update user: {str(e)}"}), 500
+        # Return user-friendly message
+        return jsonify({"error": "Unable to update user. Please try again or contact support."}), 500
 
 # --- Delete User (Admin only) ---
 @user_blueprint.route("/<int:user_id>", methods=["DELETE"])
@@ -732,7 +761,13 @@ def delete_user(user_id):
 
     except IntegrityError:
         db.session.rollback()
-        return jsonify({"error": "Cannot delete user. It is referenced in other records."}), 409
+        return jsonify({"error": "Cannot delete user. This user is referenced in other records."}), 409
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": f"Failed to delete user: {str(e)}"}), 500
+        # Log the actual error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in delete_user: {str(e)}")
+        print(error_details)
+        # Return user-friendly message
+        return jsonify({"error": "Unable to delete user. Please try again or contact support."}), 500

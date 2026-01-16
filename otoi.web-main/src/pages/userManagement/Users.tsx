@@ -629,8 +629,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
         cell: ({ row }) => (
           <span
             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${row.original.isActive
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
               }`}
           >
             {row.original.isActive ? "Active" : "Inactive"}
@@ -656,7 +656,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
-                    navigate(`/user/${row.original.id}/edit`);
+                    setSelectedUser(row.original);
+                    setLeadModalOpen(true);
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />

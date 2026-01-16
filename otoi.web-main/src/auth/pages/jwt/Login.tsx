@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, type KeyboardEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import * as Yup from "yup";
@@ -106,6 +106,14 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
+
+  // Handle Enter key press for form submission
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      formik.handleSubmit();
+    }
+  };
   return (
     <div className="card max-w-[390px] w-full">
       <form
@@ -171,6 +179,7 @@ const Login = () => {
               className={clsx("form-control", {
                 "is-invalid": formik.touched.email && formik.errors.email
               })}
+              onKeyDown={handleKeyDown}
             />
           </label>
           {formik.touched.email && formik.errors.email && (
@@ -203,6 +212,7 @@ const Login = () => {
               className={clsx("form-control", {
                 "is-invalid": formik.touched.password && formik.errors.password
               })}
+              onKeyDown={handleKeyDown}
             />
             <button className="btn btn-icon" onClick={togglePassword}>
               <KeenIcon icon="eye" className={clsx("text-gray-500", { hidden: showPassword })} />

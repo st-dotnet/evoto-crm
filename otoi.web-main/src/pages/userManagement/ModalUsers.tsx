@@ -32,7 +32,6 @@ interface User {
   id?: number;
   first_name?: string;
   last_name?: string;
-  // username removed as per request
   email: string;
   mobile: string;
   role?: string;
@@ -88,15 +87,14 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
         .email("Invalid email")
         .required("Email is required"),
       mobile: Yup.string()
+      .required("Mobile No. in digits required")
         .test("mobile-length", "Mobile must be 10 digits", 
             function (value) {
                 if (!value) return true; 
-
                 const digitsOnly = value.replace(/-/g, '');
                 return digitsOnly.length === 10 && /^\d{10}$/.test(digitsOnly);
             }
-        )
-        .required("Mobile No. in digits required"),
+        ),
       role: Yup.string().required("Role is required"),
       password: user?.id
         ? Yup.string().nullable()
@@ -314,6 +312,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                   </label>
                   <input
                     {...formik.getFieldProps("mobile")}
+                    placeholder="Mobile No."
                     // className="input"
                     type="text"
                     className={clsx(
