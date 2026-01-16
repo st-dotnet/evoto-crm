@@ -174,7 +174,10 @@ def login():
             return jsonify({"error": "Invalid email or password"}), 401
 
         if not user.check_password(password):
-            return jsonify({"error": "Invalid email or password"}), 401
+            return jsonify({"error": "Invalid password"}), 401
+
+        if not user.isActive:
+            return jsonify({"error": "Account Deactivated"}), 403
 
         business_id = user.businesses[0].id if user.businesses and len(user.businesses) > 0 else None
         

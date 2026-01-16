@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, type KeyboardEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import * as Yup from "yup";
@@ -8,6 +8,7 @@ import { toAbsoluteUrl } from "@/utils";
 import { useAuthContext } from "@/auth";
 import { useLayout } from "@/providers";
 import { Alert } from "@/components";
+import { ModalAccountDeactivated } from "@/partials/modals/account-deactivated";
 
 const loginSchema = Yup.object().shape({
   email: Yup.string()
@@ -36,33 +37,68 @@ const Login = () => {
   const from = location.state?.from?.pathname || "/";
   const [showPassword, setShowPassword] = useState(false);
   const { currentLayout } = useLayout();
+  const [showDeactivatedModal, setShowDeactivatedModal] = useState(false);
+
 
   const formik = useFormik({
     initialValues,
     validationSchema: loginSchema,
+    // onSubmit: async (values, { setStatus, setSubmitting }) => {
+    //   setLoading(true);
+
+    //   try {
+    //     if (!login) {
+    //       throw new Error("JWTProvider is required for this form.");
+    //     }
+
+    //     await login(values.email, values.password);
+
+    //     if (values.remember) {
+    //       localStorage.setItem("email", values.email);
+    //     } else {
+    //       localStorage.removeItem("email");
+    //     }
+
+    //     navigate(from, { replace: true });
+    //   } 
+    //   catch {
+    //     setStatus("The login details are incorrect");
+    //     setSubmitting(false);
+    //   }
+    //   setLoading(false);
+    // }
     onSubmit: async (values, { setStatus, setSubmitting }) => {
-      setLoading(true);
+  setLoading(true);
 
-      try {
-        if (!login) {
-          throw new Error("JWTProvider is required for this form.");
-        }
-
-        await login(values.email, values.password);
-
-        if (values.remember) {
-          localStorage.setItem("email", values.email);
-        } else {
-          localStorage.removeItem("email");
-        }
-
-        navigate(from, { replace: true });
-      } catch {
-        setStatus("The login details are incorrect");
-        setSubmitting(false);
-      }
-      setLoading(false);
+  try {
+    if (!login) {
+      throw new Error("JWTProvider is required for this form.");
     }
+
+    await login(values.email, values.password);
+
+    if (values.remember) {
+      localStorage.setItem("email", values.email);
+    } else {
+      localStorage.removeItem("email");
+    }
+
+    navigate(from, { replace: true });
+  } catch (error: any) {
+    // Check if the error is an Axios error and has a response
+    if (error.response && error.response.data && error.response.data.error === "Account Deactivated") {
+      setShowDeactivatedModal(true);
+      setTimeout(() => {
+        setShowDeactivatedModal(false);
+      }, 3000); // Close after 3 seconds
+    } else {
+      setStatus(`${error.response.data.error}`);
+    }
+    setSubmitting(false);
+  }
+  setLoading(false);
+}
+
   });
 
   const togglePassword = (event: MouseEvent<HTMLButtonElement>) => {
@@ -70,6 +106,14 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
+
+  // Handle Enter key press for form submission
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      formik.handleSubmit();
+    }
+  };
   return (
     <div className="card max-w-[390px] w-full">
       <form
@@ -135,6 +179,7 @@ const Login = () => {
               className={clsx("form-control", {
                 "is-invalid": formik.touched.email && formik.errors.email
               })}
+              onKeyDown={handleKeyDown}
             />
           </label>
           {formik.touched.email && formik.errors.email && (
@@ -167,6 +212,7 @@ const Login = () => {
               className={clsx("form-control", {
                 "is-invalid": formik.touched.password && formik.errors.password
               })}
+              onKeyDown={handleKeyDown}
             />
             <button className="btn btn-icon" onClick={togglePassword}>
               <KeenIcon icon="eye" className={clsx("text-gray-500", { hidden: showPassword })} />
@@ -200,6 +246,11 @@ const Login = () => {
           {loading ? "Please wait..." : "Sign In"}
         </button>
       </form>
+      {/* Modal for Account Deactivated */}
+      <ModalAccountDeactivated
+        open={showDeactivatedModal}
+        onOpenChange={() => setShowDeactivatedModal(false)}
+      />
     </div>
   );
 };

@@ -88,6 +88,10 @@ import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
 import { PartiesVendorsPage } from '@/pages/parties/PartiesVendors';
 import InventoryPage from '@/pages/items/InventoryPage';
 import ItemDetailsPage from '@/pages/items/ItemDetails';
+import { UserDetails } from '@/pages/userManagement/UserDetails';
+import { UserEdit } from '@/pages/userManagement/UserEdit';
+import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
+
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -187,10 +191,13 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/network/user-table/visitors" element={<NetworkVisitorsPage />} />
           <Route path="/auth/welcome-message" element={<AuthenticationWelcomeMessagePage />} />
           <Route path="/parties/leads" element={<LeadsPage />} />
+          <Route path="/user-management/users" element={<PartiesUsersPage />} />
           <Route path="/parties/customers" element={<PartiesCustomersPage />} />
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
+          <Route path="/user/:id" element={<UserDetails />} />
+          <Route path="/user/:id/edit" element={<UserEdit />} />
           <Route path="/items/inventory" element={<InventoryPage/>} />
           <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
           
