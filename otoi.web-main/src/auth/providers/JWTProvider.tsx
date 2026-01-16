@@ -89,7 +89,8 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       setCurrentUser(user);
     } catch (error) {
       saveAuth(undefined);
-      throw new Error(`Error ${error}`);
+      // Re-throw the original error to preserve axios response data
+      throw error;
     }
   };
 
@@ -138,18 +139,18 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
   //     password_confirmation
   //   });
   // };
-const requestPasswordResetLink = async (email: string) => {
-  const response = await axios.post(`${API_URL}/auth/check-email`, { email });
-  return response.data;
-};
+  const requestPasswordResetLink = async (email: string) => {
+    const response = await axios.post(`${API_URL}/auth/check-email`, { email });
+    return response.data;
+  };
 
-const changePassword = async (email: string, newPassword: string, confirmPassword: string) => {
-  if (newPassword !== confirmPassword) {
-    throw new Error("Passwords do not match");
-  }
-  const response = await axios.post(`${API_URL}/auth/update-password`, { email, newPassword });
-  return response.data;
-};
+  const changePassword = async (email: string, newPassword: string, confirmPassword: string) => {
+    if (newPassword !== confirmPassword) {
+      throw new Error("Passwords do not match");
+    }
+    const response = await axios.post(`${API_URL}/auth/update-password`, { email, newPassword });
+    return response.data;
+  };
 
 
 

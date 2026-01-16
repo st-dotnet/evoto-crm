@@ -28,6 +28,7 @@ class User(db.Model):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+    isActive = Column(db.Boolean, default=True, nullable=False)
     # Relationships
     role = relationship("Role", back_populates="users")
     businesses = relationship("Business", secondary=user_business, back_populates="users")
