@@ -137,7 +137,7 @@ const PartiesUsersPage = () => {
 
       {loading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 dark:bg-black/50 overflow-hidden">
-          <div className="text-primary">
+          <div className="text-[#0D0E12]">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>

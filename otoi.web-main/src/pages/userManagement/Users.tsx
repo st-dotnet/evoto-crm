@@ -401,7 +401,7 @@ import { ModalUser } from "./ModalUsers";
 
 // Define User Interface (updated to match backend)
 interface User {
-  id: number;
+  id: string;
   username?: string;
   first_name?: string;
   last_name?: string;
@@ -410,7 +410,7 @@ interface User {
   role: string;
   isActive?: boolean;
   created_at?: string,
-  created_by?: number,
+  created_by?: string,
   updated_at?: string,
   businesses: Array<{ id: number; name: string }>;
 }
@@ -546,7 +546,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   };
 
   // Delete User (updated endpoint)
-  const deleteUser = async (userId: number) => {
+  const deleteUser = async (userId: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       toast("User deleted successfully");
@@ -712,7 +712,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
     <div className="grid gap-5 lg:gap-7.5">
       {loading && users.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary text-black">
+          <div className="text-black">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
@@ -763,7 +763,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deleteUser(selectedUser?.id || 0)}
+              onClick={() => deleteUser(selectedUser?.id || "")}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete

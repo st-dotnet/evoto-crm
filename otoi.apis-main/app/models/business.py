@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table, UUID
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.extensions import db
@@ -44,8 +45,8 @@ class Business(db.Model):
     industry_type_id = Column(Integer, ForeignKey('industry_types.id', ondelete="SET NULL"))
     business_registration_type_id = Column(Integer, ForeignKey('business_registration_types.id', ondelete="SET NULL"))
     subscription_plan = Column(String(50), nullable=False)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     # Relationships

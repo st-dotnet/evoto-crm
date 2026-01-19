@@ -22,10 +22,10 @@ class Lead(BaseMixin, db.Model):
 
 
     # Relationships
-    lead_addresses = relationship("LeadAddress", back_populates="lead", cascade="all, delete-orphan")
+    lead_addresses = relationship("LeadAddress", back_populates="lead", cascade="all, delete-orphan", overlaps="leads")
 
     # direct access to addresses
-    addresses = relationship("Address", secondary="lead_addresses", back_populates="leads")
+    addresses = relationship("Address", secondary="lead_addresses", back_populates="leads", overlaps="lead_addresses")
 
     # one-to-one relation with Customer
     customers = relationship("Customer", back_populates="lead", cascade="all, delete-orphan")
@@ -47,8 +47,8 @@ class LeadAddress(BaseMixin, db.Model):
     shipping_id = Column(UUID(as_uuid=True), ForeignKey("shippings.uuid", ondelete="CASCADE"), nullable=True)
 
     # Relationships
-    lead = relationship("Lead", back_populates="lead_addresses")
-    address = relationship("Address", back_populates="lead_addresses")
+    lead = relationship("Lead", back_populates="lead_addresses", overlaps="addresses,leads")
+    address = relationship("Address", back_populates="lead_addresses", overlaps="addresses,leads")
     shipping = relationship("Shipping", back_populates="lead_addresses")
 
     def __repr__(self):

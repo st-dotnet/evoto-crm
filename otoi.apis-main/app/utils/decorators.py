@@ -22,7 +22,7 @@ def role_required(required_roles):
                 return Response(status=200)
             verify_jwt_in_request()
             identity = get_jwt_identity()
-            user = User.query.filter_by(id=int(identity)).first()
+            user = User.query.filter_by(id=identity).first()
             
             if not user or user.role.name not in required_roles:
                 return jsonify({"error": "Access forbidden: unauthrised role"}), 403

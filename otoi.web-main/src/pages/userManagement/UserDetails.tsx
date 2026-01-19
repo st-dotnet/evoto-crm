@@ -434,18 +434,18 @@ export const UserDetails = () => {
   }, [id]);
 
   const ContactRow = ({ icon, label, value, color }: any) => (
-  <div className="flex items-center gap-4 group cursor-pointer">
-    <div className={`p-3 rounded-2xl bg-slate-50 dark:bg-white/5 transition-colors group-hover:bg-white group-hover:shadow-md ${color}`}>
-      <KeenIcon icon={icon} className="text-xl" />
+    <div className="flex items-center gap-4 group cursor-pointer">
+      <div className={`p-3 rounded-2xl bg-slate-50 dark:bg-white/5 transition-colors group-hover:bg-white group-hover:shadow-md ${color}`}>
+        <KeenIcon icon={icon} className="text-xl" />
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{value || '--'}</p>
+      </div>
     </div>
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{value || '--'}</p>
-    </div>
-  </div>
-);
+  );
 
-  const deleteUser = async (userId: number) => {
+  const deleteUser = async (userId: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       toast.success("User deleted successfully");
@@ -461,8 +461,8 @@ export const UserDetails = () => {
 
   if (!user) {
     return (
-      <div className="flex h-[80vh] w-full items-center justify-center">
-        <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
+      <div className="flex h-[80vh] w-full items-center justify-center text-[#0D0E12]">
+        <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
       </div>
     );
   }
@@ -481,7 +481,7 @@ export const UserDetails = () => {
             <span className="text-gray-900 font-medium">{fullName}</span>
           </nav>
         </div>
-        
+
         <div className="flex gap-3">
           <button
             onClick={() => navigate(`/user/${id}/edit`)}
@@ -508,21 +508,20 @@ export const UserDetails = () => {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-1">{fullName}</h2>
               <p className="text-gray-500 text-sm mb-4">{user.email}</p>
-              
-              <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${
-                user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
+
+              <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
                 {user.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
 
             <div className="py-8 space-y-6">
-               <SidebarInfo label="Role" value={user.role} icon="shield-tick" />
-               {/* <SidebarInfo label="Mobile" value={user.mobile} icon="phone" />
+              <SidebarInfo label="Role" value={user.role} icon="shield-tick" />
+              {/* <SidebarInfo label="Mobile" value={user.mobile} icon="phone" />
                <SidebarInfo label="Member Since" value={user.created_at} icon="calendar" /> */}
-               <ContactRow icon="phone" label="Phone" value={user.mobile} color="text-purple-500" />
-               <ContactRow icon="sms" label="Official Email" value={user.email} color="text-blue-500" />
-               <ContactRow icon="calendar" label="Date Joined" value={user.created_at} color="text-orange-500" />
+              <ContactRow icon="phone" label="Phone" value={user.mobile} color="text-purple-500" />
+              <ContactRow icon="sms" label="Official Email" value={user.email} color="text-blue-500" />
+              <ContactRow icon="calendar" label="Date Joined" value={user.created_at} color="text-orange-500" />
             </div>
           </div>
         </div>
@@ -542,9 +541,9 @@ export const UserDetails = () => {
                 <DataField label="Email Address" value={user.email} />
                 <DataField label="Phone Number" value={user.mobile} />
                 <DataField label="Designation" value={user.role} />
-                <DataField label="Account Status" value={user.isActive ? "Active" : "Inactive"} status={user.isActive ? "success" : "danger"}/>
+                <DataField label="Account Status" value={user.isActive ? "Active" : "Inactive"} status={user.isActive ? "success" : "danger"} />
                 <DataField label="Last Updated" value={user.updated_at} />
-                <DataField label="Account ID" value={`#ID- ${user.id}`} />
+                <DataField label="Account ID" value={`#${user.id?.toString().slice(0, 8)}...`} />
               </div>
             </div>
           </div>
@@ -594,13 +593,13 @@ export const UserDetails = () => {
               Are you sure you want to delete <span className="font-bold text-gray-800">{fullName}</span>? This process cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setShowDeleteDialog(false)}
                 className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => deleteUser(user.id)}
                 className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
               >

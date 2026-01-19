@@ -31,7 +31,7 @@ export type QueryApiResponse<T> = {
 
 // User Model (final)
 export type User = {
-  id: number;
+  id: string;
   username: string;
   email: string;
   mobile: string;
@@ -40,7 +40,7 @@ export type User = {
   role: string;
   isActive: boolean;
   created_at?: string;
-  created_by?: number;
+  created_by?: string;
   updated_at?: string;
   businesses: Array<{ id: number; name: string }>;
 };

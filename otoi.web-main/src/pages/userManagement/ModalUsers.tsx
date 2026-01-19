@@ -29,7 +29,7 @@ interface Role {
 }
 
 interface User {
-  id?: number;
+  id?: string;
   first_name?: string;
   last_name?: string;
   email: string;
@@ -87,13 +87,13 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
         .email("Invalid email")
         .required("Email is required"),
       mobile: Yup.string()
-      .required("Mobile No. in digits required")
-        .test("mobile-length", "Mobile must be 10 digits", 
-            function (value) {
-                if (!value) return true; 
-                const digitsOnly = value.replace(/-/g, '');
-                return digitsOnly.length === 10 && /^\d{10}$/.test(digitsOnly);
-            }
+        .required("Mobile No. in digits required")
+        .test("mobile-length", "Mobile must be 10 digits",
+          function (value) {
+            if (!value) return true;
+            const digitsOnly = value.replace(/-/g, '');
+            return digitsOnly.length === 10 && /^\d{10}$/.test(digitsOnly);
+          }
         ),
       role: Yup.string().required("Role is required"),
       password: user?.id
@@ -323,24 +323,24 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                     )}
                     inputMode="tel"
                     onChange={(e) => {
-                        // Allow numbers and hyphens, but not more than one hyphen in a row
-                        let value = e.target.value.replace(/[^0-9-]/g, '');
-                        value = value.replace(/--+/g, '-');
-                        // Limit total length to 15 characters (including hyphens)
-                        value = value.slice(0, 10);
-                        formik.setFieldValue("mobile", value);
-                        // Mark as touched to show errors
-                        if (!formik.touched.mobile) {
-                            formik.setFieldTouched("mobile", true);
-                        }
+                      // Allow numbers and hyphens, but not more than one hyphen in a row
+                      let value = e.target.value.replace(/[^0-9-]/g, '');
+                      value = value.replace(/--+/g, '-');
+                      // Limit total length to 15 characters (including hyphens)
+                      value = value.slice(0, 10);
+                      formik.setFieldValue("mobile", value);
+                      // Mark as touched to show errors
+                      if (!formik.touched.mobile) {
+                        formik.setFieldTouched("mobile", true);
+                      }
                     }}
                     onKeyDown={(e) => {
-                        // Prevent typing a hyphen at the start or after another hyphen
-                        if (e.key === '-' &&
-                            (formik.values.mobile.length === 0 ||
-                                formik.values.mobile.endsWith('-'))) {
-                            e.preventDefault();
-                        }
+                      // Prevent typing a hyphen at the start or after another hyphen
+                      if (e.key === '-' &&
+                        (formik.values.mobile.length === 0 ||
+                          formik.values.mobile.endsWith('-'))) {
+                        e.preventDefault();
+                      }
                     }}
                     onInput={(e) => {
                       const input = e.target as HTMLInputElement;

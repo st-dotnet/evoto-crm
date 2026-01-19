@@ -52,7 +52,8 @@ def signup():
               type: object
               properties:
                 id:
-                  type: integer
+                  type: string
+                  example: "550e8400-e29b-41d4-a716-446655440000"
                 firstName:
                   type: string
                 lastName:
@@ -201,7 +202,7 @@ def login():
             "access_token": token,
             "token_type": "Bearer",
             "user": {
-                "id": user.id,
+                "id": str(user.id),
                 "username": user.username,
                 "email": user.email,
                 "role": user.role.name,
