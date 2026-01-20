@@ -338,7 +338,6 @@ def update_customer(customer_id):
             return jsonify({"error": "Customer not found"}), 404
 
         status = str(data.get("status", customer.status))
-        print("ABCCC")
         # ---------------- DUPLICATE CHECKS ----------------
         if "mobile" in data and data["mobile"]:
             mobile = str(data["mobile"]).strip()
@@ -369,22 +368,7 @@ def update_customer(customer_id):
                     return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
                 setattr(customer, field, value)
 
-        # ---------------- ADDRESS UPDATE ----------------
-        if status != "1":
-            address_fields = ["address1", "city", "state", "country", "pin"]
-            for field in address_fields:
-                if field in data:
-                    value = str(data[field]).strip() if data[field] else None
-                    if not value:
-                        return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
-                    setattr(customer, field, value)
-
-            if "address2" in data:
-                customer.address2 = (
-                    str(data["address2"]).strip()
-                    if data["address2"] is not None
-                    else None
-                )
+        # ---------------- ADDRESS UPDATE ---------------
 
         # ---------------- 🔥 NORMALIZATION (CRITICAL FIX) ----------------
         # Match deployed behavior: NEVER save NULL for NOT NULL columns

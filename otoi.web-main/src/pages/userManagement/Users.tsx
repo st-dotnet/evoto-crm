@@ -401,7 +401,7 @@ import { ModalUser } from "./ModalUsers";
 
 // Define User Interface (updated to match backend)
 interface User {
-  id: number;
+  id: string;
   username?: string;
   first_name?: string;
   last_name?: string;
@@ -410,7 +410,7 @@ interface User {
   role: string;
   isActive?: boolean;
   created_at?: string,
-  created_by?: number,
+  created_by?: string,
   updated_at?: string,
   businesses: Array<{ id: number; name: string }>;
 }
@@ -483,6 +483,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [fetchingUser, setFetchingUser] = useState(false);
 
   const navigate = useNavigate();
 
@@ -499,9 +500,24 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
       });
       setUsers(response.data.data);
     } catch (error) {
-      toast("Failed to fetch users");
+      toast.error("Failed to fetch users");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch Single User Details
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setFetchingUser(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
+      setSelectedUser(response.data);
+      return response.data;
+    } catch (error) {
+      toast.error("Failed to fetch user details");
+      return null;
+    } finally {
+      setFetchingUser(false);
     }
   };
 
@@ -546,7 +562,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   };
 
   // Delete User (updated endpoint)
-  const deleteUser = async (userId: number) => {
+  const deleteUser = async (userId: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       toast("User deleted successfully");
@@ -654,10 +670,12 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
-                    setSelectedUser(row.original);
-                    setLeadModalOpen(true);
+                    const userData = await fetchUserDetails(row.original.id);
+                    if (userData) {
+                      setLeadModalOpen(true);
+                    }
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
@@ -673,10 +691,12 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                   Details
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
-                    setSelectedUser(row.original);
-                    setShowDeleteDialog(true);
+                    const userData = await fetchUserDetails(row.original.id);
+                    if (userData) {
+                      setShowDeleteDialog(true);
+                    }
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -710,10 +730,18 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {loading && users.length === 0 && (
+      {(loading || fetchingUser) && users.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary text-black">
+          <div className="text-black">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
+      {fetchingUser && users.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
           </div>
         </div>
       )}
@@ -754,7 +782,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
             </div>
             <DialogTitle className="text-lg font-semibold">Delete User</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete this user?
+              Are you sure you want to delete <strong>{selectedUser?.first_name} {selectedUser?.last_name}</strong> ({selectedUser?.email})?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-3 flex justify-end gap-3">
@@ -763,7 +791,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deleteUser(selectedUser?.id || 0)}
+              onClick={() => deleteUser(selectedUser?.id || "")}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete

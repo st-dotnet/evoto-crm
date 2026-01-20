@@ -458,6 +458,45 @@ def update_lead(lead_id):
         #     if status_id is None:
         #         return jsonify({"error": "Valid status type is required"}), 400
         #     lead.status = status_id
+        data = request.get_json() or {}
+
+        # ---- BASIC VALIDATION ----
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        email = (data.get("email") or "").strip()
+        mobile = (data.get("mobile") or "").strip()
+        status = str(data.get("status") or "").strip()
+
+        if not first_name or not last_name:
+            return jsonify({"error": "First name and last name are required"}), 400
+
+        if not mobile and not email:
+            return jsonify({"error": "Either mobile or email is required"}), 400
+
+        # ---- STATUS LOGIC ----
+        if not status:
+            return jsonify({"error": "Status type is required"}), 400  
+        reason = None
+        address_data = None
+
+        if status.lower() in ["lose", "5"]:
+            reason = data.get("reason")
+            if not reason:
+                return jsonify({"error": "Reason is required when status is Lose"}), 400
+
+        if status.lower() in ["win", "4"]:
+            address_data = {
+                "address1": data.get("address1"),
+                "address2": data.get("address2"),
+                "city": data.get("city"),
+                "state": data.get("state"),
+                "country": data.get("country"),
+                "pin": data.get("pin"),
+            }
+
+            if not all([address_data["city"], address_data["state"],
+                        address_data["country"], address_data["pin"]]):
+                return jsonify({"error": "Complete address is required when status is Win"}), 400    
 
         lead.reason = data.get("reason", lead.reason)
 
@@ -537,7 +576,7 @@ def get_lead_by_id(lead_id):
         "mobile": lead.mobile,
         "email": lead.email,
         "gst": lead.gst,
-        "status": str(lead.status),
+        "status": STATUS_MAPPING.get(lead.status, str(lead.status)),
         "reason": lead.reason,
         "addresses": addresses,
     })

@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from app.models.business import user_business
 from datetime import datetime
+import uuid
 
 class Role(db.Model):
     __tablename__ = "roles"
@@ -16,7 +18,7 @@ class Role(db.Model):
 
 class User(db.Model):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     firstName = Column(String(80), nullable=False)
     lastName = Column(String(80), nullable=True)
     username = Column(String(80), unique=True, nullable=False)
@@ -24,8 +26,8 @@ class User(db.Model):
     mobileNo = Column(String(10), unique=True, nullable=False)
     password_hash = Column(String(), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     isActive = Column(db.Boolean, default=True, nullable=False)

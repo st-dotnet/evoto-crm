@@ -235,24 +235,24 @@ def get_all_users():
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 # --- Fetch Single User (Admin/User) ---
-@user_blueprint.route("/<int:user_id>", methods=["GET"])
+@user_blueprint.route("/<string:user_uuid>", methods=["GET"])
 @role_required(["Admin", "User", "Manager"])
-def get_user_by_id(user_id):
+def get_user_by_id(user_uuid):
     """
-    Fetch a single user by ID
+    Fetch a single user by UUID
     ---
     tags:
       - User Management
     security:
       - BearerAuth: []
     parameters:
-      - name: user_id
+      - name: user_uuid
         in: path
-        description: ID of the user to retrieve
+        description: UUID of the user to retrieve
         required: true
         schema:
-          type: integer
-          example: 1
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
     responses:
       200:
         description: User retrieved successfully
@@ -309,7 +309,7 @@ def get_user_by_id(user_id):
       404:
         description: User not found
     """
-    user = User.query.filter_by(id=user_id).first()
+    user = User.query.filter_by(id=user_uuid).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
 
@@ -501,9 +501,9 @@ def create_user():
         return jsonify({"error": "Unable to create user. Please try again or contact support."}), 500
 
 # --- Update User (Admin only) ---
-@user_blueprint.route("/<int:user_id>", methods=["PUT", "OPTIONS"])
+@user_blueprint.route("/<string:user_uuid>", methods=["PUT", "OPTIONS"])
 @role_required(["Admin"])
-def update_user(user_id):
+def update_user(user_uuid):
     """
     Update an existing user
     ---
@@ -512,13 +512,13 @@ def update_user(user_id):
     security:
       - BearerAuth: []
     parameters:
-      - name: user_id
+      - name: user_uuid
         in: path
-        description: ID of the user to update
+        description: UUID of the user to update
         required: true
         schema:
-          type: integer
-          example: 1
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
     requestBody:
       required: true
       content:
@@ -623,7 +623,7 @@ def update_user(user_id):
         if not data:
             return jsonify({"error": "No data provided"}), 400
             
-        user = User.query.filter_by(id=user_id).first()
+        user = User.query.filter_by(id=user_uuid).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
 
@@ -635,19 +635,26 @@ def update_user(user_id):
             user.lastName = data.get("last_name") or data.get("lastName")
 
         if "username" in data:
+            existing_user = User.query.filter_by(username=data["username"]).first()
+            if existing_user and str(existing_user.id) != user_uuid:
+                return jsonify({"error": "Username already exists"}), 400
             user.username = data["username"]
         
         # Update email if provided
         if "email" in data:
             # Check if email already exists for another user
             existing_user = User.query.filter_by(email=data["email"]).first()
-            if existing_user and existing_user.id != user_id:
+            if existing_user and str(existing_user.id) != user_uuid:
                 return jsonify({"error": "Email already exists"}), 400
             user.email = data["email"]
         
         # Update mobile if provided
         if "mobile" in data or "mobileNo" in data:
-            user.mobileNo = data.get("mobile") or data.get("mobileNo") or user.mobileNo
+            mobileValue = data.get("mobile") or data.get("mobileNo")
+            existing_user = User.query.filter_by(mobileNo=mobileValue).first()
+            if existing_user and str(existing_user.id) != user_uuid:
+                return jsonify({"error": "Mobile number already exists"}), 400
+            user.mobileNo = mobileValue
 
         # Update role if provided
         if "role" in data and data["role"]:
@@ -702,9 +709,9 @@ def update_user(user_id):
         return jsonify({"error": "Unable to update user. Please try again or contact support."}), 500
 
 # --- Delete User (Admin only) ---
-@user_blueprint.route("/<int:user_id>", methods=["DELETE"])
+@user_blueprint.route("/<string:user_uuid>", methods=["DELETE"])
 @role_required(["Admin"])
-def delete_user(user_id):
+def delete_user(user_uuid):
     """
     Delete a user
     ---
@@ -713,13 +720,13 @@ def delete_user(user_id):
     security:
       - BearerAuth: []
     parameters:
-      - name: user_id
+      - name: user_uuid
         in: path
-        description: ID of the user to delete
+        description: UUID of the user to delete
         required: true
         schema:
-          type: integer
-          example: 1
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
     responses:
       200:
         description: User deleted successfully
@@ -751,7 +758,7 @@ def delete_user(user_id):
         description: Internal server error
     """
     try:
-        user = User.query.filter_by(id=user_id).first()
+        user = User.query.filter_by(id=user_uuid).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
 
