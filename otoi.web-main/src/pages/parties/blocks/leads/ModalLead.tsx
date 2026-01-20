@@ -102,6 +102,8 @@ const saveLeadSchema = Yup.object().shape({
   gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
   pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
   status: Yup.string().required("Status is required"),
+  reason: Yup.string()
+    .required("Reason is required"),
 });
 
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
@@ -307,6 +309,27 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                     {...formik.getFieldProps("mobile")}
                     className="input"
                     type="text"
+                    inputMode="tel"
+                    onChange={(e) => {
+                      // Allow numbers and hyphens, but not more than one hyphen in a row
+                      let value = e.target.value.replace(/[^0-9-]/g, '');
+                      value = value.replace(/--+/g, '-');
+                      // Limit total length to 15 characters (including hyphens)
+                      value = value.slice(0, 10);
+                      formik.setFieldValue("mobile", value);
+                      // Mark as touched to show errors
+                      if (!formik.touched.mobile) {
+                        formik.setFieldTouched("mobile", true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Prevent typing a hyphen at the start or after another hyphen
+                      if (e.key === '-' &&
+                        (formik.values.mobile.length === 0 ||
+                          formik.values.mobile.endsWith('-'))) {
+                        e.preventDefault();
+                      }
+                    }}
                     onInput={(e) => {
                       const input = e.target as HTMLInputElement;
                       if (input.value.length > 10) {
@@ -514,13 +537,18 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {formik.values.status === "5" && (
                   <div className="flex flex-col gap-1.5 col-span-full">
-                    <label className="block text-sm font-medium text-gray-700">Reason</label>
+                    <label className="block text-sm font-medium text-gray-700">Reason<span style={{ color: "red" }}>*</span></label>
                     <textarea
                       placeholder="Reason"
                       autoComplete="off"
                       {...formik.getFieldProps("reason")}
-                      className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[100px]"
-                    />
+                     className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ": formik.touched.reason && formik.errors.reason,
+                      }
+                    )}
+                  />
                     {formik.touched.reason && formik.errors.reason && (
                       <span role="alert" className="text-xs text-red-500">
                         {formik.errors.reason}

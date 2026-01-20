@@ -164,6 +164,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredItems, setFilteredItems] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingLead, setFetchingLead] = useState(false);
 
   const navigate = useNavigate();
 
@@ -262,6 +263,20 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     fetchAllLeads();
   };
 
+  // Fetch Single User Details
+  const fetchLeadDetails = async (userId: string) => {
+    try {
+      setFetchingLead(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${userId}`);
+      setSelectedLead(response.data);
+      return response.data;
+    } catch (error) {
+      toast.error("Failed to fetch user details");
+      return null;
+    } finally {
+      setFetchingLead(false);
+    }
+  };
 
   const deleteLead = async (uuid: string) => {
 
@@ -368,11 +383,14 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
-                    openLeadModal(e, row.original);
+                    const leadData = await fetchLeadDetails(row.original.uuid);
+                    if (leadData) {
+                      setLeadModalOpen(true);
+                    }
                   }}
-                >
+                  >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -402,10 +420,12 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                 <span>Create Activity</span>
               </DropdownMenuItem> */}
                 <DropdownMenuItem
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
-                    setSelectedLead(row.original);
-                    setShowDeleteDialog(true);
+                    const userData = await fetchLeadDetails(row.original.uuid);
+                    if (userData) {
+                      setShowDeleteDialog(true);
+                    }
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -492,10 +512,18 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {loading && leads.length === 0 && (
+      {loading || fetchingLead && leads.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
+      {fetchingLead && leads.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
           </div>
         </div>
       )}

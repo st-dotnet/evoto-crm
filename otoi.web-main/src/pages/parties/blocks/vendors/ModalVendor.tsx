@@ -247,6 +247,27 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                   {...formik.getFieldProps("mobile")}
                   className="input"
                   type="text"
+                  inputMode="tel"
+                  onChange={(e) => {
+                    // Allow numbers and hyphens, but not more than one hyphen in a row
+                    let value = e.target.value.replace(/[^0-9-]/g, '');
+                    value = value.replace(/--+/g, '-');
+                    // Limit total length to 15 characters (including hyphens)
+                    value = value.slice(0, 10);
+                    formik.setFieldValue("mobile", value);
+                    // Mark as touched to show errors
+                    if (!formik.touched.mobile) {
+                      formik.setFieldTouched("mobile", true);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Prevent typing a hyphen at the start or after another hyphen
+                    if (e.key === '-' &&
+                      (formik.values.mobile.length === 0 ||
+                        formik.values.mobile.endsWith('-'))) {
+                        e.preventDefault();
+                    }
+                  }}
                   onInput={(e) => {
                     const input = e.target as HTMLInputElement;
                     if (input.value.length > 10) {
