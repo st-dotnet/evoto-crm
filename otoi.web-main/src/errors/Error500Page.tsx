@@ -2,9 +2,12 @@ import useBodyClasses from '@/hooks/useBodyClasses';
 import { toAbsoluteUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { Fragment } from 'react/jsx-runtime';
+import { useAuthContext } from '@/auth';
 
 const Error500Page = () => {
   useBodyClasses('dark:bg-coal-500');
+  const { currentUser } = useAuthContext();
+  const isUser = currentUser?.role === 'User';
 
   return (
     <Fragment>
@@ -38,8 +41,11 @@ const Error500Page = () => {
         &nbsp; for assistance.
       </div>
 
-      <Link to="/" className="btn btn-primary flex justify-center">
-        Back to Home
+      <Link
+        to={isUser ? "/public-profile/profiles/default" : "/"}
+        className="btn btn-primary flex justify-center"
+      >
+        {isUser ? "Back to Profile" : "Back to Home"}
       </Link>
     </Fragment>
   );

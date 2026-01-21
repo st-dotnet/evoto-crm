@@ -499,8 +499,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
         },
       });
       setUsers(response.data.data);
-    } catch (error) {
-      toast.error("Failed to fetch users");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -513,8 +513,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       setSelectedUser(response.data);
       return response.data;
-    } catch (error) {
-      toast.error("Failed to fetch user details");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch user details");
       return null;
     } finally {
       setFetchingUser(false);
@@ -565,11 +565,12 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   const deleteUser = async (userId: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
-      toast("User deleted successfully");
+      toast.success("User deleted successfully");
       setShowDeleteDialog(false);
       fetchUsers();
-    } catch {
-      toast("Delete failed");
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "Delete failed";
+      toast.error(errorMessage);
     }
   };
 

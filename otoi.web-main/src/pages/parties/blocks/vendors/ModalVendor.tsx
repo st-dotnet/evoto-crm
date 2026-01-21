@@ -14,6 +14,7 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
+import { toast } from "sonner";
 
 interface IModalVendorProps {
   open: boolean;
@@ -120,18 +121,19 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
 
         if (vendor?.uuid) {
           await axios.put(`${apiBaseVendors}/${vendor.uuid}`, postData);
+          toast.success("Vendor updated successfully");
         } else {
           await axios.post(`${apiBaseVendors}/`, postData);
+          toast.success("Vendor created successfully");
         }
 
         onOpenChange(false);
         navigate("/parties/vendors", { replace: true });
         setLoading(false);
       } catch (error: any) {
-        setStatus(
-          error?.response?.data?.message ||error?.response?.data?.error||
-          "Something went wrong. Please try again."
-        );
+        const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "Something went wrong. Please try again.";
+        setStatus(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setSubmitting(false);
         setLoading(false);
@@ -265,7 +267,7 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                     if (e.key === '-' &&
                       (formik.values.mobile.length === 0 ||
                         formik.values.mobile.endsWith('-'))) {
-                        e.preventDefault();
+                      e.preventDefault();
                     }
                   }}
                   onInput={(e) => {

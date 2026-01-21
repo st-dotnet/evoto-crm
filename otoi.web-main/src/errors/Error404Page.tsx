@@ -2,9 +2,12 @@ import useBodyClasses from '@/hooks/useBodyClasses';
 import { toAbsoluteUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { Fragment } from 'react/jsx-runtime';
+import { useAuthContext } from '@/auth';
 
 const Error404Page = () => {
   useBodyClasses('dark:bg-coal-500');
+  const { currentUser } = useAuthContext();
+  const isUser = currentUser?.role === 'User';
 
   return (
     <Fragment>
@@ -29,8 +32,11 @@ const Error404Page = () => {
 
       <div className="text-md text-center text-gray-700 mb-10">
         The requested page is missing. Check the URL or&nbsp;
-        <Link to="/" className="text-primary font-medium hover:text-primary-active">
-          Return Home
+        <Link
+          to={isUser ? "/public-profile/profiles/default" : "/"}
+          className="text-primary font-medium hover:text-primary-active"
+        >
+          {isUser ? "Return Profile" : "Return Home"}
         </Link>
         .
       </div>

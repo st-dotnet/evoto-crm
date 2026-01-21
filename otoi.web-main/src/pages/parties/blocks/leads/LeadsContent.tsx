@@ -175,8 +175,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         `${import.meta.env.VITE_APP_API_URL}/leads/?items_per_page=1000`
       );
       setLeads(response.data.data);
-    } catch (error) {
-      toast("Failed to fetch leads");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch leads");
     } finally {
       setLoading(false);
     }
@@ -270,8 +270,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${userId}`);
       setSelectedLead(response.data);
       return response.data;
-    } catch (error) {
-      toast.error("Failed to fetch user details");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch lead details");
       return null;
     } finally {
       setFetchingLead(false);
@@ -285,11 +285,11 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         `${import.meta.env.VITE_APP_API_URL}/leads/${uuid}`
       );
 
-      toast("Lead deleted successfully");
+      toast.success("Lead deleted successfully");
       setShowDeleteDialog(false);
       fetchAllLeads();
-    } catch {
-      toast("Delete failed");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Delete failed");
     }
   };
 
@@ -390,7 +390,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                       setLeadModalOpen(true);
                     }
                   }}
-                  >
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -528,26 +528,26 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         </div>
       )}
       {!loading && (
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={false}
-        data={filteredItems}
-        loading={loading}
-        rowSelection={true}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultStatusType={searchStatusTypeQuery}
-            setDefaultStatusType={handleStatusTypeSearch}
-          />
-        }
-        layout={{ card: true }}
-      />
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={false}
+          data={filteredItems}
+          loading={loading}
+          rowSelection={true}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={handleSearch}
+              defaultStatusType={searchStatusTypeQuery}
+              setDefaultStatusType={handleStatusTypeSearch}
+            />
+          }
+          layout={{ card: true }}
+        />
       )}
       <ModalLead
         open={leadModalOpen}

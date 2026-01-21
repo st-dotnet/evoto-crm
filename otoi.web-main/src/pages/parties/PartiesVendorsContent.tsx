@@ -448,15 +448,10 @@ const PartiesVendorsContent = ({
         data: rows,
         totalCount: total,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
-      });
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "An error occurred while fetching data. Please try again later";
+      toast.error(errorMessage);
 
       return {
         data: [],
@@ -497,26 +492,26 @@ const PartiesVendorsContent = ({
         </div>
       )}
       {!loading && (
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={false}
-        data={filteredItems}
-        loading={loading}
-        rowSelection={true}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultPersonType={searchPersonTypeQuery}
-            setDefaultPersonType={handlePersonTypeSearch}
-          />
-        }
-        layout={{ card: true }}
-      />
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={false}
+          data={filteredItems}
+          loading={loading}
+          rowSelection={true}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={handleSearch}
+              defaultPersonType={searchPersonTypeQuery}
+              setDefaultPersonType={handlePersonTypeSearch}
+            />
+          }
+          layout={{ card: true }}
+        />
       )}
       <ModalVendor
         open={personModalOpen}
