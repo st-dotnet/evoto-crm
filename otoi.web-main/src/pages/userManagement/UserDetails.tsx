@@ -404,13 +404,14 @@
 //   </div>
 // );
 
-import { useParams, useNavigate } from "react-router-dom";
-import { User } from "./user-models";
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useAuthContext } from "@/auth";
 import { KeenIcon } from '@/components';
-import { SpinnerDotted } from 'spinners-react';
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { SpinnerDotted } from 'spinners-react';
+import { User } from "./user-models";
 
 export const UserDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -419,6 +420,8 @@ export const UserDetails = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [fetchingUser, setFetchingUser] = useState(false);
+  const { currentUser } = useAuthContext();
+  const isAdmin = currentUser?.role === "Admin";
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -498,7 +501,7 @@ export const UserDetails = () => {
             <span className="text-gray-900 font-medium">{fullName}</span>
           </nav>
         </div>
-
+       {isAdmin && (
         <div className="flex gap-3">
           <button
             onClick={() => navigate(`/user/${id}/edit`)}
@@ -513,6 +516,7 @@ export const UserDetails = () => {
             <KeenIcon icon="trash" className="text-sm" /> Delete
           </button>
         </div>
+       )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

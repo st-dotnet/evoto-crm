@@ -398,6 +398,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ModalUser } from "./ModalUsers";
+import { useAuthContext } from "@/auth";
 
 // Define User Interface (updated to match backend)
 interface User {
@@ -475,6 +476,8 @@ const Toolbar = ({
 
 // Main UsersContent Component
 const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
+  const { currentUser } = useAuthContext();
+  const isAdmin = currentUser?.role === 'Admin';
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
@@ -670,18 +673,20 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const userData = await fetchUserDetails(row.original.id);
-                    if (userData) {
-                      setLeadModalOpen(true);
-                    }
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      const userData = await fetchUserDetails(row.original.id);
+                      if (userData) {
+                        setLeadModalOpen(true);
+                      }
+                    }}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
@@ -691,18 +696,20 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                   <Eye className="mr-2 h-4 w-4" />
                   Details
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const userData = await fetchUserDetails(row.original.id);
-                    if (userData) {
-                      setShowDeleteDialog(true);
-                    }
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      const userData = await fetchUserDetails(row.original.id);
+                      if (userData) {
+                        setShowDeleteDialog(true);
+                      }
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                    <span className="text-red-500">Delete</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

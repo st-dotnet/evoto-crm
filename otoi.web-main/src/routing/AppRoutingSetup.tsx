@@ -107,6 +107,8 @@ const AppRoutingSetup = (): ReactElement => {
             <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
             <Route path="/lead/:uuid" element={<LeadDetails />} />
             <Route path="/customer/:uuid" element={<CustomerDetails />} />
+            <Route path="/user-management/users" element={<PartiesUsersPage />} />
+            <Route path="/user/:id" element={<UserDetails />} />
             <Route path="/items/inventory" element={<InventoryPage />} />
             <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
             {/* Add more Manager/Admin routes here as needed */}
@@ -209,8 +211,6 @@ const AppRoutingSetup = (): ReactElement => {
 
           {/* Admin Only Routes */}
           <Route element={<CheckRole allowedRoles={['Admin']} />}>
-            <Route path="/user-management/users" element={<PartiesUsersPage />} />
-            <Route path="/user/:id" element={<UserDetails />} />
             <Route path="/user/:id/edit" element={<UserEdit />} />
           </Route>
 

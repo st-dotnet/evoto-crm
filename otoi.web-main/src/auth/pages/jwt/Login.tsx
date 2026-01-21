@@ -43,30 +43,6 @@ const Login = () => {
   const formik = useFormik({
     initialValues,
     validationSchema: loginSchema,
-    // onSubmit: async (values, { setStatus, setSubmitting }) => {
-    //   setLoading(true);
-
-    //   try {
-    //     if (!login) {
-    //       throw new Error("JWTProvider is required for this form.");
-    //     }
-
-    //     await login(values.email, values.password);
-
-    //     if (values.remember) {
-    //       localStorage.setItem("email", values.email);
-    //     } else {
-    //       localStorage.removeItem("email");
-    //     }
-
-    //     navigate(from, { replace: true });
-    //   } 
-    //   catch {
-    //     setStatus("The login details are incorrect");
-    //     setSubmitting(false);
-    //   }
-    //   setLoading(false);
-    // }
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
 
@@ -85,7 +61,7 @@ const Login = () => {
         }
 
         if (userRole === 'User') {
-          navigate('/public-profile/profiles/default', { replace: true });
+          navigate('/account/home/user-profile', { replace: true });
         } else {
           navigate(from, { replace: true });
         }
