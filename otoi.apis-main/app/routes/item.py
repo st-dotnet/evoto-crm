@@ -1,7 +1,8 @@
 import random
 from sys import prefix
 import time
-from click import UUID
+from uuid import UUID
+import uuid
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
 from app.extensions import db
@@ -246,9 +247,9 @@ def create_item():
             gst_tax_rate=data.get("gst_tax_rate", 0),
             purchase_price=purchase_price,
             opening_stock=opening_stock,
-            low_stock_warning=data.get("low_stock_warning", False) if item_type == "Product" else False,
-            low_stock_quantity=data.get("low_stock_quantity") if item_type == "Product" else None,
-            enable_low_quantity_warning=data.get("low_stock_warning", False) if item_type == "Product" else False,
+            item_code=item_code,  # <-- user-defined
+            hsn_code=data.get("hsn_code") if item_type == "Product" else None,
+            # sac_code=data.get("sac_code") if item_type == "Service" else None,
             description=data.get("description") or ""
         )
  
@@ -281,20 +282,20 @@ def create_item():
         }), 400
 
 
-@item_blueprint.route("/<int:id>", methods=["GET", "HEAD"])
-def get_item(id):
+@item_blueprint.route("/<uuid:item_id>", methods=["GET", "HEAD"])
+def get_item(item_id):
     """
-    Get a specific item by ID (excluding soft-deleted items).
+    Get a specific item by UUID (excluding soft-deleted items).
     ---
     tags:
       - Items
     parameters:
-      - name: id
+      - name: item_id
         in: path
-        description: ID of the item to retrieve
+        description: UUID of the item to retrieve
         required: true
         schema:
-          type: integer
+          type: uuid
     responses:
       200:
         description: Item details
@@ -384,7 +385,7 @@ def get_item(id):
     """
     try:
         # Input validation
-        if not isinstance(id, int) or id <= 0:
+        if not item_id:
             return jsonify({"error": "Invalid item ID"}), 400
             
         # Get item with related data in a single query using joins
@@ -393,12 +394,12 @@ def get_item(id):
             db.joinedload(Item.item_type),
             db.joinedload(Item.measuring_unit)
         ).filter(
-            Item.id == id,
+            Item.id == item_id,
             Item.is_deleted.is_(False)
         ).first()
         
         if not item:
-            return jsonify({"error": f"Item with ID {id} not found"}), 404
+            return jsonify({"error": f"Item with ID {item_id} not found"}), 404
         
         # Format the response
         item_data = {
@@ -432,21 +433,20 @@ def get_item(id):
         }), 500
 
 
-@item_blueprint.route("/<int:id>", methods=["PUT"])
-def update_item(id):
+@item_blueprint.route("/<uuid:item_id>", methods=["PUT"])
+def update_item(item_id):
     try:
-        if not isinstance(id, int) or id <= 0:
-            return jsonify({"error": "Invalid item ID"}), 400
-
+        if not isinstance(item_id, uuid.UUID):
+            return jsonify({"error": "Invalid item UUID"}), 400
         data = request.get_json() or {}
         if not data:
             return jsonify({"error": "No data provided for update"}), 400
 
         # data.pop("item_code", None)
 
-        print(f"Updating item {id} with data: {data}")
+        print(f"Updating item {item_id} with data: {data}")
 
-        item = db.session.query(Item).with_for_update().get(id)
+        item = db.session.query(Item).with_for_update().get(item_id)
         if not item or item.is_deleted:
             return jsonify({"error": "Item not found or has been deleted"}), 404
 
@@ -459,13 +459,15 @@ def update_item(id):
             elif new_name != item.item_name:
                 existing = db.session.query(Item).filter(
                     Item.item_name == new_name,
-                    Item.id != id,
+                    Item.id != str(item_id),
                     Item.is_deleted.is_(False)
                 ).first()
+                print("item_id:", item_id, type(item_id))
                 if existing:
                     errors.setdefault("item_name", []).append(
                         "An item with this name already exists"
                     )
+        print("item_id:", item_id, type(item_id))
 
         if "category_id" in data:
             if not data["category_id"]:
@@ -512,21 +514,22 @@ def update_item(id):
                     errors.setdefault(field, []).append("Must be a valid number")
 
         if "item_code" in data:
-            new_code = data["item_code"].strip()
+            new_code = str(data["item_code"]).strip()
             if not new_code:
                 errors.setdefault("item_code", []).append("Item code cannot be empty")
             elif new_code != item.item_code:
                 existing = db.session.query(Item).filter(
                     Item.item_code == new_code,
-                    Item.id != id,
+                    Item.id != str(item_id),
                     Item.is_deleted.is_(False)
+                     
                 ).first()
                 if existing:
                     errors.setdefault("item_code", []).append(
                         "Item Code already exists for another item"
-                    )
+                    )      
                 else:
-                    item.item_code = new_code
+                    item.item_code = new_code     
 
         if errors:
             return jsonify({
@@ -543,25 +546,18 @@ def update_item(id):
             "opening_stock",
             "description",
             "hsn_code",
-            "low_stock_warning",
-            "low_stock_quantity",
         ]
 
         for field in update_fields:
             if field in data:
                 setattr(item, field, data[field])
-                if field == "low_stock_warning":
-                    item.enable_low_quantity_warning = data[field]
+                
 
         if data.get("item_type_id") == 2:  # Service
             item.purchase_price = None
             item.opening_stock = None
-            item.low_stock_warning = False
-            item.low_stock_quantity = None
-            item.enable_low_quantity_warning = False
-        else: # Product - ensure low stock warning is synced with compatibility field
-            if "low_stock_warning" in data:
-                item.enable_low_quantity_warning = data["low_stock_warning"]
+      
+        set_updated_fields(item)
         db.session.commit()
 
         return jsonify({
@@ -583,24 +579,24 @@ def update_item(id):
         }), 500
 
  
-@item_blueprint.route("/<int:id>", methods=["GET"])
-def get_item_by_id(id):
+@item_blueprint.route("/<uuid:item_id>", methods=["GET"])
+def get_item_by_uuid(item_id):
     """
-    Get single item by ID.
+    Get single item by UUID.
     ---
     tags:
       - Items
     parameters:
-      - name: id
+      - name: item_id 
         in: path
         required: true
         schema:
-          type: integer
+          type: uuid
     responses:
       200:
         description: Item details
     """
-    item = Item.query.get_or_404(id)
+    item = Item.query.get_or_404(item_id)
  
     return jsonify({
        "id": item.id,
@@ -630,25 +626,25 @@ def get_item_by_id(id):
     })
  
 
-@item_blueprint.route("/<int:id>", methods=["DELETE"])
-def delete_item(id):
+@item_blueprint.route("/<uuid:item_id>", methods=["DELETE"])
+def delete_item(item_id):
     """
     Soft delete an item by setting is_deleted = True.
     ---
     tags:
       - Items
     parameters:
-      - name: id
+      - name: uuid
         in: path
-        description: ID of the item to delete
+        description: UUID of the item to delete
         required: true
         schema:
-          type: integer
+          type: uuid
     responses:
       200:
         description: Item soft-deleted successfully.
     """
-    item = Item.query.get_or_404(id)
+    item = Item.query.get_or_404(item_id)
     item.is_deleted = True
     set_updated_fields(item)
     db.session.commit()

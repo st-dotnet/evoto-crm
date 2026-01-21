@@ -24,7 +24,7 @@ import { getItems, deleteItem, getItemById } from "../../pages/items/services/it
 
 
 interface InventoryItem {
-  item_id: number;
+  item_id: string; // UUID from backend
   item_name: string;
   item_code: string;
   opening_stock: number;
@@ -59,10 +59,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
-
 
   const navigate = useNavigate();
 
@@ -80,7 +79,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
       const mappedItems = itemsData
         .map((item: any) => ({
-          item_id: item.id || 0,
+          item_id: item.id || "",
           item_name: item.item_name || "Unnamed Item",
           item_code: item.item_code || `ITEM-${Date.now()}`,
           opening_stock: toNumber(item.opening_stock, 0),
@@ -106,7 +105,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     }
   };
 
-
   // Fetch items on component mount or when dependencies change
   // useEffect(() => {
   //   fetchItems();
@@ -114,7 +112,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   useEffect(() => {
     fetchItems();
   }, [refreshStatus]); // Remove searchQuery from dependencies
-
 
   useEffect(() => {
     let result = [...items];
@@ -150,7 +147,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const lowStockCount = items.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
-  const handleDeleteClick = (id: number, onClose?: () => void) => {
+  const handleDeleteClick = (id: string, onClose?: () => void) => {
     if (onClose) onClose();
     setItemToDelete(id);
     setDeleteDialogOpen(true);
@@ -162,7 +159,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     const num = Number(value);
     return isNaN(num) ? fallback : num;
   };
-
 
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
@@ -184,7 +180,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   // Edit an item
   const handleEdit = async (item: InventoryItem) => {
-    // console.log("Edit clicked for item:", item.item_id); // Debug log
+    // console.log("Edit clicked for item:", item.id); // Debug log
 
     try {
       setLoading(true);
@@ -219,6 +215,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       setLoading(false);
     }
   };
+ 
 
   // Column filter component
   const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
@@ -439,9 +436,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <i className="bi bi-graph-up text-primary fs-5"></i>
-                <span className="font-semibold text-primary">Stock Value</span>
+                <span className=" text-primary">Stock Value</span>
               </div>
-              <div className="text-2xl lg:text-3xl font-bold">₹ {stockValue.toLocaleString('en-IN')}</div>
+              <div className="text-xl">₹ {stockValue.toLocaleString('en-IN')}</div>
             </div>
             <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
@@ -453,9 +450,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <i className="bi bi-box-seam text-warning fs-5"></i>
-                <span className="font-semibold text-warning">Low Stock</span>
+                <span className="text-warning">Low Stock</span>
               </div>
-              <div className="text-2xl lg:text-3xl font-bold">{lowStockCount}</div>
+              <div className="text-xl ml-3"> {lowStockCount}</div>
             </div>
             <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
@@ -508,7 +505,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                 columns={columns}
                 data={filteredItems}
                 rowSelection
-                getRowId={(row) => row.item_id.toString()}
+                getRowId={(row) => row.item_id}
                 pagination={{ size: 5 }}
               />
             </div>
@@ -529,13 +526,14 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         item={
           selectedItem
             ? {
-              ...selectedItem,
-              purchase_price: selectedItem.purchase_price ?? undefined,
-              item_type_id: (selectedItem as any).item_type_id ?? 0,
-              category_id: (selectedItem as any).category_id ?? 0,
-              measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-              gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-            }
+                ...selectedItem,
+              
+                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                item_type_id: (selectedItem as any).item_type_id ?? 0,
+                category_id: (selectedItem as any).category_id ?? 0,
+                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+              }
             : null
         }
 

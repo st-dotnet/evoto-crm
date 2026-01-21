@@ -581,7 +581,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Pin Code</label>
+                        <label className="block text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"

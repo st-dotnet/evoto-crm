@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Text, LargeBinary, CheckConstraint, or_
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 from app.extensions import db
 from app.models.common import BaseMixin
 import uuid
@@ -70,7 +71,7 @@ class Item(BaseMixin, db.Model):
     __tablename__ = "items"
     query_class = ItemQuery
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     item_type_id = Column(Integer, ForeignKey("item_types.id", ondelete="CASCADE"), nullable=False)
     category_id = Column(db.UUID(as_uuid=True), ForeignKey("item_categories.uuid", ondelete="CASCADE"), nullable=False)
     measuring_unit_id = Column(Integer, ForeignKey("measuring_units.id", ondelete="CASCADE"), nullable=False)
@@ -86,8 +87,6 @@ class Item(BaseMixin, db.Model):
     description = Column(Text, nullable=True)
 
     enable_low_quantity_warning = Column(Boolean, default=False)
-    low_stock_warning = Column(Boolean, default=False)
-    low_stock_quantity = Column(Float, nullable=True)
 
     # Soft delete column
     is_deleted = Column(Boolean, default=False)
@@ -124,7 +123,7 @@ class ItemImage(BaseMixin, db.Model):
     __tablename__ = "item_images"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False)
+    item_id = Column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False)
     image = Column(LargeBinary, nullable=False)
 
     # Relationships

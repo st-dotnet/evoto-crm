@@ -105,15 +105,15 @@ def signup():
 
     # Persist and set audit fields
     db.session.add(user)
-    db.session.flush()  # to get user.id
-    user.created_by = user.id
-    user.updated_by = user.id
+    db.session.flush()  # to get user.uuid
+    user.created_by_uuid = user.uuid
+    user.updated_by_uuid = user.uuid
 
     db.session.commit()
 
     # Issue token like login
     business_id = user.businesses[0].id if user.businesses else None
-    token = create_access_token(identity=str(user.id), additional_claims={
+    token = create_access_token(identity=str(user.uuid), additional_claims={
         "username": user.username,
         "role": user.role.name if user.role else None,
         "business_id": business_id
@@ -163,18 +163,24 @@ def login():
     """
     try:
         data = request.get_json()
+        print(f"Login attempt - data received: {data}")
         if not data or "email" not in data or "password" not in data:
             return jsonify({"error": "Email and password are required"}), 400
 
         email = data["email"].strip().lower()
         password = data["password"]
+        print(f"Login attempt for email: {email}")
 
         user = User.query.filter_by(email=email).first()
+        print(f"User found: {user}")
 
         if not user:
+            print(f"No user found with email: {email}")
             return jsonify({"error": "Invalid email or password"}), 401
 
+        print(f"User uuid: {user.uuid}, checking password...")
         if not user.check_password(password):
+            print(f"Password check failed for user: {email}")
             return jsonify({"error": "Invalid password"}), 401
 
         if not user.isActive:
@@ -187,7 +193,7 @@ def login():
             return jsonify({"error": "User role not found"}), 403
 
         token = create_access_token(
-            identity=str(user.id),
+            identity=str(user.uuid),
             additional_claims={
                 "username": user.username,
                 "role": user.role.name,
@@ -195,14 +201,14 @@ def login():
             }
         )
         
-        g.user_id = user.id
+        g.user_id = user.uuid
         g.business_id = business_id
         
         return jsonify({
             "access_token": token,
             "token_type": "Bearer",
             "user": {
-                "id": str(user.id),
+                "id": str(user.uuid),
                 "username": user.username,
                 "email": user.email,
                 "role": user.role.name,

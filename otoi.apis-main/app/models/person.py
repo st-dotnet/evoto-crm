@@ -49,7 +49,7 @@ class LeadAddress(BaseMixin, db.Model):
     # Relationships
     lead = relationship("Lead", back_populates="lead_addresses", overlaps="addresses,leads")
     address = relationship("Address", back_populates="lead_addresses", overlaps="addresses,leads")
-    shipping = relationship("Shipping", back_populates="lead_addresses")
+    # shipping = relationship("Shipping", back_populates="lead_addresses")
 
     def __repr__(self):
         return f"<LeadAddress(lead_id={self.lead_id}, address_id={self.address_id})>"

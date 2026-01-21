@@ -34,10 +34,9 @@ interface IItem {
 
     show_in_online_store?: boolean;
     tax_type?: "with_tax" | "without_tax";
-    item_id?: number;
+    item_id?: string;
 
-    low_stock_warning?: boolean;
-    low_stock_quantity?: number | null;
+
 }
 
 interface ICategory {
@@ -73,9 +72,6 @@ const initialValues: IItem = {
 
     show_in_online_store: false,
     tax_type: "with_tax",
-
-    low_stock_warning: false,
-    low_stock_quantity: null,
 };
 
 // Validation schema
@@ -116,16 +112,6 @@ const saveItemSchema = Yup.object().shape({
                 .required("Purchase price is required"),
         otherwise: (schema) => schema.nullable().notRequired(),
     }),
-
-    low_stock_quantity: Yup.number().when(["low_stock_warning", "item_type_id"], {
-        is: (low_stock_warning: boolean, item_type_id: number) => low_stock_warning && item_type_id === 1,
-        then: (schema) =>
-            schema
-                .typeError("Low stock quantity must be a number")
-                .min(0, "Quantity cannot be negative")
-                .required("Low stock quantity is required"),
-        otherwise: (schema) => schema.nullable().notRequired(),
-    }),
 });
 
 
@@ -164,23 +150,27 @@ export default function CreateItemModal({
                     sales_price: Number(values.sales_price),
                     gst_tax_rate: Number(values.gst_tax_rate),
                     measuring_unit_id: values.measuring_unit_id,
-                    purchase_price: isService ? null : Number(values.purchase_price || 0),
-                    opening_stock: isService ? null : Number(values.opening_stock || 0),
-                    item_code: values.item_code || null,
+                    // Only include item_code if it has changed from the original value
+                    // ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
+                    item_code: isService ? values.item_code || null : (values.item_code !== item?.item_code ? values.item_code || null : undefined),
                     hsn_code: isService ? null : values.hsn_code || null,
                     description: values.description || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
                     tax_type: values.tax_type || "with_tax",
 
-                    low_stock_warning: isService ? false : Boolean(values.low_stock_warning),
-                    low_stock_quantity: !isService && values.low_stock_warning ? Number(values.low_stock_quantity || 0) : null,
                 };
+
+                // Only add these fields for Products (item_type_id = 1), omit entirely for Services
+                if (!isService) {
+                    postData.purchase_price = Number(values.purchase_price || 0);
+                    postData.opening_stock = Number(values.opening_stock || 0);
+                }
 
                 const currentItemId = item?.id || item?.item_id;
 
                 if (currentItemId) {
                     // EDITING an existing item
-                    const response = await updateItem(currentItemId, postData);
+                    const response = await updateItem(currentItemId.toString(), postData);
                     if (response?.success) {
                         toast.success("Item updated successfully");
                         onSuccess();
@@ -202,7 +192,7 @@ export default function CreateItemModal({
                 }
             } catch (error: any) {
                 console.error('Error:', error);
-                const errorMessage = error?.response?.data?.message || error.message || "An error occurred. Please try again.";
+                const errorMessage = error?.response?.data?.message || error.message.errors || "An error occurred. Please try again.";
                 setStatus(errorMessage);
                 toast.error(errorMessage);
             } finally {
@@ -545,12 +535,24 @@ export default function CreateItemModal({
                                                     <div className="flex">
                                                         <span className="p-2 border rounded-l bg-gray-100">₹</span>
                                                         <input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="ex: ₹200"
-                                                            className={clsx("flex-1 p-2 border rounded-r", {
-                                                                "border-red-500": formik.touched.sales_price && formik.errors.sales_price,
-                                                            })}
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            className={clsx(
+                                                                "flex-1 p-2 border rounded-r",
+                                                                {
+                                                                    "border-red-500":
+                                                                        formik.touched.sales_price && formik.errors.sales_price,
+                                                                }
+                                                            )}
                                                             {...formik.getFieldProps("sales_price")}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                if (/^\d*$/.test(value)) {
+                                                                    formik.setFieldValue("sales_price", value);
+                                                                }
+                                                            }}
                                                         />
                                                     </div>
                                                     {formik.touched.sales_price && formik.errors.sales_price && (
@@ -615,10 +617,16 @@ export default function CreateItemModal({
                                                     ) : (
                                                         <div className="flex">
                                                             <input
-                                                                type="number"
+                                                                type="text"
                                                                 placeholder="ex: 150 PCS"
                                                                 className="flex-1 p-2 border rounded-l"
                                                                 {...formik.getFieldProps("opening_stock")}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    if (/^\d*$/.test(value)) {
+                                                                        formik.setFieldValue("opening_stock", value);
+                                                                    }
+                                                                }}
                                                             />
                                                             <span className="p-2 border rounded-r bg-gray-100">
                                                                 {formik.values.measuring_unit_id === 1 ? "PCS" : "KG"}
@@ -719,8 +727,10 @@ export default function CreateItemModal({
 
                                         setNewCategory("");
                                         setShowCategoryModal(false);
-                                    } catch (error) {
+                                    } catch (error: any) {
                                         console.error("Failed to create category", error);
+                                        const errorMessage = error.response?.data?.message || error.response?.data?.errors || "Category with this name already exists.";
+                                        toast.error(errorMessage);
                                     }
                                 }}
                                 style={{ background: "#1B84FF" }}

@@ -1,3 +1,4 @@
+from uuid import UUID
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from functools import wraps
 from flask import jsonify, request, Response
@@ -22,7 +23,7 @@ def role_required(required_roles):
                 return Response(status=200)
             verify_jwt_in_request()
             identity = get_jwt_identity()
-            user = User.query.filter_by(id=identity).first()
+            user = User.query.filter_by(uuid=UUID(identity)).first()
             
             if not user or user.role.name not in required_roles:
                 return jsonify({"error": "Access forbidden: unauthrised role"}), 403
