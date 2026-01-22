@@ -8,6 +8,7 @@ interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   status?: number;
+  message?: string; // Backend returns message in data object
 }
 
 const getAuthToken = (): string | null => {
@@ -74,33 +75,16 @@ export const createItem = async (payload: any): Promise<ApiResponse> => {
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error creating item:', {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      responseData: error.response?.data
-    });
-
-    let errorMessage = 'Failed to create item';
-    if (error.code === 'ERR_NETWORK') {
-      errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-    } else if (error.response) {
-      if (error.response.status === 400 && error.response.data?.message?.includes('already exists')) {
-        errorMessage = 'An item with this name already exists. Please use a different name.';
-      } else if (error.response.status === 401) {
-        errorMessage = 'Session expired. Please log in again.';
-      } else if (error.response.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-    }
-
+    // Let axios throw automatically on 400/500 - just extract error details
+    const errorMessage = error?.response?.data?.message || error.message || 'Failed to create item';
+    
     return {
       success: false,
       error: errorMessage,
-      status: error.response?.status || 500
+      status: error?.response?.status || 500
     };
   }
-}
+};
 
 export const updateItem = async (id: string, payload: any): Promise<ApiResponse> => {
   const token = getAuthToken();

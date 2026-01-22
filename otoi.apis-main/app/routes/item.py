@@ -176,13 +176,16 @@ def create_item():
  
     # Check for duplicate name
     if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
+        print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
         return jsonify({
             "message": "An item with this name already exists",
             "suggestion": "Please choose a different name"
         }), 400
+    
  
     # Check for duplicate item_code
     if Item.query.filter_by(item_code=item_code).first():
+        print("Duplicate item code found>>>>>>>>>>>>>>>>>>>>>", item_code)
         return jsonify({
             "message": "Item Code already exists",
             "suggestion": "Please choose a different item code"
@@ -459,7 +462,7 @@ def update_item(item_id):
             elif new_name != item.item_name:
                 existing = db.session.query(Item).filter(
                     Item.item_name == new_name,
-                    Item.id != str(item_id),
+                    Item.id != item_id,  # Direct UUID comparison instead of string
                     Item.is_deleted.is_(False)
                 ).first()
                 print("item_id:", item_id, type(item_id))
@@ -515,21 +518,28 @@ def update_item(item_id):
 
         if "item_code" in data:
             new_code = str(data["item_code"]).strip()
+            print(f"DEBUG: item_code update - new_code: '{new_code}', current item.item_code: '{item.item_code}', types: {type(new_code)}, {type(item.item_code)}")
+            
             if not new_code:
                 errors.setdefault("item_code", []).append("Item code cannot be empty")
             elif new_code != item.item_code:
+                print(f"DEBUG: item_code changed, checking for duplicates...")
                 existing = db.session.query(Item).filter(
                     Item.item_code == new_code,
-                    Item.id != str(item_id),
+                    Item.id != item_id,  # Direct UUID comparison instead of string
                     Item.is_deleted.is_(False)
                      
                 ).first()
+                print(f"DEBUG: duplicate check result: {existing}")
                 if existing:
                     errors.setdefault("item_code", []).append(
                         "Item Code already exists for another item"
                     )      
                 else:
-                    item.item_code = new_code     
+                    print(f"DEBUG: No duplicate found, updating item_code to: {new_code}")
+                    item.item_code = new_code
+            else:
+                print(f"DEBUG: item_code unchanged, skipping duplicate check")     
 
         if errors:
             return jsonify({
