@@ -99,7 +99,14 @@ const saveVendorSchema = Yup.object().shape({
     .min(15, "Minimum 15 symbols")
     .max(15, "Maximum 15 symbols")
     .required("GST is required"),
-  pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+  country: Yup.string().required("Country is required"),
+  state: Yup.string().required("State is required"),
+  city: Yup.string().required("City is required"),
+  pin: Yup.string()
+    .matches(/^[0-9]+$/, "Pin must be a number")
+    .min(6, "Minimum 6 numbers")
+    .max(6, "Minimum 6 numbers")
+    .required("Pin Code is required"),
 });
 
 const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
@@ -287,11 +294,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
               <div className="flex flex-col gap-1.5">
                 <label className="block text-sm font-medium text-gray-700">Email</label>
                 <input {...formik.getFieldProps("email")} className="input" />
-                {formik.touched.email && formik.errors.email && (
+                {/* {formik.touched.email && formik.errors.email && (
                   <span role="alert" className="text-xs text-red-500">
                     {formik.errors.email}
                   </span>
-                )}
+                )} */}
               </div>
 
               {/* Win → Address/GST fields */}
@@ -306,7 +313,13 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                       placeholder="GST"
                       type="text"
                       {...formik.getFieldProps("gst")}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className={clsx(
+                          "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                          {
+                            "border-red-500":
+                              formik.touched.gst && formik.errors.gst,
+                          }
+                        )}
                     />
                     {formik.touched.gst && formik.errors.gst && (
                       <span role="alert" className="text-xs text-red-500">
@@ -361,7 +374,13 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                         formik.setFieldValue("state", "");
                         formik.setFieldValue("city", "");
                       }}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className={clsx(
+                        "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                        {
+                          "border-red-500":
+                            formik.touched.country && formik.errors.country,
+                        }
+                      )}
                     >
                       <option value="">--Select Country--</option>
                       {Country.getAllCountries().map((c) => (
@@ -370,6 +389,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                         </option>
                       ))}
                     </select>
+                    {formik.touched.country && formik.errors.country && (
+                      <span role="alert" className="text-xs text-red-500">
+                        {formik.errors.country}
+                      </span>
+                    )}
                   </div>
 
                   {/* State */}
@@ -384,7 +408,13 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                         formik.setFieldValue("state", e.target.value);
                         formik.setFieldValue("city", "");
                       }}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className={clsx(
+                        "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                        {
+                          "border-red-500":
+                            formik.touched.state && formik.errors.state,
+                        }
+                      )}
                     >
                       <option value="">--Select State--</option>
                       {formik.values.country &&
@@ -396,6 +426,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                           )
                         )}
                     </select>
+                    {formik.touched.state && formik.errors.state && (
+                      <span role="alert" className="text-xs text-red-500">
+                        {formik.errors.state}
+                      </span>
+                    )}
                   </div>
 
                   {/* City */}
@@ -406,7 +441,13 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                     <select
                       {...formik.getFieldProps("city")}
                       disabled={!formik.values.state}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className={clsx(
+                        "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                        {
+                          "border-red-500":
+                            formik.touched.city && formik.errors.city,
+                        }
+                      )}
                     >
                       <option value="">--Select City--</option>
                       {formik.values.country &&
@@ -420,6 +461,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                           </option>
                         ))}
                     </select>
+                    {formik.touched.city && formik.errors.city && (
+                      <span role="alert" className="text-xs text-red-500">
+                        {formik.errors.city}
+                      </span>
+                    )}
                   </div>
 
                   {/* Pin */}
@@ -431,7 +477,13 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                       placeholder="Pin Code"
                       type="text"
                       {...formik.getFieldProps("pin")}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className={clsx(
+                          "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                          {
+                            "border-red-500":
+                              formik.touched.pin && formik.errors.pin,
+                          }
+                        )}
                     />
                     {formik.touched.pin && formik.errors.pin && (
                       <span role="alert" className="text-xs text-red-500">

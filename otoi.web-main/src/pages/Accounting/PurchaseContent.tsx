@@ -213,7 +213,7 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
             <DataGrid
                 columns={columns}
                 data={entries}
-                loading={loading}
+                // loading={loading}
                 rowSelection={true}
                 getRowId={(row: any) => row.uuid}
                 pagination={{ size: 10 }}

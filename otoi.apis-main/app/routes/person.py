@@ -454,6 +454,21 @@ def update_lead(lead_id):
         lead.email = data.get("email", lead.email)
         lead.gst = data.get("gst", lead.gst)
         lead.status = data.get("status", lead.status)
+        data = request.get_json() or {}
+
+        # ---- BASIC VALIDATION ----
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        email = (data.get("email") or "").strip()
+        mobile = (data.get("mobile") or "").strip()
+        status = str(data.get("status") or "").strip()
+
+        if not first_name or not last_name:
+            return jsonify({"error": "First name and last name are required"}), 400
+
+        if not mobile and not email:
+            return jsonify({"error": "Either mobile or email is required"}), 400
+
         lead.reason = data.get("reason", lead.reason)
         lead.referenced_by = data.get("referenced_by", lead.referenced_by)
 

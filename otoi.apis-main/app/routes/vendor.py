@@ -189,8 +189,29 @@ def update_vendor(vendor_id):
     data = request.get_json() or {}
     vendor = Vendor.query.get_or_404(vendor_id)
 
-    mobile = (data.get("mobile") or "").strip()
-    gst = (data.get("gst") or "").strip()
+    company_name = (data.get("company_name") or vendor.company_name).strip()
+    vendor_name = (data.get("vendor_name") or vendor.vendor_name).strip()
+    mobile = (data.get("mobile") or "").strip() or vendor.mobile
+    email = (data.get("email") or "").strip() or vendor.email
+    gst = (data.get("gst") or "").strip() or vendor.gst
+    address1 = (data.get("address1") or vendor.address1).strip()
+    address2 = (data.get("address2") or vendor.address2).strip() or None
+    city = (data.get("city") or vendor.city).strip()
+    state = (data.get("state") or vendor.state).strip()
+    country = (data.get("country") or vendor.country).strip()
+    pin = (data.get("pin") or vendor.pin).strip()
+
+    # ---------- REQUIRED FIELD VALIDATION ----------
+    if not company_name or not city or not state or not country or not pin or not gst:
+        return jsonify({
+            "error": "company_name, gst, city, state, country, and pin are required"
+        }), 400
+
+    # ---------- MOBILE OR EMAIL REQUIRED ----------
+    if not mobile and not email:
+        return jsonify({
+            "error": "Either mobile or email is required"
+        }), 400
 
     # ---------- DUPLICATE MOBILE CHECK ----------
     if mobile:
@@ -209,17 +230,17 @@ def update_vendor(vendor_id):
                 "error": "A vendor with this GST already exists"
             }), 400
 
-    vendor.company_name = data.get("company_name", vendor.company_name)
-    vendor.vendor_name = data.get("vendor_name", vendor.vendor_name)
-    vendor.mobile = mobile or vendor.mobile
-    vendor.email = data.get("email", vendor.email)
-    vendor.gst = gst or vendor.gst
-    vendor.address1 = data.get("address1", vendor.address1)
-    vendor.address2 = data.get("address2", vendor.address2)
-    vendor.city = data.get("city", vendor.city)
-    vendor.state = data.get("state", vendor.state)
-    vendor.country = data.get("country", vendor.country)
-    vendor.pin = data.get("pin", vendor.pin)
+    vendor.company_name = company_name
+    vendor.vendor_name = vendor_name
+    vendor.mobile = mobile
+    vendor.email = email
+    vendor.gst = gst
+    vendor.address1 = address1
+    vendor.address2 = address2
+    vendor.city = city
+    vendor.state = state
+    vendor.country = country
+    vendor.pin = pin
     
     db.session.commit()
     
