@@ -403,9 +403,9 @@ def create_lead():
         import traceback
         print(traceback.format_exc())
         return jsonify({
-            "error": "Status type is required",
+            "error": "Internal server error",
             "details": str(e)
-        }), 400
+        }), 500
 
 
 
@@ -444,20 +444,16 @@ def update_lead(lead_id):
         description: Lead updated successfully
     """
     try:
-        data = request.json
+        data = request.get_json() or {}
         lead = Lead.query.get_or_404(lead_id)
 
+        # Update Lead basic fields
         lead.first_name = data.get("first_name", lead.first_name)
         lead.last_name = data.get("last_name", lead.last_name)
         lead.mobile = data.get("mobile", lead.mobile)
         lead.email = data.get("email", lead.email)
         lead.gst = data.get("gst", lead.gst)
         lead.status = data.get("status", lead.status)
-        # if "status" in data:
-        #     status_id = resolve_status_id(data["status"])
-        #     if status_id is None:
-        #         return jsonify({"error": "Valid status type is required"}), 400
-        #     lead.status = status_id
         data = request.get_json() or {}
 
         # ---- BASIC VALIDATION ----
@@ -473,17 +469,12 @@ def update_lead(lead_id):
         if not mobile and not email:
             return jsonify({"error": "Either mobile or email is required"}), 400
 
-        # ---- STATUS LOGIC ----
-        if not status:
-            return jsonify({"error": "Status type is required"}), 400  
-        reason = None
-        address_data = None
+        lead.reason = data.get("reason", lead.reason)
+        lead.referenced_by = data.get("referenced_by", lead.referenced_by)
 
-        if status.lower() in ["lose", "5"]:
-            reason = data.get("reason")
-            if not reason:
-                return jsonify({"error": "Reason is required when status is Lose"}), 400
+        status = str(lead.status).strip()
 
+        # Handle Address if status is Win (4)
         if status.lower() in ["win", "4"]:
             address_data = {
                 "address1": data.get("address1"),
@@ -494,11 +485,45 @@ def update_lead(lead_id):
                 "pin": data.get("pin"),
             }
 
+            # At least these must be present for Win status validation
             if not all([address_data["city"], address_data["state"],
                         address_data["country"], address_data["pin"]]):
-                return jsonify({"error": "Complete address is required when status is Win"}), 400    
+                return jsonify({"error": "Complete address is required when status is Win"}), 400
 
-        lead.reason = data.get("reason", lead.reason)
+            # Check for existing LeadAddress
+            lead_address = LeadAddress.query.filter_by(lead_id=lead.uuid).first()
+            if lead_address:
+                # Update existing address
+                addr = lead_address.address
+                addr.address1 = address_data.get("address1", addr.address1)
+                addr.address2 = address_data.get("address2", addr.address2)
+                addr.city = address_data.get("city", addr.city)
+                addr.state = address_data.get("state", addr.state)
+                addr.country = address_data.get("country", addr.country)
+                addr.pin = address_data.get("pin", addr.pin)
+                set_updated_fields(addr)
+            else:
+                # Create new address and link it
+                new_addr = Address(
+                    address1=address_data.get("address1"),
+                    address2=address_data.get("address2"),
+                    city=address_data["city"],
+                    state=address_data["state"],
+                    country=address_data["country"],
+                    pin=address_data["pin"],
+                )
+                set_created_fields(new_addr)
+                set_business(new_addr)
+                db.session.add(new_addr)
+                db.session.flush()
+
+                new_la = LeadAddress(
+                    lead_id=lead.uuid,
+                    address_id=new_addr.uuid
+                )
+                set_created_fields(new_la)
+                set_business(new_la)
+                db.session.add(new_la)
 
         set_updated_fields(lead)
         db.session.commit()
@@ -506,7 +531,8 @@ def update_lead(lead_id):
 
     except Exception as e:
         db.session.rollback()
-        import traceback; print(traceback.format_exc())
+        import traceback
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 

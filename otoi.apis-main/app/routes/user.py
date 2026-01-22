@@ -36,9 +36,9 @@ def profile():
 # user_blueprint = Blueprint("users", __name__, url_prefix="/api/users")
 user_blueprint = Blueprint("users", __name__)
 
-# --- Fetch All Users (Admin only) ---
+# --- Fetch All Users (Admin and Manager) ---
 @user_blueprint.route("/", methods=["GET"])
-@role_required(["Admin"])
+@role_required(["Admin", "Manager"])
 def get_all_users():
     """
     Fetch all users with filtering, sorting, and pagination

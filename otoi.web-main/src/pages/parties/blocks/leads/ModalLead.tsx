@@ -14,7 +14,7 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 // Props for the modal
 interface IModalLeadProps {
@@ -218,10 +218,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
         onOpenChange(false);
       } catch (error: any) {
-        setStatus(
-          error?.response?.data?.message || error?.response?.data?.error ||
-          "Something went wrong. Please try again."
-        );
+        const errorMessage = error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Something went wrong. Please try again.";
+        setStatus(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setSubmitting(false);
         setLoading(false);

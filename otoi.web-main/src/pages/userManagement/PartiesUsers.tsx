@@ -15,6 +15,7 @@ import { UsersContent } from "./Users";
 import { User } from "./user-models";
 import { ModalUser } from "./ModalUsers";
 import { KeenIcon } from "@/components";
+import { useAuthContext } from "@/auth";
 
 export interface IUserModalContentProps {
   state: boolean;
@@ -22,11 +23,13 @@ export interface IUserModalContentProps {
 
 const PartiesUsersPage = () => {
   const { currentLayout } = useLayout();
+  const { currentUser } = useAuthContext();
   const [refreshKey, setRefreshKey] = useState(0);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAdmin = currentUser?.role === 'Admin';
 
   const handleClose = () => {
     setUserModalOpen(false);
@@ -114,14 +117,16 @@ const PartiesUsersPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-            {/* Add User Button */}
-              <a
-                className="btn btn-sm btn-primary"
-                onClick={(e) => openUserModal(e)}
-                href="#"
-              >
-                <KeenIcon icon="plus" /> Add User
-              </a>
+              {/* Add User Button */}
+              {isAdmin && (
+                <a
+                  className="btn btn-sm btn-primary"
+                  onClick={(e) => openUserModal(e)}
+                  href="#"
+                >
+                  <KeenIcon icon="plus" /> Add User
+                </a>
+              )}
             </ToolbarActions>
           </Toolbar>
         </Container>

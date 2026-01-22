@@ -184,6 +184,7 @@ const PartiesVendorsContent = ({
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [filteredItems, setFilteredItems] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
 
   const navigate = useNavigate();
 
@@ -199,6 +200,19 @@ const PartiesVendorsContent = ({
     } finally {
       setLoading(false);
     }
+  };
+  const fetchPurchaseDetails = async (uuid: string) => {
+      try {
+          setFetchingDetails(true);
+          const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`);
+          setSelectedVendors(response.data);
+          return response.data;
+      } catch (error: any) {
+          toast.error("Failed to fetch vendors details");
+          return null;
+      } finally {
+          setFetchingDetails(false);
+      }
   };
 
   useEffect(() => {
@@ -226,11 +240,15 @@ const PartiesVendorsContent = ({
   }, [searchQuery, vendors]);
 
 
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
-    event.preventDefault();
-    setSelectedVendors(rowData);
-    setPersonModalOpen(true);
-  };
+  // const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
+  //   event.preventDefault();
+  //   setSelectedVendors(rowData);
+  //   setPersonModalOpen(true);
+  // };
+const openPersonModal = (rowData: Vendor | null = null) => {
+  setSelectedVendors(rowData);
+  setPersonModalOpen(true);
+};
 
   const handleClose = () => {
     setPersonModalOpen(false);
@@ -341,12 +359,23 @@ const PartiesVendorsContent = ({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => {
+                {/* <DropdownMenuItem onClick={(e) => {
                   e.preventDefault();
                   openPersonModal(e, row.original);
-                }}>
+                }}> */}
+                  <DropdownMenuItem onClick={async () => {
+                    const details = await fetchPurchaseDetails(row.original.uuid!);
+                    if (details) openPersonModal(details);
+                  }}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  const details = await fetchPurchaseDetails(row.original.uuid!);
+                  if (details) setShowDeleteDialog(true);
+                }}>
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
                 </DropdownMenuItem>
                 {/* <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
@@ -371,17 +400,6 @@ const PartiesVendorsContent = ({
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Activity
               </DropdownMenuItem> */}
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setSelectedVendors(row.original);
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
-                </DropdownMenuItem>
-
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -433,15 +451,10 @@ const PartiesVendorsContent = ({
         data: rows,
         totalCount: total,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
-      });
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "An error occurred while fetching data. Please try again later";
+      toast.error(errorMessage);
 
       return {
         data: [],

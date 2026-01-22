@@ -7,9 +7,9 @@ export interface AuthModel {
 }
 
 export interface UserModel {
-  id: number;
+  id: string | number;
   username: string;
-  password: string | undefined;
+  password?: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -17,7 +17,8 @@ export interface UserModel {
   occupation?: string;
   companyName?: string;
   phone?: string;
-  roles?: number[];
+  role?: string;
+  isActive?: boolean;
   pic?: string;
   language?: TLanguageCode;
   auth?: AuthModel;

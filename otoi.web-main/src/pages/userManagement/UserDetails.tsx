@@ -404,19 +404,24 @@
 //   </div>
 // );
 
-import { useParams, useNavigate } from "react-router-dom";
-import { User } from "./user-models";
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useAuthContext } from "@/auth";
 import { KeenIcon } from '@/components';
-import { SpinnerDotted } from 'spinners-react';
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { SpinnerDotted } from 'spinners-react';
+import { User } from "./user-models";
 
 export const UserDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [fetchingUser, setFetchingUser] = useState(false);
+  const { currentUser } = useAuthContext();
+  const isAdmin = currentUser?.role === "Admin";
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -425,9 +430,9 @@ export const UserDetails = () => {
           `${import.meta.env.VITE_APP_API_URL}/users/${id}`
         );
         setUser(response.data);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching user details:", error);
-        toast.error("Failed to load user details");
+        toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to load user details");
       }
     };
     fetchUser();
@@ -450,8 +455,23 @@ export const UserDetails = () => {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       toast.success("User deleted successfully");
       navigate("/user-management/users");
-    } catch {
-      toast.error("Delete failed");
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "Delete failed";
+      toast.error(errorMessage);
+    }
+  };
+  // Fetch Single User Details
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setFetchingUser(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
+      setSelectedUser(response.data);
+      return response.data;
+    } catch (error) {
+      toast.error("Failed to fetch user details");
+      return null;
+    } finally {
+      setFetchingUser(false);
     }
   };
 
@@ -459,7 +479,7 @@ export const UserDetails = () => {
   const fullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'N/A';
   const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() : '?';
 
-  if (!user) {
+  if (!user || fetchingUser) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center text-[#0D0E12]">
         <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
@@ -481,7 +501,7 @@ export const UserDetails = () => {
             <span className="text-gray-900 font-medium">{fullName}</span>
           </nav>
         </div>
-
+       {isAdmin && (
         <div className="flex gap-3">
           <button
             onClick={() => navigate(`/user/${id}/edit`)}
@@ -496,6 +516,7 @@ export const UserDetails = () => {
             <KeenIcon icon="trash" className="text-sm" /> Delete
           </button>
         </div>
+       )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -516,7 +537,7 @@ export const UserDetails = () => {
             </div>
 
             <div className="py-8 space-y-6">
-              <SidebarInfo label="Role" value={user.role} icon="shield-tick" />
+              <ContactRow label="Role" value={user.role} icon="shield-tick" color="text-yellow-600" />
               {/* <SidebarInfo label="Mobile" value={user.mobile} icon="phone" />
                <SidebarInfo label="Member Since" value={user.created_at} icon="calendar" /> */}
               <ContactRow icon="phone" label="Phone" value={user.mobile} color="text-purple-500" />
