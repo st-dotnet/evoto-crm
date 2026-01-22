@@ -33,7 +33,7 @@ const Error404Page = () => {
       <div className="text-md text-center text-gray-700 mb-10">
         The requested page is missing. Check the URL or&nbsp;
         <Link
-          to={isUser ? "/public-profile/profiles/default" : "/"}
+          to={isUser ? "/account/home/user-profile" : "/"}
           className="text-primary font-medium hover:text-primary-active"
         >
           {isUser ? "Return Profile" : "Return Home"}

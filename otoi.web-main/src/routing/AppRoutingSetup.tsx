@@ -92,6 +92,7 @@ import ItemDetailsPage from '@/pages/items/ItemDetails';
 import { UserDetails } from '@/pages/userManagement/UserDetails';
 import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
+import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
 
 
 const AppRoutingSetup = (): ReactElement => {
@@ -111,6 +112,7 @@ const AppRoutingSetup = (): ReactElement => {
             <Route path="/user/:id" element={<UserDetails />} />
             <Route path="/items/inventory" element={<InventoryPage />} />
             <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
+            <Route path='/accounting/purchase-entry' element={<PartiesPurchaseEntry />}/>
             {/* Add more Manager/Admin routes here as needed */}
           </Route>
 

@@ -42,7 +42,7 @@ const Error500Page = () => {
       </div>
 
       <Link
-        to={isUser ? "/public-profile/profiles/default" : "/"}
+        to={isUser ? "/account/home/user-profile" : "/"}
         className="btn btn-primary flex justify-center"
       >
         {isUser ? "Back to Profile" : "Back to Home"}

@@ -14,6 +14,7 @@ from app.routes.vendor import vendor_blueprint
 from app.routes.csv_import import csv_import_bp
 from app.routes.item import item_blueprint
 from app.routes.barcode import barcode_blueprint
+from app.routes.purchase import purchase_blueprint
 
 
 
@@ -34,5 +35,6 @@ def register_blueprints(app):
     app.register_blueprint(csv_import_bp, url_prefix="/api/csv_import")
     app.register_blueprint(item_blueprint, url_prefix="/api/items")
     app.register_blueprint(barcode_blueprint, url_prefix="/api/barcode")
+    app.register_blueprint(purchase_blueprint, url_prefix="/api/purchase")
 
 

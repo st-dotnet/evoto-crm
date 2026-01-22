@@ -100,6 +100,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     heading: "Accounting"
   },
   {
+    title: "Purchase Entry",
+    icon: "purchase",
+    path: "/accounting/purchase-entry"
+  },
+  {
     title: "Payable",
     icon: "tag",
     path: "/accounting/payables"
