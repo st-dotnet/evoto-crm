@@ -89,8 +89,7 @@ const PartiesCustomersPage = () => {
                 </div>
               </ToolbarDescription>
             </ToolbarHeading>
-            <ToolbarActions>
-              {/* Import CSV Button */}
+            {/* <ToolbarActions>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -104,7 +103,6 @@ const PartiesCustomersPage = () => {
               >
                 Import CSV
               </button>
-              {/* Download Template Button */}
               <button
                 className="btn btn-sm btn-success"
                 onClick={handleDownloadTemplate}
@@ -114,7 +112,7 @@ const PartiesCustomersPage = () => {
               <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
                 Add Customer
               </a>
-            </ToolbarActions>
+            </ToolbarActions> */}
           </Toolbar>
         </Container>
       )}
