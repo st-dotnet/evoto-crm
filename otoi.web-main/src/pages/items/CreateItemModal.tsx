@@ -716,7 +716,7 @@ export default function CreateItemModal({
                             <Button
                                 variant="outline"
                                 className="rounded-lg px-4 py-2 text-sm"
-                                onClick={() => setShowCategoryModal(false)}
+                                onClick={() => {setNewCategory(""); setShowCategoryModal(false);}}
                                 style={{ background: "white" }}
                             >
                                 Cancel
