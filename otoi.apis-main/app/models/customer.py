@@ -30,7 +30,12 @@ class Customer(db.Model):
     country = Column(String(100), nullable=False)
     pin = Column(String(20), nullable=False)
  
-    # Relationship back to Lead
+    # Relationships
     lead = relationship("Lead", back_populates="customers")
-    
- 
+    addresses = relationship("Address", back_populates="customer")
+    shipping_addresses = relationship("Shipping", back_populates="customer", cascade="all, delete-orphan")
+
+    @property
+    def default_shipping(self):
+        """Helper to get the default shipping address."""
+        return next((addr for addr in self.shipping_addresses if addr.is_default), None)    

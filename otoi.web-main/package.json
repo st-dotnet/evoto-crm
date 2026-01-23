@@ -5,16 +5,14 @@
   "type": "module",
   "proxy": "http://127.0.0.1:5000",
   "scripts": {
-  "dev": "vite",
-  "stg_start": "vite --mode stg",
-
-  "build": "tsc && vite build",
-  "stg_build": "vite build --mode stg",
-  "prod_build": "vite build --mode prod",
-
-  "preview": "vite preview",
-  "lint": "eslint src --fix"
-},
+    "dev": "vite",
+    "stg_start": "vite --mode stg",
+    "build": "tsc && vite build",
+    "stg_build": "vite build --mode stg",
+    "prod_build": "vite build --mode prod",
+    "preview": "vite preview",
+    "lint": "eslint src --fix"
+  },
   "dependencies": {
     "@auth0/auth0-spa-js": "^2.1.3",
     "@emotion/cache": "^11.13.1",
@@ -62,6 +60,8 @@
     "qs": "^6.13.0",
     "react": "^18.3.1",
     "react-apexcharts": "1.4.1",
+    "react-country-region-selector": "^4.0.5",
+    "react-country-state-city": "^1.1.12",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-helmet": "^6.1.0",
@@ -73,6 +73,7 @@
     "react-query": "^3.39.3",
     "react-router": "^6.28.0",
     "react-router-dom": "^6.30.1",
+    "react-select-country": "^0.0.15",
     "react-toastify": "^11.0.5",
     "sonner": "^1.7.0",
     "spinners-react": "^1.0.11",

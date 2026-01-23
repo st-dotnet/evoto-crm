@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Eye, AlertCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Eye, AlertCircle, Loader2 } from "lucide-react";
 
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
@@ -36,6 +36,8 @@ import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { SpinnerDotted } from 'spinners-react';
+
+import { getCustomerById } from "./services/customer.service";
 
 // import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 import {
@@ -143,6 +145,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [customersData, setCustomersData] = useState<Customer[]>([]);
   const [filteredItems, setFilteredItems] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleDeleteClick = (uuid: string) => {
     setCustomerToDelete(uuid);
@@ -241,10 +244,41 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     );
   };
 
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Customer | null = null) => {
+  const openPersonModal = async (event: React.SyntheticEvent, rowData: Customer | null = null) => {
     event.preventDefault();
-    setSelectedPerson(rowData);
-    setPersonModalOpen(true);
+
+    if (rowData?.uuid) {
+      setSelectedPerson(rowData);
+      setIsEditing(true);
+
+      try {
+        const result = await getCustomerById(rowData.uuid);
+        if (result.success && result.data) {
+          const customerData = {
+            ...result.data,
+            shipping_address1: result.data.shipping_address1 || '',
+            shipping_address2: result.data.shipping_address2 || '',
+            shipping_city: result.data.shipping_city || '',
+            shipping_state: result.data.shipping_state || '',
+            shipping_country: result.data.shipping_country || '',
+            shipping_pin: result.data.shipping_pin || result.data.shipping_zip || '',
+          };
+          setSelectedPerson(customerData);
+          setPersonModalOpen(true);
+        } else {
+          toast.error(result.error || 'Failed to load customer data');
+        }
+      } catch (error) {
+        console.error('Error fetching customer:', error);
+        toast.error('An error occurred while loading customer data');
+      } finally {
+        setIsEditing(false);
+      }
+    } else {
+      // For new customer
+      setSelectedPerson(null);
+      setPersonModalOpen(true);
+    }
   };
 
   // const handleClose = () => {
@@ -359,19 +393,36 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           <div className="flex justify-center" >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
-                  <MoreVertical className="h-4 w-4" />
+                <button
+                  className="flex items-center gap-1 text-sm text-primary hover:text-primary-active"
+                  disabled={loading && selectedPerson?.uuid === row.original.uuid}
+                >
+                  {loading && selectedPerson?.uuid === row.original.uuid ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MoreVertical className="h-4 w-4" />
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onSelect={() => {
-                    setSelectedPerson(row.original);
-                    setPersonModalOpen(true);
+                    if (!loading || selectedPerson?.uuid !== row.original.uuid) {
+                      openPersonModal({ preventDefault: () => { } } as React.SyntheticEvent, row.original);
+                    }
                   }}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
+                  {loading && selectedPerson?.uuid === row.original.uuid ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </>
+                  )}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -477,11 +528,18 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
+    <div className="grid gap-5 lg:gap-7.5 relative">
+      {isEditing && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
+          </div>
+        </div>
+      )}
       {loading && customersData.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
           </div>
         </div>
       )}

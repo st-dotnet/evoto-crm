@@ -1,5 +1,7 @@
 from sqlalchemy.dialects.postgresql import UUID
 from app.extensions import db
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 user_business = db.Table(
     "user_business",
