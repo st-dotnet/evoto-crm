@@ -7,6 +7,7 @@ Create Date: 2026-01-21 16:12:34.531750
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -20,31 +21,36 @@ def upgrade():
     # 1. Enable UUID extension
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
 
-    # 2. Add temporary UUID column
-    op.add_column(
-        "items",
-        sa.Column("uuid", postgresql.UUID(as_uuid=True), nullable=True),
-    )
+    # 2. Check if UUID column exists
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('items')]
+    
+    if 'uuid' not in columns:
+        # 3. Add UUID column if it doesn't exist
+        op.add_column(
+            "items",
+            sa.Column("uuid", postgresql.UUID(as_uuid=True), nullable=True),
+        )
 
-    # 3. Backfill UUIDs
-    op.execute("UPDATE items SET uuid = uuid_generate_v4();")
+        # 4. Backfill UUIDs
+        op.execute("UPDATE items SET uuid = uuid_generate_v4();")
 
-    # 4. Make UUID NOT NULL
+    # 5. Make UUID NOT NULL if it's not already
     op.alter_column("items", "uuid", nullable=False)
 
-    # 5. Drop old primary key
+    # 6. Drop old primary key
     op.drop_constraint("items_pkey", "items", type_="primary")
 
-    # 6. Create new primary key on UUID
+    # 7. Create new primary key on UUID
     op.create_primary_key("items_pkey", "items", ["uuid"])
 
-    # 7. Rename columns
+    # 8. Rename columns if needed
     op.alter_column("items", "id", new_column_name="old_id")
-    op.alter_column("items", "uuid", new_column_name="uuid")
-
-    # 8. Set default UUID generation
+    
+    # 9. Set default UUID generation
     op.execute(
-        "ALTER TABLE items ALTER COLUMN id SET DEFAULT uuid_generate_v4();"
+        "ALTER TABLE items ALTER COLUMN uuid SET DEFAULT uuid_generate_v4();"
     )
 
 
