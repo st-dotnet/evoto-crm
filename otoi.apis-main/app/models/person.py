@@ -44,12 +44,12 @@ class LeadAddress(BaseMixin, db.Model):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.uuid", ondelete="CASCADE"), nullable=False)
     address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.uuid", ondelete="CASCADE"), nullable=False)
-    # shipping_id = Column(UUID(as_uuid=True), ForeignKey("shippings.uuid", ondelete="CASCADE"), nullable=True)
+    shipping_id = Column(UUID(as_uuid=True), ForeignKey("shippings.uuid", ondelete="CASCADE"), nullable=True)
 
     # Relationships
-    lead = relationship("Lead", back_populates="lead_addresses", overlaps="addresses,leads")
-    address = relationship("Address", back_populates="lead_addresses", overlaps="addresses,leads")
-    # shipping = relationship("Shipping", back_populates="lead_addresses")
+    lead = relationship("Lead", back_populates="lead_addresses")
+    address = relationship("Address", back_populates="lead_addresses")
+    shipping = relationship("Shipping", foreign_keys=[shipping_id], back_populates="lead_addresses")
 
     def __repr__(self):
         return f"<LeadAddress(lead_id={self.lead_id}, address_id={self.address_id})>"

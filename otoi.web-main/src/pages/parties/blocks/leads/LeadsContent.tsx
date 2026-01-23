@@ -207,7 +207,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     if (searchStatusTypeQuery !== "-1") {
       const statusMap: Record<string, string> = {
         "1": "New",
-        "2": "In Progress",
+        "2": "In-Progress",
         "3": "Quote Given",
         "4": "Win",
         "5": "Lose",

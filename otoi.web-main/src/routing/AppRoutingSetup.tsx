@@ -88,6 +88,8 @@ import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
 import { PartiesVendorsPage } from '@/pages/parties/PartiesVendors';
 import InventoryPage from '@/pages/items/InventoryPage';
 import ItemDetailsPage from '@/pages/items/ItemDetails';
+import QuotationPage from '@/pages/quotation/components/QuotationPage';
+import CreateQuotationPage from '@/pages/quotation/components/CreateQuotationPage';
 import { UserDetails } from '@/pages/userManagement/UserDetails';
 import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
@@ -200,6 +202,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/user/:id/edit" element={<UserEdit />} />
           <Route path="/items/inventory" element={<InventoryPage/>} />
           <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
+          <Route path="/quotes/list" element={<QuotationPage/>} />
+          <Route path="/quotes/new-quotation" element={<CreateQuotationPage />} />
           
           <Route
             path="/auth/account-deactivated"

@@ -210,8 +210,8 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
               {...formik.getFieldProps("measuring_unit")}
             >
               <option value="PCS">Pieces (PCS)</option>
-              <option value="KG">Kilogram</option>
-              <option value="L">Liter</option>
+              <option value="KG">Kilogram (KG)</option>
+              <option value="L">Liter (LTR)</option>
             </select>
 
             <button

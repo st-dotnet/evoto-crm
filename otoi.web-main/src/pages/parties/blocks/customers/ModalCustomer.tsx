@@ -20,6 +20,9 @@ interface IModalCustomerProps {
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
     customer: Person | null;
+    defaultStatus?: string;
+    title?: string; // Optional custom title for the dialog
+    hideStatusField?: boolean;
 }
 
 interface PersonType {
@@ -30,6 +33,19 @@ interface PersonType {
 interface Status {
     id: number;
     name: string;
+}
+
+interface ShippingAddress {
+    uuid?: string;
+    address1: string;
+    address2: string | null;
+    city: string;
+    state: string;
+    country: string;
+    pin: string;
+    is_default: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 interface Person {
@@ -48,13 +64,15 @@ interface Person {
     country?: string;
     pin?: string;
     reason?: string;
-    // Shipping address fields
+    // Shipping address fields (flat structure for form)
     shipping_address1?: string;
     shipping_address2?: string;
     shipping_city?: string;
     shipping_state?: string;
     shipping_country?: string;
     shipping_pin?: string;
+    // Nested shipping addresses from API
+    shipping_addresses?: ShippingAddress[];
 }
 
 const initialValues: Person = {
@@ -104,7 +122,7 @@ const saveCustomerSchema = Yup.object().shape({
             'mobile-format',
             'Mobile number must be a valid 10-digit number',
             function (value) {
-                if (!value) return true; 
+                if (!value) return true;
 
                 const digitsOnly = value.replace(/-/g, '');
                 return digitsOnly.length === 10 && /^\d{10}$/.test(digitsOnly);
@@ -156,7 +174,7 @@ const saveCustomerSchema = Yup.object().shape({
 
 
 
-const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustomerProps) => {
+const ModalCustomer = ({ open, onOpenChange, onSuccess, customer, title, defaultStatus, hideStatusField = false }: IModalCustomerProps) => {
     const [loading, setLoading] = useState(false);
     const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
     const [statusList, setStatusList] = useState<Status[]>([]);
@@ -168,7 +186,10 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
     }, []);
 
     const formik = useFormik({
-        initialValues,
+        initialValues: {
+            ...initialValues,
+            status: defaultStatus || initialValues.status,
+        },
         validationSchema: saveCustomerSchema,
         onSubmit: async (values, { setStatus, setSubmitting, setTouched, resetForm }) => {
             setTouched({
@@ -189,7 +210,46 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                     ? `${baseUrl}customers`
                     : `${baseUrl}/customers`;
 
+                // Create a clean payload with null values for empty strings
                 const payload = { ...values } as Record<string, any>;
+                
+                // Prepare shipping addresses array
+                const shippingAddress = {} as Record<string, any>;
+                let hasShippingAddress = false;
+                
+                // Extract shipping address fields and remove them from the main payload
+                const shippingFields = [
+                    'shipping_address1', 'shipping_address2', 'shipping_city',
+                    'shipping_state', 'shipping_country', 'shipping_pin'
+                ];
+                
+                // Check if any shipping field has a value
+                shippingFields.forEach(field => {
+                    if (values[field as keyof typeof values]) {
+                        hasShippingAddress = true;
+                    }
+                });
+                
+                // If we have shipping data, format it correctly
+                if (hasShippingAddress) {
+                    shippingAddress.address1 = values.shipping_address1 || null;
+                    shippingAddress.address2 = values.shipping_address2 || null;
+                    shippingAddress.city = values.shipping_city || null;
+                    shippingAddress.state = values.shipping_state || null;
+                    shippingAddress.country = values.shipping_country || null;
+                    shippingAddress.pin = values.shipping_pin || null;
+                    shippingAddress.is_default = true;
+                    
+                    // Add to payload as an array
+                    payload.shipping_addresses = [shippingAddress];
+                }
+                
+                // Remove the old shipping fields from payload
+                shippingFields.forEach(field => {
+                    delete payload[field];
+                });
+                
+                // Clean up remaining empty strings
                 Object.keys(payload).forEach((key) => {
                     if (payload[key] === "") {
                         payload[key] = null;
@@ -256,11 +316,64 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
 
 
 
+    // useEffect(() => {
+    //     if (open && customer) {
+    //         formik.resetForm({ values: { ...customer } });
+    //         setSameAsBilling(!!customer?.shipping_address1);
+    //     } else if (open && personTypes.length > 0 && statusList.length > 0) {
+    //         const customerType = personTypes.find((t) => t.name.toLowerCase() === "customer");
+    //         const winStatus = statusList.find((s) => s.name.toLowerCase() === "win");
+    //         formik.resetForm({
+    //             values: {
+    //                 ...initialValues,
+    //                 person_type_id: customerType ? customerType.id.toString() : "",
+    //                 status: winStatus ? winStatus.id.toString() : "",
+    //             },
+    //         });
+    //     }
+    // }, [open, customer, personTypes, statusList]);
     useEffect(() => {
         if (open && customer) {
-            formik.resetForm({ values: { ...customer } });
-            setSameAsBilling(!!customer?.shipping_address1);
+            // Create a copy of customer data to avoid mutating the original
+            const customerData = { ...customer };
+            
+            // If there are shipping addresses, use the most recent one
+            if (customer.shipping_addresses && customer.shipping_addresses.length > 0) {
+                // Sort by created_at to get the most recent address
+                const latestAddress = [...customer.shipping_addresses]
+                    .sort((a, b) => 
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    )[0];
+                
+                // Map to form fields
+                customerData.shipping_address1 = latestAddress.address1;
+                customerData.shipping_address2 = latestAddress.address2 || '';
+                customerData.shipping_city = latestAddress.city;
+                customerData.shipping_state = latestAddress.state;
+                customerData.shipping_country = latestAddress.country;
+                customerData.shipping_pin = latestAddress.pin;
+            }
+
+            // Check if shipping is different from billing
+            const hasDifferentShipping =
+                (customerData.shipping_address1 && customerData.shipping_address1 !== customerData.address1) ||
+                (customerData.shipping_city && customerData.shipping_city !== customerData.city) ||
+                (customerData.shipping_state && customerData.shipping_state !== customerData.state) ||
+                (customerData.shipping_country && customerData.shipping_country !== customerData.country) ||
+                (customerData.shipping_pin && customerData.shipping_pin !== customerData.pin);
+
+            setSameAsBilling(!hasDifferentShipping);
+
+            // Reset form with the transformed data
+            formik.resetForm({
+                values: {
+                    ...initialValues,
+                    ...customerData,
+                }
+            });
         } else if (open && personTypes.length > 0 && statusList.length > 0) {
+            // For new customer
+            setSameAsBilling(true);
             const customerType = personTypes.find((t) => t.name.toLowerCase() === "customer");
             const winStatus = statusList.find((s) => s.name.toLowerCase() === "win");
             formik.resetForm({
@@ -273,16 +386,31 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
         }
     }, [open, customer, personTypes, statusList]);
 
+    // useEffect(() => {
+    //     if (sameAsBilling) {
+    //         formik.setFieldValue("shipping_address1", formik.values.address1);
+    //         formik.setFieldValue("shipping_address2", formik.values.address2);
+    //         formik.setFieldValue("shipping_country", formik.values.country);
+    //         formik.setFieldValue("shipping_state", formik.values.state);
+    //         formik.setFieldValue("shipping_city", formik.values.city);
+    //         formik.setFieldValue("shipping_pin", formik.values.pin);
+    //     }
+    // }, [sameAsBilling, formik.values]);
     useEffect(() => {
         if (sameAsBilling) {
-            formik.setFieldValue("shipping_address1", formik.values.address1);
-            formik.setFieldValue("shipping_address2", formik.values.address2);
-            formik.setFieldValue("shipping_country", formik.values.country);
-            formik.setFieldValue("shipping_state", formik.values.state);
-            formik.setFieldValue("shipping_city", formik.values.city);
-            formik.setFieldValue("shipping_pin", formik.values.pin);
+            // Use setValues with a function to ensure we have the latest state
+            formik.setValues(prev => ({
+                ...prev,
+                shipping_address1: prev.address1,
+                shipping_address2: prev.address2 || '',
+                shipping_city: prev.city,
+                shipping_state: prev.state,
+                shipping_country: prev.country,
+                shipping_pin: prev.pin || '',
+            }));
         }
-    }, [sameAsBilling, formik.values]);
+        // Only include the specific values we care about in the dependency array
+    }, [sameAsBilling, formik.values.address1, formik.values.city, formik.values.state, formik.values.country, formik.values.pin]);
 
     return (
         <Fragment>
@@ -295,7 +423,7 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                 <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
                     <DialogHeader className="bg-gray-50 p-6 border-b">
                         <DialogTitle className="text-lg font-semibold text-gray-800">
-                            {customer ? "Edit Customer" : "Add Customer"}
+                            {title || (customer ? "Edit Customer" : "Add Customer")}
                         </DialogTitle>
                         <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
                     </DialogHeader>
@@ -407,16 +535,18 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                 )}
                             </div>
                             {/* Status */}
-                            <div className="flex flex-col gap-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Status</label>
-                                <select {...formik.getFieldProps("status")} className="input">
-                                    {statusList.map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            {!hideStatusField && (
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                                    <select {...formik.getFieldProps("status")} className="input">
+                                        {statusList.map((s) => (
+                                            <option key={s.id} value={s.id}>
+                                                {s.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             {(() => {
                                 const selectedStatus = formik.values.status;
                                 if (selectedStatus === "4") {
@@ -425,7 +555,7 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                             {/* Billing Address Fields */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
-                                                    Billing Address 1
+                                                    Billing Address 1 <span style={{ color: "red" }}>*</span>
                                                 </label>
                                                 <input {...formik.getFieldProps("address1")} className="input" />
                                             </div>
@@ -506,7 +636,7 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                             {/* Pin Code */}
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="block text-sm font-medium text-gray-700">
-                                                    Pin Code
+                                                    Pin Code <span style={{ color: "red" }}>*</span>
                                                 </label>
                                                 <input {...formik.getFieldProps("pin")} className="input" />
                                                 {formik.touched.pin && formik.errors.pin && (
@@ -532,15 +662,25 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                                 <>
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className="block text-sm font-medium text-gray-700">
-                                                            Shipping Address 1
+                                                            Shipping Address 1 <span style={{ color: "red" }}>*</span>
                                                         </label>
-                                                        <input {...formik.getFieldProps("shipping_address1")} className="input" />
+                                                        <input 
+                                                            {...formik.getFieldProps("shipping_address1")} 
+                                                            className="input" 
+                                                            readOnly={!!customer}
+                                                            style={{ backgroundColor: customer ? '#f3f4f6' : 'white' }}
+                                                        />
                                                     </div>
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className="block text-sm font-medium text-gray-700">
                                                             Shipping Address 2
                                                         </label>
-                                                        <input {...formik.getFieldProps("shipping_address2")} className="input" />
+                                                        <input 
+                                                            {...formik.getFieldProps("shipping_address2")} 
+                                                            className="input" 
+                                                            readOnly={!!customer}
+                                                            style={{ backgroundColor: customer ? '#f3f4f6' : 'white' }}
+                                                        />
                                                     </div>
                                                     {/* Shipping Country */}
                                                     <div className="flex flex-col gap-1.5">
@@ -550,11 +690,19 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                                         <select
                                                             {...formik.getFieldProps("shipping_country")}
                                                             onChange={(e) => {
-                                                                formik.setFieldValue("shipping_country", e.target.value);
-                                                                formik.setFieldValue("shipping_state", "");
-                                                                formik.setFieldValue("shipping_city", "");
+                                                                if (!customer) {
+                                                                    formik.setFieldValue("shipping_country", e.target.value);
+                                                                    formik.setFieldValue("shipping_state", "");
+                                                                    formik.setFieldValue("shipping_city", "");
+                                                                }
                                                             }}
                                                             className="input"
+                                                            disabled={!!customer}
+                                                            style={{ 
+                                                                backgroundColor: customer ? '#f3f4f6' : 'white',
+                                                                color: customer ? '#6b7280' : 'inherit',
+                                                                cursor: customer ? 'not-allowed' : 'default'
+                                                            }}
                                                         >
                                                             <option value="">--Select Country--</option>
                                                             {Country.getAllCountries().map((c) => (
@@ -572,11 +720,18 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                                         <select
                                                             {...formik.getFieldProps("shipping_state")}
                                                             onChange={(e) => {
-                                                                formik.setFieldValue("shipping_state", e.target.value);
-                                                                formik.setFieldValue("shipping_city", "");
+                                                                if (!customer) {
+                                                                    formik.setFieldValue("shipping_state", e.target.value);
+                                                                    formik.setFieldValue("shipping_city", "");
+                                                                }
                                                             }}
-                                                            disabled={!formik.values.shipping_country}
+                                                            disabled={!formik.values.shipping_country || !!customer}
                                                             className="input"
+                                                            style={{ 
+                                                                backgroundColor: customer ? '#f3f4f6' : 'white',
+                                                                color: customer ? '#6b7280' : 'inherit',
+                                                                cursor: customer ? 'not-allowed' : 'default'
+                                                            }}
                                                         >
                                                             <option value="">--Select State--</option>
                                                             {formik.values.shipping_country &&
@@ -594,8 +749,13 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                                         </label>
                                                         <select
                                                             {...formik.getFieldProps("shipping_city")}
-                                                            disabled={!formik.values.shipping_state}
+                                                            disabled={!formik.values.shipping_state || !!customer}
                                                             className="input"
+                                                            style={{ 
+                                                                backgroundColor: customer ? '#f3f4f6' : 'white',
+                                                                color: customer ? '#6b7280' : 'inherit',
+                                                                cursor: customer ? 'not-allowed' : 'default'
+                                                            }}
                                                         >
                                                             <option value="">--Select City--</option>
                                                             {formik.values.shipping_country &&
@@ -613,9 +773,14 @@ const ModalCustomer = ({ open, onOpenChange, onSuccess, customer }: IModalCustom
                                                     {/* Shipping Pin Code */}
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className="block text-sm font-medium text-gray-700">
-                                                            Shipping Pin Code
+                                                            Shipping Pin Code <span style={{ color: "red" }}>*</span>
                                                         </label>
-                                                        <input {...formik.getFieldProps("shipping_pin")} className="input" />
+                                                        <input 
+                                                            {...formik.getFieldProps("shipping_pin")} 
+                                                            className="input" 
+                                                            readOnly={!!customer}
+                                                            style={{ backgroundColor: customer ? '#f3f4f6' : 'white' }}
+                                                        />
                                                         {formik.touched.shipping_pin && formik.errors.shipping_pin && (
                                                             <span role="alert" className="text-xs text-red-500">
                                                                 {formik.errors.shipping_pin}

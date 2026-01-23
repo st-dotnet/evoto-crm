@@ -152,7 +152,6 @@ def get_leads():
                     break
 
 
-
         # Pagination
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("items_per_page", 10))

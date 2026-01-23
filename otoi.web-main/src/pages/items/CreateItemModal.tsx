@@ -586,7 +586,7 @@ export default function CreateItemModal({
                                                         <option value={1}>Pieces (PCS)</option>
                                                         <option value={2}>Kilogram (KG)</option>
                                                         <option value={3}>Liter (LTR)</option>
-                                                        <option value={4}>Meter (MTR)</option>
+                                                        {/* <option value={4}>Meter (MTR)</option> */}
                                                     </select>
                                                 </div>
                                                 <div className="flex-1">
@@ -680,7 +680,12 @@ export default function CreateItemModal({
             </Dialog>
 
             {/* CREATE CATEGORY MODAL */}
-            <Dialog open={showCategoryModal} onOpenChange={() => setShowCategoryModal(false)}>
+            <Dialog open={showCategoryModal} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setNewCategory("");
+                }
+                setShowCategoryModal(isOpen);
+            }}>
                 <DialogContent className="max-w-md rounded-2xl p-6 shadow-lg">
 
                     {/* Remove DialogHeader spacing issue */}
