@@ -8,6 +8,7 @@ from .business import BusinessRegistrationType, BusinessType, IndustryType, Busi
 from .associations import user_business
 from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 from .purchase import PurchaseEntry
+from .quotation import Quotation, QuotationItem
 
 __all__ = [ "User", "Role", "Address", 
            "Lead", "LeadAddress", 
@@ -15,4 +16,4 @@ __all__ = [ "User", "Role", "Address",
            "Customer", "Vendor",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business","user_business",
-           "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry"]
+           "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry","Quotation", "QuotationItem"]

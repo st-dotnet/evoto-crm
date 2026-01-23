@@ -159,15 +159,14 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
 
         {/* Item Code */}
         <div className="space-y-1">
-          <label className="text-sm font-medium">Item Code</label>
+          <label className="text-sm font-medium">Item Code <span className="text-red-500">*</span></label>
           {barcodeError && <div className="text-red-500 text-sm">{barcodeError}</div>}
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="ex: DECOX50P"
-              className="flex-1 min-w-0 p-2 border rounded"
+              className={`flex-1 min-w-0 p-2 border rounded ${formik.touched.item_code && formik.errors.item_code ? "border-red-500" : ""}`}
               {...formik.getFieldProps("item_code")}
-              required
             />
 
             <button
@@ -177,9 +176,10 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             >
               Get Barcode
             </button>
-
-
           </div>
+          {formik.touched.item_code && formik.errors.item_code && (
+            <div className="text-red-500 text-xs">{formik.errors.item_code}</div>
+          )}
         </div>
 
         {/* HSN Code */}

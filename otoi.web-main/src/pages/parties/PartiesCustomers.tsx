@@ -13,6 +13,8 @@ import { PartiesCustomerContent } from "./PartiesCustomersContent";
 import { useLayout } from "@/providers";
 import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
+import { toast } from "sonner";
+import { SpinnerDotted } from 'spinners-react';
 
 export interface IPersonModalContentProps {
   state: boolean;
@@ -22,16 +24,20 @@ const PartiesCustomersPage = () => {
   const { currentLayout } = useLayout();
   const [refreshKey, setRefreshKey] = useState(0); // State to trigger refresh
   const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Lead | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
   // handle close
   const handleClose = () => {
     setPersonModalOpen(false);
     setRefreshKey((prevKey) => prevKey + 1);
   };
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Lead | null = null) => {
+    const openCustomerModal = (
+    event: { preventDefault: () => void },
+    rowData: Lead | null = null
+  ) => {
     event.preventDefault();
-    setSelectedPerson(rowData);
+    setSelectedCustomer(rowData);
     setPersonModalOpen(true);
   };
 
@@ -39,7 +45,7 @@ const PartiesCustomersPage = () => {
   const handleDownloadTemplate = async () => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_APP_API_URL}/leads/download-template`,
+        `${import.meta.env.VITE_APP_API_URL}/customers/download-template`,
         {
           responseType: "blob",
         }
@@ -47,12 +53,15 @@ const PartiesCustomersPage = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "template.xlsx");
+      link.setAttribute("download", "customer.xlsx");
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       console.error("Failed to download template", error);
+      toast.error("Failed to download template");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,18 +71,29 @@ const PartiesCustomersPage = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setLoading(true);
+
     const formData = new FormData();
     formData.append("csv_file", file);
 
     axios
-      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_csv`, formData)
-      .then((response) => {
-        alert(response.data.message);
+      .post(`${import.meta.env.VITE_APP_API_URL}/csv_import/import_customers`, formData)
+      .then((response) => { 
+        toast.success(response.data.message);
         setRefreshKey((prevKey) => prevKey + 1);
+        event.target.value = "";
       })
       .catch((error) => {
-        console.error("Failed to import CSV", error);
-        alert("Failed to import CSV");
+        const backendMessage =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "CSV import failed";
+
+        console.error("CSV Import Error:", error);
+        toast.error(backendMessage);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -109,7 +129,7 @@ const PartiesCustomersPage = () => {
               >
                 Download Template
               </button>
-              <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
+              <a className="btn btn-sm btn-primary" onClick={openCustomerModal}>
                 Add Customer
               </a>
             </ToolbarActions> */}
@@ -121,6 +141,14 @@ const PartiesCustomersPage = () => {
         <PartiesCustomerContent refreshStatus={refreshKey} />
         <ModalCustomer open={personModalOpen} onOpenChange={handleClose} customer={null} />
       </Container>
+
+       {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 dark:bg-black/50 overflow-hidden">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
+      )}
     </Fragment>
   );
 };

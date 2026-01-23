@@ -107,6 +107,18 @@ const saveLeadSchema = Yup.object().shape({
       then: (schema) => schema.required("Pin is required"),
       otherwise: (schema) => schema.nullable(),
     }),
+  email: Yup.string()
+    .nullable()
+    .email("Invalid email format")
+    .test("mobile-or-email", "Either Mobile or Email is required", function (value) {
+      const { mobile } = this.parent;
+      return !!(value || mobile);
+    })
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Invalid email format"
+    ),
   status: Yup.string().required("Status is required"),
   reason: Yup.string().when("status", {
     is: (val: string) => val === "5",
@@ -570,7 +582,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Pin Code</label>
+                        <label className="block text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"

@@ -17,13 +17,13 @@ def profile():
     """
     Get logged-in user's profile (for login/signup).
     """
-    user = User.query.filter_by(id=g.user_id).first()
+    user = User.query.filter_by(uuid=g.user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
 
     businesses = [{"id": business.id, "name": business.name} for business in user.businesses]
     return jsonify({
-        "id": user.id,
+        "id": str(user.uuid),
         "first_name": user.username,
         "last_name": user.username,
         "email": user.email,
@@ -181,13 +181,13 @@ def get_all_users():
                 query = query.filter(or_(*filter_conditions))
 
         # --- Sorting ---
-        sort = request.args.get("sort", "id")
+        sort = request.args.get("sort", "uuid")
         order = request.args.get("order", "asc")
         # Validate sort field exists
-        valid_sort_fields = ["id", "username", "email", "mobileNo", "firstName", "lastName", "created_at", "updated_at"]
+        valid_sort_fields = ["uuid", "username", "email", "mobileNo", "firstName", "lastName", "created_at", "updated_at"]
         if sort not in valid_sort_fields:
-            sort = "id"  # Default to id if invalid field
-        
+            sort = "uuid"  # Default to uuid if invalid field
+
         sort_column = getattr(User, sort)
         if order == "desc":
             query = query.order_by(db.desc(sort_column))
@@ -206,7 +206,7 @@ def get_all_users():
             businesses = [{"id": business.id, "name": business.name} for business in user.businesses]
             result.append({
 
-                "id": user.id,
+                "id": str(user.uuid),
                 "first_name": user.firstName,
                 "last_name": user.lastName,
                 "username": user.username,
@@ -217,7 +217,7 @@ def get_all_users():
                 "businesses": businesses,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at,
-                "created_by": user.created_by
+                "created_by": user.created_by_uuid
             })
 
         return jsonify({
@@ -309,13 +309,13 @@ def get_user_by_id(user_uuid):
       404:
         description: User not found
     """
-    user = User.query.filter_by(id=user_uuid).first()
+    user = User.query.filter_by(uuid=user_uuid).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
 
     businesses = [{"id": business.id, "name": business.name} for business in user.businesses]
     return jsonify({
-        "id": user.id,
+        "id": str(user.uuid),
         "first_name": user.firstName,
         "last_name": user.lastName,
         "username": user.username,
@@ -326,7 +326,7 @@ def get_user_by_id(user_uuid):
         "businesses": businesses,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
-        "created_by": user.created_by
+        "created_by": user.created_by_uuid
     })
 
 # --- Create User (Admin only) ---
@@ -476,7 +476,7 @@ def create_user():
         db.session.add(user)
         db.session.commit()
 
-        return jsonify({"message": "User created successfully", "id": user.id}), 201
+        return jsonify({"message": "User created successfully", "id": str(user.uuid)}), 201
 
     except IntegrityError as e:
         db.session.rollback()
@@ -623,7 +623,7 @@ def update_user(user_uuid):
         if not data:
             return jsonify({"error": "No data provided"}), 400
             
-        user = User.query.filter_by(id=user_uuid).first()
+        user = User.query.filter_by(uuid=user_uuid).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
 
@@ -636,7 +636,7 @@ def update_user(user_uuid):
 
         if "username" in data:
             existing_user = User.query.filter_by(username=data["username"]).first()
-            if existing_user and str(existing_user.id) != user_uuid:
+            if existing_user and str(existing_user.uuid) != user_uuid:
                 return jsonify({"error": "Username already exists"}), 400
             user.username = data["username"]
         
@@ -644,7 +644,7 @@ def update_user(user_uuid):
         if "email" in data:
             # Check if email already exists for another user
             existing_user = User.query.filter_by(email=data["email"]).first()
-            if existing_user and str(existing_user.id) != user_uuid:
+            if existing_user and str(existing_user.uuid) != user_uuid:
                 return jsonify({"error": "Email already exists"}), 400
             user.email = data["email"]
         
@@ -652,7 +652,7 @@ def update_user(user_uuid):
         if "mobile" in data or "mobileNo" in data:
             mobileValue = data.get("mobile") or data.get("mobileNo")
             existing_user = User.query.filter_by(mobileNo=mobileValue).first()
-            if existing_user and str(existing_user.id) != user_uuid:
+            if existing_user and str(existing_user.uuid) != user_uuid:
                 return jsonify({"error": "Mobile number already exists"}), 400
             user.mobileNo = mobileValue
 
@@ -674,7 +674,7 @@ def update_user(user_uuid):
         return jsonify({
             "message": "User updated successfully",
             "user": {
-                "id": user.id,
+                "id": str(user.uuid),
                 "firstName": user.firstName,
                 "lastName": user.lastName,
                 "username": user.username,
@@ -758,7 +758,7 @@ def delete_user(user_uuid):
         description: Internal server error
     """
     try:
-        user = User.query.filter_by(id=user_uuid).first()
+        user = User.query.filter_by(uuid=user_uuid).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
 

@@ -130,7 +130,8 @@ const saveCustomerSchema = Yup.object().shape({
                 }
                 return true;
             }
-        ),
+        )
+        .trim().matches(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,"Invalid email format"),
 
     gst: Yup.string()
         .nullable()

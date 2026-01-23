@@ -5,6 +5,10 @@ from app.extensions import db
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
+from flask import send_file
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.worksheet.datavalidation import DataValidation
 
 
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
@@ -437,3 +441,88 @@ def delete_customer(customer_id):
         db.session.rollback()
         print(str(e))
         return jsonify({"message": "Internal server error", "error": str(e)}), 500
+
+
+@customer_blueprint.route("/download-template", methods=["GET"])
+def download_customer_template():
+    try:
+    
+        statuses = ["New", "In-progress", "Quote Given", "Win", "Lose"]      
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Customers"
+
+        columns = [
+            "first_name",     # A
+            "last_name",      # B
+            "mobile",         # C
+            "email",          # D
+            "gst",            # E
+            "status",         # F
+            "address1",       # G
+            "address2",       # H
+            "city",           # I
+            "state",          # J
+            "country",        # K
+            "pin",            # L
+        ]
+        ws.append(columns)
+
+        ws_hidden = wb.create_sheet("DropdownData")
+        for i, value in enumerate(statuses, start=1):
+            ws_hidden[f"A{i}"] = value
+        ws_hidden.sheet_state = "hidden"
+
+        dv_status = DataValidation(
+            type="list",
+            formula1="=DropdownData!$A$1:$A$5",
+            allow_blank=False,
+            showErrorMessage=True,
+            error="Select a valid status"
+        )
+        ws.add_data_validation(dv_status)
+        dv_status.add("F2:F1000")
+
+        dv_mobile = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(C2),AND(ISNUMBER(C2),LEN(C2)=10))',
+            showErrorMessage=True,
+            error="Mobile must be exactly 10 digits"
+        )
+        ws.add_data_validation(dv_mobile)
+        dv_mobile.add("C2:C1000")
+
+        dv_email = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(D2),AND(ISNUMBER(SEARCH("@",D2)),ISNUMBER(SEARCH(".",D2))))',
+            showErrorMessage=True,
+            error="Enter a valid email (example@domain.com)"
+        )
+        ws.add_data_validation(dv_email)
+        dv_email.add("D2:D1000")
+
+        dv_gst = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(E2),LEN(E2)=15)',
+            showErrorMessage=True,
+            error="GST must be exactly 15 characters"
+        )
+        ws.add_data_validation(dv_gst)
+        dv_gst.add("E2:E1000")
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="customer_template.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return {"error": str(e)}, 500
+       

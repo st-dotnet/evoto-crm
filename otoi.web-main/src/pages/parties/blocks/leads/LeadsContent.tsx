@@ -106,10 +106,10 @@ const Toolbar = ({
   };
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-      <div className="flex flex-wrap gap-2 lg:gap-5">
-        <div className="flex">
-          <label className="input input-sm">
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
+        <div className="flex grow md:grow-0">
+          <label className="input input-sm w-full md:w-48 lg:w-64">
             <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
               <KeenIcon icon="magnifier" />
             </span>
@@ -123,8 +123,8 @@ const Toolbar = ({
           </label>
         </div>
         {/* Status Filter */}
-        <div className="flex flex-wrap gap-2.5">
-          <label className="select-sm"> Status Type </label>
+        <div className="flex items-center flex-wrap gap-2.5">
+          <label className="text-sm font-medium text-gray-700"> Status </label>
           <Select
             defaultValue=""
             value={searchStatusType}
@@ -133,10 +133,10 @@ const Toolbar = ({
               setDefaultStatusType(value);
             }}
           >
-            <SelectTrigger className="w-28" size="sm">
+            <SelectTrigger className="w-32 lg:w-36" size="sm">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
-            <SelectContent className="w-32">
+            <SelectContent className="w-36">
               <SelectItem value="-1">All</SelectItem>
               <SelectItem value="1">New</SelectItem>
               <SelectItem value="2">In-Progress</SelectItem>
