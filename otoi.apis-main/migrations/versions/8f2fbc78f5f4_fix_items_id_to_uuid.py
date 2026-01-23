@@ -17,6 +17,20 @@ branch_labels = None
 depends_on = None
 
 
+def constraint_exists(table_name, constraint_name, connection):
+    # Use text() for raw SQL and proper parameter binding
+    from sqlalchemy import text
+    result = connection.execute(
+        text("""
+            SELECT 1
+            FROM information_schema.table_constraints
+            WHERE table_name = :table_name AND constraint_name = :constraint_name
+        """),
+        {"table_name": table_name, "constraint_name": constraint_name}
+    )
+    return result.scalar() is not None
+
+
 def upgrade():
     # =================================================================
     # PHASE 1: Add new UUID columns alongside existing INTEGER columns
@@ -24,10 +38,13 @@ def upgrade():
     
     print("Phase 1: Adding UUID columns...")
     
-    # Add UUID column to items table
+    # Get database connection
+    conn = op.get_bind()
+    
+    # Add UUID column to items table if it doesn't exist
     op.add_column('items', sa.Column('uuid_new', postgresql.UUID(as_uuid=True), nullable=True))
     
-    # Add UUID column to item_images
+    # Add UUID column to item_images if it doesn't exist
     op.add_column('item_images', sa.Column('item_uuid_new', postgresql.UUID(as_uuid=True), nullable=True))
     
     # =================================================================
@@ -48,7 +65,7 @@ def upgrade():
         UPDATE item_images img
         SET item_uuid_new = i.uuid_new
         FROM items i
-        WHERE img.item_id = i.id
+        WHERE img.item_id = i.old_id
     """)
     
     # Make uuid_new NOT NULL in items table
@@ -72,8 +89,11 @@ def upgrade():
     
     print("Phase 4: Dropping old foreign key constraints...")
     
-    # Drop FK from item_images to items
-    op.drop_constraint('item_images_item_id_fkey', 'item_images', type_='foreignkey')
+    # Only drop the constraint if it exists
+    if constraint_exists('item_images', 'item_images_item_id_fkey', conn):
+        op.drop_constraint('item_images_item_id_fkey', 'item_images', type_='foreignkey')
+    else:
+        print("Constraint 'item_images_item_id_fkey' does not exist, skipping...")
     
     # =================================================================
     # PHASE 5: Create new UUID foreign key constraints
@@ -100,11 +120,11 @@ def upgrade():
     # Drop old INTEGER column from item_images first
     op.drop_column('item_images', 'item_id')
     
-    # Drop PRIMARY KEY constraint on items.id
+    # Drop PRIMARY KEY constraint on items.old_id
     op.drop_constraint('items_pkey', 'items', type_='primary')
     
     # Drop old INTEGER id column from items
-    op.drop_column('items', 'id')
+    op.drop_column('items', 'old_id')
     
     # Drop old sequence if it exists
     op.execute('DROP SEQUENCE IF EXISTS items_id_seq CASCADE')
@@ -132,10 +152,6 @@ def upgrade():
     
     # Set default for new records
     op.alter_column('items', 'id', server_default=sa.text('gen_random_uuid()'))
-    
-    # Make item_id NOT NULL in item_images (assuming it's required)
-    # Only uncomment if item_id should be required:
-    # op.alter_column('item_images', 'item_id', nullable=False)
     
     print("Migration completed successfully!")
 
@@ -199,7 +215,10 @@ def downgrade():
     
     print("Phase 3: Dropping UUID foreign keys...")
     
-    op.drop_constraint('fk_item_images_item_uuid_new', 'item_images', type_='foreignkey')
+    if constraint_exists('item_images', 'fk_item_images_item_uuid_new', op.get_bind()):
+        op.drop_constraint('fk_item_images_item_uuid_new', 'item_images', type_='foreignkey')
+    else:
+        print("Constraint 'fk_item_images_item_uuid_new' does not exist, skipping...")
     
     # =================================================================
     # PHASE 4: Drop UUID columns and constraints
@@ -207,12 +226,27 @@ def downgrade():
     
     print("Phase 4: Dropping UUID columns...")
     
-    op.drop_constraint('items_pkey', 'items', type_='primary')
-    op.drop_index('ix_items_uuid_new', 'items')
-    op.drop_constraint('uq_items_uuid_new', 'items', type_='unique')
+    if constraint_exists('items', 'items_pkey', op.get_bind()):
+        op.drop_constraint('items_pkey', 'items', type_='primary')
     
-    op.drop_column('items', 'id')
-    op.drop_column('item_images', 'item_id')
+    # Drop indexes and constraints if they exist
+    inspector = sa.inspect(op.get_bind())
+    indexes = inspector.get_indexes('items')
+    if any(idx['name'] == 'ix_items_uuid_new' for idx in indexes):
+        op.drop_index('ix_items_uuid_new', 'items')
+    
+    if constraint_exists('items', 'uq_items_uuid_new', op.get_bind()):
+        op.drop_constraint('uq_items_uuid_new', 'items', type_='unique')
+    
+    # Rename columns back to original names if they were changed
+    inspector = sa.inspect(op.get_bind())
+    columns = [c['name'] for c in inspector.get_columns('items')]
+    if 'id' in columns and 'uuid_new' not in columns:
+        op.alter_column('items', 'id', new_column_name='uuid_new')
+    
+    # Drop UUID columns
+    op.drop_column('items', 'uuid_new')
+    op.drop_column('item_images', 'item_uuid_new')
     
     # =================================================================
     # PHASE 5: Rename INTEGER columns back
@@ -243,8 +277,5 @@ def downgrade():
         ['id'], 
         ondelete='CASCADE'
     )
-    
-    # Set NOT NULL if it was required before
-    # op.alter_column('item_images', 'item_id', nullable=False)
     
     print("Downgrade completed!")
