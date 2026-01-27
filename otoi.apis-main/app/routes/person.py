@@ -5,6 +5,8 @@ from app.models.person import Lead, LeadAddress
 from app.models.active import Active, ActiveType
 from app.models.common import Address
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
+from app.utils.lead_utils import sync_lead_to_customer
+from flask import current_app
 from sqlalchemy import String, cast, or_, func
 from sqlalchemy.orm import joinedload
 from io import BytesIO
@@ -390,12 +392,35 @@ def create_lead():
             set_business(lead_address)
             db.session.add(lead_address)
 
+        # Sync lead to customer if status is "Win"
+        current_app.logger.info(f"Syncing lead {lead.uuid} with status {lead.status}")
+        try:
+            customer = sync_lead_to_customer(lead, address_data)
+            if customer:
+                current_app.logger.info(f"Created/Updated customer {customer.uuid} for lead {lead.uuid}")
+        except Exception as sync_err:
+            current_app.logger.error(f"Error syncing lead to customer: {str(sync_err)}")
+            # We might want to allow the lead creation to succeed even if sync fails,
+            # but usually they should both succeed together. 
+            # For now, let's just log and continue, or raise if it's critical.
+
         db.session.commit()
 
         return jsonify({
             "message": "Lead created successfully",
             "uuid": str(lead.uuid)
         }), 201
+    
+    except IntegrityError as e:
+        db.session.rollback()
+        err_msg = str(e.orig)
+        if "uq_customers_gst" in err_msg or "leads_gst_key" in err_msg:
+            return jsonify({"error": "A customer or lead with this GST number already exists"}), 400
+        if "leads_mobile_key" in err_msg or "uq_leads_mobile" in err_msg:
+            return jsonify({"error": "A lead with this mobile number already exists"}), 400
+        if "leads_email_key" in err_msg:
+            return jsonify({"error": "A lead with this email already exists"}), 400
+        return jsonify({"error": "Database integrity error", "details": err_msg}), 400
 
     except Exception as e:
         db.session.rollback()
@@ -524,9 +549,38 @@ def update_lead(lead_id):
                 set_business(new_la)
                 db.session.add(new_la)
 
+        # Sync lead to customer if status is "Win"
+        address_data = None
+        if str(lead.status).strip().lower() in ["win", "4"]:
+            # Check for existing LeadAddress
+            lead_address = LeadAddress.query.filter_by(lead_id=lead.uuid).first()
+            if lead_address and lead_address.address:
+                addr = lead_address.address
+                address_data = {
+                    "address1": addr.address1,
+                    "address2": addr.address2,
+                    "city": addr.city,
+                    "state": addr.state,
+                    "country": addr.country,
+                    "pin": addr.pin,
+                }
+            
+        current_app.logger.info(f"Syncing updated lead {lead.uuid} with status {lead.status}")
+        sync_lead_to_customer(lead, address_data)
+
         set_updated_fields(lead)
         db.session.commit()
         return jsonify({"message": "Lead updated successfully"}), 200
+ 
+    except IntegrityError as e:
+        db.session.rollback()
+        err_msg = str(e.orig)
+        if "uq_customers_gst" in err_msg or "leads_gst_key" in err_msg:
+            return jsonify({"error": "A customer or lead with this GST number already exists"}), 400
+        if "leads_mobile_key" in err_msg or "uq_leads_mobile" in err_msg:
+            return jsonify({"error": "A lead with this mobile number already exists"}), 400
+        return jsonify({"error": "Database integrity error", "details": err_msg}), 400
+ 
 
     except Exception as e:
         db.session.rollback()
