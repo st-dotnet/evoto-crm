@@ -215,9 +215,10 @@ def get_all_users():
                 "role": user.role.name if user.role else None,
                 "isActive": user.isActive,
                 "businesses": businesses,
-                "created_at": user.created_at,
-                "updated_at": user.updated_at,
-                "created_by": user.created_by_uuid
+                "created_at": user.created_at.isoformat() if hasattr(user, 'created_at') and user.created_at else None,
+                "updated_at": user.updated_at.isoformat() if hasattr(user, 'updated_at') and user.updated_at else None,
+                "created_by": str(user.created_by) if hasattr(user, 'created_by') and user.created_by else None,
+                "updated_by": str(user.updated_by) if hasattr(user, 'updated_by') and user.updated_by else None
             })
 
         return jsonify({
@@ -326,7 +327,7 @@ def get_user_by_id(user_uuid):
         "businesses": businesses,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
-        "created_by": user.created_by_uuid
+        "created_by": user.created_by
     })
 
 # --- Create User (Admin only) ---

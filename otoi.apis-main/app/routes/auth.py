@@ -106,8 +106,8 @@ def signup():
     # Persist and set audit fields
     db.session.add(user)
     db.session.flush()  # to get user.uuid
-    user.created_by_uuid = user.uuid
-    user.updated_by_uuid = user.uuid
+    user.created_by = user.uuid
+    user.updated_by = user.uuid
 
     db.session.commit()
 

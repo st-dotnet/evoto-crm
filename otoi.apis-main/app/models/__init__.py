@@ -8,7 +8,6 @@ from .business import BusinessRegistrationType, BusinessType, IndustryType, Busi
 from .associations import user_business
 from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 from .purchase import PurchaseEntry
-from .purchase import PurchaseEntry
 from .quotation import Quotation, QuotationItem
 
 __all__ = [ "User", "Role", "Address", 

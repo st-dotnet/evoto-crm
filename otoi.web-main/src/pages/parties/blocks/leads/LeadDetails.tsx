@@ -155,7 +155,7 @@ export const LeadDetails = () => {
                 </div>
                 <div>
                   <p className="text-gray-500">STATUS</p>
-                  <p>{lead.status || "--"}</p>
+                  <p>{STATUS_LABEL_TO_VALUE[lead.status || ""] ||"--"}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">LAST ACTIVITY DATE</p>

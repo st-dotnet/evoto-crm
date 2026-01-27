@@ -189,7 +189,7 @@ export const CustomerDetails = () => {
                 </div>
                 <div>
                   <p className="text-gray-500">STATUS</p>
-                  <p>{customer.status || "--"}</p>
+                  <p>{STATUS_LABEL_TO_VALUE[customer.status || ""] ||"--"}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">LAST ACTIVITY DATE</p>

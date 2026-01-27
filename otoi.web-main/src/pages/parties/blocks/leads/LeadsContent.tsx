@@ -264,10 +264,10 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   };
 
   // Fetch Single User Details
-  const fetchLeadDetails = async (userId: string) => {
+  const fetchLeadDetails = async (uuid: string) => {
     try {
       setFetchingLead(true);
-      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${userId}`);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${uuid}`);
       setSelectedLead(response.data);
       return response.data;
     } catch (error: any) {
