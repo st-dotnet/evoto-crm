@@ -411,6 +411,17 @@ def create_lead():
             "message": "Lead created successfully",
             "uuid": str(lead.uuid)
         }), 201
+    
+    except IntegrityError as e:
+        db.session.rollback()
+        err_msg = str(e.orig)
+        if "uq_customers_gst" in err_msg or "leads_gst_key" in err_msg:
+            return jsonify({"error": "A customer or lead with this GST number already exists"}), 400
+        if "leads_mobile_key" in err_msg or "uq_leads_mobile" in err_msg:
+            return jsonify({"error": "A lead with this mobile number already exists"}), 400
+        if "leads_email_key" in err_msg:
+            return jsonify({"error": "A lead with this email already exists"}), 400
+        return jsonify({"error": "Database integrity error", "details": err_msg}), 400
 
     except Exception as e:
         db.session.rollback()
@@ -561,6 +572,16 @@ def update_lead(lead_id):
         set_updated_fields(lead)
         db.session.commit()
         return jsonify({"message": "Lead updated successfully"}), 200
+ 
+    except IntegrityError as e:
+        db.session.rollback()
+        err_msg = str(e.orig)
+        if "uq_customers_gst" in err_msg or "leads_gst_key" in err_msg:
+            return jsonify({"error": "A customer or lead with this GST number already exists"}), 400
+        if "leads_mobile_key" in err_msg or "uq_leads_mobile" in err_msg:
+            return jsonify({"error": "A lead with this mobile number already exists"}), 400
+        return jsonify({"error": "Database integrity error", "details": err_msg}), 400
+ 
 
     except Exception as e:
         db.session.rollback()
