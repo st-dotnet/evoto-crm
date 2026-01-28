@@ -151,8 +151,7 @@ export default function CreateItemModal({
                     gst_tax_rate: Number(values.gst_tax_rate),
                     measuring_unit_id: values.measuring_unit_id,
                     // Only include item_code if it has changed from the original value
-                    // ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
-                    item_code: isService ? values.item_code || null : (values.item_code !== item?.item_code ? values.item_code || null : undefined),
+                    ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
                     hsn_code: isService ? null : values.hsn_code || null,
                     description: values.description || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
@@ -166,13 +165,15 @@ export default function CreateItemModal({
                     postData.opening_stock = Number(values.opening_stock || 0);
                 }
 
-                const currentItemId = item?.id || item?.item_id;
+                console.log('DEBUG: Sending postData:', postData);
+
+                const currentItemId = item?.item_id || item?.item_id;
 
                 if (currentItemId) {
                     // EDITING an existing item
                     const response = await updateItem(currentItemId.toString(), postData);
                     if (response?.success) {
-                        toast.success("Item updated successfully");
+                        toast.success(response.data?.message || "Item updated successfully");
                         onSuccess();
                         onOpenChange();
                     } else {
@@ -181,20 +182,29 @@ export default function CreateItemModal({
                 } else {
                     // Creating a new item
                     const response = await createItem(postData);
-                    if (response) {
-                        toast.success("Item created successfully");
+                    if (response?.success) {
+                        toast.success(response.data?.message || "Item created successfully");
                         onSuccess();
                         resetForm();
                         onOpenChange();
                     } else {
-                        throw new Error("Failed to create item");
+                        throw new Error(response?.error || "Failed to create item");
                     }
                 }
             } catch (error: any) {
                 console.error('Error:', error);
-                const errorMessage = error?.response?.data?.message || error.message.errors || "An error occurred. Please try again.";
+                const errorMessage =
+                    error?.response?.data?.details?.item_code?.[0] ||
+                    error?.response?.data?.details?.item_name?.[0] ||
+                    error?.response?.data?.details?.category_id?.[0] ||
+                    error?.response?.data?.details?.measuring_unit_id?.[0] ||
+                    error?.response?.data?.message ||
+                    error?.message ||
+                    "An error occurred. Please try again.";
+
                 setStatus(errorMessage);
                 toast.error(errorMessage);
+            
             } finally {
                 setLoading(false);
                 setSubmitting(false);
@@ -581,7 +591,7 @@ export default function CreateItemModal({
                                                     <select
                                                         className="w-full p-2 border rounded"
                                                         value={formik.values.measuring_unit_id}
-                                                        onChange={(e) => formik.setFieldValue("measuring_unit_id", Number(e.target.value) as 1 | 2 | 3 | 4)}
+                                                        onChange={(e) => formik.setFieldValue("measuring_unit_id", Number(e.target.value) as 1 | 2 | 3)}
                                                     >
                                                         <option value={1}>Pieces (PCS)</option>
                                                         <option value={2}>Kilogram (KG)</option>
@@ -706,7 +716,7 @@ export default function CreateItemModal({
                             <Button
                                 variant="outline"
                                 className="rounded-lg px-4 py-2 text-sm"
-                                onClick={() => setShowCategoryModal(false)}
+                                onClick={() => {setNewCategory(""); setShowCategoryModal(false);}}
                                 style={{ background: "white" }}
                             >
                                 Cancel

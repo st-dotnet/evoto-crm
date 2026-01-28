@@ -14,7 +14,7 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 // Props for the modal
 interface IModalLeadProps {
@@ -99,7 +99,7 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
-  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols").nullable(),
+  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols").required("GST is required"),
   pin: Yup.string()
     .matches(/^[0-9]+$/, "Pin must be a number")
     .when("status", {
@@ -218,10 +218,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
         onOpenChange(false);
       } catch (error: any) {
-        setStatus(
-          error?.response?.data?.message || error?.response?.data?.error ||
-          "Something went wrong. Please try again."
-        );
+        const errorMessage = error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Something went wrong. Please try again.";
+        setStatus(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setSubmitting(false);
         setLoading(false);
@@ -423,7 +424,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* GST */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">GST</label>
+                        <label className="block text-sm font-medium text-gray-700">GST<span style={{ color: "red" }}>*</span></label>
                         <input
                           placeholder="GST"
                           type="text"

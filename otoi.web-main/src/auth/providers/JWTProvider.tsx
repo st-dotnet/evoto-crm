@@ -80,13 +80,14 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const { data: auth } = await axios.post<AuthModel>(LOGIN_URL, {
+      const { data: responseData } = await axios.post(LOGIN_URL, {
         email,
         password,
       });
-      saveAuth(auth);
+      saveAuth(responseData);
       const { data: user } = await getUser();
       setCurrentUser(user);
+      return responseData;
     } catch (error) {
       saveAuth(undefined);
       // Re-throw the original error to preserve axios response data

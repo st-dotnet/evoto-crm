@@ -13,7 +13,7 @@ import {
 import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 // Props for the modal
 interface IModalUserProps {
@@ -172,6 +172,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           error?.message ||
           "Something went wrong. Please try again.";
         setStatus(errorMessage);
+        toast.error(errorMessage);
         console.error("Error updating/creating user:", error);
         console.error("Error response:", error?.response);
       } finally {

@@ -43,61 +43,42 @@ const Login = () => {
   const formik = useFormik({
     initialValues,
     validationSchema: loginSchema,
-    // onSubmit: async (values, { setStatus, setSubmitting }) => {
-    //   setLoading(true);
-
-    //   try {
-    //     if (!login) {
-    //       throw new Error("JWTProvider is required for this form.");
-    //     }
-
-    //     await login(values.email, values.password);
-
-    //     if (values.remember) {
-    //       localStorage.setItem("email", values.email);
-    //     } else {
-    //       localStorage.removeItem("email");
-    //     }
-
-    //     navigate(from, { replace: true });
-    //   } 
-    //   catch {
-    //     setStatus("The login details are incorrect");
-    //     setSubmitting(false);
-    //   }
-    //   setLoading(false);
-    // }
     onSubmit: async (values, { setStatus, setSubmitting }) => {
-  setLoading(true);
+      setLoading(true);
 
-  try {
-    if (!login) {
-      throw new Error("JWTProvider is required for this form.");
+      try {
+        if (!login) {
+          throw new Error("JWTProvider is required for this form.");
+        }
+
+        const response = await login(values.email, values.password);
+        const userRole = (response as any)?.user?.role;
+
+        if (values.remember) {
+          localStorage.setItem("email", values.email);
+        } else {
+          localStorage.removeItem("email");
+        }
+
+        if (userRole === 'User') {
+          navigate('/account/home/user-profile', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
+      } catch (error: any) {
+        // Check if the error is an Axios error and has a response
+        if (error.response && error.response.data && error.response.data.error === "Account Deactivated") {
+          setShowDeactivatedModal(true);
+          setTimeout(() => {
+            setShowDeactivatedModal(false);
+          }, 3000); // Close after 3 seconds
+        } else {
+          setStatus(`${error.response.data.error}`);
+        }
+        setSubmitting(false);
+      }
+      setLoading(false);
     }
-
-    await login(values.email, values.password);
-
-    if (values.remember) {
-      localStorage.setItem("email", values.email);
-    } else {
-      localStorage.removeItem("email");
-    }
-
-    navigate(from, { replace: true });
-  } catch (error: any) {
-    // Check if the error is an Axios error and has a response
-    if (error.response && error.response.data && error.response.data.error === "Account Deactivated") {
-      setShowDeactivatedModal(true);
-      setTimeout(() => {
-        setShowDeactivatedModal(false);
-      }, 3000); // Close after 3 seconds
-    } else {
-      setStatus(`${error.response.data.error}`);
-    }
-    setSubmitting(false);
-  }
-  setLoading(false);
-}
 
   });
 
