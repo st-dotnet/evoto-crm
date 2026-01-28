@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from app.models.business import user_business
 from datetime import datetime
+import uuid
 
 class Role(db.Model):
     __tablename__ = "roles"
@@ -16,7 +18,7 @@ class Role(db.Model):
 
 class User(db.Model):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(postgresql.UUID(), primary_key=True, default=uuid.uuid4)
     firstName = Column(String(80), nullable=False)
     lastName = Column(String(80), nullable=True)
     username = Column(String(80), unique=True, nullable=False)
@@ -24,10 +26,11 @@ class User(db.Model):
     mobileNo = Column(String(10), unique=True, nullable=False)
     password_hash = Column(String(), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_uuid = db.Column(postgresql.UUID(), db.ForeignKey('users.uuid'))
+    updated_by_uuid = db.Column(postgresql.UUID(), db.ForeignKey('users.uuid'))
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+    isActive = Column(db.Boolean, default=True, nullable=False)
     # Relationships
     role = relationship("Role", back_populates="users")
     businesses = relationship("Business", secondary=user_business, back_populates="users")

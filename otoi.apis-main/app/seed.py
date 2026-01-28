@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from flask import Flask
 from sqlalchemy import create_engine, text
 
 from app.extensions import db
@@ -13,7 +12,7 @@ from app.models.business import (
 from app.models.user import User, Role
 from app.models.common import Address
 from app.models.active import ActiveType, Status
-from app.models.inventory import MeasuringUnit, ItemType, ItemCategory
+from app.models.inventory import MeasuringUnit, ItemType
 
 
 # --------------------------------------------------
@@ -25,16 +24,17 @@ def create_database():
     Uses SQLALCHEMY_DATABASE_URI from Flask config.
     """
     database_uri = db.engine.url.render_as_string(hide_password=False)
-    base_uri = database_uri.rsplit("/", 1)[0]
-    db_name = database_uri.rsplit("/", 1)[1]
+    base_uri, db_name = database_uri.rsplit("/", 1)
 
     engine = create_engine(base_uri, isolation_level="AUTOCOMMIT")
 
     with engine.connect() as connection:
-        query = text("SELECT 1 FROM pg_database WHERE datname = :db_name")
-        result = connection.execute(query, {"db_name": db_name})
+        exists = connection.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :name"),
+            {"name": db_name},
+        ).fetchone()
 
-        if not result.fetchone():
+        if not exists:
             connection.execute(text(f'CREATE DATABASE "{db_name}"'))
             print(f"Database '{db_name}' created successfully.")
         else:
@@ -66,7 +66,7 @@ def seed_data():
         if not Role.query.filter_by(name=role_name).first():
             db.session.add(Role(name=role_name))
 
-    # ---- User + Business ----
+    # ---- Admin User + Business ----
     if not User.query.filter_by(username="admin").first():
         admin = User(
             firstName="admin",
@@ -93,14 +93,12 @@ def seed_data():
             email="info@evototechnologies.com",
             subscription_plan="Owner",
             created_at=datetime.utcnow(),
-            address=address,
         )
 
+        business.addresses.append(address)
         admin.businesses.append(business)
 
-        db.session.add(admin)
-        db.session.add(business)
-
+        db.session.add_all([admin, business])
         print("Default admin user created.")
 
     # ---- Active Types ----
@@ -123,6 +121,16 @@ def seed_data():
         if not IndustryType.query.filter_by(name=name).first():
             db.session.add(IndustryType(name=name))
 
+    # ---- Measuring Units ----
+    for name in ["PCS", "KG", "LITER"]:
+        if not MeasuringUnit.query.filter_by(name=name).first():
+            db.session.add(MeasuringUnit(name=name))
+
+    # ---- Item Types ----
+    for name in ["Product", "Service"]:
+        if not ItemType.query.filter_by(name=name).first():
+            db.session.add(ItemType(name=name))        
+
     # ---- Registration Types ----
     for name in [
         "Private Limited Company",
@@ -135,45 +143,3 @@ def seed_data():
 
     db.session.commit()
     print("Core data seeded successfully.")
-
-
-# --------------------------------------------------
-# SAFE SEEDERS
-# --------------------------------------------------
-def seed_measuring_units():
-    units = ["PCS", "KG", "LITER"]
-
-    for unit in units:
-        if not MeasuringUnit.query.filter_by(name=unit).first():
-            db.session.add(MeasuringUnit(name=unit))
-
-    db.session.commit()
-    print("Measuring units seeded successfully.")
-
-
-def seed_item_types():
-    types = [
-        "Raw Material",
-        "Finished Goods",
-        "Semi-Finished Goods",
-        "Consumables",
-        "Packing Material"
-    ]
-
-    for name in types:
-        if not ItemType.query.filter_by(name=name).first():
-            db.session.add(ItemType(name=name))
-
-    db.session.commit()
-    print("Item types seeded successfully.")
-
-
-def seed_item_categories():
-    categories = ["Grocery", "Electronics", "Stationery"]
-
-    for name in categories:
-        if not ItemCategory.query.filter_by(name=name).first():
-            db.session.add(ItemCategory(name=name))
-
-    db.session.commit()
-    print("Item categories seeded successfully.")

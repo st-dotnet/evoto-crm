@@ -3,6 +3,7 @@ from app.extensions import db
 from app.models import ItemCategory
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
 from uuid import UUID
+from sqlalchemy.exc import IntegrityError
 
 item_category_blueprint = Blueprint("item_category", __name__, url_prefix="/item-categories")
 
@@ -75,8 +76,13 @@ def create_item_category():
     if not data.get("name"):
         return jsonify({"error": "Name is required"}), 400
 
+    category_name = data["name"].strip()
+    existing_category = ItemCategory.query.filter(db.func.lower(ItemCategory.name) == category_name.lower()).first()
+    if existing_category:
+        return jsonify({"message": "Category with this name already exists"}), 409
+
     try:
-        category = ItemCategory(name=data["name"].strip())
+        category = ItemCategory(name=category_name)
         set_created_fields(category)
         set_business(category)
 
@@ -89,6 +95,9 @@ def create_item_category():
             "name": category.name
         }), 201
 
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"message": "Category with this name already exists"}), 409
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

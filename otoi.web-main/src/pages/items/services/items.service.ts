@@ -23,7 +23,7 @@ const getAuthToken = (): string | null => {
   }
 };
 
-export const getItemById = async (id: number) => {
+export const getItemById = async (id: string) => {
   const response = await axios.get(`${API_URL}/items/${id}`);
   return response.data;
 };
@@ -102,7 +102,7 @@ export const createItem = async (payload: any): Promise<ApiResponse> => {
   }
 }
 
-export const updateItem = async (id: number, payload: any): Promise<ApiResponse> => {
+export const updateItem = async (id: string, payload: any): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return {
@@ -170,9 +170,12 @@ export const updateItem = async (id: number, payload: any): Promise<ApiResponse>
 };
 
 
-export const deleteItem = async (id: number) => {
-  const response = await axios.delete(`${API_URL}/items/${id}`)
-  return response.data
+export const deleteItem = async (id: string) => {
+  const token = getAuthToken();
+  const response = await axios.delete(`${API_URL}/items/${id}`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+  });
+  return response.data;
 }
 
 export const getItemCategories = async () => {

@@ -14,7 +14,7 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 // Props for the modal
 interface IModalLeadProps {
@@ -99,10 +99,48 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
-  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols").nullable(),
+  pin: Yup.string()
+    .matches(/^[0-9]+$/, "Pin must be a number")
+    .when("status", {
+      is: (val: string) => val === "4",
+      then: (schema) => schema.required("Pin is required"),
+      otherwise: (schema) => schema.nullable(),
+    }),
+  email: Yup.string()
+    .nullable()
+    .email("Invalid email format")
+    .test("mobile-or-email", "Either Mobile or Email is required", function (value) {
+      const { mobile } = this.parent;
+      return !!(value || mobile);
+    })
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Invalid email format"
+    ),
   status: Yup.string().required("Status is required"),
-});
+  reason: Yup.string().when("status", {
+    is: (val: string) => val === "5",
+    then: (schema) => schema.required("Reason is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  country: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("Country is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  state: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("State is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  city: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("City is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+}, [["status", "status"]]);
 
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const [loading, setLoading] = useState(false);
@@ -180,10 +218,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
         onOpenChange(false);
       } catch (error: any) {
-        setStatus(
-          error?.response?.data?.message || error?.response?.data?.error ||
-          "Something went wrong. Please try again."
-        );
+        const errorMessage = error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Something went wrong. Please try again.";
+        setStatus(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setSubmitting(false);
         setLoading(false);
@@ -307,6 +346,27 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                     {...formik.getFieldProps("mobile")}
                     className="input"
                     type="text"
+                    inputMode="tel"
+                    onChange={(e) => {
+                      // Allow numbers and hyphens, but not more than one hyphen in a row
+                      let value = e.target.value.replace(/[^0-9-]/g, '');
+                      value = value.replace(/--+/g, '-');
+                      // Limit total length to 15 characters (including hyphens)
+                      value = value.slice(0, 10);
+                      formik.setFieldValue("mobile", value);
+                      // Mark as touched to show errors
+                      if (!formik.touched.mobile) {
+                        formik.setFieldTouched("mobile", true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Prevent typing a hyphen at the start or after another hyphen
+                      if (e.key === '-' &&
+                        (formik.values.mobile.length === 0 ||
+                          formik.values.mobile.endsWith('-'))) {
+                        e.preventDefault();
+                      }
+                    }}
                     onInput={(e) => {
                       const input = e.target as HTMLInputElement;
                       if (input.value.length > 10) {
@@ -434,7 +494,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             formik.setFieldValue("state", "");
                             formik.setFieldValue("city", "");
                           }}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.country && formik.errors.country,
+                            }
+                          )}
                         >
                           <option value="">--Select Country--</option>
                           {Country.getAllCountries().map((c) => (
@@ -443,6 +508,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             </option>
                           ))}
                         </select>
+                        {formik.touched.country && formik.errors.country && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.country}
+                          </span>
+                        )}
                       </div>
 
                       {/* State */}
@@ -457,7 +527,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             formik.setFieldValue("city", "");
                           }}
                           disabled={!formik.values.country}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.state && formik.errors.state,
+                            }
+                          )}
                         >
                           <option value="">--Select State--</option>
                           {formik.values.country &&
@@ -467,6 +542,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                               </option>
                             ))}
                         </select>
+                        {formik.touched.state && formik.errors.state && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.state}
+                          </span>
+                        )}
                       </div>
 
                       {/* City */}
@@ -477,7 +557,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                         <select
                           {...formik.getFieldProps("city")}
                           disabled={!formik.values.state}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.city && formik.errors.city,
+                            }
+                          )}
                         >
                           <option value="">--Select City--</option>
                           {formik.values.country &&
@@ -488,17 +573,27 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                               </option>
                             ))}
                         </select>
+                        {formik.touched.city && formik.errors.city && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.city}
+                          </span>
+                        )}
                       </div>
 
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Pin Code</label>
+                        <label className="block text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("pin")}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.pin && formik.errors.pin,
+                            }
+                          )}
                         />
                         {formik.touched.pin && formik.errors.pin && (
                           <span role="alert" className="text-xs text-red-500">
@@ -514,12 +609,17 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {formik.values.status === "5" && (
                   <div className="flex flex-col gap-1.5 col-span-full">
-                    <label className="block text-sm font-medium text-gray-700">Reason</label>
+                    <label className="block text-sm font-medium text-gray-700">Reason<span style={{ color: "red" }}>*</span></label>
                     <textarea
                       placeholder="Reason"
                       autoComplete="off"
                       {...formik.getFieldProps("reason")}
-                      className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[100px]"
+                      className={clsx(
+                        "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                        {
+                          "border-red-500 ": formik.touched.reason && formik.errors.reason,
+                        }
+                      )}
                     />
                     {formik.touched.reason && formik.errors.reason && (
                       <span role="alert" className="text-xs text-red-500">

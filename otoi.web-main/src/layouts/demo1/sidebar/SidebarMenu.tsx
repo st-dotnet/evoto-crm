@@ -17,6 +17,7 @@ import {
   MenuTitle
 } from '@/components/menu';
 import { useMenus } from '@/providers';
+import { useAuthContext } from '@/auth';
 
 const SidebarMenu = () => {
   const linkPl = 'ps-[10px]';
@@ -194,7 +195,7 @@ const SidebarMenu = () => {
           <MenuSub
             className={clsx(
               !item.collapse &&
-                'relative before:absolute before:top-0 before:bottom-0 before:border-s before:border-gray-200',
+              'relative before:absolute before:top-0 before:bottom-0 before:border-s before:border-gray-200',
               itemsGap,
               !item.collapse && accordionBorderLeft[level],
               !item.collapse && accordionPl[level],
@@ -284,11 +285,37 @@ const SidebarMenu = () => {
   };
 
   const { getMenuConfig } = useMenus();
+  const { currentUser } = useAuthContext();
   const menuConfig = getMenuConfig('primary');
+
+  const filterMenuByRole = (config: TMenuConfig) => {
+    if (!currentUser || currentUser.role === 'Admin') return config;
+
+    let currentHeading = '';
+    return config.filter((item) => {
+      if (item.heading) {
+        currentHeading = item.heading;
+      }
+
+      if (currentUser.role === 'Manager') {
+        // Manager sees General, Accounting, Workspace, Apps, etc. but NOT "User" heading items or "Miscellaneous"
+        return currentHeading !== 'User' && currentHeading !== 'Miscellaneous';
+      }
+
+      if (currentUser.role === 'User') {
+        // User only sees the "User" heading items
+        return currentHeading === 'User';
+      }
+
+      return true;
+    });
+  };
+
+  const filteredMenuConfig = menuConfig ? filterMenuByRole(menuConfig) : null;
 
   return (
     <Menu highlight={true} multipleExpand={false} className={clsx('flex flex-col grow', itemsGap)}>
-      {menuConfig && buildMenu(menuConfig)}
+      {filteredMenuConfig && buildMenu(filteredMenuConfig)}
     </Menu>
   );
 };

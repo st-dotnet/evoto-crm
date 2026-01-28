@@ -43,9 +43,9 @@ const ModalAccountDeactivated = ({ open, onOpenChange }: IModalAccountDeactivate
             support if this is an error or for reactivation.
           </div>
 
-          <Link to="/" className="btn btn-primary flex justify-center">
+          {/* <Link to="/" className="btn btn-primary flex justify-center">
             Go to Home
-          </Link>
+          </Link> */}
         </DialogBody>
       </DialogContent>
     </Dialog>

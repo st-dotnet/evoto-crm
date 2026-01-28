@@ -22,6 +22,14 @@ interface Customer {
   created_at?: string;
 }
 
+const STATUS_LABEL_TO_VALUE: Record<string, string> = {
+  "1": "New",
+  "2": "In-Progress",
+  "3": "Quote Given",
+  "4": "Win",
+  "5": "Lose",
+};
+
 export const CustomerDetails = () => {
   const { uuid } = useParams<{ uuid: string }>();
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -93,7 +101,7 @@ export const CustomerDetails = () => {
             <p><strong>Email:</strong> {customer.email || "--"}</p>
             <p><strong>Mobile:</strong> {customer.mobile || "--"}</p>
             <p><strong>GST:</strong> {customer.gst || "--"}</p>
-            <p><strong>Status:</strong> {customer.status || "--"}</p>
+            <p><strong>Status:</strong> {STATUS_LABEL_TO_VALUE[customer.status || ""] ||"--"}</p>
             <p><strong>Person-Type:</strong> {customer.person_type || "--"}</p>
             <p><strong>Created:</strong> {customer.created_at || "--"}</p>
           </div>

@@ -36,7 +36,10 @@ def upgrade():
             batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))
     
     # Generate UUIDs for existing rows that don't have one
-    conn.execute('UPDATE item_categories SET uuid = gen_random_uuid() WHERE uuid IS NULL')
+    conn.execute(sa.text('UPDATE item_categories SET uuid = gen_random_uuid() WHERE uuid IS NULL'))
+    
+    # ... rest of your upgrade code ...
+
     
     # Now alter the column to be NOT NULL and set up the primary key
     with op.batch_alter_table('item_categories', schema=None) as batch_op:

@@ -62,50 +62,50 @@ def upgrade():
     with op.batch_alter_table('businesses', schema=None) as batch_op:
         batch_op.drop_constraint('businesses_address_id_fkey', type_='foreignkey')  # Dropping old foreign key
     
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.drop_constraint('person_addresses_person_id_fkey', type_='foreignkey')  # Dropping old foreign key
-        batch_op.drop_constraint('person_addresses_address_id_fkey', type_='foreignkey')  # Dropping old foreign key
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.drop_constraint('person_addresses_person_id_fkey', type_='foreignkey')  # Dropping old foreign key
+    #     batch_op.drop_constraint('person_addresses_address_id_fkey', type_='foreignkey')  # Dropping old foreign key
     
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.drop_constraint('persons_person_type_id_fkey', type_='foreignkey')  # Dropping old foreign key
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.drop_constraint('persons_person_type_id_fkey', type_='foreignkey')  # Dropping old foreign key
     
     # Add UUID columns to all remaining tables
     with op.batch_alter_table('addresses', schema=None) as batch_op:
         batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
     
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
     
-    with op.batch_alter_table('person_types', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
+    # with op.batch_alter_table('person_types', schema=None) as batch_op:
+    #     batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
     
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
-        batch_op.add_column(sa.Column('status', sa.String(length=80), nullable=False))  # Added status column
-        batch_op.add_column(sa.Column('reason', sa.String(length=200), nullable=True))  # Added reason column
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
+    #     batch_op.add_column(sa.Column('status', sa.String(length=80), nullable=False))  # Added status column
+    #     batch_op.add_column(sa.Column('reason', sa.String(length=200), nullable=True))  # Added reason column
     
     with op.batch_alter_table('status_list', schema=None) as batch_op:
         batch_op.add_column(sa.Column('uuid', sa.UUID(), nullable=True))  # Added UUID column as nullable first
     
     # Populate UUID values for all tables
     op.execute("UPDATE addresses SET uuid = gen_random_uuid() WHERE uuid IS NULL")
-    op.execute("UPDATE person_addresses SET uuid = gen_random_uuid() WHERE uuid IS NULL")
-    op.execute("UPDATE person_types SET uuid = gen_random_uuid() WHERE uuid IS NULL")
-    op.execute("UPDATE persons SET uuid = gen_random_uuid() WHERE uuid IS NULL")
+    # op.execute("UPDATE person_addresses SET uuid = gen_random_uuid() WHERE uuid IS NULL")
+    # op.execute("UPDATE person_types SET uuid = gen_random_uuid() WHERE uuid IS NULL")
+    # op.execute("UPDATE persons SET uuid = gen_random_uuid() WHERE uuid IS NULL")
     op.execute("UPDATE status_list SET uuid = gen_random_uuid() WHERE uuid IS NULL")
     
     # Make all UUID columns NOT NULL
     with op.batch_alter_table('addresses', schema=None) as batch_op:
         batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
     
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
     
-    with op.batch_alter_table('person_types', schema=None) as batch_op:
-        batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
+    # with op.batch_alter_table('person_types', schema=None) as batch_op:
+    #     batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
     
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
     
     with op.batch_alter_table('status_list', schema=None) as batch_op:
         batch_op.alter_column('uuid', nullable=False)  # Make UUID NOT NULL
@@ -114,14 +114,14 @@ def upgrade():
     with op.batch_alter_table('addresses', schema=None) as batch_op:
         batch_op.drop_column('id')  # Dropping old ID column
     
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.drop_column('id')  # Dropping unnecessary column
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.drop_column('id')  # Dropping unnecessary column
     
-    with op.batch_alter_table('person_types', schema=None) as batch_op:
-        batch_op.drop_column('id')  # Dropping old ID column
+    # with op.batch_alter_table('person_types', schema=None) as batch_op:
+    #     batch_op.drop_column('id')  # Dropping old ID column
     
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.drop_column('id')  # Dropping unnecessary column
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.drop_column('id')  # Dropping unnecessary column
     
     with op.batch_alter_table('status_list', schema=None) as batch_op:
         batch_op.drop_column('id')  # Dropping old ID column
@@ -133,21 +133,21 @@ def upgrade():
             None, 'addresses', ['address_id'], ['uuid'], ondelete='CASCADE'  # Creating new foreign key
         )
     
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.alter_column('person_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=False)  # Changing column type
-        batch_op.alter_column('address_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=False)  # Changing column type
-        batch_op.create_foreign_key(
-            None, 'addresses', ['address_id'], ['uuid'], ondelete='CASCADE'  # Creating new foreign key
-        )
-        batch_op.create_foreign_key(
-            None, 'persons', ['person_id'], ['uuid'], ondelete='CASCADE'  # Creating new foreign key
-        )
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.alter_column('person_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=False)  # Changing column type
+    #     batch_op.alter_column('address_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=False)  # Changing column type
+    #     batch_op.create_foreign_key(
+    #         None, 'addresses', ['address_id'], ['uuid'], ondelete='CASCADE'  # Creating new foreign key
+    #     )
+    #     batch_op.create_foreign_key(
+    #         None, 'persons', ['person_id'], ['uuid'], ondelete='CASCADE'  # Creating new foreign key
+    #     )
     
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.alter_column('person_type_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=True)  # Changing column type
-        batch_op.create_foreign_key(
-            None, 'person_types', ['person_type_id'], ['uuid'], ondelete='SET NULL'  # Creating new foreign key
-        )
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.alter_column('person_type_id', existing_type=sa.INTEGER(), type_=sa.UUID(), existing_nullable=True)  # Changing column type
+    #     batch_op.create_foreign_key(
+    #         None, 'person_types', ['person_type_id'], ['uuid'], ondelete='SET NULL'  # Creating new foreign key
+    #     )
     
     # ### end Alembic commands ###
 
@@ -187,29 +187,29 @@ def downgrade():
         batch_op.alter_column('address_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=False)  # Restore 'address_id' type to INTEGER
 
     # Step 5: Alter the 'person_addresses' table to revert column types and drop foreign keys
-    with op.batch_alter_table('person_addresses', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')  # Drop foreign keys
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('person_addresses_address_id_fkey', 'addresses', ['address_id'], ['id'], ondelete='CASCADE')  # Recreate old foreign key to 'addresses'
-        batch_op.create_foreign_key('person_addresses_person_id_fkey', 'persons', ['person_id'], ['id'], ondelete='CASCADE')  # Recreate old foreign key to 'persons'
-        batch_op.alter_column('address_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=False)  # Revert address_id back to INTEGER
-        batch_op.alter_column('person_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=False)  # Revert person_id back to INTEGER
-        batch_op.drop_column('uuid')  # Drop UUID column
+    # with op.batch_alter_table('person_addresses', schema=None) as batch_op:
+    #     batch_op.drop_constraint(None, type_='foreignkey')  # Drop foreign keys
+    #     batch_op.drop_constraint(None, type_='foreignkey')
+    #     batch_op.create_foreign_key('person_addresses_address_id_fkey', 'addresses', ['address_id'], ['id'], ondelete='CASCADE')  # Recreate old foreign key to 'addresses'
+    #     batch_op.create_foreign_key('person_addresses_person_id_fkey', 'persons', ['person_id'], ['id'], ondelete='CASCADE')  # Recreate old foreign key to 'persons'
+    #     batch_op.alter_column('address_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=False)  # Revert address_id back to INTEGER
+    #     batch_op.alter_column('person_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=False)  # Revert person_id back to INTEGER
+    #     batch_op.drop_column('uuid')  # Drop UUID column
 
     # Step 6: Alter the 'person_types' table to drop 'uuid' and restore 'id'
-    with op.batch_alter_table('person_types', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('id', sa.INTEGER(), server_default=sa.text("nextval('person_types_id_seq'::regclass)"), autoincrement=True, nullable=False))  # Restore 'id'
-        batch_op.drop_column('uuid')  # Drop 'uuid' column
+    # with op.batch_alter_table('person_types', schema=None) as batch_op:
+    #     batch_op.add_column(sa.Column('id', sa.INTEGER(), server_default=sa.text("nextval('person_types_id_seq'::regclass)"), autoincrement=True, nullable=False))  # Restore 'id'
+    #     batch_op.drop_column('uuid')  # Drop 'uuid' column
 
     # Step 7: Alter the 'persons' table to drop new columns (status, reason, uuid) and revert person_type_id to INTEGER
-    with op.batch_alter_table('persons', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('id', sa.INTEGER(), server_default=sa.text("nextval('persons_id_seq'::regclass)"), autoincrement=True, nullable=False))  # Restore 'id'
-        batch_op.drop_constraint(None, type_='foreignkey')  # Drop foreign key constraint
-        batch_op.create_foreign_key('persons_person_type_id_fkey', 'person_types', ['person_type_id'], ['id'], ondelete='SET NULL')  # Recreate old foreign key to 'person_types'
-        batch_op.alter_column('person_type_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=True)  # Restore person_type_id back to INTEGER
-        batch_op.drop_column('status')  # Drop 'status' column
-        batch_op.drop_column('reason')  # Drop 'reason' column
-        batch_op.drop_column('uuid')  # Drop 'uuid' column
+    # with op.batch_alter_table('persons', schema=None) as batch_op:
+    #     batch_op.add_column(sa.Column('id', sa.INTEGER(), server_default=sa.text("nextval('persons_id_seq'::regclass)"), autoincrement=True, nullable=False))  # Restore 'id'
+    #     batch_op.drop_constraint(None, type_='foreignkey')  # Drop foreign key constraint
+    #     batch_op.create_foreign_key('persons_person_type_id_fkey', 'person_types', ['person_type_id'], ['id'], ondelete='SET NULL')  # Recreate old foreign key to 'person_types'
+    #     batch_op.alter_column('person_type_id', existing_type=sa.UUID(), type_=sa.INTEGER(), existing_nullable=True)  # Restore person_type_id back to INTEGER
+    #     batch_op.drop_column('status')  # Drop 'status' column
+    #     batch_op.drop_column('reason')  # Drop 'reason' column
+    #     batch_op.drop_column('uuid')  # Drop 'uuid' column
 
     # Step 8: Alter the 'status_list' table to restore 'id' and drop 'uuid'
     with op.batch_alter_table('status_list', schema=None) as batch_op:

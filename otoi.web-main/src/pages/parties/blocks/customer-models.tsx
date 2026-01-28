@@ -41,12 +41,6 @@ export type Customer = {
   mobile: string;
   gst: string;
 
-  // Optional fields
-  address?: string;
-  activity_type?: string;
-  created_at?: string;
-  status?: string;
-
   // Relations
   customer_type?: CustomerType;
 

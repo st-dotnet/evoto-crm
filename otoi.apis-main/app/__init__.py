@@ -16,15 +16,8 @@ def create_app():
     register_cli(app)
 
     # Enable CORS
-    # CORS(app)
-    CORS(
-    app,
-    resources={r"/api/*": {"origins": "*"}},
-    supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization"],
-    expose_headers=["Authorization"],
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-)
+    #
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 
 

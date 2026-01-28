@@ -24,7 +24,7 @@ import { getItems, deleteItem, getItemById } from "../../pages/items/services/it
 
 
 interface InventoryItem {
-  item_id: number;
+  item_id: string; // UUID from backend
   item_name: string;
   item_code: string;
   opening_stock: number;
@@ -59,10 +59,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
-
 
   const navigate = useNavigate();
 
@@ -80,7 +79,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
       const mappedItems = itemsData
         .map((item: any) => ({
-          item_id: item.id || 0,
+          item_id: item.id || "",
           item_name: item.item_name || "Unnamed Item",
           item_code: item.item_code || `ITEM-${Date.now()}`,
           opening_stock: toNumber(item.opening_stock, 0),
@@ -90,6 +89,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
               ? toNumber(item.purchase_price, 0)
               : null,
           type: item.item_type || item.type || "Product",
+          item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
           category: item.category || "Uncategorized",
           business_id: item.business_id || null,
         }))
@@ -105,7 +105,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     }
   };
 
-
   // Fetch items on component mount or when dependencies change
   // useEffect(() => {
   //   fetchItems();
@@ -113,7 +112,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   useEffect(() => {
     fetchItems();
   }, [refreshStatus]); // Remove searchQuery from dependencies
-
 
   useEffect(() => {
     let result = [...items];
@@ -128,9 +126,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       );
     }
 
-    // Apply low stock filter
+    // Apply low stock filter (Products only)
     if (lowStock) {
-      result = result.filter((item) => (item.opening_stock || 0) <= 5);
+      result = result.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5);
     }
 
     setFilteredItems(result);
@@ -141,12 +139,15 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     setRefreshKey((prev) => prev + 1);
   }, [refreshStatus]);
 
-  // Calculate stock value and low stock count
-  const stockValue = items.reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
-  const lowStockCount = items.filter((item) => (item.opening_stock || 0) <= 5).length;
+  // Calculate stock value and low stock count (Products only)
+  const stockValue = items
+    .filter(item => item.item_type_id === 1)
+    .reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
+
+  const lowStockCount = items.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
-  const handleDeleteClick = (id: number, onClose?: () => void) => {
+  const handleDeleteClick = (id: string, onClose?: () => void) => {
     if (onClose) onClose();
     setItemToDelete(id);
     setDeleteDialogOpen(true);
@@ -158,7 +159,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     const num = Number(value);
     return isNaN(num) ? fallback : num;
   };
-
 
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
@@ -180,7 +180,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   // Edit an item
   const handleEdit = async (item: InventoryItem) => {
-    // console.log("Edit clicked for item:", item.item_id); // Debug log
+    // console.log("Edit clicked for item:", item.id); // Debug log
 
     try {
       setLoading(true);
@@ -215,6 +215,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       setLoading(false);
     }
   };
+ 
 
   // Column filter component
   const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
@@ -361,52 +362,52 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
         return (
           <div className="flex justify-center">
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
+            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleEdit(row.original);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEdit(row.original);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate(`/items/inventory/${row.original.item_id}`);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Details
-              </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigate(`/items/inventory/${row.original.item_id}`);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleDeleteClick(row.original.item_id, () => setIsOpen(false));
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                <span className="text-red-500">Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteClick(row.original.item_id, () => setIsOpen(false));
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
         );
@@ -428,55 +429,46 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
 
       {/* Summary Cards */}
-      <div className="row g-4 mb-5" style={{ display: "flex", gap: "20em" }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
         {/* Stock Value */}
-        <div className="col-md-4" style={{ width: "30em" }}>
-          <div className="card border rounded-3">
-            <div className="card-body py-4 px-5 d-flex justify-content-between align-items-center">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <i className="bi bi-graph-up text-primary fs-5"></i>
-                  <span className="fw-semibold text-primary">Stock Value</span>
-                </div>
-                <div className="fs-3 fw-bold">₹ {stockValue.toLocaleString('en-IN')}</div>              </div>
-              <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
+        <div className="card border rounded-3 grow">
+          <div className="card-body py-4 px-5 flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <i className="bi bi-graph-up text-primary fs-5"></i>
+                <span className=" text-primary">Stock Value</span>
+              </div>
+              <div className="text-xl">₹ {stockValue.toLocaleString('en-IN')}</div>
             </div>
+            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
         </div>
 
         {/* Low Stock */}
-        <div className="col-md-4" style={{ width: "30em" }}>
-          <div className="card border rounded-3">
-            <div className="card-body py-4 px-5 d-flex justify-content-between align-items-center">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <i className="bi bi-box-seam text-warning fs-5"></i>
-                  <span className="fw-semibold text-warning">Low Stock</span>
-                </div>
-                <div className="fs-3 fw-bold">{lowStockCount}</div>
+        <div className="card border rounded-3 grow">
+          <div className="card-body py-4 px-5 flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <i className="bi bi-box-seam text-warning fs-5"></i>
+                <span className="text-warning">Low Stock</span>
               </div>
-              <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
+              <div className="text-xl ml-3"> {lowStockCount}</div>
             </div>
+            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
           </div>
         </div>
       </div>
 
       {/* Search and Buttons */}
-      <div className="d-flex gap-3 mb-5" style={{ display: 'flex' }} >
-        {/* <input
-          className="form-control w-250px"
-          placeholder="Search Item"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        /> */}
+      <div className="flex flex-wrap gap-2.5 mb-5">
         <button
-          className={`btn ${lowStock ? "btn-primary" : "btn-light"}`}
+          className={`btn btn-sm ${lowStock ? "btn-primary" : "btn-light"}`}
           onClick={() => setLowStock(!lowStock)}
         >
-          Show Low Stock
+          {lowStock ? "Showing Low Stock" : "Show Low Stock"}
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-sm btn-primary"
           onClick={() => {
             setSelectedItem(null);
             setShowModal(true);
@@ -486,12 +478,12 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         </button>
       </div>
 
-     
+
 
       {/* Search Bar */}
       <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4 h-full">
         <div className="p-4 border-b">
-          <label className="input input-sm w-64">
+          <label className="input input-sm w-full md:w-64">
             <KeenIcon icon="magnifier" />
             <input
               type="text"
@@ -513,7 +505,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                 columns={columns}
                 data={filteredItems}
                 rowSelection
-                getRowId={(row) => row.item_id.toString()}
+                getRowId={(row) => row.item_id}
                 pagination={{ size: 5 }}
               />
             </div>
@@ -534,13 +526,14 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         item={
           selectedItem
             ? {
-              ...selectedItem,
-              purchase_price: selectedItem.purchase_price ?? undefined,
-              item_type_id: (selectedItem as any).item_type_id ?? 0,
-              category_id: (selectedItem as any).category_id ?? 0,
-              measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-              gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-            }
+                ...selectedItem,
+              
+                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                item_type_id: (selectedItem as any).item_type_id ?? 0,
+                category_id: (selectedItem as any).category_id ?? 0,
+                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+              }
             : null
         }
 

@@ -146,38 +146,23 @@ const Toolbar = ({
   };
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-      <div className="flex flex-wrap gap-2 lg:gap-5">
-        <div className="flex">
-          <label className="input input-sm">
-            <KeenIcon icon="magnifier" />
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
+        <div className="flex grow md:grow-0">
+          <label className="input input-sm w-full md:w-64 lg:w-72">
+            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
+              <KeenIcon icon="magnifier" />
+            </span>
             <input
               type="text"
               placeholder="Search vendors"
               value={searchInput}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
+              className="w-full focus:outline-none"
             />
           </label>
         </div>
-        {/* <div className="flex flex-wrap gap-2.5">
-          <label className="select-sm"> Person Type </label>
-          <Select
-            defaultValue=""
-            value={searchPersonType}
-            onValueChange={(value) => handlePersonTypeChange(value)}
-          >
-            <SelectTrigger className="w-28" size="sm">
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent className="w-32">
-              <SelectItem value="-1">All</SelectItem>
-              <SelectItem value="1">Customer</SelectItem>
-              <SelectItem value="2">Vendor</SelectItem>
-              <SelectItem value="3">Provider</SelectItem>
-            </SelectContent>
-          </Select>
-        </div> */}
       </div>
     </div>
   );
@@ -199,6 +184,7 @@ const PartiesVendorsContent = ({
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [filteredItems, setFilteredItems] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
 
   const navigate = useNavigate();
 
@@ -214,6 +200,19 @@ const PartiesVendorsContent = ({
     } finally {
       setLoading(false);
     }
+  };
+  const fetchPurchaseDetails = async (uuid: string) => {
+      try {
+          setFetchingDetails(true);
+          const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`);
+          setSelectedVendors(response.data);
+          return response.data;
+      } catch (error: any) {
+          toast.error("Failed to fetch vendors details");
+          return null;
+      } finally {
+          setFetchingDetails(false);
+      }
   };
 
   useEffect(() => {
@@ -241,11 +240,15 @@ const PartiesVendorsContent = ({
   }, [searchQuery, vendors]);
 
 
-  const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
-    event.preventDefault();
-    setSelectedVendors(rowData);
-    setPersonModalOpen(true);
-  };
+  // const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
+  //   event.preventDefault();
+  //   setSelectedVendors(rowData);
+  //   setPersonModalOpen(true);
+  // };
+const openPersonModal = (rowData: Vendor | null = null) => {
+  setSelectedVendors(rowData);
+  setPersonModalOpen(true);
+};
 
   const handleClose = () => {
     setPersonModalOpen(false);
@@ -356,12 +359,23 @@ const PartiesVendorsContent = ({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => {
+                {/* <DropdownMenuItem onClick={(e) => {
                   e.preventDefault();
                   openPersonModal(e, row.original);
-                }}>
+                }}> */}
+                  <DropdownMenuItem onClick={async () => {
+                    const details = await fetchPurchaseDetails(row.original.uuid!);
+                    if (details) openPersonModal(details);
+                  }}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  const details = await fetchPurchaseDetails(row.original.uuid!);
+                  if (details) setShowDeleteDialog(true);
+                }}>
+                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                  <span className="text-red-500">Delete</span>
                 </DropdownMenuItem>
                 {/* <DropdownMenuItem onClick={(e) => {
                 e.preventDefault();
@@ -386,17 +400,6 @@ const PartiesVendorsContent = ({
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Activity
               </DropdownMenuItem> */}
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setSelectedVendors(row.original);
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
-                </DropdownMenuItem>
-
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -448,15 +451,10 @@ const PartiesVendorsContent = ({
         data: rows,
         totalCount: total,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
-      });
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "An error occurred while fetching data. Please try again later";
+      toast.error(errorMessage);
 
       return {
         data: [],
@@ -497,26 +495,26 @@ const PartiesVendorsContent = ({
         </div>
       )}
       {!loading && (
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={false}
-        data={filteredItems}
-        loading={loading}
-        rowSelection={true}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultPersonType={searchPersonTypeQuery}
-            setDefaultPersonType={handlePersonTypeSearch}
-          />
-        }
-        layout={{ card: true }}
-      />
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={false}
+          data={filteredItems}
+          loading={loading}
+          rowSelection={true}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={handleSearch}
+              defaultPersonType={searchPersonTypeQuery}
+              setDefaultPersonType={handlePersonTypeSearch}
+            />
+          }
+          layout={{ card: true }}
+        />
       )}
       <ModalVendor
         open={personModalOpen}

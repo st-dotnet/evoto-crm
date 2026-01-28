@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 // Types
 export interface IItem {
-  item_id?: number;
+  item_id?: string; // Changed from number to string (UUID)
   item_name?: string;
   item_code?: string;
   item_type_id?: number;
@@ -16,7 +16,7 @@ export interface IItem {
   sales_price?: number | string;
   purchase_price?: number | string;
   gst_tax_rate?: number | string;
-  measuring_unit?: string;
+  measuring_unit?: string;  
   opening_stock?: number | string;
   low_stock_warning?: boolean;
   low_stock_quantity?: number;
@@ -60,7 +60,7 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
 
     const fetchItem = async () => {
       setLoading(true);
-      const res = await getItemById(Number(itemId));
+      const res = await getItemById(itemId);
 
       if (res) {
         // Map API response to IItem
