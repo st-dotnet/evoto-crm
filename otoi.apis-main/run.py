@@ -6,19 +6,20 @@ from app import create_app
 from app.seed import seed_data, create_database
 
 # Create the Flask app via factory
-app = create_app()
-app.config["SQLALCHEMY_ECHO"] = True
-app.config["DEBUG"] = True
-
-# CORS is already configured in app/__init__.py, no need to initialize again here
-
-# -----------------------------
-# Setup Logging
-# -----------------------------
-if not os.path.exists("logs"):
-    os.makedirs("logs")
-
-log_file = os.path.join("logs", "app.log")
+app = create_app()   
+app.config["SQLALCHEMY_ECHO"] = True   
+app.config["DEBUG"] = True   
+   
+# Enable CORS for your frontend domain   
+CORS(app)   
+   
+# -----------------------------   
+# Setup Logging   
+# -----------------------------   
+if not os.path.exists("logs"):   
+    os.makedirs("logs")   
+   
+log_file = os.path.join("logs", "app.log")   
 
 # Rotating log file: 5 MB each, keep 5 backups
 file_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
