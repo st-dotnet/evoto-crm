@@ -126,7 +126,7 @@ class Shipping(BaseMixin, db.Model):
 
     customer = relationship("Customer", back_populates="shipping_addresses")
     address = relationship("Address", back_populates="shippings")
-    lead_addresses = relationship("LeadAddress", back_populates="shipping", cascade="all, delete-orphan")
+    # lead_addresses = relationship("LeadAddress", back_populates="shipping", cascade="all, delete-orphan")
 
 
 
