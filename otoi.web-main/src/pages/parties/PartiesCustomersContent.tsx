@@ -551,7 +551,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             </DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete this customer?
+              Are you sure you want to delete <strong>{selectedPerson?.first_name} {selectedPerson?.last_name}</strong> this customer?
             </DialogDescription>
 
           </DialogHeader>

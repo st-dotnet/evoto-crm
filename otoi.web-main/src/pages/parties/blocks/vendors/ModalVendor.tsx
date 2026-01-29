@@ -107,6 +107,8 @@ const saveVendorSchema = Yup.object().shape({
     .min(6, "Minimum 6 numbers")
     .max(6, "Minimum 6 numbers")
     .required("Pin Code is required"),
+  address1: Yup.string().required("Address1 is required"), 
+  address2: Yup.string()
 });
 
 const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
@@ -331,13 +333,19 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
                   {/* Address 1 */}
                   <div className="flex flex-col gap-1.5">
                     <label className="block text-sm font-medium text-gray-700">
-                      Address 1
+                      Address 1<span className="text-red-500">*</span>
                     </label>
                     <input
                       placeholder="Address 1"
                       type="text"
                       {...formik.getFieldProps("address1")}
-                      className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className={clsx(
+                          "flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                          {
+                            "border-red-500":
+                              formik.touched.address1 && formik.errors.address1,
+                          }
+                        )}
                     />
                     {formik.touched.address1 && formik.errors.address1 && (
                       <span role="alert" className="text-xs text-red-500">

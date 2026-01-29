@@ -117,8 +117,8 @@ def create_vendor():
     data = request.get_json() or {}
 
     company_name = (data.get("company_name") or "").strip()
-    vendor_name = (data.get("vendor_name") or "").strip()
-    mobile = (data.get("mobile") or "").strip()
+    vendor_name = (data.get("vendor_name") or "").strip() or None
+    mobile = (data.get("mobile") or "").strip() or None
     email = (data.get("email") or "").strip() or None
     gst = (data.get("gst") or "").strip() or None
     address1 = (data.get("address1") or "").strip()
@@ -129,9 +129,9 @@ def create_vendor():
     pin = (data.get("pin") or "").strip()
 
     # ---------- REQUIRED FIELD VALIDATION ----------
-    if not company_name or not city or not state or not country or not pin or not gst:
+    if not company_name or not address1 or not city or not state or not country or not pin or not gst:
         return jsonify({
-            "error": "company_name, gst, city, state, country, and pin are required"
+            "error": "company_name, address1, gst, city, state, country, and pin are required"
         }), 400
 
     # ---------- MOBILE OR EMAIL REQUIRED ----------
@@ -190,21 +190,35 @@ def update_vendor(vendor_id):
     vendor = Vendor.query.get_or_404(vendor_id)
 
     company_name = (data.get("company_name") or vendor.company_name).strip()
-    vendor_name = (data.get("vendor_name") or vendor.vendor_name).strip()
-    mobile = (data.get("mobile") or "").strip() or vendor.mobile
-    email = (data.get("email") or "").strip() or vendor.email
+    # vendor_name is optional: allow clearing to None; if omitted, keep existing
+    if "vendor_name" in data:
+        vendor_name = (data.get("vendor_name") or "").strip() or None
+    else:
+        vendor_name = vendor.vendor_name
+    if "mobile" in data:
+        mobile = (data.get("mobile") or "").strip() or None
+    else:
+        mobile = vendor.mobile
+    if "email" in data:
+        email = (data.get("email") or "").strip() or None
+    else:
+        email = vendor.email
     gst = (data.get("gst") or "").strip() or vendor.gst
     address1 = (data.get("address1") or vendor.address1).strip()
-    address2 = (data.get("address2") or vendor.address2).strip() or None
+    # address2 is optional: allow clearing to None; if omitted, keep existing
+    if "address2" in data:
+        address2 = (data.get("address2") or "").strip() or None
+    else:
+        address2 = vendor.address2
     city = (data.get("city") or vendor.city).strip()
     state = (data.get("state") or vendor.state).strip()
     country = (data.get("country") or vendor.country).strip()
     pin = (data.get("pin") or vendor.pin).strip()
 
     # ---------- REQUIRED FIELD VALIDATION ----------
-    if not company_name or not city or not state or not country or not pin or not gst:
+    if not company_name or not address1 or not city or not state or not country or not pin or not gst:
         return jsonify({
-            "error": "company_name, gst, city, state, country, and pin are required"
+            "error": "company_name, address1, gst, city, state, country, and pin are required"
         }), 400
 
     # ---------- MOBILE OR EMAIL REQUIRED ----------

@@ -12,8 +12,8 @@ class Vendor(db.Model):
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     company_name = Column(String(200), nullable=False)
-    vendor_name = Column(String(200), nullable=False)
-    mobile = Column(String(15), nullable=False, unique=True)
+    vendor_name = Column(String(200), nullable=True)
+    mobile = Column(String(15), nullable=True, unique=True)
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
 
