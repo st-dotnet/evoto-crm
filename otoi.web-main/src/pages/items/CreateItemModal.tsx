@@ -46,7 +46,7 @@ interface ICategory {
 
 interface ICreateItemModalProps {
     open: boolean;
-    onOpenChange: () => void;
+    onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
     item: IItem | null;
 }
@@ -175,7 +175,7 @@ export default function CreateItemModal({
                     if (response?.success) {
                         toast.success(response.data?.message || "Item updated successfully");
                         onSuccess();
-                        onOpenChange();
+                        onOpenChange(false);
                     } else {
                         throw new Error(response?.error || "Failed to update item");
                     }
@@ -186,7 +186,7 @@ export default function CreateItemModal({
                         toast.success(response.data?.message || "Item created successfully");
                         onSuccess();
                         resetForm();
-                        onOpenChange();
+                        onOpenChange(false);
                     } else {
                         throw new Error(response?.error || "Failed to create item");
                     }
@@ -663,7 +663,7 @@ export default function CreateItemModal({
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => onOpenChange()}
+                                onClick={() => onOpenChange(false)}
                                 disabled={loading}
                             >
                                 Cancel
