@@ -207,6 +207,10 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
           toast.success("Lead created successfully");
 
+          if (response.data?.customer_already_exists) {
+            toast("Customer already exists. Linked this lead to the existing customer.");
+          }
+
           // If API returns created lead
           const createdUuid = response.data?.uuid;
           if (createdUuid) {

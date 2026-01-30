@@ -80,7 +80,7 @@ def signup():
     password = data.get("password") or ""
     password_confirmation = data.get("password_confirmation") or data.get("changepassword") or ""
     username = (data.get("username") or (email.split("@")[0] if email else "")).strip()
-    role_name = (data.get("role") or "User").strip()
+    # Always default to 'User' role; ignore any incoming role input
 
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400
@@ -94,10 +94,12 @@ def signup():
     if User.query.filter_by(email=email).first() is not None:
         return jsonify({"error": "email already exists"}), 400
 
-    # Resolve role
-    role = Role.query.filter_by(name=role_name).first()
-    if role is None and role_name:
-        return jsonify({"error": f"role '{role_name}' not found"}), 400
+    # Resolve default role 'User' (auto-create if missing)
+    role = Role.query.filter_by(name="User").first()
+    if role is None:
+        role = Role(name="User")
+        db.session.add(role)
+        db.session.flush()
 
     # Create user
     user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role)

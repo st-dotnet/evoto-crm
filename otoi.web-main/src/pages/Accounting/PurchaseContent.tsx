@@ -42,9 +42,22 @@ const Toolbar = ({
 }) => {
     const [searchInput, setSearchInput] = useState(defaultSearch);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearch(searchInput);
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [searchInput, setSearch]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchInput(e.target.value);
-        setSearch(e.target.value);
+    };
+    
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            setSearch(searchInput);
+        }
     };
 
     return (
@@ -57,6 +70,7 @@ const Toolbar = ({
                         placeholder="Search invoice"
                         value={searchInput}
                         onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
                     />
                 </label>
             </div>
@@ -68,6 +82,7 @@ const Toolbar = ({
 const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [entries, setEntries] = useState<PurchaseEntry[]>([]);
+    const [filteredEntries, setFilteredEntries] = useState<PurchaseEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetchingDetails, setFetchingDetails] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -81,7 +96,6 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                 params: {
                     page: 1,
                     items_per_page: 1000,
-                    query: searchQuery,
                 },
             });
             setEntries(response.data.data);
@@ -105,10 +119,24 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
             setFetchingDetails(false);
         }
     };
+    
+    useEffect(() => {
+      fetchEntries();
+    }, [refreshStatus]);
 
     useEffect(() => {
-        fetchEntries();
-    }, [refreshStatus, searchQuery]);
+        const trimmedQuery = searchQuery.trim().toLowerCase();
+        if (!trimmedQuery) {
+            setFilteredEntries(entries);
+            return;
+        }
+
+        setFilteredEntries(
+            entries.filter((entry) =>
+                (entry.invoice_number || "").toLowerCase().includes(trimmedQuery)
+            )
+        );
+    }, [searchQuery, entries]);
 
     const deleteEntry = async (uuid: string) => {
         try {
@@ -212,7 +240,7 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
             )}
             <DataGrid
                 columns={columns}
-                data={entries}
+                data={filteredEntries}
                 // loading={loading}
                 rowSelection={true}
                 getRowId={(row: any) => row.uuid}

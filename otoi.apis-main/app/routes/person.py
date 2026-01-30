@@ -85,7 +85,7 @@ def get_leads():
         description: A list of leads
     """
     try:
-        query = Lead.query
+        query = Lead.query.filter_by(is_deleted=False)
 
         # Filtering by name/email
         if "filter[name]" in request.args:
@@ -348,9 +348,9 @@ def create_lead():
                 return jsonify({"error": "Complete address is required when status is Win"}), 400        
 
         # ---- DUPLICATE MOBILE CHECK (SAFE) ----
-        if mobile:
-            if Lead.query.filter_by(mobile=mobile).first():
-                return jsonify({"error": "A lead with this mobile already exists"}), 400
+        # if mobile:
+        #     if Lead.query.filter_by(mobile=mobile, is_deleted=False).first():
+        #         return jsonify({"error": "A lead with this mobile already exists"}), 400
 
         # ---- CREATE LEAD ----
         lead = Lead(
@@ -394,9 +394,12 @@ def create_lead():
 
         # Sync lead to customer if status is "Win"
         current_app.logger.info(f"Syncing lead {lead.uuid} with status {lead.status}")
+        matched_existing_customer = False
+        customer_uuid = None
         try:
-            customer = sync_lead_to_customer(lead, address_data)
+            customer, matched_existing_customer = sync_lead_to_customer(lead, address_data)
             if customer:
+                customer_uuid = str(customer.uuid)
                 current_app.logger.info(f"Created/Updated customer {customer.uuid} for lead {lead.uuid}")
         except Exception as sync_err:
             current_app.logger.error(f"Error syncing lead to customer: {str(sync_err)}")
@@ -408,7 +411,9 @@ def create_lead():
 
         return jsonify({
             "message": "Lead created successfully",
-            "uuid": str(lead.uuid)
+            "uuid": str(lead.uuid),
+            "customer_uuid": customer_uuid,
+            "customer_already_exists": bool(matched_existing_customer)
         }), 201
     
     except IntegrityError as e:
@@ -469,7 +474,9 @@ def update_lead(lead_id):
     """
     try:
         data = request.get_json() or {}
-        lead = Lead.query.get_or_404(lead_id)
+        lead = Lead.query.filter_by(uuid=lead_id, is_deleted=False).first()
+        if not lead:
+            return jsonify({"error": "Lead not found"}), 404
 
         # Update Lead basic fields
         lead.first_name = data.get("first_name", lead.first_name)
@@ -629,7 +636,7 @@ def get_lead_by_id(lead_id):
         description: Lead not found
     """
     lead = (
-        Lead.query.filter_by(uuid=lead_id)
+        Lead.query.filter_by(uuid=lead_id, is_deleted=False)
         .options(joinedload(Lead.lead_addresses).joinedload(LeadAddress.address))
         .first()
     )
@@ -663,21 +670,16 @@ def get_lead_by_id(lead_id):
 @lead_blueprint.route("/<lead_uuid>", methods=["DELETE"])
 def delete_lead(lead_uuid):
     try:
-        lead = Lead.query.filter_by(uuid=lead_uuid).first()
+        lead = Lead.query.filter_by(uuid=lead_uuid, is_deleted=False).first()
 
         if not lead:
             return jsonify({"message": "Lead not found"}), 404
 
-        db.session.delete(lead)
+        lead.is_deleted = True
+        set_updated_fields(lead)
         db.session.commit()
 
-        return jsonify({"message": "Lead deleted successfully"}), 200
-
-    except IntegrityError as e:
-        db.session.rollback()
-        return jsonify({
-            "message": "Cannot delete lead. It is referenced in other records."
-        }), 409
+        return jsonify({"message": "Lead soft-deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
