@@ -139,13 +139,19 @@ def create_vendor():
         return jsonify({
             "error": "Either mobile or email is required"
         }), 400
+    
+    # ---------- DUPLICATE GST CHECK ----------
+    if gst:
+        gst_upper = gst.strip().upper()
+        duplicate = Vendor.query.filter(func.upper(Vendor.gst) == gst_upper).first()
+        if duplicate:
+            return jsonify({
+                "error": "A vendor with this GST already exists"
+            }), 400
 
-    # DUPLICATE CHECKS (CREATE ONLY)
+    # ---------- DUPLICATE MOBILE CHECK ----------
     if mobile and Vendor.query.filter(Vendor.mobile == mobile).first():
         return jsonify({"error": "Mobile number already exists"}), 400
-
-    if gst and Vendor.query.filter(func.upper(Vendor.gst) == gst).first():
-        return jsonify({"error": "GST already exists"}), 400
 
     vendor = Vendor(
         company_name=company_name,

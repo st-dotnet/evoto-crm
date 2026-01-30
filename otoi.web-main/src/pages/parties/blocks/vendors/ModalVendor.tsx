@@ -94,7 +94,11 @@ const saveVendorSchema = Yup.object().shape({
         }
         return true;
       }
-    ),
+    ).trim()
+        .matches(
+          /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+          "Invalid email format"
+        ),
   gst: Yup.string()
     .min(15, "Minimum 15 symbols")
     .max(15, "Maximum 15 symbols")
@@ -296,11 +300,11 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
               <div className="flex flex-col gap-1.5">
                 <label className="block text-sm font-medium text-gray-700">Email</label>
                 <input {...formik.getFieldProps("email")} className="input" />
-                {/* {formik.touched.email && formik.errors.email && (
+                {formik.touched.email && formik.errors.email && (
                   <span role="alert" className="text-xs text-red-500">
                     {formik.errors.email}
                   </span>
-                )} */}
+                )}
               </div>
 
               {/* Win → Address/GST fields */}

@@ -349,9 +349,9 @@ def create_lead():
                 return jsonify({"error": "Complete address is required when status is Win"}), 400        
 
         # ---- DUPLICATE MOBILE CHECK (SAFE) ----
-        if mobile:
-            if Lead.query.filter_by(mobile=mobile, is_deleted=False).first():
-                return jsonify({"error": "A lead with this mobile already exists"}), 400
+        # if mobile:
+        #     if Lead.query.filter_by(mobile=mobile, is_deleted=False).first():
+        #         return jsonify({"error": "A lead with this mobile already exists"}), 400
 
         # ---- CREATE LEAD ----
         lead = Lead(

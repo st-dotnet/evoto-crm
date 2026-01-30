@@ -65,9 +65,9 @@ const PartiesVendorsPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="#" className="btn btn-sm btn-light">
+              {/* <a href="#" className="btn btn-sm btn-light">
                 Import CSV
-              </a>
+              </a> */}
               <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
                 Add Vendor
               </a>
