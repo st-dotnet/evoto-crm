@@ -471,15 +471,6 @@ def update_lead(lead_id):
         data = request.get_json() or {}
         lead = Lead.query.get_or_404(lead_id)
 
-        # Update Lead basic fields
-        lead.first_name = data.get("first_name", lead.first_name)
-        lead.last_name = data.get("last_name", lead.last_name)
-        lead.mobile = data.get("mobile", lead.mobile)
-        lead.email = data.get("email", lead.email)
-        lead.gst = data.get("gst", lead.gst)
-        lead.status = data.get("status", lead.status)
-        data = request.get_json() or {}
-
         # ---- BASIC VALIDATION ----
         first_name = data.get("first_name")
         last_name = data.get("last_name")
@@ -492,6 +483,14 @@ def update_lead(lead_id):
 
         if not mobile and not email:
             return jsonify({"error": "Either mobile or email is required"}), 400
+
+        # Update Lead basic fields
+        lead.first_name = data.get("first_name", lead.first_name)
+        lead.last_name = data.get("last_name", lead.last_name)
+        lead.mobile = data.get("mobile", lead.mobile)
+        lead.email = data.get("email", lead.email)
+        lead.gst = data.get("gst", lead.gst)
+        lead.status = data.get("status", lead.status)
 
         lead.reason = data.get("reason", lead.reason)
         lead.referenced_by = data.get("referenced_by", lead.referenced_by)

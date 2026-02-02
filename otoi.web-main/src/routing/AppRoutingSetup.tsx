@@ -233,6 +233,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
           <Route path="/quotes/list" element={<QuotationPage/>} />
           <Route path="/quotes/new-quotation" element={<CreateQuotationPage />} />
+          <Route path="/quotes/list" element={<QuotationPage/>} />
+          <Route path="/quotes/new-quotation" element={<CreateQuotationPage />} />
           
           <Route
             path="/auth/account-deactivated"

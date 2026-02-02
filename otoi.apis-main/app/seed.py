@@ -143,3 +143,43 @@ def seed_data():
 
     db.session.commit()
     print("Core data seeded successfully.")
+
+
+# SAFE SEEDERS
+def seed_measuring_units():
+    units = ["PCS", "KG", "LITER"]
+
+    for unit in units:
+        if not MeasuringUnit.query.filter_by(name=unit).first():
+            db.session.add(MeasuringUnit(name=unit))
+
+    db.session.commit()
+    print("Measuring units seeded successfully.")
+
+
+def seed_item_types():
+    types = [
+        "Raw Material",
+        "Finished Goods",
+        "Semi-Finished Goods",
+        "Consumables",
+        "Packing Material",
+    ]
+
+    for name in types:
+        if not ItemType.query.filter_by(name=name).first():
+            db.session.add(ItemType(name=name))
+
+    db.session.commit()
+    print("Item types seeded successfully.")
+
+
+def seed_item_categories():
+    categories = ["Grocery", "Electronics", "Stationery"]
+
+    for name in categories:
+        if not ItemCategory.query.filter_by(name=name).first():
+            db.session.add(ItemCategory(name=name))
+
+    db.session.commit()
+    print("Item categories seeded successfully.")

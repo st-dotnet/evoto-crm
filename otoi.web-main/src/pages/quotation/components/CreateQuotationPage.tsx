@@ -33,6 +33,7 @@ import AddItemPage from "./AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import { Value } from "@radix-ui/react-select";
+import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 
 interface Party {
   id: string;
@@ -53,16 +54,17 @@ interface Address {
 }
 
 interface ShippingAddress {
-  id?: string;
-  type: "home" | "work" | "other";
+  uuid?: string;
+  address_type: "home" | "work" | "other";
   address1: string;
-  address2?: string;
+  address2: string | null;
   city: string;
   state: string;
   country: string;
   pin: string;
-  is_default?: boolean;
-  created_at?: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Customer {
@@ -164,6 +166,16 @@ const CreateQuotationPage = () => {
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
   const [isLoading, setIsLoading] = useState(false);
+
+  // Formik for shipping address
+  const shippingFormik = useFormik({
+    initialValues: shippingAddressInitialValues,
+    validationSchema: shippingAddressValidationSchema,
+    onSubmit: (values) => {
+      // console.log("Shipping address submitted:", values);
+    },
+  });
+
   const [formData, setFormData] = useState({
     quotationNo: "",
     quotationDate: today,
@@ -182,19 +194,18 @@ const CreateQuotationPage = () => {
   const [showCreateItemModal, setShowCreateItemModal] = useState(false);
   const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
   const [newPartyName, setNewPartyName] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [isShippingModalOpen, setIsShippingModalOpen] = useState<boolean>(false);
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
-  const [newShippingAddress, setNewShippingAddress] = useState<Omit<ShippingAddress, "id" | "is_default" | "created_at">>({
-    type: "home",
-    address1: "",
-    address2: "",
-    city: "",
-    state: "",
-    country: "",
-    pin: "",
-  });
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [isShippingModalOpen, setIsShippingModalOpen] =
+    useState<boolean>(false);
+  const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(
+    [],
+  );
+  const [selectedAddress, setSelectedAddress] =
+    useState<ShippingAddress | null>(null);
+  const [isAddressLoading, setIsAddressLoading] = useState<boolean>(false);
 
   const [notes, setNotes] = useState("");
   const [showNotesField, setShowNotesField] = useState(false);
@@ -370,6 +381,8 @@ const CreateQuotationPage = () => {
       const response = await axios.get(
         `${import.meta.env.VITE_APP_API_URL}/customers/${customerUUID}`,
       );
+
+      // Process shipping addresses from the API response
       let addresses: ShippingAddress[] = [];
       if (
         response.data.shipping_addresses &&
@@ -378,15 +391,17 @@ const CreateQuotationPage = () => {
         addresses = response.data.shipping_addresses.map(
           (addr: any, index: number) => ({
             ...addr,
-            id: addr.id || `api-${index}-${Date.now()}`,
+            uuid: addr.uuid || addr.id || `api-${index}-${Date.now()}`,
+            created_at: addr.created_at || new Date().toISOString(),
+            updated_at: addr.updated_at || new Date().toISOString(),
           }),
         );
       } else {
         if (response.data.shipping_address1 || response.data.shipping_city) {
           addresses = [
             {
-              id: `default-${Date.now()}`,
-              type: "home",
+              uuid: `default-${Date.now()}`,
+              address_type: "home",
               address1:
                 response.data.shipping_address1 || response.data.address1 || "",
               address2:
@@ -397,6 +412,8 @@ const CreateQuotationPage = () => {
                 response.data.shipping_country || response.data.country || "",
               pin: response.data.shipping_pin || response.data.pin || "",
               is_default: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             },
           ];
         }
@@ -422,12 +439,83 @@ const CreateQuotationPage = () => {
           response.data.shipping_country || response.data.country || "",
         shipping_pin: response.data.shipping_pin || response.data.pin || "",
       };
+
       setSelectedCustomer(customerData);
     } catch (error) {
-      console.error("Error fetching customer:", error);
+      // console.error("Error fetching customer:", error);
       toast.error("Failed to fetch customer details");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddAddress = async (newAddress: ShippingAddress) => {
+    if (!selectedCustomer?.uuid) {
+      toast.error("No customer selected");
+      return;
+    }
+
+    setIsAddressLoading(true);
+    try {
+      // Prepare the payload with the new shipping address
+      const payload = {
+        shipping_addresses: [...shippingAddresses, newAddress].map(addr => ({
+          uuid: addr.uuid,
+          address1: addr.address1,
+          address2: addr.address2 || null,
+          city: addr.city,
+          state: addr.state,
+          country: addr.country,
+          pin: addr.pin,
+          address_type: addr.address_type,
+          is_default: addr.is_default,
+        })),
+      };
+
+      // Call the API to update the customer with the new address
+      await axios.put(
+        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+        payload
+      );
+
+      // Update local state after successful API call
+      const updatedAddresses = [...shippingAddresses, newAddress];
+      setShippingAddresses(updatedAddresses);
+      
+      // Update the customer data with the new address
+      const updatedCustomer = {
+        ...selectedCustomer,
+        shipping_addresses: updatedAddresses,
+      };
+      setSelectedCustomer(updatedCustomer);
+      
+      // If this is the first address or set as default, select it
+      if (updatedAddresses.length === 1 || newAddress.is_default) {
+        setSelectedAddress(newAddress);
+      }
+      
+      toast.success("Address saved successfully.");
+    } catch (error: any) {
+      console.error("Error saving address:", error);
+      let errorMessage = "Failed to save address. Please try again.";
+      
+      if (error.response?.data?.error) {
+        const errorCode = error.response.data.error;
+        switch (errorCode) {
+          case "address_type_exists":
+            errorMessage = "An address with this type already exists";
+            break;
+          case "database_error":
+            errorMessage = "A database error occurred while saving the address";
+            break;
+          default:
+            errorMessage = error.response.data.error || errorMessage;
+        }
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsAddressLoading(false);
     }
   };
 
@@ -625,6 +713,17 @@ const CreateQuotationPage = () => {
           />
         </div>
       )}
+      {isAddressLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+          <SpinnerDotted
+            size={50}
+            thickness={100}
+            speed={100}
+            color="#1B84FF"
+          />
+        </div>
+      )}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button
@@ -779,36 +878,113 @@ const CreateQuotationPage = () => {
                 <div className="border rounded-xl min-h-[180px] p-4 bg-white">
                   <div className="flex justify-between items-start">
                     <div>
-                      {!selectedCustomer.shipping_address1 &&
-                        !selectedCustomer.shipping_city ? (
+                      {!selectedAddress && shippingAddresses.length === 0 ? (
+                        <div>
+                          <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                            {selectedCustomer.first_name}{" "}
+                            {selectedCustomer.last_name}
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              Same as Billing
+                            </span>
+                          </h4>
+                          <div className="mt-2 text-sm text-gray-700 space-y-1">
+                            {selectedCustomer.company_name && (
+                              <p className="font-medium">
+                                {selectedCustomer.company_name}
+                              </p>
+                            )}
+                            {selectedCustomer.contact_person && (
+                              <p>{selectedCustomer.contact_person}</p>
+                            )}
+                            <div className="mt-2 space-y-1">
+                              {selectedCustomer.mobile && (
+                                <p className="text-gray-600">
+                                  <span className="font-medium">Phone:</span>{" "}
+                                  {selectedCustomer.mobile}
+                                </p>
+                              )}
+                              {selectedCustomer.email && (
+                                <p className="text-gray-600">
+                                  <span className="font-medium">Email:</span>{" "}
+                                  {selectedCustomer.email}
+                                </p>
+                              )}
+                              {selectedCustomer.gst && (
+                                <p className="text-gray-600">
+                                  <span className="font-medium">GST:</span>{" "}
+                                  {selectedCustomer.gst}
+                                </p>
+                              )}
+                              <div className="mt-2 space-y-1">
+                                {selectedCustomer.address1 && (
+                                  <p className="text-gray-600">
+                                    <span className="font-medium">
+                                      Shipping Address 1:
+                                    </span>{" "}
+                                    {selectedCustomer.address1}
+                                  </p>
+                                )}
+                                {selectedCustomer.address2 && (
+                                  <p className="text-gray-600">
+                                    <span className="font-medium">
+                                      Shipping Address 2:
+                                    </span>{" "}
+                                    {selectedCustomer.address2}
+                                  </p>
+                                )}
+                                <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                  <p>
+                                    {selectedCustomer.city && (
+                                      <span>
+                                        <span className="font-medium">
+                                          City:
+                                        </span>{" "}
+                                        {selectedCustomer.city},{" "}
+                                      </span>
+                                    )}
+                                    {selectedCustomer.state && (
+                                      <span>
+                                        <span className="font-medium">
+                                          State:
+                                        </span>{" "}
+                                        {selectedCustomer.state},{" "}
+                                      </span>
+                                    )}
+                                    {selectedCustomer.pin && (
+                                      <span>
+                                        <span className="font-medium">
+                                          PIN:
+                                        </span>{" "}
+                                        {selectedCustomer.pin}
+                                      </span>
+                                    )}
+                                    {selectedCustomer.country && (
+                                      <span>
+                                        ,{" "}
+                                        <span className="font-medium">
+                                          Country:
+                                        </span>{" "}
+                                        {selectedCustomer.country}
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : !selectedAddress ? (
                         <div>
                           <h4 className="font-medium text-gray-900">
                             {selectedCustomer.first_name}{" "}
                             {selectedCustomer.last_name}
                           </h4>
                           <p className="text-sm text-gray-500 mt-1">
-                            Same as Billing Address
+                            No shipping address found
                           </p>
-                          <div className="mt-2 text-sm text-gray-600 space-y-1">
-                            {selectedCustomer.address1 && (
-                              <p>{selectedCustomer.address1}</p>
-                            )}
-                            {selectedCustomer.address2 && (
-                              <p>{selectedCustomer.address2}</p>
-                            )}
-                            <p>
-                              {[
-                                selectedCustomer.city,
-                                selectedCustomer.state,
-                                selectedCustomer.pin,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </p>
-                            {selectedCustomer.country && (
-                              <p>{selectedCustomer.country}</p>
-                            )}
-                          </div>
+                          <p className="text-sm text-gray-500">
+                            Click on "Add Address" to add a shipping address
+                          </p>
                         </div>
                       ) : (
                         <div>
@@ -845,55 +1021,55 @@ const CreateQuotationPage = () => {
                                 </p>
                               )}
                               <div className="mt-2 space-y-1">
-                                {selectedCustomer.shipping_address1 && (
+                                {selectedAddress.address1 && (
                                   <p className="text-gray-600">
                                     <span className="font-medium">
                                       Shipping Address 1:
                                     </span>{" "}
-                                    {selectedCustomer.shipping_address1}
+                                    {selectedAddress.address1}
                                   </p>
                                 )}
-                                {selectedCustomer.shipping_address2 && (
+                                {selectedAddress.address2 && (
                                   <p className="text-gray-600">
                                     <span className="font-medium">
                                       Shipping Address 2:
                                     </span>{" "}
-                                    {selectedCustomer.shipping_address2}
+                                    {selectedAddress.address2}
                                   </p>
                                 )}
                                 <div className="mt-2 text-sm text-gray-600 space-y-1">
                                   <p>
-                                    {selectedCustomer.shipping_city && (
+                                    {selectedAddress.city && (
                                       <span>
                                         <span className="font-medium">
                                           City:
                                         </span>{" "}
-                                        {selectedCustomer.shipping_city},{" "}
+                                        {selectedAddress.city},{" "}
                                       </span>
                                     )}
-                                    {selectedCustomer.shipping_state && (
+                                    {selectedAddress.state && (
                                       <span>
                                         <span className="font-medium">
                                           State:
                                         </span>{" "}
-                                        {selectedCustomer.shipping_state},{" "}
+                                        {selectedAddress.state},{" "}
                                       </span>
                                     )}
-                                    {selectedCustomer.shipping_pin && (
+                                    {selectedAddress.pin && (
                                       <span>
                                         <span className="font-medium">
                                           PIN:
                                         </span>{" "}
-                                        {selectedCustomer.shipping_pin}
+                                        {selectedAddress.pin}
                                       </span>
                                     )}
-                                    {selectedCustomer.shipping_country && (
+                                    {selectedAddress.country && (
                                       <span>
                                         ,{" "}
                                         <span className="font-medium">
                                           Country:
                                         </span>{" "}
-                                        {selectedCustomer.shipping_country}
+                                        {selectedAddress.country}
                                       </span>
                                     )}
                                   </p>
@@ -904,20 +1080,28 @@ const CreateQuotationPage = () => {
                         </div>
                       )}
                     </div>
-                    {(selectedCustomer.shipping_address1 ||
-                      selectedCustomer.shipping_city) && (
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsShippingModalOpen(true)}
-                            className="text-xs h-7"
-                          >
-                            <MapPin className="h-3.5 w-3.5 mr-1.5" />
-                            Change Address
-                          </Button>
-                        </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsShippingModalOpen(true)}
+                        className="text-xs h-7"
+                      >
+                        <MapPin className="h-3.5 w-3.5 mr-1.5 text-red-500" />
+                        Change Address
+                      </Button>
+                      {shippingAddresses.length < 3 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddAddressModalOpen(true)}
+                          className="text-xs h-7"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                          Add Address
+                        </Button>
                       )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -979,153 +1163,163 @@ const CreateQuotationPage = () => {
           </div>
         </div>
 
-        <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg">
-            <DialogHeader className="bg-white px-6 py-4 border-b">
-              <DialogTitle className="text-lg font-semibold text-gray-800">
-                Create Parties
-              </DialogTitle>
-            </DialogHeader>
-            <div className="p-6 space-y-5">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <Input
-                  placeholder="Search Parties by name or mobile..."
-                  className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+      {/* Party Selection Dialog */}
+      <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg">
+          <DialogHeader className="bg-white px-6 py-4 border-b">
+            <DialogTitle className="text-lg font-semibold text-gray-800">
+              Create Parties
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-5">
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
               </div>
-              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                {isCreatingParty ? (
-                  <div className="p-5 space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        Customer Name
-                      </label>
-                      <Input
-                        placeholder="Enter customer name"
-                        value={newPartyName}
-                        onChange={(e) => setNewPartyName(e.target.value)}
-                        autoFocus
-                        className="h-11 rounded-lg border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-3 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsCreatingParty(false)}
-                        className="h-9 px-4 rounded-lg border-gray-300 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleAddParty}
-                        disabled={!newPartyName.trim()}
-                        className="h-9 px-4 rounded-md bg-gray-900 hover:bg-gray-800 text-white"
-                      >
-                        Add Party
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {filteredParties.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                          <UserPlus className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <h3 className="mt-3 text-sm font-medium text-gray-900">
-                          No Party found
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Get started by creating a new Party.
-                        </p>
-                      </div>
-                    ) : (
-                      <ul className="divide-y divide-gray-100">
-                        {filteredParties.map((party) => (
-                          <li
-                            key={party.id}
-                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id ? "bg-gray-100" : ""
-                              }`}
-                            onClick={() => handleSelectParty(party)}
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
-                                  ? "bg-green-100"
-                                  : "bg-gray-100"
-                                  }`}
-                              >
-                                <span
-                                  className={`font-medium text-sm ${selectedParty?.id === party.id
-                                    ? "text-green-700"
-                                    : "text-gray-600"
-                                    }`}
-                                >
-                                  {party.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .toUpperCase()}
-                                </span>
-                              </div>
-                              <div className="ml-4">
-                                <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
-                                  {party.name}
-                                </div>
-                                {party.mobile && (
-                                  <div className="text-sm text-gray-500 flex items-center mt-1">
-                                    <span className="text-gray-400 mr-1.5">
-                                      <svg
-                                        className="h-3.5 w-3.5"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                      >
-                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                                      </svg>
-                                    </span>
-                                    {party.mobile}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
-              {!isCreatingParty && (
-                <Button
-                  variant="outline"
-                  className="w-full h-10 bg-white hover:bg-gray-50 border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-colors flex items-center justify-center"
-                  onClick={() => {
-                    setIsCustomerModalOpen(true);
-                    setIsPartyDialogOpen(false);
-                  }}
+              <Input
+                placeholder="Search Parties by name or mobile..."
+                className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Create New Party
-                </Button>
+                  <X className="h-4 w-4" />
+                </button>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
+
+            {/* Party List */}
+            <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+              {isCreatingParty ? (
+                <div className="p-5 space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Customer Name
+                    </label>
+                    <Input
+                      placeholder="Enter customer name"
+                      value={newPartyName}
+                      onChange={(e) => setNewPartyName(e.target.value)}
+                      autoFocus
+                      className="h-11 rounded-lg border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-3 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCreatingParty(false)}
+                      className="h-9 px-4 rounded-lg border-gray-300 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddParty}
+                      disabled={!newPartyName.trim()}
+                      className="h-9 px-4 rounded-md bg-gray-900 hover:bg-gray-800 text-white"
+                    >
+                      Add Party
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {filteredParties.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                        <UserPlus className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <h3 className="mt-3 text-sm font-medium text-gray-900">
+                        No Party found
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Get started by creating a new Party.
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-100">
+                      {filteredParties.map((party) => (
+                        <li
+                          key={party.id}
+                          className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                            selectedParty?.id === party.id ? "bg-gray-100" : ""
+                          }`}
+                          onClick={() => handleSelectParty(party)}
+                        >
+                          <div className="flex items-center">
+                            <div
+                              className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
+                                selectedParty?.id === party.id
+                                  ? "bg-green-100"
+                                  : "bg-gray-100"
+                              }`}
+                            >
+                              <span
+                                className={`font-medium text-sm ${
+                                  selectedParty?.id === party.id
+                                    ? "text-green-700"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {party.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                                {party.name}
+                              </div>
+                              {party.mobile && (
+                                <div className="text-sm text-gray-500 flex items-center mt-1">
+                                  <span className="text-gray-400 mr-1.5">
+                                    <svg
+                                      className="h-3.5 w-3.5"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                    </svg>
+                                  </span>
+                                  {party.mobile}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Create New Button */}
+            {!isCreatingParty && (
+              <Button
+                variant="outline"
+                className="w-full h-10 bg-white hover:bg-gray-50 border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-colors flex items-center justify-center"
+                onClick={() => {
+                  setIsCustomerModalOpen(true);
+                  setIsPartyDialogOpen(false);
+                }}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Create New Party
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
         <ModalCustomer
           open={isCustomerModalOpen}
@@ -1187,999 +1381,200 @@ const CreateQuotationPage = () => {
           </DialogContent>
         </Dialog>
 
-        <Dialog
-          open={isShippingModalOpen}
-          onOpenChange={setIsShippingModalOpen}
-        >
-          <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden">
-            <DialogHeader className="px-8 pt-8 pb-4 border-b border-gray-100">
-              <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                Select Shipping Address
-              </DialogTitle>
-            </DialogHeader>
-            <div className="px-8 py-6 space-y-8 overflow-y-auto max-h-[calc(85vh-140px)]">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-px bg-gray-200 flex-1"></div>
-                  <h3 className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
-                    Saved Shipping Addresses
-                  </h3>
-                  <div className="h-px bg-gray-200 flex-1"></div>
-                </div>
-                <div className="space-y-3">
-                  {shippingAddresses.length > 0 ? (
-                    <div className="grid gap-3">
-                      {shippingAddresses.map((address, index) => {
-                        const isSelected =
-                          selectedAddress?.id === address.id ||
-                          (selectedAddress && !selectedAddress.id && index === 0);
-                        return (
-                          <div
-                            key={address.id || index}
-                            className={`group relative border rounded-xl p-4 cursor-pointer transition-all duration-200 ${isSelected
-                              ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-sm"
-                              : "border-gray-200 hover:border-gray-300 hover:shadow-sm hover:bg-gray-50"
-                              }`}
-                            onClick={() => setSelectedAddress(address)}
-                          >
-                            <div className="flex items-start gap-4">
-                              <div
-                                className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${isSelected
+      {/* Shipping Address Modal */}
+      <Dialog open={isShippingModalOpen} onOpenChange={setIsShippingModalOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[70vh] overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-gray-100">
+            <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Select Shipping Address
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(70vh-120px)]">
+            {/* Existing Addresses */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-px bg-gray-200 flex-1"></div>
+                <h3 className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
+                  Saved Shipping Addresses
+                </h3>
+                <div className="h-px bg-gray-200 flex-1"></div>
+              </div>
+
+              <div className="space-y-3">
+                {shippingAddresses.length > 0 ? (
+                  <div className="grid gap-3">
+                    {shippingAddresses.map((address, index) => {
+                      const isSelected = selectedAddress?.uuid && address.uuid 
+                        ? selectedAddress.uuid === address.uuid
+                        : selectedAddress === address;
+                      return (
+                        <div
+                          key={address.uuid || index}
+                          className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                          onClick={() => setSelectedAddress(address)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
+                                isSelected
                                   ? "bg-blue-100"
                                   : "bg-gray-100 group-hover:bg-gray-200"
-                                  }`}
-                              >
-                                {address.type === "home" ? (
-                                  <HomeIcon
-                                    className={`h-5 w-5 ${isSelected
-                                      ? "text-blue-600"
-                                      : "text-gray-600"
-                                      }`}
-                                  />
-                                ) : address.type === "work" ? (
-                                  <BriefcaseIcon
-                                    className={`h-5 w-5 ${isSelected
-                                      ? "text-blue-600"
-                                      : "text-gray-600"
-                                      }`}
-                                  />
-                                ) : (
-                                  <MapPinIcon
-                                    className={`h-5 w-5 ${isSelected
-                                      ? "text-blue-600"
-                                      : "text-gray-600"
-                                      }`}
-                                  />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-semibold text-gray-900 capitalize flex items-center gap-2">
-                                    {address.type}
-                                    {address.is_default && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                        Default
-                                      </span>
-                                    )}
-                                  </span>
-                                  {isSelected && (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
-                                      <svg
-                                        className="w-3 h-3 mr-1"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                      >
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
-                                      Selected
+                              }`}
+                            >
+                              {address.address_type === "home" ? (
+                                <HomeIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                />
+                              ) : address.address_type === "work" ? (
+                                <BriefcaseIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                />
+                              ) : (
+                                <MapPinIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
+                                  {address.address_type}
+                                  {address.is_default && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      Default
                                     </span>
                                   )}
-                                </div>
-                                <p className="text-sm text-gray-700 leading-relaxed">
-                                  {[
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-700 leading-relaxed">
+                                  <span className="font-medium text-gray-500">Address:</span> {[
                                     address.address1,
-                                    address.address2,
-                                    address.city,
-                                    address.state,
-                                    address.pin,
-                                    address.country,
+                                    address.address2
                                   ]
                                     .filter(Boolean)
-                                    .join(", ")}
+                                    .join(", ")}, 
+                                  <span className="font-medium text-gray-500"> State:</span> {address.state}, 
+                                  <span className="font-medium text-gray-500"> Country:</span> {address.country}
+                                </p>
+                                <p className="text-xs text-gray-700 leading-relaxed">
+                                  <span className="font-medium text-gray-500">City:</span> {address.city}, 
+                                  <span className="font-medium text-gray-500"> Pin:</span> {address.pin}
                                 </p>
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 px-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <MapPinIcon className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-600 mb-1">
-                        No saved addresses found
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Add your first shipping address below
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500 font-medium">
-                    ADD NEW ADDRESS
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Address Type
-                    </label>
-                    <div className="flex gap-3 mt-1">
-                      {[
-                        { label: "Home", value: "home", color: "blue" },
-                        { label: "Work", value: "work", color: "purple" },
-                        { label: "Other", value: "other", color: "gray" },
-                      ].map((opt) => (
-                        <label
-                          key={opt.value}
-                          className={`relative inline-flex items-center px-4 py-2 rounded-lg border transition-colors cursor-pointer shadow-sm ${newShippingAddress.type === opt.value
-                            ? "border-gray-400 bg-gray-50 text-gray-900"
-                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                            }`}
-                          style={{ minWidth: 90, justifyContent: "center" }}
-                        >
-                          <input
-                            type="radio"
-                            name="addressType"
-                            value={opt.value}
-                            checked={
-                              newShippingAddress.type === opt.value
-                            }
-                            onChange={() =>
-                              setNewShippingAddress({
-                                ...newShippingAddress,
-                                type: opt.value as "home" | "work" | "other",
-                              })
-                            }
-                            className="sr-only"
-                          />
-                          {opt.value === "home" && (
-                            <svg
-                              className="mr-2 h-5 w-5"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                d="M3 10.5V21a1 1 0 001 1h5v-6h4v6h5a1 1 0 001-1V10.5M12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5L12 3z"
-                                strokeLinejoin="round"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                          )}
-                          {opt.value === "work" && (
-                            <svg
-                              className="mr-2 h-5 w-5"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
-                            >
-                              <rect x="2" y="7" width="20" height="13" rx="2" />
-                              <path d="M16 3v4M8 3v4" />
-                            </svg>
-                          )}
-                          {opt.value === "other" && (
-                            <svg
-                              className="mr-2 h-5 w-5"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle cx="12" cy="12" r="10" />
-                              <path d="M12 8v4l3 3" />
-                            </svg>
-                          )}
-                          <span className="font-medium text-sm">
-                            {opt.label}
-                          </span>
-                          {newShippingAddress.type === opt.value && (
-                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></span>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Shipping Address 1 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-colors"
-                      value={newShippingAddress.address1}
-                      onChange={(e) =>
-                        setNewShippingAddress({
-                          ...newShippingAddress,
-                          address1: e.target.value,
-                        })
-                      }
-                      placeholder="Street address"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Shipping Address 2
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-colors"
-                      value={newShippingAddress.address2}
-                      onChange={(e) =>
-                        setNewShippingAddress({
-                          ...newShippingAddress,
-                          address2: e.target.value,
-                        })
-                      }
-                      placeholder="Apartment, suite, unit, etc."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Country<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...shippingFormik.getFieldProps("country")}
-                      onChange={(e) => {
-                        shippingFormik.setFieldValue("country", e.target.value);
-                        shippingFormik.setFieldValue("state", "");
-                        shippingFormik.setFieldValue("city", "");
-                      }}
-                      className="input"
-                    >
-                      <option value="">--Select Country--</option>
-                      {Country.getAllCountries().map((c) => (
-                        <option key={c.isoCode} value={c.isoCode}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    {shippingFormik.touched.country &&
-                      shippingFormik.errors.country && (
-                        <span role="alert" className="text-xs text-red-500">
-                          {shippingFormik.errors.country}
-                        </span>
-                      )}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      State<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...shippingFormik.getFieldProps("state")}
-                      onChange={(e) => {
-                        shippingFormik.setFieldValue("state", e.target.value);
-                        shippingFormik.setFieldValue("city", "");
-                      }}
-                      disabled={!shippingFormik.values.country}
-                      className="input"
-                    >
-                      <option value="">--Select State--</option>
-                      {shippingFormik.values.country &&
-                        State.getStatesOfCountry(
-                          shippingFormik.values.country,
-                        ).map((s) => (
-                          <option key={s.isoCode} value={s.isoCode}>
-                            {s.name}
-                          </option>
-                        ))}
-                    </select>
-                    {shippingFormik.touched.state &&
-                      shippingFormik.errors.state && (
-                        <span role="alert" className="text-xs text-red-500">
-                          {shippingFormik.errors.state}
-                        </span>
-                      )}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      City<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...shippingFormik.getFieldProps("city")}
-                      disabled={!shippingFormik.values.state}
-                      className="input"
-                    >
-                      <option value="">--Select City--</option>
-                      {shippingFormik.values.country &&
-                        shippingFormik.values.state &&
-                        City.getCitiesOfState(
-                          shippingFormik.values.country,
-                          shippingFormik.values.state,
-                        ).map((city) => (
-                          <option key={city.name} value={city.name}>
-                            {city.name}
-                          </option>
-                        ))}
-                    </select>
-                    {shippingFormik.touched.city &&
-                      shippingFormik.errors.city && (
-                        <span role="alert" className="text-xs text-red-500">
-                          {shippingFormik.errors.city}
-                        </span>
-                      )}
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Pin Code <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <input {...shippingFormik.getFieldProps("pin")} className="input" />
-                    {shippingFormik.touched.pin &&
-                      shippingFormik.errors.pin && (
-                        <span role="alert" className="text-xs text-red-500">
-                          {shippingFormik.errors.pin}
-                        </span>
-                      )}
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsShippingModalOpen(false)}
-                    className="h-10 px-4 rounded-md border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      if (
-                        newShippingAddress.address1 &&
-                        newShippingAddress.city &&
-                        newShippingAddress.state &&
-                        newShippingAddress.pin &&
-                        newShippingAddress.country
-                      ) {
-                        const newAddress: ShippingAddress = {
-                          ...newShippingAddress,
-                          id: `new-${Date.now()}`,
-                          is_default: shippingAddresses.length === 0,
-                          created_at: new Date().toISOString(),
-                        };
-                        const updatedAddresses = [
-                          ...shippingAddresses,
-                          newAddress,
-                        ];
-                        setShippingAddresses(updatedAddresses);
-                        setSelectedAddress(newAddress);
-                        if (selectedCustomer) {
-                          setSelectedCustomer({
-                            ...selectedCustomer,
-                            shipping_address1: newAddress.address1,
-                            shipping_address2: newAddress.address2 || "",
-                            shipping_city: newAddress.city,
-                            shipping_state: newAddress.state,
-                            shipping_country: newAddress.country,
-                            shipping_pin: newAddress.pin,
-                          });
-                        }
-                        setNewShippingAddress({
-                          type: "home",
-                          address1: "",
-                          address2: "",
-                          city: "",
-                          state: "",
-                          country: "",
-                          pin: "",
-                        });
-                        if (updatedAddresses.length >= 3) {
-                          setIsShippingModalOpen(false);
-                        }
-                      } else {
-                        toast.error("Please fill in all required address fields");
-                      }
-                    }}
-                    className="h-10 px-4 rounded-md bg-blue-600 hover:bg-blue-700"
-                  >
-                    Save Address
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-
-      </div>
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50/50">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-semibold text-gray-800">
-                Items/Services
-              </h3>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2 h-9 px-4 border-dashed hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                  onClick={() => setShowAddItemModal(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Item
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-16">
-                    NO
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    ITEMS/SERVICES
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
-                    HSN/SAC
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-24">
-                    QTY
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
-                    PRICE/ITEM (₹)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-24">
-                    DISCOUNT
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-20">
-                    TAX
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
-                    AMOUNT (₹)
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider w-20">
-                    <svg
-                      className="h-5 w-5 mx-auto text-gray-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                      />
-                    </svg>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {quotationItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-16">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="text-center space-y-3">
-                          <div className="flex justify-center items-center gap-3">
-                            <button
-                              onClick={() => setShowAddItemModal(true)}
-                              className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
-                            >
-                              <Plus className="h-4 w-4" />
-                              Add Item
-                            </button>
-                          </div>
-                          <div className="mt-8 pt-4 border-t border-gray-200 flex justify-end">
-                            <div className="flex items-center gap-16">
-                              <span className="text-sm text-gray-600">
-                                SUBTOTAL
-                              </span>
-                              <span className="text-sm font-medium">₹ 0</span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-2 h-9 px-4"
-                              >
-                                <svg
-                                  className="h-4 w-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                                  />
-                                </svg>
-                                Scan Barcode
-                              </Button>
-                            </div>
-                          </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
+                      );
+                    })}
+                  </div>
                 ) : (
-                  quotationItems.map((item, index) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-50/50 transition-colors"
-                    >
-                      <td className="px-4 py-4 text-sm text-gray-700">
-                        {index + 1}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-sm text-gray-900">
-                          {item.item_name}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {item.item_code}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-700">
-                        {item.hsn_sac || "-"}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative flex focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent border border-gray-300 rounded-md">
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
-                              }
-                            }}
-                            onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                            className="w-16 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
-                          />
-                          <span className="px-3 py-1.5 bg-gray-100 text-sm text-gray-700 rounded-r-md border-l border-gray-300">
-                            {getMeasuringUnit(item.measuring_unit_id)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.price_per_item}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
-                              }
-                            }}
-                            onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value))}
-                            className="w-24 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="absolute left-2 top-1.5 text-xs text-gray-500">₹</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
-                              }
-                            }}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleUpdateDiscount(item.id, value === "" ? 0 : parseFloat(value));
-
-                            }}
-
-                            className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="absolute right-2 top-1.5 text-xs text-gray-500">%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <select
-                          value={item.tax}
-                          onChange={(e) =>
-                            handleUpdateTax(
-                              item.id, 
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">None</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-                      </td>
-
-                      <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                        ₹{item.amount.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-gray-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors"
-                          title="Remove item"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {/* {quotationItems.length > 0 && (
-            <div className="px-6 py-4 border-t bg-gray-50/30">
-              <div className="flex justify-end">
-                <div className="w-96 space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600 font-medium">SUBTOTAL</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs">₹</span>
-                      <span className="font-semibold text-gray-900">
-                        {calculateSubtotal().toLocaleString("en-IN")}
-                      </span>
+                  <div className="text-center py-8 px-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="mx-auto w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                      <MapPinIcon className="h-5 w-5 text-red-400" />
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600 font-medium">DISCOUNT</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs">₹</span>
-                      <span className="font-semibold text-red-600">
-                        {calculateDiscount().toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center text-sm pb-3 border-b border-gray-200">
-                    <span className="text-gray-600 font-medium">TAX</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs">₹</span>
-                      <span className="font-semibold text-gray-900">
-                        {calculateTax().toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-3">
-                    <span className="text-base font-semibold text-gray-800">TOTAL</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs">₹</span>
-                      <span className="text-base font-bold text-gray-900">
-                        {calculateTotal().toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )} */}
-           {/* Add this section right after the Items/Services table closes and before the closing of the main grid div */}
-
-        <div className="lg:col-span-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="space-y-4">
-            <div>
-              {!showNotesField ? (
-                <button
-                  onClick={() => setShowNotesField(true)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Notes
-                </button>
-              ) : (
-                <div className="space-y-2 bg-white border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-gray-700">Notes</label>
-                    <button
-                      onClick={() => {
-                        setShowNotesField(false);
-                        setNotes("");
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes here..."
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div>
-              {!showTermsField ? (
-                <button
-                  onClick={() => setShowTermsField(true)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Terms and Conditions
-                </button>
-              ) : (
-                <div className="space-y-2 bg-white border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-gray-700">
-                      Terms and Conditions
-                    </label>
-                    <button
-                      onClick={() => {
-                        setShowTermsField(false);
-                        setTermsAndConditions("");
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <textarea
-                    value={termsAndConditions}
-                    onChange={(e) => setTermsAndConditions(e.target.value)}
-                    placeholder="Enter terms and conditions..."
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                <Plus className="h-4 w-4" />
-                Add New Account
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            {quotationItems.length > 0 && (
-              <div className="bg-white border rounded-lg p-5 space-y-3">
-                <div className="space-y-2">
-                  {!showAdditionalChargesField ? (
-                    <button
-                      onClick={() => setShowAdditionalChargesField(true)}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Additional Charges
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Charge name"
-                          value={newChargeName}
-                          onChange={(e) => setNewChargeName(e.target.value)}
-                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <div className="relative w-28">
-                          <span className="absolute left-3 top-2.5 text-sm text-gray-500">₹</span>
-                          <input
-                            type="number"
-                            placeholder="0"
-                            value={newChargeAmount || ""}
-                            onChange={(e) => setNewChargeAmount(parseFloat(e.target.value) || 0)}
-                            className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-                          />
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={handleAddAdditionalCharge}
-                          disabled={!newChargeName.trim() || newChargeAmount <= 0}
-                          className="h-9"
-                        >
-                          Add
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setShowAdditionalChargesField(false);
-                            setNewChargeName("");
-                            setNewChargeAmount(0);
-                          }}
-                          className="h-9 w-9 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {additionalCharges.map((charge, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm py-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-700">{charge.name}</span>
-                        <button
-                          onClick={() => handleRemoveAdditionalCharge(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <span className="font-medium">₹ {charge.amount.toLocaleString("en-IN")}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200">
-                  <span className="text-gray-700 font-medium">Taxable Amount</span>
-                  <span className="font-semibold">
-                    ₹ {(calculateSubtotal() - calculateDiscount()).toLocaleString("en-IN")}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">SGST@{tax/2}</span>
-                  <span className="font-medium">
-                    ₹ {(((calculateSubtotal() - calculateDiscount()) * (tax/2) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">CGST@{tax/2}</span>
-                  <span className="font-medium">
-                    ₹ {(((calculateSubtotal() - calculateDiscount()) * (tax/2) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                {/* <div className="flex items-center justify-between py-3 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="taxRate" className="text-sm text-gray-700">
-                      GST Rate:
-                    </label>
-                    <select
-                      id="taxRate"
-                      value={tax}
-                      onChange={(e) => handleGlobalTaxChange(parseFloat(e.target.value))}
-                      className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={0}>0%</option>
-                      <option value={5}>5%</option>
-                      <option value={12}>12%</option>
-                      <option value={18}>18%</option>
-                      <option value={28}>28%</option>
-                    </select>
-                  </div>
-                </div> */}
-
-                {!showDiscountField ? (
-                  <button
-                    onClick={() => setShowDiscountField(true)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Discount
-                  </button>
-                ) : (
-                  <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-700">Discount:</span>
-                      <select
-                        value={discount.type}
-                        onChange={(e) =>
-                          setDiscount({ ...discount, type: e.target.value as "percentage" | "amount" })
-                        }
-                        className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="percentage">%</option>
-                        <option value="amount">₹</option>
-                      </select>
-                      <input
-                        type="number"
-                        value={discount.value || ""}
-                        onChange={(e) =>
-                          setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })
-                        }
-                        className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-                      />
-                      <button
-                        onClick={() => {
-                          setShowDiscountField(false);
-                          setDiscount({ type: "percentage", value: 0 });
-                        }}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <span className="text-sm font-medium text-red-600">
-                      - ₹ {calculateOverallDiscount().toLocaleString("en-IN")}
-                    </span>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      No saved addresses found
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      No shipping addresses available for this customer
+                    </p>
                   </div>
                 )}
-
-                <div className="flex items-center justify-between py-3 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="autoRoundOff"
-                      checked={autoRoundOff}
-                      onChange={(e) => setAutoRoundOff(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <label htmlFor="autoRoundOff" className="text-sm text-gray-700">
-                      Auto Round Off
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="text-blue-600 text-sm font-medium">+ Add</button>
-                    <select className="px-2 py-1 text-sm border border-gray-300 rounded-md w-14">
-                      <option>₹</option>
-                    </select>
-                    <input
-                      type="number"
-                      value={roundOffAmount}
-                      onChange={(e) => setRoundOffAmount(parseFloat(e.target.value) || 0)}
-                      disabled={autoRoundOff}
-                      className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md text-right disabled:bg-gray-100"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-3 border-t-2 border-gray-300">
-                  <span className="text-base font-bold text-gray-800">Total Amount</span>
-                  <span className="text-xl font-bold text-gray-900">
-                    ₹ {calculateFinalTotal().toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white border rounded-lg p-5">
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 text-right">Authorized signatory for <span className="font-semibold">XYZ</span></p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center min-h-[120px]">
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Signature
-                  </button>
-                </div>
               </div>
             </div>
+
           </div>
-        </div>
-        </div>
-      <AddItemPage
-        open={showAddItemModal}
-        onOpenChange={setShowAddItemModal}
-        onAddItems={handleAddItems}
-        onCreateNewItem={handleCreateNewItem}
+
+          <DialogFooter className="px-6 py-3 border-t border-gray-100 bg-gray-50">
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => setIsShippingModalOpen(false)}
+                className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (selectedAddress && selectedCustomer) {
+                    setIsAddressLoading(true);
+                    try {
+                      // Call the API to update the customer with the selected shipping address
+                      const payload = {
+                        shipping_addresses: shippingAddresses.map(addr => ({
+                          uuid: addr.uuid,
+                          address1: addr.address1,
+                          address2: addr.address2 || null,
+                          city: addr.city,
+                          state: addr.state,
+                          country: addr.country,
+                          pin: addr.pin,
+                          address_type: addr.address_type,
+                          is_default: addr.is_default,
+                        })),
+                      };
+
+                      await axios.put(
+                        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+                        payload
+                      );
+
+                      // Update the selected customer with the new shipping address
+                      const updatedCustomer: Customer = {
+                        ...selectedCustomer,
+                        shipping_address1: selectedAddress.address1,
+                        shipping_address2: selectedAddress.address2 || "",
+                        shipping_city: selectedAddress.city,
+                        shipping_state: selectedAddress.state,
+                        shipping_country: selectedAddress.country,
+                        shipping_pin: selectedAddress.pin,
+                      };
+                      setSelectedCustomer(updatedCustomer);
+                      
+                      setIsShippingModalOpen(false);
+                      toast.success("Address changed successfully");
+                    } catch (error: any) {
+                      console.error("Error saving shipping address:", error);
+                      let errorMessage = "Failed to save shipping address. Please try again.";
+                      
+                      if (error.response?.data?.error) {
+                        errorMessage = error.response.data.error || errorMessage;
+                      }
+                      
+                      toast.error(errorMessage);
+                    } finally {
+                      setIsAddressLoading(false);
+                    }
+                  } else {
+                    toast.error("Please select a shipping address");
+                  }
+                }}
+                disabled={!selectedAddress}
+                className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
+              >
+                Confirm Selection
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Address Modal */}
+      <ShippingAddressModal
+        open={addAddressModalOpen}
+        onOpenChange={setAddAddressModalOpen}
+        onSave={handleAddAddress}
+        existingAddresses={shippingAddresses}
+        title="Add Shipping Address"
       />
-      <CreateItemModal
-        open={showCreateItemModal}
-        onOpenChange={setShowCreateItemModal}
-        onSuccess={handleItemCreated}
-        item={null}
-      />
+
     </div>
   );
 };

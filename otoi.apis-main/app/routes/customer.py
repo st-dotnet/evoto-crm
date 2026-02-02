@@ -3,6 +3,7 @@ from app.models.customer import Customer
 from app.models.person import Lead
 from app.models.common import Address, Shipping
 from app.extensions import db
+from app.utils.address_utils import clean_orphaned_addresses, validate_address_type
 from sqlalchemy import func
 from app.utils.stamping import set_created_fields, set_business, set_updated_fields
 from sqlalchemy import func
@@ -301,7 +302,6 @@ def create_customer():
                 # Create new address record for shipping
                 shipping_addr = Address(
                     address1=shipping_address["address1"],
-                    address2=shipping_address.get("address2"),
                     city=shipping_address["city"],
                     state=shipping_address["state"],
                     country=shipping_address["country"],
@@ -316,25 +316,24 @@ def create_customer():
                 # Create or update shipping record
                 if existing_shipping:
                     # Update existing shipping address
-                    existing_shipping.address_id = shipping_addr.uuid
                     existing_shipping.address1 = shipping_address["address1"]
-                    existing_shipping.address2 = shipping_address.get("address2")
                     existing_shipping.city = shipping_address["city"]
                     existing_shipping.state = shipping_address["state"]
                     existing_shipping.country = shipping_address["country"]
                     existing_shipping.pin = shipping_address["pin"]
+                    existing_shipping.address_type = shipping_address.get("address_type", "home")
                     existing_shipping.is_default = is_default
+                    set_updated_fields(existing_shipping)
                 else:
                     # Create new shipping record
                     shipping = Shipping(
                         customer_id=existing_customer.uuid,
-                        address_id=shipping_addr.uuid,
                         address1=shipping_address["address1"],
-                        address2=shipping_address.get("address2"),
                         city=shipping_address["city"],
                         state=shipping_address["state"],
                         country=shipping_address["country"],
                         pin=shipping_address["pin"],
+                        address_type=shipping_address.get("address_type", "home"),
                         is_default=is_default
                     )
                     set_created_fields(shipping)
@@ -420,72 +419,92 @@ def create_customer():
         try:
             current_app.logger.info(f"Processing shipping address for customer {customer.uuid}")
             current_app.logger.info(f"Shipping address data: {shipping_address}")
-            is_default = shipping_address.get('is_default', False)
-
-            # Find and clean up existing shipping addresses
-            existing_shipping = Shipping.query.filter_by(customer_id=customer.uuid).first()
-            if existing_shipping:
-                # Delete the related address first due to foreign key constraint
-                Address.query.filter_by(uuid=existing_shipping.address_id).delete()
-                # Then delete the shipping record
-                db.session.delete(existing_shipping)
-                db.session.flush()
-
-            # If this shipping should be default → unset others
-            if is_default:
-                Shipping.query.filter(
-                    Shipping.customer_id == customer.uuid,
-                    Shipping.is_default == True
-                ).update(
-                    {"is_default": False},
-                    synchronize_session=False
-                )
             
-            # Create new address record for shipping
-            current_app.logger.info("Creating shipping address...")
-            shipping_addr = Address(
-                address1=shipping_address["address1"],
-                address2=shipping_address.get("address2"),
-                city=shipping_address["city"],
-                state=shipping_address["state"],
-                country=shipping_address["country"],
-                pin=shipping_address["pin"],
-                customer_id=customer.uuid
-            )
-            set_created_fields(shipping_addr)
-            set_business(shipping_addr)
-            db.session.add(shipping_addr)
-            db.session.flush()
-            current_app.logger.info(f"Created shipping address with ID: {shipping_addr.uuid}")
+            # Get shipping address data with proper defaults
+            shipping_data = {
+                'address1': shipping_address.get('address1', '').strip(),
+                'city': shipping_address.get('city', '').strip(),
+                'state': shipping_address.get('state', '').strip(),
+                'country': shipping_address.get('country', '').strip(),
+                'pin': shipping_address.get('pin', '').strip(),
+                'address_type': shipping_address.get('address_type', 'home').lower(),
+                'is_default': bool(shipping_address.get('is_default', False))
+            }
 
-            # Create new shipping
-            shipping = Shipping(
+            # Validate required fields
+            required_fields = ['address1', 'city', 'state', 'country', 'pin']
+            missing_fields = [field for field in required_fields if not shipping_data[field]]
+            if missing_fields:
+                return jsonify({"error": f"Missing required shipping address fields: {', '.join(missing_fields)}"}), 400
+
+            # Validate address type
+            if shipping_data['address_type'] not in ['home', 'work', 'other']:
+                return jsonify({"error": "Invalid address type. Must be 'home', 'work', or 'other'"}), 400
+
+            # Check if this address type already exists for this customer
+            existing_address = Shipping.query.filter_by(
                 customer_id=customer.uuid,
-                address_id=shipping_addr.uuid,
-                address1=shipping_address["address1"],
-                address2=shipping_address.get("address2"),
-                city=shipping_address["city"],
-                state=shipping_address["state"],
-                country=shipping_address["country"],
-                pin=shipping_address["pin"],
-                is_default=is_default,
-                business_id=getattr(g, 'business_id', None)  # Set business_id if available
-            )
-            set_created_fields(shipping)
-            set_business(shipping)
-            db.session.add(shipping)
+                address_type=shipping_data['address_type']
+            ).first()
             
+            if existing_address:
+                # Update existing address
+                for field in ['address1', 'city', 'state', 'country', 'pin']:
+                    setattr(existing_address, field, shipping_data[field])
+                
+                if shipping_data['is_default']:
+                    existing_address.is_default = True
+                    # Unset other defaults
+                    Shipping.query.filter(
+                        Shipping.customer_id == customer.uuid,
+                        Shipping.uuid != existing_address.uuid,
+                        Shipping.is_default == True
+                    ).update(
+                        {"is_default": False},
+                        synchronize_session=False
+                    )
+                
+                set_updated_fields(existing_address)
+                current_app.logger.info("Updated existing shipping address")
+                
+            else:
+                # Check address limit
+                address_count = Shipping.query.filter_by(customer_id=customer.uuid).count()
+                if address_count >= 3:
+                    return jsonify({"error": "Maximum of 3 shipping addresses allowed per customer"}), 400
+                
+                # Create new shipping address
+                shipping = Shipping(
+                    customer_id=customer.uuid,
+                    **shipping_data,
+                    business_id=getattr(g, 'business_id', None)
+                )
+                
+                # If this is the first address or explicitly set as default, make it default
+                if address_count == 0 or shipping_data['is_default']:
+                    shipping.is_default = True
+                    # Unset other defaults if needed
+                    if shipping_data['is_default']:
+                        Shipping.query.filter(
+                            Shipping.customer_id == customer.uuid,
+                            Shipping.is_default == True
+                        ).update(
+                            {"is_default": False},
+                            synchronize_session=False
+                        )
+                
+                set_created_fields(shipping)
+                set_business(shipping)
+                db.session.add(shipping)
+                current_app.logger.info("Created new shipping address")
+            
+            db.session.flush()
             current_app.logger.info("Processed shipping address successfully")
-            
-        except KeyError as ke:
-            db.session.rollback()
-            current_app.logger.error(f"Missing required shipping address field: {str(ke)}", exc_info=True)
-            return jsonify({"error": f"Missing required shipping address field: {str(ke)}"}), 400
             
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error creating shipping address: {str(e)}", exc_info=True)
-            return jsonify({"error": f"Failed to create shipping address: {str(e)}"}), 500
+            current_app.logger.error(f"Error processing shipping address: {str(e)}", exc_info=True)
+            return jsonify({"error": f"Failed to process shipping address: {str(e)}"}), 500
     
     db.session.commit()
     
@@ -493,17 +512,15 @@ def create_customer():
     shipping_details = None
     shipping = Shipping.query.filter_by(customer_id=customer.uuid).first()
     if shipping:
-        shipping_address = Address.query.get(shipping.address_id)
-        if shipping_address:
-            shipping_details = {
-                "shipping_address1": shipping_address.address1,
-                "shipping_address2": shipping_address.address2,
-                "shipping_city": shipping_address.city,
-                "shipping_state": shipping_address.state,
-                "shipping_country": shipping_address.country,
-                "shipping_pin": shipping_address.pin,
-                "is_default_shipping": shipping.is_default
-            }
+        shipping_details = {
+            "shipping_address1": shipping.address1,
+            "shipping_city": shipping.city,
+            "shipping_state": shipping.state,
+            "shipping_country": shipping.country,
+            "shipping_pin": shipping.pin,
+            "shipping_address_type": shipping.address_type,
+            "is_default_shipping": shipping.is_default
+        }
     
     # Prepare base response
     response_data = {
@@ -563,39 +580,40 @@ def get_customer(customer_id):
     }
     
     # Get all shipping addresses
-    shipping_addresses = db.session.query(Shipping, Address).join(
-        Address, Shipping.address_id == Address.uuid
-    ).filter(
+    shipping_addresses = Shipping.query.filter(
         Shipping.customer_id == customer.uuid
+    ).order_by(
+        Shipping.is_default.desc()  # Put default address first
     ).all()
     
     # Add shipping addresses to response
     if shipping_addresses:
         # For backward compatibility, include the first shipping address at root level
-        shipping, shipping_address = shipping_addresses[0]
+        shipping = shipping_addresses[0]
         response_data.update({
-            "shipping_address1": shipping_address.address1,
-            "shipping_address2": shipping_address.address2,
-            "shipping_city": shipping_address.city,
-            "shipping_state": shipping_address.state,
-            "shipping_country": shipping_address.country,
-            "shipping_pin": shipping_address.pin,
-            "is_default_shipping": shipping.is_default
+            "shipping_address1": shipping.address1,
+            "shipping_city": shipping.city,
+            "shipping_state": shipping.state,
+            "shipping_country": shipping.country,
+            "shipping_pin": shipping.pin,
+            "address_type": shipping.address_type,
+            "is_default_shipping": shipping.is_default,
+            "shipping_uuid": str(shipping.uuid)
         })
         
         # Include all shipping addresses in a list
         response_data["shipping_addresses"] = [{
-            "uuid": str(ship.uuid),
+            "uuid": str(addr.uuid),
+            "address_type": addr.address_type,
             "address1": addr.address1,
-            "address2": addr.address2,
             "city": addr.city,
             "state": addr.state,
             "country": addr.country,
             "pin": addr.pin,
-            "is_default": ship.is_default,
-            "created_at": ship.created_at.isoformat() if ship.created_at else None,
-            "updated_at": ship.updated_at.isoformat() if ship.updated_at else None
-        } for ship, addr in shipping_addresses]
+            "is_default": addr.is_default,
+            "created_at": addr.created_at.isoformat() if addr.created_at else None,
+            "updated_at": addr.updated_at.isoformat() if addr.updated_at else None
+        } for addr in shipping_addresses]
     
     return jsonify(response_data)
 
@@ -646,23 +664,37 @@ def update_customer(customer_id):
                 setattr(customer, field, value)
 
         # ---------------- BILLING ADDRESS VALIDATION ----------------
-        if is_address_required:
-            billing_fields = {
-                "address1": data.get("address1", customer.address1),
-                "city": data.get("city", customer.city),
-                "state": data.get("state", customer.state),
-                "country": data.get("country", customer.country),
-                "pin": data.get("pin", customer.pin),
-            }
-
-            if not all(billing_fields.values()):
-                return jsonify({
-                    "error": "All required address information must be provided."
-                }), 400
+        # has_billing_updates = any(field in data for field in ["address1", "city", "state", "country", "pin"])
+        has_billing_updates = any(field in data for field in [
+        "billing_address1",
+        "billing_address2",
+        "billing_city",
+        "billing_state",
+        "billing_country",
+        "billing_pin"
+        ])
+        if is_address_required and has_billing_updates:
+            customer.address1 = data.get("billing_address1", customer.address1)
+            customer.address2 = data.get("billing_address2", customer.address2)
+            customer.city = data.get("billing_city", customer.city)
+            customer.state = data.get("billing_state", customer.state)
+            customer.country = data.get("billing_country", customer.country)
+            customer.pin = data.get("billing_pin", customer.pin)
 
         # ---------------- SHIPPING UPDATE ----------------
         # Check if we're adding/updating shipping addresses
-        has_shipping_updates = "shipping_addresses" in data or any(k.startswith('shipping_') for k in data)
+
+        # has_shipping_updates = ("shipping_addresses" in data or  any(k.startswith("shipping_") for k in data) or any(k in data for k in ["shipping_city", "shipping_state", "shipping_country", "shipping_pin", "shipping_address1"]))
+        has_shipping_updates = (
+            "shipping_addresses" in data or
+            any(k in data for k in [
+                "shipping_address1",
+                "shipping_city",
+                "shipping_state",
+                "shipping_country",
+                "shipping_pin"
+            ])
+        )
         
         # Initialize shipping_list
         shipping_list = []
@@ -689,9 +721,7 @@ def update_customer(customer_id):
                         ).order_by(Shipping.created_at.asc()).limit(to_remove).all()
                         
                         for old_ship in oldest_shippings:
-                            # Delete the address record first
-                            Address.query.filter_by(uuid=old_ship.address_id).delete()
-                            # Then delete the shipping record
+                            # Delete the shipping record (no need to delete address record anymore)
                             db.session.delete(old_ship)
                         db.session.commit()
             
@@ -702,11 +732,9 @@ def update_customer(customer_id):
                     oldest_shipping = Shipping.query.filter_by(
                         customer_id=customer.uuid
                     ).order_by(Shipping.created_at.asc()).first()
-                    
+                            
                     if oldest_shipping:
-                        # Delete the address record first
-                        Address.query.filter_by(uuid=oldest_shipping.address_id).delete()
-                        # Then delete the shipping record
+                        # Delete the shipping record (no need to delete address record anymore)
                         db.session.delete(oldest_shipping)
                         db.session.commit()
                 
@@ -720,80 +748,167 @@ def update_customer(customer_id):
                     "pin": data.get("shipping_pin"),
                     "is_default": data.get("is_default_shipping", False)
                 }]
+
+            def is_valid_shipping_payload(ship):
+                required_fields = {
+                    "address1": ship.get("address1"),
+                    "city": ship.get("city"),
+                    "state": ship.get("state"),
+                    "country": ship.get("country"),
+                    "pin": ship.get("pin"),
+                    "address_type": ship.get("address_type", "home")  # Default to 'home' if not provided
+                }
+                
+                # Check required fields
+                missing_fields = [field for field, value in required_fields.items() if not value and field != "address2"]
+                if missing_fields:
+                    current_app.logger.error(f"Missing required shipping fields: {', '.join(missing_fields)}")
+                    return False
+                
+                # Validate address_type
+                if required_fields["address_type"] not in ["home", "work", "other"]:
+                    current_app.logger.error(f"Invalid address_type: {required_fields['address_type']}")
+                    return False
+                
+                return True
         
-        # Process shipping list
-        for ship_data in shipping_list:
-            # Shipping address validation ONLY for status Win or 4
-            if is_address_required:
-                if not all([
-                    ship_data.get("address1"),
-                    ship_data.get("city"),
-                    ship_data.get("state"),
-                    ship_data.get("country"),
-                    ship_data.get("pin")
-                ]):
-                    return jsonify({
-                        "error": "All required address information must be provided."
-                    }), 400
-            is_default = ship_data.get("is_default", False)
-            ship_uuid = ship_data.get("uuid")
-
-            if ship_uuid:
-                # Update existing shipping
-                shipping = Shipping.query.filter_by(uuid=ship_uuid, customer_id=customer.uuid).first()
-                if not shipping:
-                    continue  # skip invalid UUID
-                addr = Address.query.get(shipping.address_id)
-                addr.address1 = ship_data.get("address1", addr.address1)
-                addr.address2 = ship_data.get("address2", addr.address2)
-                addr.city = ship_data.get("city", addr.city)
-                addr.state = ship_data.get("state", addr.state)
-                addr.country = ship_data.get("country", addr.country)
-                addr.pin = ship_data.get("pin", addr.pin)
-                set_updated_fields(addr)
-
-                shipping.is_default = is_default
-                set_updated_fields(shipping)
-            else:
-                # Create new shipping address
-                addr = Address(
-                    address1=ship_data.get("address1", ""),
-                    address2=ship_data.get("address2"),
-                    city=ship_data.get("city", ""),
-                    state=ship_data.get("state", ""),
-                    country=ship_data.get("country", ""),
-                    pin=ship_data.get("pin", ""),
-                    customer_id=customer.uuid
-                )
-                set_created_fields(addr)
-                set_business(addr)
-                db.session.add(addr)
+        # Process shipping addresses
+        if "shipping_addresses" in data and isinstance(data["shipping_addresses"], list):
+            try:
+                # Get existing shipping addresses
+                existing_shipping = {str(addr.uuid): addr for addr in Shipping.query.filter_by(customer_id=customer.uuid).all()}
+                processed_uuids = set()
+                
+                # Count how many addresses will be marked as default in the update
+                default_count = sum(1 for ship_data in data["shipping_addresses"] if ship_data.get('is_default', False))
+                
+                # If more than one default is being set, return error
+                if default_count > 1:
+                    return jsonify({"error": "Only one shipping address can be marked as default"}), 400
+                
+                # Process each shipping address from the request
+                for ship_data in data["shipping_addresses"]:
+                    ship_uuid = ship_data.get("uuid")
+                    
+                    # Get address data with proper defaults
+                    address_data = {
+                        'address1': ship_data.get('address1', '').strip(),
+                        'city': ship_data.get('city', '').strip(),
+                        'state': ship_data.get('state', '').strip(),
+                        'country': ship_data.get('country', '').strip(),
+                        'pin': ship_data.get('pin', '').strip(),
+                        'address_type': ship_data.get('address_type', 'home').lower(),
+                        'is_default': bool(ship_data.get('is_default', False))
+                    }
+                    
+                    # Validate required fields
+                    required_fields = ['address1', 'city', 'state', 'country', 'pin']
+                    missing_fields = [field for field in required_fields if not address_data[field]]
+                    if missing_fields:
+                        db.session.rollback()
+                        return jsonify({"error": f"Missing required shipping address fields: {', '.join(missing_fields)}"}), 400
+                    
+                    # Validate address type
+                    if address_data['address_type'] not in ['home', 'work', 'other']:
+                        db.session.rollback()
+                        return jsonify({"error": "Invalid address type. Must be 'home', 'work', or 'other'"}), 400
+                    
+                    # Check for duplicate address types
+                    # if any(addr.uuid != ship_uuid and addr.address_type == address_data['address_type'] 
+                    #       for addr in existing_shipping.values()):
+                    #     db.session.rollback()
+                    #     return jsonify({"error": f"Address type '{address_data['address_type']}' already exists"}), 400
+                    
+                    if ship_uuid and ship_uuid in existing_shipping:
+                        # Update existing shipping address
+                        shipping = existing_shipping[ship_uuid]
+                        
+                        # If this address is being set as default, unset all other defaults first
+                        if address_data['is_default']:
+                            Shipping.query.filter(
+                                Shipping.customer_id == customer.uuid,
+                                Shipping.uuid != ship_uuid,
+                                Shipping.is_default == True
+                            ).update({"is_default": False}, synchronize_session=False)
+                        
+                        for field in ['address1', 'city', 'state', 'country', 'pin', 'address_type']:
+                            setattr(shipping, field, address_data[field])
+                        shipping.is_default = address_data['is_default']
+                        set_updated_fields(shipping)
+                        processed_uuids.add(ship_uuid)
+                        
+                    else:
+                        # Check address limit
+                        if len(existing_shipping) - len(processed_uuids) + len([s for s in data["shipping_addresses"] 
+                                                                             if 'uuid' not in s]) > 3:
+                            db.session.rollback()
+                            return jsonify({"error": "Maximum of 3 shipping addresses allowed per customer"}), 400
+                        
+                        # Create new shipping address
+                        # If this address is being set as default, unset all other defaults first
+                        if address_data['is_default']:
+                            Shipping.query.filter(
+                                Shipping.customer_id == customer.uuid,
+                                Shipping.is_default == True
+                            ).update({"is_default": False}, synchronize_session=False)
+                        
+                        shipping = Shipping(
+                            customer_id=customer.uuid,
+                            **address_data,
+                            business_id=getattr(g, 'business_id', None)
+                        )
+                        set_created_fields(shipping)
+                        set_business(shipping)
+                        db.session.add(shipping)
+                        db.session.flush()
+                        processed_uuids.add(str(shipping.uuid))
+                
+                # Delete any addresses not included in the request
+                for uuid, addr in list(existing_shipping.items()):
+                    if uuid not in processed_uuids:
+                        db.session.delete(addr)
+                
                 db.session.flush()
+                
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error processing shipping addresses: {str(e)}", exc_info=True)
+                return jsonify({"error": f"Failed to process shipping addresses: {str(e)}"}), 400
+                current_app.logger.error(f"Error processing shipping address: {str(e)}")
+                return jsonify({"error": f"Failed to process shipping address: {str(e)}"}), 400
+        
+        # After processing all shipping addresses, ensure at least one default exists if there are addresses
+        if shipping_list:
+            has_default = Shipping.query.filter_by(
+                customer_id=customer.uuid,
+                is_default=True
+            ).first()
+            
+            if not has_default and shipping_list:  # If no default but we have addresses, set the first one as default
+                first_shipping = Shipping.query.filter_by(
+                    customer_id=customer.uuid
+                ).order_by(Shipping.created_at.asc()).first()
+                
+                if first_shipping:
+                    first_shipping.is_default = True
+                    set_updated_fields(first_shipping)
 
-                shipping = Shipping(
-                    customer_id=customer.uuid,
-                    address_id=addr.uuid,
-                    address1=addr.address1,
-                    address2=addr.address2,
-                    city=addr.city,
-                    state=addr.state,
-                    country=addr.country,
-                    pin=addr.pin,
-                    is_default=is_default
-                )
-                set_created_fields(shipping)
-                set_business(shipping)
-                db.session.add(shipping)
-
-            # If default, unset others
-            if is_default:
-                Shipping.query.filter(
-                    Shipping.customer_id==customer.uuid,
-                    Shipping.is_default==True,
-                    Shipping.uuid != shipping.uuid
-                ).update({"is_default": False}, synchronize_session=False)
-
-        db.session.commit()
+        try:
+            # Clean up any orphaned addresses before committing
+            cleaned_count = clean_orphaned_addresses()
+            if cleaned_count > 0:
+                current_app.logger.info(f"Cleaned up {cleaned_count} orphaned addresses")
+            
+            db.session.commit()
+            
+            # Verify shipping was created
+            if 'shipping' in locals() and not shipping.uuid:
+                raise Exception("Shipping record was not created")
+                
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating customer: {str(e)}")
+            return jsonify({"error": "Failed to update customer due to an internal error"}), 500
 
         # ---------------- RESPONSE ----------------
         # Get the default shipping address (if any)
@@ -823,17 +938,15 @@ def update_customer(customer_id):
         
         # Add shipping address fields at root level if default shipping exists
         if default_shipping:
-            shipping_address = Address.query.get(default_shipping.address_id)
-            if shipping_address:
-                response.update({
-                    "shipping_address1": shipping_address.address1,
-                    "shipping_address2": shipping_address.address2,
-                    "shipping_city": shipping_address.city,
-                    "shipping_state": shipping_address.state,
-                    "shipping_country": shipping_address.country,
-                    "shipping_pin": shipping_address.pin,
-                    "is_default_shipping": default_shipping.is_default
-                })
+            response.update({
+                "shipping_address1": default_shipping.address1,
+                "shipping_city": default_shipping.city,
+                "shipping_state": default_shipping.state,
+                "shipping_country": default_shipping.country,
+                "shipping_pin": default_shipping.pin,
+                "shipping_address_type": default_shipping.address_type,
+                "is_default_shipping": default_shipping.is_default
+            })
 
         return jsonify(response), 200
 
