@@ -11,10 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert } from "@/components";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 // Props for the modal
 interface IModalLeadProps {
@@ -99,15 +100,110 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
-  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols"),
-  pin: Yup.string().matches(/^[0-9]+$/, "Pin must be a number"),
+  gst: Yup.string().min(15, "Minimum 15 symbols").max(15, "Maximum 15 symbols").nullable(),
+  pin: Yup.string()
+    .matches(/^[0-9]+$/, "Pin must be a number")
+    .when("status", {
+      is: (val: string) => val === "4",
+      then: (schema) => schema.required("Pin is required"),
+      otherwise: (schema) => schema.nullable(),
+    }),
+  email: Yup.string()
+    .nullable()
+    .email("Invalid email format")
+    .test("mobile-or-email", "Either Mobile or Email is required", function (value) {
+      const { mobile } = this.parent;
+      return !!(value || mobile);
+    })
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Invalid email format"
+    ),
   status: Yup.string().required("Status is required"),
-});
+  reason: Yup.string().when("status", {
+    is: (val: string) => val === "5",
+    then: (schema) => schema.required("Reason is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  country: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("Country is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  state: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("State is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  city: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("City is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
+}, [["status", "status"]]);
 
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status[]>([]);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<any>(null);
+  const [pendingSubmit, setPendingSubmit] = useState<any>(null);
+
+  // Check for duplicates before submission using the existing GET /leads/ API
+  const checkDuplicates = async (values: any) => {
+    try {
+      const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+      const apiBaseLeads = baseUrl.endsWith("/")
+        ? `${baseUrl}leads/`
+        : `${baseUrl}/leads/`;
+
+      const params: any = {};
+      if (values.mobile) params.exact_mobile = values.mobile;
+      if (values.gst) params.exact_gst = values.gst;
+      if (lead?.uuid) params.exclude_uuid = lead.uuid;
+
+      // If no criteria provided, no need to check
+      if (Object.keys(params).length === 0) {
+        return { has_duplicates: false, duplicates: [] };
+      }
+
+      const response = await axios.get(apiBaseLeads, { params });
+      const foundLeads = response.data.data || [];
+
+      if (foundLeads.length > 0) {
+        // Map found leads to the duplicate structure expected by the message generator
+        const duplicates: any[] = [];
+        foundLeads.forEach((l: any) => {
+          if (values.mobile && l.mobile === values.mobile) {
+            duplicates.push({
+              type: "mobile",
+              value: l.mobile,
+              existing_lead: l
+            });
+          }
+          if (values.gst && l.gst?.toUpperCase() === values.gst?.toUpperCase()) {
+            duplicates.push({
+              type: "gst",
+              value: l.gst,
+              existing_lead: l
+            });
+          }
+        });
+
+        return {
+          has_duplicates: duplicates.length > 0,
+          duplicates
+        };
+      }
+
+      return { has_duplicates: false, duplicates: [] };
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+      return { has_duplicates: false, duplicates: [] };
+    }
+  };
 
   // Fetch status list
   useEffect(() => {
@@ -132,65 +228,135 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
       setLoading(true);
 
       try {
-        const postData = {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          mobile: values.mobile || null,
-          email: values.email || null,
-          gst: values.gst,
-          status: values.status,
-          city: values.city,
-          state: values.state,
-          country: values.country,
-          address1: values.address1,
-          address2: values.address2,
-          pin: values.pin,
-          reason: values.reason,
-        };
+        // Check for duplicates only when status is "Win" (4)
+        if (values.status === "4") {
+          const duplicateCheck = await checkDuplicates(values);
 
-        const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-        const apiBaseLeads = baseUrl.endsWith("/")
-          ? `${baseUrl}leads`
-          : `${baseUrl}/leads`;
-        let response;
-
-        if (lead?.uuid) {
-          response = await axios.put(
-            `${apiBaseLeads}/${lead.uuid}`,
-            postData
-          );
-
-          toast.success("Lead updated successfully");
-        } else {
-          response = await axios.post(
-            `${apiBaseLeads}/`,
-            postData
-          );
-
-          toast.success("Lead created successfully");
-
-          // If API returns created lead
-          const createdUuid = response.data?.uuid;
-          if (createdUuid) {
-            navigate(`/lead/${createdUuid}`);
-          } else {
-            onOpenChange(false);
+          if (duplicateCheck.has_duplicates) {
+            // Store pending submission data and show confirmation dialog
+            setPendingSubmit(values);
+            setDuplicateInfo(duplicateCheck);
+            setShowDuplicateDialog(true);
+            setSubmitting(false);
+            setLoading(false);
+            return;
           }
         }
 
-        onOpenChange(false);
+        // No duplicates, proceed with submission
+        await submitLead(values, { setStatus, setSubmitting });
       } catch (error: any) {
-        setStatus(
-          error?.response?.data?.message || error?.response?.data?.error ||
-          "Something went wrong. Please try again."
-        );
-      } finally {
+        const errorMessage = error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Something went wrong. Please try again.";
+        setStatus(errorMessage);
+        toast.error(errorMessage);
         setSubmitting(false);
         setLoading(false);
       }
     },
   });
 
+
+  // Submit lead function (extracted from original onSubmit)
+  const submitLead = async (values: any, { setStatus, setSubmitting }: any) => {
+    try {
+      const postData = {
+        first_name: values.first_name,
+        last_name: values.last_name,
+        mobile: values.mobile || null,
+        email: values.email || null,
+        gst: values.gst,
+        status: values.status,
+        city: values.city,
+        state: values.state,
+        country: values.country,
+        address1: values.address1,
+        address2: values.address2,
+        pin: values.pin,
+        reason: values.reason,
+        bypass_duplicate: true, // Allow bypassing duplicate checks
+      };
+
+      const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+      const apiBaseLeads = baseUrl.endsWith("/")
+        ? `${baseUrl}leads/`
+        : `${baseUrl}/leads/`;
+      let response;
+
+      if (lead?.uuid) {
+        response = await axios.put(
+          `${apiBaseLeads}${lead.uuid}`,
+          postData
+        );
+
+        toast.success("Lead updated successfully");
+      } else {
+        response = await axios.post(
+          `${apiBaseLeads}`,
+          postData
+        );
+
+        toast.success("Lead created successfully");
+
+        if (response.data?.customer_already_exists) {
+          toast("Customer already exists. Linked this lead to the existing customer.");
+        }
+
+        // If API returns created lead
+        const createdUuid = response.data?.uuid;
+        if (createdUuid) {
+          navigate(`/lead/${createdUuid}`);
+        } else {
+          onOpenChange(false);
+        }
+      }
+
+      onOpenChange(false);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Something went wrong. Please try again.";
+      setStatus(errorMessage);
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setSubmitting(false);
+      setLoading(false);
+    }
+  };
+
+  // Handle confirmation dialog
+  const handleConfirmDuplicate = async () => {
+    if (pendingSubmit) {
+      try {
+        await submitLead(pendingSubmit, { setStatus: () => { }, setSubmitting: () => { } });
+      } catch (error) {
+        // Error already handled in submitLead
+      }
+    }
+    setPendingSubmit(null);
+    setDuplicateInfo(null);
+  };
+
+  const handleCancelDuplicate = () => {
+    setPendingSubmit(null);
+    setDuplicateInfo(null);
+  };
+
+  // Generate duplicate message
+  const getDuplicateMessage = () => {
+    if (!duplicateInfo?.duplicates?.length) return "";
+
+    const duplicateTypes = duplicateInfo.duplicates.map((d: any) => {
+      const existingLead = d.existing_lead;
+      // return `${d.type.toUpperCase()}: ${d.value}`;
+      // return `${d.type.toUpperCase()}: ${d.value} (already used by ${existingLead.first_name} ${existingLead.last_name} - Status: ${existingLead.status})`;
+      return `${d.type.toUpperCase()}: ${d.value} (by ${existingLead.first_name} ${existingLead.last_name})`;
+    });
+    return `The following information already exists:\n${duplicateTypes.join('\n')}\nDo you want to create this lead anyway?`;
+    // return `The following information already exists:\n\n${duplicateTypes.join('\n\n')}\n\nDo you want to create this lead anyway?`;
+  };
 
   // Reset form when editing a lead
   useEffect(() => {
@@ -307,6 +473,27 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                     {...formik.getFieldProps("mobile")}
                     className="input"
                     type="text"
+                    inputMode="tel"
+                    onChange={(e) => {
+                      // Allow numbers and hyphens, but not more than one hyphen in a row
+                      let value = e.target.value.replace(/[^0-9-]/g, '');
+                      value = value.replace(/--+/g, '-');
+                      // Limit total length to 15 characters (including hyphens)
+                      value = value.slice(0, 10);
+                      formik.setFieldValue("mobile", value);
+                      // Mark as touched to show errors
+                      if (!formik.touched.mobile) {
+                        formik.setFieldTouched("mobile", true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Prevent typing a hyphen at the start or after another hyphen
+                      if (e.key === '-' &&
+                        (formik.values.mobile.length === 0 ||
+                          formik.values.mobile.endsWith('-'))) {
+                        e.preventDefault();
+                      }
+                    }}
                     onInput={(e) => {
                       const input = e.target as HTMLInputElement;
                       if (input.value.length > 10) {
@@ -434,7 +621,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             formik.setFieldValue("state", "");
                             formik.setFieldValue("city", "");
                           }}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.country && formik.errors.country,
+                            }
+                          )}
                         >
                           <option value="">--Select Country--</option>
                           {Country.getAllCountries().map((c) => (
@@ -443,6 +635,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             </option>
                           ))}
                         </select>
+                        {formik.touched.country && formik.errors.country && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.country}
+                          </span>
+                        )}
                       </div>
 
                       {/* State */}
@@ -457,7 +654,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             formik.setFieldValue("city", "");
                           }}
                           disabled={!formik.values.country}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.state && formik.errors.state,
+                            }
+                          )}
                         >
                           <option value="">--Select State--</option>
                           {formik.values.country &&
@@ -467,6 +669,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                               </option>
                             ))}
                         </select>
+                        {formik.touched.state && formik.errors.state && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.state}
+                          </span>
+                        )}
                       </div>
 
                       {/* City */}
@@ -477,7 +684,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                         <select
                           {...formik.getFieldProps("city")}
                           disabled={!formik.values.state}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.city && formik.errors.city,
+                            }
+                          )}
                         >
                           <option value="">--Select City--</option>
                           {formik.values.country &&
@@ -488,17 +700,27 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                               </option>
                             ))}
                         </select>
+                        {formik.touched.city && formik.errors.city && (
+                          <span role="alert" className="text-xs text-red-500">
+                            {formik.errors.city}
+                          </span>
+                        )}
                       </div>
 
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Pin Code</label>
+                        <label className="block text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("pin")}
-                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                          className={clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            {
+                              "border-red-500 ": formik.touched.pin && formik.errors.pin,
+                            }
+                          )}
                         />
                         {formik.touched.pin && formik.errors.pin && (
                           <span role="alert" className="text-xs text-red-500">
@@ -514,12 +736,17 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {formik.values.status === "5" && (
                   <div className="flex flex-col gap-1.5 col-span-full">
-                    <label className="block text-sm font-medium text-gray-700">Reason</label>
+                    <label className="block text-sm font-medium text-gray-700">Reason<span style={{ color: "red" }}>*</span></label>
                     <textarea
                       placeholder="Reason"
                       autoComplete="off"
                       {...formik.getFieldProps("reason")}
-                      className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[100px]"
+                      className={clsx(
+                        "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                        {
+                          "border-red-500 ": formik.touched.reason && formik.errors.reason,
+                        }
+                      )}
                     />
                     {formik.touched.reason && formik.errors.reason && (
                       <span role="alert" className="text-xs text-red-500">
@@ -551,6 +778,21 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
           </DialogBody>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        title="Duplicate Information Detected"
+        message={<div style={{ whiteSpace: "pre-line" }}>
+          {getDuplicateMessage()}
+        </div>}
+        confirmText="Yes, Create Lead"
+        cancelText="No, Cancel"
+        onConfirm={handleConfirmDuplicate}
+        onCancel={handleCancelDuplicate}
+        variant="warning"
+      />
     </Fragment>
   );
 };

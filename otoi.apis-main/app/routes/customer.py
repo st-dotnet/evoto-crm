@@ -5,6 +5,10 @@ from app.extensions import db
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
+from flask import send_file
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.worksheet.datavalidation import DataValidation
 
 
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
@@ -26,7 +30,7 @@ def get_customers():
             schema:
               type: array
     """
-    query = Customer.query
+    query = Customer.query.filter_by(is_deleted=False)
     sort = request.args.get("sort", "created_at")  # Default sort by created_at
     order = request.args.get("order", "desc").upper()  # Default order is now 'desc'
 
@@ -136,7 +140,7 @@ def create_customer():
     # DUPLICATE CHECKS
     # -------------------
     if mobile:
-        query = Customer.query.filter(Customer.mobile == mobile)
+        query = Customer.query.filter(Customer.mobile == mobile, Customer.is_deleted == False)
         if uuid_to_ignore:
             query = query.filter(Customer.uuid != uuid_to_ignore)
         existing_mobile = query.first()
@@ -148,7 +152,7 @@ def create_customer():
 
     if gst and gst.strip():  # Check if GST is provided and not empty
         gst = gst.strip().upper()  # Normalize GST to uppercase
-        gst_query = Customer.query.filter(func.upper(Customer.gst) == gst)
+        gst_query = Customer.query.filter(func.upper(Customer.gst) == gst, Customer.is_deleted == False)
         if uuid_to_ignore:
             gst_query = gst_query.filter(Customer.uuid != uuid_to_ignore)
         existing_gst = gst_query.first()
@@ -164,7 +168,7 @@ def create_customer():
     lead_id = data.get("lead_id")
     lead = None
     if lead_id:
-        lead = Lead.query.get(lead_id)
+        lead = Lead.query.filter_by(uuid=lead_id, is_deleted=False).first()
         if not lead:
             return jsonify({"error": "Lead not found for provided lead_id"}), 404
     else:
@@ -172,9 +176,9 @@ def create_customer():
         if mobile or email:
             # Try to find existing lead by mobile or email
             if mobile:
-                lead = Lead.query.filter(Lead.mobile == mobile).first()
+                lead = Lead.query.filter(Lead.mobile == mobile, Lead.is_deleted == False).first()
             if not lead and email:
-                lead = Lead.query.filter(Lead.email == email).first()
+                lead = Lead.query.filter(Lead.email == email, Lead.is_deleted == False).first()
 
             # If no existing lead found, create a new one
             if not lead:
@@ -306,7 +310,9 @@ def get_customer(customer_id):
         description: get customer by id .
 
     """
-    customer = Customer.query.get_or_404(customer_id)
+    customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
+    if not customer:
+        return jsonify({"error": "Customer not found"}), 404
     return jsonify(
         {
             "uuid": str(customer.uuid),
@@ -333,19 +339,19 @@ def update_customer(customer_id):
         current_app.logger.info(f"Starting update for customer ID: {customer_id}")
         current_app.logger.info(f"Received data: {data}")
 
-        customer = Customer.query.filter_by(uuid=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
         if not customer:
             return jsonify({"error": "Customer not found"}), 404
 
         status = str(data.get("status", customer.status))
-        print("ABCCC")
         # ---------------- DUPLICATE CHECKS ----------------
         if "mobile" in data and data["mobile"]:
             mobile = str(data["mobile"]).strip()
             if mobile != customer.mobile:  # Only check if mobile is being changed
                 existing = Customer.query.filter(
                     Customer.mobile == mobile,
-                    Customer.uuid != customer_id
+                    Customer.uuid != customer_id,
+                    Customer.is_deleted == False
                 ).first()
                 if existing:
                     return jsonify({"error": "Customer with this mobile number already exists"}), 400
@@ -355,7 +361,8 @@ def update_customer(customer_id):
             if gst != (customer.gst or "").upper():  # Only check if GST is being changed
                 existing = Customer.query.filter(
                     func.upper(Customer.gst) == gst,
-                    Customer.uuid != customer_id
+                    Customer.uuid != customer_id,
+                    Customer.is_deleted == False
                 ).first()
                 if existing:
                     return jsonify({"error": "Customer with this GST number already exists"}), 400
@@ -369,22 +376,7 @@ def update_customer(customer_id):
                     return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
                 setattr(customer, field, value)
 
-        # ---------------- ADDRESS UPDATE ----------------
-        if status != "1":
-            address_fields = ["address1", "city", "state", "country", "pin"]
-            for field in address_fields:
-                if field in data:
-                    value = str(data[field]).strip() if data[field] else None
-                    if not value:
-                        return jsonify({"error": f"Field '{field}' is required and cannot be empty"}), 400
-                    setattr(customer, field, value)
-
-            if "address2" in data:
-                customer.address2 = (
-                    str(data["address2"]).strip()
-                    if data["address2"] is not None
-                    else None
-                )
+        # ---------------- ADDRESS UPDATE ---------------
 
         # ---------------- 🔥 NORMALIZATION (CRITICAL FIX) ----------------
         # Match deployed behavior: NEVER save NULL for NOT NULL columns
@@ -429,27 +421,101 @@ def update_customer(customer_id):
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     try:
-        customer = Customer.query.filter_by(uuid=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
         if not customer:
             return jsonify({"message": "Customer not found"}), 404
 
-        db.session.delete(customer)
+        customer.is_deleted = True
         db.session.commit()
 
-        return jsonify({"message": "Customer deleted successfully"}), 200
-
-    except IntegrityError as e:
-        db.session.rollback()
-        return (
-            jsonify(
-                {
-                    "message": "Cannot delete customer. It is referenced in other records."
-                }
-            ),
-            409,
-        )
+        return jsonify({"message": "Customer soft-deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
         print(str(e))
         return jsonify({"message": "Internal server error", "error": str(e)}), 500
+
+
+@customer_blueprint.route("/download-template", methods=["GET"])
+def download_customer_template():
+    try:
+    
+        statuses = ["New", "In-progress", "Quote Given", "Win", "Lose"]      
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Customers"
+
+        columns = [
+            "first_name",     # A
+            "last_name",      # B
+            "mobile",         # C
+            "email",          # D
+            "gst",            # E
+            "status",         # F
+            "address1",       # G
+            "address2",       # H
+            "city",           # I
+            "state",          # J
+            "country",        # K
+            "pin",            # L
+        ]
+        ws.append(columns)
+
+        ws_hidden = wb.create_sheet("DropdownData")
+        for i, value in enumerate(statuses, start=1):
+            ws_hidden[f"A{i}"] = value
+        ws_hidden.sheet_state = "hidden"
+
+        dv_status = DataValidation(
+            type="list",
+            formula1="=DropdownData!$A$1:$A$5",
+            allow_blank=False,
+            showErrorMessage=True,
+            error="Select a valid status"
+        )
+        ws.add_data_validation(dv_status)
+        dv_status.add("F2:F1000")
+
+        dv_mobile = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(C2),AND(ISNUMBER(C2),LEN(C2)=10))',
+            showErrorMessage=True,
+            error="Mobile must be exactly 10 digits"
+        )
+        ws.add_data_validation(dv_mobile)
+        dv_mobile.add("C2:C1000")
+
+        dv_email = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(D2),AND(ISNUMBER(SEARCH("@",D2)),ISNUMBER(SEARCH(".",D2))))',
+            showErrorMessage=True,
+            error="Enter a valid email (example@domain.com)"
+        )
+        ws.add_data_validation(dv_email)
+        dv_email.add("D2:D1000")
+
+        dv_gst = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(E2),LEN(E2)=15)',
+            showErrorMessage=True,
+            error="GST must be exactly 15 characters"
+        )
+        ws.add_data_validation(dv_gst)
+        dv_gst.add("E2:E1000")
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="customer_template.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return {"error": str(e)}, 500
+       

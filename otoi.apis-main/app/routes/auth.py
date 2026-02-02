@@ -52,7 +52,8 @@ def signup():
               type: object
               properties:
                 id:
-                  type: integer
+                  type: string
+                  example: "550e8400-e29b-41d4-a716-446655440000"
                 firstName:
                   type: string
                 lastName:
@@ -79,7 +80,7 @@ def signup():
     password = data.get("password") or ""
     password_confirmation = data.get("password_confirmation") or data.get("changepassword") or ""
     username = (data.get("username") or (email.split("@")[0] if email else "")).strip()
-    role_name = (data.get("role") or "User").strip()
+    # Always default to 'User' role; ignore any incoming role input
 
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400
@@ -93,10 +94,12 @@ def signup():
     if User.query.filter_by(email=email).first() is not None:
         return jsonify({"error": "email already exists"}), 400
 
-    # Resolve role
-    role = Role.query.filter_by(name=role_name).first()
-    if role is None and role_name:
-        return jsonify({"error": f"role '{role_name}' not found"}), 400
+    # Resolve default role 'User' (auto-create if missing)
+    role = Role.query.filter_by(name="User").first()
+    if role is None:
+        role = Role(name="User")
+        db.session.add(role)
+        db.session.flush()
 
     # Create user
     user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role)
@@ -104,15 +107,15 @@ def signup():
 
     # Persist and set audit fields
     db.session.add(user)
-    db.session.flush()  # to get user.id
-    user.created_by = user.id
-    user.updated_by = user.id
+    db.session.flush()  # to get user.uuid
+    user.created_by_uuid = user.uuid
+    user.updated_by_uuid = user.uuid
 
     db.session.commit()
 
     # Issue token like login
     business_id = user.businesses[0].id if user.businesses else None
-    token = create_access_token(identity=str(user.id), additional_claims={
+    token = create_access_token(identity=str(user.uuid), additional_claims={
         "username": user.username,
         "role": user.role.name if user.role else None,
         "business_id": business_id
@@ -162,19 +165,28 @@ def login():
     """
     try:
         data = request.get_json()
+        print(f"Login attempt - data received: {data}")
         if not data or "email" not in data or "password" not in data:
             return jsonify({"error": "Email and password are required"}), 400
 
         email = data["email"].strip().lower()
         password = data["password"]
+        print(f"Login attempt for email: {email}")
 
         user = User.query.filter_by(email=email).first()
+        print(f"User found: {user}")
 
         if not user:
+            print(f"No user found with email: {email}")
             return jsonify({"error": "Invalid email or password"}), 401
 
+        print(f"User uuid: {user.uuid}, checking password...")
         if not user.check_password(password):
-            return jsonify({"error": "Invalid email or password"}), 401
+            print(f"Password check failed for user: {email}")
+            return jsonify({"error": "Invalid password"}), 401
+
+        if not user.isActive:
+            return jsonify({"error": "Account Deactivated"}), 403
 
         business_id = user.businesses[0].id if user.businesses and len(user.businesses) > 0 else None
         
@@ -183,7 +195,7 @@ def login():
             return jsonify({"error": "User role not found"}), 403
 
         token = create_access_token(
-            identity=str(user.id),
+            identity=str(user.uuid),
             additional_claims={
                 "username": user.username,
                 "role": user.role.name,
@@ -191,14 +203,14 @@ def login():
             }
         )
         
-        g.user_id = user.id
+        g.user_id = user.uuid
         g.business_id = business_id
         
         return jsonify({
             "access_token": token,
             "token_type": "Bearer",
             "user": {
-                "id": user.id,
+                "id": str(user.uuid),
                 "username": user.username,
                 "email": user.email,
                 "role": user.role.name,

@@ -2,7 +2,6 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify
-from flask_cors import CORS   # Import CORS
 from app import create_app
 from app.seed import seed_data, create_database
 
@@ -11,8 +10,7 @@ app = create_app()
 app.config["SQLALCHEMY_ECHO"] = True
 app.config["DEBUG"] = True
 
-# Enable CORS for your frontend domain
-CORS(app)
+# CORS is already configured in app/__init__.py, no need to initialize again here
 
 # -----------------------------
 # Setup Logging

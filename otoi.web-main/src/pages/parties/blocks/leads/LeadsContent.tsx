@@ -106,10 +106,10 @@ const Toolbar = ({
   };
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-      <div className="flex flex-wrap gap-2 lg:gap-5">
-        <div className="flex">
-          <label className="input input-sm">
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
+        <div className="flex grow md:grow-0">
+          <label className="input input-sm w-full md:w-48 lg:w-64">
             <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
               <KeenIcon icon="magnifier" />
             </span>
@@ -123,8 +123,8 @@ const Toolbar = ({
           </label>
         </div>
         {/* Status Filter */}
-        <div className="flex flex-wrap gap-2.5">
-          <label className="select-sm"> Status Type </label>
+        <div className="flex items-center flex-wrap gap-2.5">
+          <label className="text-sm font-medium text-gray-700"> Status </label>
           <Select
             defaultValue=""
             value={searchStatusType}
@@ -133,10 +133,10 @@ const Toolbar = ({
               setDefaultStatusType(value);
             }}
           >
-            <SelectTrigger className="w-28" size="sm">
+            <SelectTrigger className="w-32 lg:w-36" size="sm">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
-            <SelectContent className="w-32">
+            <SelectContent className="w-36">
               <SelectItem value="-1">All</SelectItem>
               <SelectItem value="1">New</SelectItem>
               <SelectItem value="2">In-Progress</SelectItem>
@@ -164,6 +164,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredItems, setFilteredItems] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingLead, setFetchingLead] = useState(false);
 
   const navigate = useNavigate();
 
@@ -174,8 +175,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         `${import.meta.env.VITE_APP_API_URL}/leads/?items_per_page=1000`
       );
       setLeads(response.data.data);
-    } catch (error) {
-      toast("Failed to fetch leads");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch leads");
     } finally {
       setLoading(false);
     }
@@ -262,6 +263,20 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     fetchAllLeads();
   };
 
+  // Fetch Single User Details
+  const fetchLeadDetails = async (userId: string) => {
+    try {
+      setFetchingLead(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${userId}`);
+      setSelectedLead(response.data);
+      return response.data;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch lead details");
+      return null;
+    } finally {
+      setFetchingLead(false);
+    }
+  };
 
   const deleteLead = async (uuid: string) => {
 
@@ -270,11 +285,11 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         `${import.meta.env.VITE_APP_API_URL}/leads/${uuid}`
       );
 
-      toast("Lead deleted successfully");
+      toast.success("Lead deleted successfully");
       setShowDeleteDialog(false);
       fetchAllLeads();
-    } catch {
-      toast("Delete failed");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Delete failed");
     }
   };
 
@@ -353,9 +368,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       },
       {
         id: "actions",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
-        ),
+        header: ({ column }) => <DataGridColumnHeader title="Actions" column={column} className="justify-center" />,
         enableSorting: false,
         cell: ({ row }) => (
           <div className="flex justify-center">
@@ -368,17 +381,18 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    openLeadModal(e, row.original);
+                  onClick={async () => {
+                    const leadData = await fetchLeadDetails(row.original.uuid);
+                    if (leadData) {
+                      setLeadModalOpen(true);
+                    }
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     navigate(`/lead/${row.original.uuid}`);
                   }}
                 >
@@ -386,8 +400,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                   Details
                 </DropdownMenuItem>
                 {/* <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   setSelectedLeadForActivity({
                     id: row.original.uuid,
                     status: row.original.status,
@@ -402,10 +415,11 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                 <span>Create Activity</span>
               </DropdownMenuItem> */}
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setSelectedLead(row.original);
-                    setShowDeleteDialog(true);
+                  onClick={async () => {
+                    const userData = await fetchLeadDetails(row.original.uuid!);
+                    if (userData) {
+                      setShowDeleteDialog(true);
+                    }
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -492,34 +506,42 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {loading && leads.length === 0 && (
+      {(loading || fetchingLead) && leads.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary">
+          <div className="text-black">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
       )}
+      {fetchingLead && leads.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
+          </div>
+        </div>
+      )}
       {!loading && (
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={false}
-        data={filteredItems}
-        loading={loading}
-        rowSelection={true}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultStatusType={searchStatusTypeQuery}
-            setDefaultStatusType={handleStatusTypeSearch}
-          />
-        }
-        layout={{ card: true }}
-      />
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={false}
+          data={filteredItems}
+          loading={loading}
+          rowSelection={true}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={handleSearch}
+              defaultStatusType={searchStatusTypeQuery}
+              setDefaultStatusType={handleStatusTypeSearch}
+            />
+          }
+          layout={{ card: true }}
+        />
       )}
       <ModalLead
         open={leadModalOpen}
@@ -544,7 +566,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
             </DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete this lead?
+              Are you sure you want to delete <strong>{selectedLead?.first_name} {selectedLead?.last_name}</strong> ({selectedLead?.email}) this lead?
             </DialogDescription>
 
           </DialogHeader>

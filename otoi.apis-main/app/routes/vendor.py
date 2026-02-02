@@ -117,8 +117,8 @@ def create_vendor():
     data = request.get_json() or {}
 
     company_name = (data.get("company_name") or "").strip()
-    vendor_name = (data.get("vendor_name") or "").strip()
-    mobile = (data.get("mobile") or "").strip()
+    vendor_name = (data.get("vendor_name") or "").strip() or None
+    mobile = (data.get("mobile") or "").strip() or None
     email = (data.get("email") or "").strip() or None
     gst = (data.get("gst") or "").strip() or None
     address1 = (data.get("address1") or "").strip()
@@ -129,9 +129,9 @@ def create_vendor():
     pin = (data.get("pin") or "").strip()
 
     # ---------- REQUIRED FIELD VALIDATION ----------
-    if not company_name or not city or not state or not country or not pin or not gst:
+    if not company_name or not address1 or not city or not state or not country or not pin or not gst:
         return jsonify({
-            "error": "company_name, gst, city, state, country, and pin are required"
+            "error": "company_name, address1, gst, city, state, country, and pin are required"
         }), 400
 
     # ---------- MOBILE OR EMAIL REQUIRED ----------
@@ -139,13 +139,19 @@ def create_vendor():
         return jsonify({
             "error": "Either mobile or email is required"
         }), 400
+    
+    # ---------- DUPLICATE GST CHECK ----------
+    if gst:
+        gst_upper = gst.strip().upper()
+        duplicate = Vendor.query.filter(func.upper(Vendor.gst) == gst_upper).first()
+        if duplicate:
+            return jsonify({
+                "error": "A vendor with this GST already exists"
+            }), 400
 
-    # DUPLICATE CHECKS (CREATE ONLY)
+    # ---------- DUPLICATE MOBILE CHECK ----------
     if mobile and Vendor.query.filter(Vendor.mobile == mobile).first():
         return jsonify({"error": "Mobile number already exists"}), 400
-
-    if gst and Vendor.query.filter(func.upper(Vendor.gst) == gst).first():
-        return jsonify({"error": "GST already exists"}), 400
 
     vendor = Vendor(
         company_name=company_name,
@@ -189,8 +195,43 @@ def update_vendor(vendor_id):
     data = request.get_json() or {}
     vendor = Vendor.query.get_or_404(vendor_id)
 
-    mobile = (data.get("mobile") or "").strip()
-    gst = (data.get("gst") or "").strip()
+    company_name = (data.get("company_name") or vendor.company_name).strip()
+    # vendor_name is optional: allow clearing to None; if omitted, keep existing
+    if "vendor_name" in data:
+        vendor_name = (data.get("vendor_name") or "").strip() or None
+    else:
+        vendor_name = vendor.vendor_name
+    if "mobile" in data:
+        mobile = (data.get("mobile") or "").strip() or None
+    else:
+        mobile = vendor.mobile
+    if "email" in data:
+        email = (data.get("email") or "").strip() or None
+    else:
+        email = vendor.email
+    gst = (data.get("gst") or "").strip() or vendor.gst
+    address1 = (data.get("address1") or vendor.address1).strip()
+    # address2 is optional: allow clearing to None; if omitted, keep existing
+    if "address2" in data:
+        address2 = (data.get("address2") or "").strip() or None
+    else:
+        address2 = vendor.address2
+    city = (data.get("city") or vendor.city).strip()
+    state = (data.get("state") or vendor.state).strip()
+    country = (data.get("country") or vendor.country).strip()
+    pin = (data.get("pin") or vendor.pin).strip()
+
+    # ---------- REQUIRED FIELD VALIDATION ----------
+    if not company_name or not address1 or not city or not state or not country or not pin or not gst:
+        return jsonify({
+            "error": "company_name, address1, gst, city, state, country, and pin are required"
+        }), 400
+
+    # ---------- MOBILE OR EMAIL REQUIRED ----------
+    if not mobile and not email:
+        return jsonify({
+            "error": "Either mobile or email is required"
+        }), 400
 
     # ---------- DUPLICATE MOBILE CHECK ----------
     if mobile:
@@ -209,17 +250,17 @@ def update_vendor(vendor_id):
                 "error": "A vendor with this GST already exists"
             }), 400
 
-    vendor.company_name = data.get("company_name", vendor.company_name)
-    vendor.vendor_name = data.get("vendor_name", vendor.vendor_name)
-    vendor.mobile = mobile or vendor.mobile
-    vendor.email = data.get("email", vendor.email)
-    vendor.gst = gst or vendor.gst
-    vendor.address1 = data.get("address1", vendor.address1)
-    vendor.address2 = data.get("address2", vendor.address2)
-    vendor.city = data.get("city", vendor.city)
-    vendor.state = data.get("state", vendor.state)
-    vendor.country = data.get("country", vendor.country)
-    vendor.pin = data.get("pin", vendor.pin)
+    vendor.company_name = company_name
+    vendor.vendor_name = vendor_name
+    vendor.mobile = mobile
+    vendor.email = email
+    vendor.gst = gst
+    vendor.address1 = address1
+    vendor.address2 = address2
+    vendor.city = city
+    vendor.state = state
+    vendor.country = country
+    vendor.pin = pin
     
     db.session.commit()
     

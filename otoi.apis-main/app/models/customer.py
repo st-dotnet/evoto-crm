@@ -1,12 +1,30 @@
-from sqlalchemy import Column, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, ForeignKey, UniqueConstraint, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.extensions import db
 import uuid
  
  
+class CustomerQuery(db.Query):
+    def get(self, ident):
+        # First try to get the customer normally (excluding soft-deleted)
+        rv = super().get(ident)
+        if rv is None:
+            # If not found, try including soft-deleted
+            rv = self.with_deleted().filter(Customer.uuid == ident).first()
+        return rv
+
+    def __iter__(self):
+        return iter(self.filter_by(is_deleted=False))
+
+    def with_deleted(self):
+        """Return a query that includes soft-deleted customers."""
+        return self.filter(True if True else False)  # This will include all customers, even soft-deleted
+
+
 class Customer(db.Model):
     __tablename__ = "customers"
+    query_class = CustomerQuery
     __table_args__ = (
         UniqueConstraint('mobile', name='uq_customers_mobile'),
         UniqueConstraint('gst', name='uq_customers_gst'),
@@ -29,8 +47,11 @@ class Customer(db.Model):
     state = Column(String(100), nullable=False)
     country = Column(String(100), nullable=False)
     pin = Column(String(20), nullable=False)
+    # Soft delete column
+    is_deleted = Column(Boolean, default=False)
  
-    # Relationship back to Lead
-    lead = relationship("Lead", back_populates="customers")
+    # Relationship back to Lead - exclude soft-deleted leads
+    lead = relationship("Lead", back_populates="customers",
+                       primaryjoin="and_(Customer.lead_id==Lead.uuid, Lead.is_deleted==False)")
     
  

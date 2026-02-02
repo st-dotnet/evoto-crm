@@ -1,7 +1,7 @@
 """Active-type add id
 
 Revision ID: a4ec610b1e54
-Revises: cbac691c562e
+Revises: 7a101c356b7d
 Create Date: 2025-08-25 19:41:47.649114
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'a4ec610b1e54'
-down_revision = 'cbac691c562e'
+down_revision = '5dc35df03744'
 branch_labels = None
 depends_on = None
 
