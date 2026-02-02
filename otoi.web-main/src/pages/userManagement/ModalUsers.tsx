@@ -84,8 +84,12 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
         .max(50, "Maximum 50 symbols")
         .nullable(),
       email: Yup.string()
-        .email("Invalid email")
-        .required("Email is required"),
+        .required("Email is required")
+        .trim()
+        .matches(
+          /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+          "Invalid email format"
+        ),
       mobile: Yup.string()
         .required("Mobile No. in digits required")
         .test("mobile-length", "Mobile must be 10 digits",
