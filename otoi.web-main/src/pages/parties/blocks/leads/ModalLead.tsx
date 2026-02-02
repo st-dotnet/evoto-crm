@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert } from "@/components";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
@@ -146,6 +147,63 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status[]>([]);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<any>(null);
+  const [pendingSubmit, setPendingSubmit] = useState<any>(null);
+
+  // Check for duplicates before submission using the existing GET /leads/ API
+  const checkDuplicates = async (values: any) => {
+    try {
+      const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+      const apiBaseLeads = baseUrl.endsWith("/")
+        ? `${baseUrl}leads/`
+        : `${baseUrl}/leads/`;
+
+      const params: any = {};
+      if (values.mobile) params.exact_mobile = values.mobile;
+      if (values.gst) params.exact_gst = values.gst;
+      if (lead?.uuid) params.exclude_uuid = lead.uuid;
+
+      // If no criteria provided, no need to check
+      if (Object.keys(params).length === 0) {
+        return { has_duplicates: false, duplicates: [] };
+      }
+
+      const response = await axios.get(apiBaseLeads, { params });
+      const foundLeads = response.data.data || [];
+
+      if (foundLeads.length > 0) {
+        // Map found leads to the duplicate structure expected by the message generator
+        const duplicates: any[] = [];
+        foundLeads.forEach((l: any) => {
+          if (values.mobile && l.mobile === values.mobile) {
+            duplicates.push({
+              type: "mobile",
+              value: l.mobile,
+              existing_lead: l
+            });
+          }
+          if (values.gst && l.gst?.toUpperCase() === values.gst?.toUpperCase()) {
+            duplicates.push({
+              type: "gst",
+              value: l.gst,
+              existing_lead: l
+            });
+          }
+        });
+
+        return {
+          has_duplicates: duplicates.length > 0,
+          duplicates
+        };
+      }
+
+      return { has_duplicates: false, duplicates: [] };
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+      return { has_duplicates: false, duplicates: [] };
+    }
+  };
 
   // Fetch status list
   useEffect(() => {
@@ -170,70 +228,135 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
       setLoading(true);
 
       try {
-        const postData = {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          mobile: values.mobile || null,
-          email: values.email || null,
-          gst: values.gst,
-          status: values.status,
-          city: values.city,
-          state: values.state,
-          country: values.country,
-          address1: values.address1,
-          address2: values.address2,
-          pin: values.pin,
-          reason: values.reason,
-        };
+        // Check for duplicates only when status is "Win" (4)
+        if (values.status === "4") {
+          const duplicateCheck = await checkDuplicates(values);
 
-        const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-        const apiBaseLeads = baseUrl.endsWith("/")
-          ? `${baseUrl}leads`
-          : `${baseUrl}/leads`;
-        let response;
-
-        if (lead?.uuid) {
-          response = await axios.put(
-            `${apiBaseLeads}/${lead.uuid}`,
-            postData
-          );
-
-          toast.success("Lead updated successfully");
-        } else {
-          response = await axios.post(
-            `${apiBaseLeads}/`,
-            postData
-          );
-
-          toast.success("Lead created successfully");
-
-          if (response.data?.customer_already_exists) {
-            toast("Customer already exists. Linked this lead to the existing customer.");
-          }
-
-          // If API returns created lead
-          const createdUuid = response.data?.uuid;
-          if (createdUuid) {
-            navigate(`/lead/${createdUuid}`);
-          } else {
-            onOpenChange(false);
+          if (duplicateCheck.has_duplicates) {
+            // Store pending submission data and show confirmation dialog
+            setPendingSubmit(values);
+            setDuplicateInfo(duplicateCheck);
+            setShowDuplicateDialog(true);
+            setSubmitting(false);
+            setLoading(false);
+            return;
           }
         }
 
-        onOpenChange(false);
+        // No duplicates, proceed with submission
+        await submitLead(values, { setStatus, setSubmitting });
       } catch (error: any) {
         const errorMessage = error?.response?.data?.message ||
           error?.response?.data?.error ||
           "Something went wrong. Please try again.";
         setStatus(errorMessage);
         toast.error(errorMessage);
-      } finally {
         setSubmitting(false);
         setLoading(false);
       }
     },
   });
 
+
+  // Submit lead function (extracted from original onSubmit)
+  const submitLead = async (values: any, { setStatus, setSubmitting }: any) => {
+    try {
+      const postData = {
+        first_name: values.first_name,
+        last_name: values.last_name,
+        mobile: values.mobile || null,
+        email: values.email || null,
+        gst: values.gst,
+        status: values.status,
+        city: values.city,
+        state: values.state,
+        country: values.country,
+        address1: values.address1,
+        address2: values.address2,
+        pin: values.pin,
+        reason: values.reason,
+        bypass_duplicate: true, // Allow bypassing duplicate checks
+      };
+
+      const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
+      const apiBaseLeads = baseUrl.endsWith("/")
+        ? `${baseUrl}leads/`
+        : `${baseUrl}/leads/`;
+      let response;
+
+      if (lead?.uuid) {
+        response = await axios.put(
+          `${apiBaseLeads}${lead.uuid}`,
+          postData
+        );
+
+        toast.success("Lead updated successfully");
+      } else {
+        response = await axios.post(
+          `${apiBaseLeads}`,
+          postData
+        );
+
+        toast.success("Lead created successfully");
+
+        if (response.data?.customer_already_exists) {
+          toast("Customer already exists. Linked this lead to the existing customer.");
+        }
+
+        // If API returns created lead
+        const createdUuid = response.data?.uuid;
+        if (createdUuid) {
+          navigate(`/lead/${createdUuid}`);
+        } else {
+          onOpenChange(false);
+        }
+      }
+
+      onOpenChange(false);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Something went wrong. Please try again.";
+      setStatus(errorMessage);
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setSubmitting(false);
+      setLoading(false);
+    }
+  };
+
+  // Handle confirmation dialog
+  const handleConfirmDuplicate = async () => {
+    if (pendingSubmit) {
+      try {
+        await submitLead(pendingSubmit, { setStatus: () => { }, setSubmitting: () => { } });
+      } catch (error) {
+        // Error already handled in submitLead
+      }
+    }
+    setPendingSubmit(null);
+    setDuplicateInfo(null);
+  };
+
+  const handleCancelDuplicate = () => {
+    setPendingSubmit(null);
+    setDuplicateInfo(null);
+  };
+
+  // Generate duplicate message
+  const getDuplicateMessage = () => {
+    if (!duplicateInfo?.duplicates?.length) return "";
+
+    const duplicateTypes = duplicateInfo.duplicates.map((d: any) => {
+      const existingLead = d.existing_lead;
+      // return `${d.type.toUpperCase()}: ${d.value}`;
+      // return `${d.type.toUpperCase()}: ${d.value} (already used by ${existingLead.first_name} ${existingLead.last_name} - Status: ${existingLead.status})`;
+      return `${d.type.toUpperCase()}: ${d.value} (by ${existingLead.first_name} ${existingLead.last_name})`;
+    });
+    return `The following information already exists:\n${duplicateTypes.join('\n')}\nDo you want to create this lead anyway?`;
+    // return `The following information already exists:\n\n${duplicateTypes.join('\n\n')}\n\nDo you want to create this lead anyway?`;
+  };
 
   // Reset form when editing a lead
   useEffect(() => {
@@ -655,6 +778,21 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
           </DialogBody>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        title="Duplicate Information Detected"
+        message={<div style={{ whiteSpace: "pre-line" }}>
+          {getDuplicateMessage()}
+        </div>}
+        confirmText="Yes, Create Lead"
+        cancelText="No, Cancel"
+        onConfirm={handleConfirmDuplicate}
+        onCancel={handleCancelDuplicate}
+        variant="warning"
+      />
     </Fragment>
   );
 };

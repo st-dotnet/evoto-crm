@@ -23,7 +23,7 @@ STATUS_MAPPING = {
     4: "Win",
     5: "Lose",
 }
-lead_blueprint = Blueprint("person", __name__, url_prefix="/leads")
+lead_blueprint = Blueprint("person", __name__)
 
 @lead_blueprint.route("/", methods=["GET", "OPTIONS"])
 def get_leads():
@@ -52,7 +52,25 @@ def get_leads():
 
       - name: mobile
         in: query
-        description: Filter by mobile number
+        description: Filter by mobile number (partial match)
+        required: false
+        schema:
+          type: string
+      - name: exact_mobile
+        in: query
+        description: Exact match for mobile number
+        required: false
+        schema:
+          type: string
+      - name: exact_gst
+        in: query
+        description: Exact match for GST number
+        required: false
+        schema:
+          type: string
+      - name: exclude_uuid
+        in: query
+        description: UUID to exclude from results (for duplicate checks)
         required: false
         schema:
           type: string
@@ -111,9 +129,24 @@ def get_leads():
                 )
             )
 
-        # Mobile filter
+        # Mobile filter (partial match)
         if "mobile" in request.args:
             query = query.filter(Lead.mobile.ilike(f"%{request.args['mobile']}%"))
+
+        # Exact filtering for duplicate checks (OR logic)
+        exact_filters = []
+        if "exact_mobile" in request.args:
+            exact_filters.append(Lead.mobile == request.args["exact_mobile"])
+        if "exact_gst" in request.args:
+            exact_filters.append(func.upper(Lead.gst) == request.args["exact_gst"].upper())
+        if "exact_email" in request.args:
+            exact_filters.append(func.upper(Lead.email) == request.args["exact_email"].upper())
+        
+        if exact_filters:
+            query = query.filter(or_(*exact_filters))
+
+        if "exclude_uuid" in request.args:
+            query = query.filter(Lead.uuid != request.args["exclude_uuid"])
 
         # Sorting
         sort = request.args.get("sort", "uuid")
@@ -349,9 +382,10 @@ def create_lead():
                 return jsonify({"error": "Complete address is required when status is Win"}), 400        
 
         # ---- DUPLICATE MOBILE CHECK (SAFE) ----
-        # if mobile:
-        #     if Lead.query.filter_by(mobile=mobile, is_deleted=False).first():
-        #         return jsonify({"error": "A lead with this mobile already exists"}), 400
+        bypass_duplicate = data.get("bypass_duplicate", False)
+        if mobile and not bypass_duplicate:
+            if Lead.query.filter_by(mobile=mobile, is_deleted=False).first():
+                return jsonify({"error": "A lead with this mobile already exists"}), 400
 
         # ---- CREATE LEAD ----
         lead = Lead(
@@ -475,9 +509,22 @@ def update_lead(lead_id):
     """
     try:
         data = request.get_json() or {}
+        bypass_duplicate = data.get("bypass_duplicate", False)
         lead = Lead.query.filter_by(uuid=lead_id, is_deleted=False).first()
         if not lead:
             return jsonify({"error": "Lead not found"}), 404
+
+        # ---- DUPLICATE MOBILE CHECK FOR UPDATE ----
+        if "mobile" in data and data["mobile"] and not bypass_duplicate:
+            mobile = str(data["mobile"]).strip()
+            if mobile != lead.mobile:  # Only check if mobile is being changed
+                existing = Lead.query.filter(
+                    Lead.mobile == mobile,
+                    Lead.uuid != lead_id,
+                    Lead.is_deleted == False
+                ).first()
+                if existing:
+                    return jsonify({"error": "A lead with this mobile already exists"}), 400
 
         # Update Lead basic fields
         lead.first_name = data.get("first_name", lead.first_name)
@@ -667,6 +714,8 @@ def get_lead_by_id(lead_id):
         "reason": lead.reason,
         "addresses": addresses,
     })
+
+
 
 @lead_blueprint.route("/<lead_uuid>", methods=["DELETE"])
 def delete_lead(lead_uuid):
