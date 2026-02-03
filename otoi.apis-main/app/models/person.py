@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.extensions import db
@@ -6,8 +6,26 @@ from app.models.common import BaseMixin
 import uuid
 
 
+class LeadQuery(db.Query):
+    def get(self, ident):
+        # First try to get the lead normally (excluding soft-deleted)
+        rv = super().get(ident)
+        if rv is None:
+            # If not found, try including soft-deleted
+            rv = self.with_deleted().filter(Lead.uuid == ident).first()
+        return rv
+
+    def __iter__(self):
+        return iter(self.filter_by(is_deleted=False))
+
+    def with_deleted(self):
+        """Return a query that includes soft-deleted leads."""
+        return self.filter(True if True else False)  # This will include all leads, even soft-deleted
+
+
 class Lead(BaseMixin, db.Model):
     __tablename__ = "leads"
+    query_class = LeadQuery
 
     uuid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name = Column(String(100), nullable=False)
@@ -20,6 +38,9 @@ class Lead(BaseMixin, db.Model):
      # Add this column if needed
     referenced_by = db.Column(db.String(120))
 
+    # Soft delete column
+    is_deleted = Column(Boolean, default=False)
+
 
     # Relationships
     lead_addresses = relationship("LeadAddress", back_populates="lead", cascade="all, delete-orphan", overlaps="leads")
@@ -27,8 +48,9 @@ class Lead(BaseMixin, db.Model):
     # direct access to addresses
     addresses = relationship("Address", secondary="lead_addresses", back_populates="leads", overlaps="lead_addresses")
 
-    # one-to-one relation with Customer
-    customers = relationship("Customer", back_populates="lead", cascade="all, delete-orphan")
+    # one-to-one relation with Customer - exclude soft-deleted customers
+    customers = relationship("Customer", back_populates="lead", cascade="all, delete-orphan",
+                           primaryjoin="and_(Lead.uuid==Customer.lead_id, Customer.is_deleted==False)")
 
 
     def __repr__(self):

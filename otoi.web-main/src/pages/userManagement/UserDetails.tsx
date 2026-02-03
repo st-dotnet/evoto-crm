@@ -577,7 +577,7 @@ export const UserDetails = () => {
                 {user.businesses?.length || 0} Total
               </span>
             </div>
-            <div className="p-8">
+            <div className="p-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {user.businesses && user.businesses.length > 0 ? (
                   user.businesses.map((b) => (

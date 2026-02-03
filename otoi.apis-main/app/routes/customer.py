@@ -34,7 +34,7 @@ def get_customers():
             schema:
               type: array
     """
-    query = Customer.query
+    query = Customer.query.filter_by(is_deleted=False)
     sort = request.args.get("sort", "created_at")  # Default sort by created_at
     order = request.args.get("order", "desc").upper()  # Default order is now 'desc'
 
@@ -188,7 +188,7 @@ def create_customer():
     # DUPLICATE CHECKS
     # -------------------
     if mobile:
-        query = Customer.query.filter(Customer.mobile == mobile)
+        query = Customer.query.filter(Customer.mobile == mobile, Customer.is_deleted == False)
         if uuid_to_ignore:
             query = query.filter(Customer.uuid != uuid_to_ignore)
         existing_mobile = query.first()
@@ -200,7 +200,7 @@ def create_customer():
 
     if gst and gst.strip():  # Check if GST is provided and not empty
         gst = gst.strip().upper()  # Normalize GST to uppercase
-        gst_query = Customer.query.filter(func.upper(Customer.gst) == gst)
+        gst_query = Customer.query.filter(func.upper(Customer.gst) == gst, Customer.is_deleted == False)
         if uuid_to_ignore:
             gst_query = gst_query.filter(Customer.uuid != uuid_to_ignore)
         existing_gst = gst_query.first()
@@ -216,7 +216,7 @@ def create_customer():
     lead_id = data.get("lead_id")
     lead = None
     if lead_id:
-        lead = Lead.query.get(lead_id)
+        lead = Lead.query.filter_by(uuid=lead_id, is_deleted=False).first()
         if not lead:
             return jsonify({"error": "Lead not found for provided lead_id"}), 404
     else:
@@ -224,9 +224,9 @@ def create_customer():
         if mobile or email:
             # Try to find existing lead by mobile or email
             if mobile:
-                lead = Lead.query.filter(Lead.mobile == mobile).first()
+                lead = Lead.query.filter(Lead.mobile == mobile, Lead.is_deleted == False).first()
             if not lead and email:
-                lead = Lead.query.filter(Lead.email == email).first()
+                lead = Lead.query.filter(Lead.email == email, Lead.is_deleted == False).first()
 
             # If no existing lead found, create a new one
             if not lead:
@@ -559,7 +559,9 @@ def get_customer(customer_id):
       200:
         description: Returns customer details including shipping address if available.
     """
-    customer = Customer.query.get_or_404(customer_id)
+    customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
+    if not customer:
+        return jsonify({"error": "Customer not found"}), 404
     
     # Prepare base response
     response_data = {
@@ -623,7 +625,7 @@ def update_customer(customer_id):
         data = request.get_json() or {}
         current_app.logger.info(f"Updating customer {customer_id} with data: {data}")
 
-        customer = Customer.query.filter_by(uuid=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
         if not customer:
             return jsonify({"error": "Customer not found"}), 404
 
@@ -639,7 +641,8 @@ def update_customer(customer_id):
             if mobile != customer.mobile:
                 existing = Customer.query.filter(
                     Customer.mobile == mobile,
-                    Customer.uuid != customer_id
+                    Customer.uuid != customer_id,
+                    Customer.is_deleted == False
                 ).first()
                 if existing:
                     return jsonify({"error": "Customer with this mobile number already exists"}), 400
@@ -649,7 +652,8 @@ def update_customer(customer_id):
             if gst != (customer.gst or "").upper():
                 existing = Customer.query.filter(
                     func.upper(Customer.gst) == gst,
-                    Customer.uuid != customer_id
+                    Customer.uuid != customer_id,
+                    Customer.is_deleted == False
                 ).first()
                 if existing:
                     return jsonify({"error": "Customer with this GST number already exists"}), 400
@@ -959,25 +963,14 @@ def update_customer(customer_id):
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     try:
-        customer = Customer.query.filter_by(uuid=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_id, is_deleted=False).first()
         if not customer:
             return jsonify({"message": "Customer not found"}), 404
 
-        db.session.delete(customer)
+        customer.is_deleted = True
         db.session.commit()
 
-        return jsonify({"message": "Customer deleted successfully"}), 200
-
-    except IntegrityError as e:
-        db.session.rollback()
-        return (
-            jsonify(
-                {
-                    "message": "Cannot delete customer. It is referenced in other records."
-                }
-            ),
-            409,
-        )
+        return jsonify({"message": "Customer soft-deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()

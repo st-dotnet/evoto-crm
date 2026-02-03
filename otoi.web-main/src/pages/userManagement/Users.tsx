@@ -56,54 +56,56 @@ interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
 }
 
-// Toolbar Component
 const Toolbar = ({
-  defaultSearch,
-  setSearch,
-  onAddUser,
+    defaultSearch,
+    setSearch,
+    onAddUser,
 }: {
-  defaultSearch: string;
-  setSearch: (query: string) => void;
-  onAddUser: () => void;
+    defaultSearch: string;
+    setSearch: (query: string) => void;
+    onAddUser: () => void;
 }) => {
-  const [searchInput, setSearchInput] = useState(defaultSearch);
+    const [searchInput, setSearchInput] = useState(defaultSearch);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      setSearch(searchInput);
-    }
-  };
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearch(searchInput);
+        }, 400);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchInput(e.target.value);
-    setSearch(e.target.value); // Live search
-  };
+        return () => clearTimeout(timer);
+    }, [searchInput, setSearch]);
 
-  return (
-    <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-      <div className="flex flex-wrap gap-2 lg:gap-5">
-        <div className="flex">
-          <label className="input input-sm">
-            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
-              <KeenIcon icon="magnifier" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search users"
-              value={searchInput}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-            />
-          </label>
-        </div>
-      </div>
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchInput(e.target.value);
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            setSearch(searchInput);
+        }
+    };
+
+    return (
+        <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
+            <div className="flex flex-wrap gap-2 lg:gap-5">
+                <label className="input input-sm">
+                    <KeenIcon icon="magnifier" />
+                    <input
+                        type="text"
+                        placeholder="Search user"
+                        value={searchInput}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                    />
+                </label>
+            </div>
       {/* <div className="flex items-center gap-2.5">
-        <button className="btn btn-sm btn-primary" onClick={onAddUser}>
-          <KeenIcon icon="plus" /> Add User
-        </button>
-      </div> */}
-    </div>
-  );
+            <button className="btn btn-sm btn-primary" onClick={onAddUser}>
+              <KeenIcon icon="plus" /> Add User
+            </button>
+          </div> */}
+        </div>
+    );
 };
 
 // Main UsersContent Component
@@ -130,7 +132,6 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
         params: {
           page: 1,
           items_per_page: 1000, // Fetch all users
-          query: searchQuery,
         },
       });
       setUsers(response.data.data);
@@ -158,7 +159,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
 
   useEffect(() => {
     fetchUsers();
-  }, [refreshStatus, searchQuery]);
+  }, [refreshStatus]);
 
   // Filter Users (updated for username/mobile)
   useEffect(() => {
@@ -307,8 +308,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
               <DropdownMenuContent align="end">
                 {isAdmin && (
                   <DropdownMenuItem
-                    onClick={async (e) => {
-                      e.preventDefault();
+                    onClick={async () => {
                       const userData = await fetchUserDetails(row.original.id);
                       if (userData) {
                         setLeadModalOpen(true);
@@ -320,8 +320,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     navigate(`/user/${row.original.id}`);
                   }}
                 >
@@ -330,8 +329,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem
-                    onClick={async (e) => {
-                      e.preventDefault();
+                    onClick={async () => {
                       const userData = await fetchUserDetails(row.original.id);
                       if (userData) {
                         setShowDeleteDialog(true);

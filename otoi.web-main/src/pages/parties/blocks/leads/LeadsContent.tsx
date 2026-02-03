@@ -368,9 +368,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       },
       {
         id: "actions",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
-        ),
+        header: ({ column }) => <DataGridColumnHeader title="Actions" column={column} className="justify-center" />,
         enableSorting: false,
         cell: ({ row }) => (
           <div className="flex justify-center">
@@ -383,8 +381,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault();
+                  onClick={async () => {
                     const leadData = await fetchLeadDetails(row.original.uuid);
                     if (leadData) {
                       setLeadModalOpen(true);
@@ -395,8 +392,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     navigate(`/lead/${row.original.uuid}`);
                   }}
                 >
@@ -404,8 +400,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                   Details
                 </DropdownMenuItem>
                 {/* <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   setSelectedLeadForActivity({
                     id: row.original.uuid,
                     status: row.original.status,
@@ -420,9 +415,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                 <span>Create Activity</span>
               </DropdownMenuItem> */}
                 <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const userData = await fetchLeadDetails(row.original.uuid);
+                  onClick={async () => {
+                    const userData = await fetchLeadDetails(row.original.uuid!);
                     if (userData) {
                       setShowDeleteDialog(true);
                     }
@@ -512,9 +506,9 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {loading || fetchingLead && leads.length === 0 && (
+      {(loading || fetchingLead) && leads.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary">
+          <div className="text-black">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
@@ -572,7 +566,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
             </DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete this lead?
+              Are you sure you want to delete <strong>{selectedLead?.first_name} {selectedLead?.last_name}</strong> ({selectedLead?.email}) this lead?
             </DialogDescription>
 
           </DialogHeader>
