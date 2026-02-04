@@ -12,6 +12,9 @@ from app.cli import register_cli
 def create_app():
     app = Flask(__name__)
     app.config.from_object("app.config.Config")
+    
+    # Disable strict slash matching to prevent 308 redirects
+    app.url_map.strict_slashes = False
 
     # Register CLI commands
     register_cli(app)

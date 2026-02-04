@@ -1,17 +1,17 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { DataGrid, DataGridColumnHeader, DataGridRowSelect, DataGridRowSelectAll } from "@/components";
 import { Button } from "@/components/ui/button";
-import { 
-  Plus, 
-  Settings, 
-  FileText, 
-  ChevronDown, 
-  Search, 
-  Calendar, 
-  Filter, 
-  Check, 
-  Circle, 
-  CircleOff, 
+import {
+  Plus,
+  Settings,
+  FileText,
+  ChevronDown,
+  Search,
+  Calendar,
+  Filter,
+  Check,
+  Circle,
+  CircleOff,
   CircleCheck,
   MoreVertical,
   Edit,
@@ -26,6 +26,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
+import { getQuotations, getQuotationById } from "../services/quotation.services";
+import { toast } from "sonner";
 
 interface Quotation {
   id: string;
@@ -38,10 +40,47 @@ interface Quotation {
 }
 
 const QuotationPage = () => {
-  const [quotations] = useState<Quotation[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed'>('open');
   const navigate = useNavigate();
+
+  // Fetch quotations from database
+  const fetchQuotations = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getQuotations();
+      if (response.success && response.data) {
+        // Backend returns { data: [...] } so we need to access .data
+        const quotationsData = response.data.data || response.data;
+
+        // Transform the data to match the interface
+        const transformedQuotations = quotationsData.map((item: any) => ({
+          id: item.uuid, // Use uuid as id
+          date: item.quotation_date || item.created_at,
+          quotation_number: item.quotation_number,
+          party_name: item.customer_name || 'N/A',
+          due_in: item.valid_till ? `${Math.ceil((new Date(item.valid_till).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days` : 'N/A',
+          amount: item.total_amount || 0,
+          status: item.status || 'open',
+        }));
+        setQuotations(transformedQuotations);
+      } else {
+        toast.error(response.error || 'Failed to fetch quotations');
+      }
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+      toast.error('Failed to fetch quotations');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch quotations on component mount
+  useEffect(() => {
+    fetchQuotations();
+  }, []);
 
   const columns = useMemo<ColumnDef<Quotation>[]>(() => [
     {
@@ -52,6 +91,7 @@ const QuotationPage = () => {
             type="checkbox"
             checked={table.getIsAllPageRowsSelected()}
             onChange={table.getToggleAllPageRowsSelectedHandler()}
+            onClick={(event) => event.stopPropagation()}
             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
           />
         </div>
@@ -63,6 +103,7 @@ const QuotationPage = () => {
             checked={row.getIsSelected()}
             disabled={!row.getCanSelect()}
             onChange={row.getToggleSelectedHandler()}
+            onClick={(event) => event.stopPropagation()}
             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
           />
         </div>
@@ -174,11 +215,10 @@ const QuotationPage = () => {
         const status = info.getValue() as string;
         return (
           <div className="flex items-center justify-center">
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              status === 'open' ? 'bg-blue-100 text-blue-800' :
+            <span className={`px-2 py-1 text-xs rounded-full ${status === 'open' ? 'bg-blue-100 text-blue-800' :
               status === 'closed' ? 'bg-green-100 text-green-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
+                'bg-gray-100 text-gray-800'
+              }`}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </span>
           </div>
@@ -202,9 +242,8 @@ const QuotationPage = () => {
       cell: ({ row }) => {
         const [isOpen, setIsOpen] = useState(false);
 
-        const handleEdit = (quotation: Quotation) => {
-          // Handle edit action
-          console.log('Edit', quotation);
+        const handleEdit = (id: string) => {
+          navigate(`/quotes/${id}/edit`);
           setIsOpen(false);
         };
 
@@ -215,12 +254,17 @@ const QuotationPage = () => {
         };
 
         return (
-          <div className="flex justify-center">
+          <div
+            className="flex justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -229,10 +273,10 @@ const QuotationPage = () => {
 
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleEdit(row.original);
+                    handleEdit(row.original.id);
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
@@ -240,10 +284,10 @@ const QuotationPage = () => {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onSelect={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    navigate(`/quotations/${row.original.id}`);
+                    navigate(`/quotes/${row.original.id}`);
                   }}
                 >
                   <Eye className="mr-2 h-4 w-4" />
@@ -251,7 +295,7 @@ const QuotationPage = () => {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onSelect={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleDelete(row.original.id);
@@ -281,7 +325,7 @@ const QuotationPage = () => {
               </span>
             </Button>
           </div>
-          
+
           <div className="w-44">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -296,7 +340,7 @@ const QuotationPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setSelectedStatus('open')}
                   className="flex items-center gap-2"
                 >
@@ -304,7 +348,7 @@ const QuotationPage = () => {
                   <span>Open Quotation</span>
                   {selectedStatus === 'open' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setSelectedStatus('all')}
                   className="flex items-center gap-2"
                 >
@@ -312,7 +356,7 @@ const QuotationPage = () => {
                   <span>All Quotation</span>
                   {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setSelectedStatus('closed')}
                   className="flex items-center gap-2"
                 >
@@ -355,6 +399,7 @@ const QuotationPage = () => {
             rowSelection
             getRowId={(row) => row.id.toString()}
             pagination={{ size: 10 }}
+            onRowClick={(row) => navigate(`/quotes/${row.original.id}`)}
           />
         </div>
       </div>

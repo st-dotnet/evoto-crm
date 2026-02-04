@@ -70,8 +70,10 @@ const DataGridTable = <TData,>() => {
               data-state={row.getIsSelected() ? 'selected' : undefined}
               className={cn(
                 'border-b hover:bg-muted/30 data-[state=selected]:bg-muted/50',
-                cellBorder && '[&_>:last-child]:border-e-0'
+                cellBorder && '[&_>:last-child]:border-e-0',
+                props.onRowClick && 'cursor-pointer'
               )}
+              onClick={() => props.onRowClick?.(row)}
             >
               {row.getVisibleCells().map((cell: Cell<TData, unknown>) => (
                 <td
