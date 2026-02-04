@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-/* ================= TYPES ================= */
+/* TYPES */
 
 type ShippingAddress = {
   uuid?: string;
@@ -41,7 +41,7 @@ interface ShippingAddressListProps {
   onSetDefault: (uuid: string) => void;
 }
 
-/* ================= ICON MAP ================= */
+/*  ICON MAP  */
 
 const typeIcon = {
   home: Home,
@@ -49,7 +49,7 @@ const typeIcon = {
   other: Building,
 };
 
-/* ================= SINGLE ADDRESS ITEM COMPONENT ================= */
+/*  SINGLE ADDRESS ITEM COMPONENT  */
 
 const AddressItem: React.FC<{
   address: ShippingAddress;
@@ -275,7 +275,7 @@ const AddressItem: React.FC<{
   );
 };
 
-/* ================= MAIN COMPONENT ================= */
+/*  MAIN COMPONENT  */
 
 const ShippingAddressList: React.FC<ShippingAddressListProps> = ({
   addresses,

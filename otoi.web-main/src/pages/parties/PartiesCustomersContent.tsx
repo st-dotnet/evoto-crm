@@ -37,7 +37,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { SpinnerDotted } from 'spinners-react';
 
-import { getCustomerById } from "./services/customer.service";
+import { getCustomers, getCustomerById } from "./services/customer.service";
 
 // import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 import {
@@ -144,6 +144,12 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [customersData, setCustomersData] = useState<Customer[]>([]);
   const [filteredItems, setFilteredItems] = useState<Customer[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    current_page: 1,
+    last_page: 1,
+    items_per_page: 5
+  });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -170,45 +176,52 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
   const navigate = useNavigate();
 
-  const fetchAllCustomers = async () => {
+  const fetchAllCustomers = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?items_per_page=1000`
-      );
-      const rows = response.data.data;
-      setCustomersData(rows);
+      const result = await getCustomers(searchQuery, page, 5);
+
+      if (result.success && result.data) {
+        const payload = result.data as any;
+        const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+        const paginationData = payload?.pagination;
+
+        if (paginationData) {
+          setPagination({
+            total: paginationData.total || 0,
+            current_page: paginationData.current_page || 1,
+            last_page: paginationData.last_page || 1,
+            items_per_page: paginationData.items_per_page || 5
+          });
+        }
+
+        setCustomersData(rows);
+        setFilteredItems(rows); // Since we're now doing server-side pagination, no client filtering
+      } else {
+        toast.error(result.error || "Failed to fetch customers");
+        setCustomersData([]);
+        setFilteredItems([]);
+      }
     } catch (error) {
       toast.error("Failed to fetch customers");
+      setCustomersData([]);
+      setFilteredItems([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAllCustomers();
+    fetchAllCustomers(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshStatus, refreshKey]);
 
   useEffect(() => {
-    let result = [...customersData];
-
-    // Apply search filter
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery !== "") {
-      const lowerQuery = trimmedQuery.toLowerCase();
-      result = result.filter((customer) => {
-        const fullName = `${customer.first_name || ""} ${customer.last_name || ""}`.toLowerCase();
-        return (
-          fullName.includes(lowerQuery) ||
-          (customer.email || "").toLowerCase().includes(lowerQuery) ||
-          (customer.mobile || "").includes(trimmedQuery) ||
-          (customer.gst || "").toLowerCase().includes(lowerQuery)
-        );
-      });
-    }
-
-    setFilteredItems(result);
-  }, [searchQuery, customersData]);
+    // Reset to page 1 when search query changes
+    setPagination(prev => ({ ...prev, current_page: 1 }));
+    fetchAllCustomers(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -454,69 +467,9 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         },
       },
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loading, selectedPerson, navigate]
   );
-
-  const fetchUsers = async (params: TDataGridRequestParams) => {
-    try {
-      const queryParams = new URLSearchParams();
-      queryParams.set("page", String(params.pageIndex + 1));
-      queryParams.set("items_per_page", String(params.pageSize));
-
-      if (params.sorting?.[0]?.id) {
-        queryParams.set("sort", params.sorting[0].id);
-        queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
-      }
-
-      if (searchQuery) {
-        queryParams.set("query", searchQuery);
-      } else {
-        queryParams.delete("query");
-      }
-
-      if (searchPersonTypeQuery !== "-1") {
-        queryParams.set("person_type", searchPersonTypeQuery);
-      }
-
-      if (params.columnFilters) {
-        params.columnFilters.forEach(({ id, value }) => {
-          if (value !== undefined && value !== null) {
-            queryParams.set(`filter[${id}]`, String(value));
-          }
-        });
-      }
-
-      const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}&t=${Date.now()}`,
-      );
-      const payload: any = response.data as any;
-      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
-
-      // Update state with the fetched data
-      setCustomersData(rows);
-
-      return {
-        data: rows,
-        totalCount: total,
-      };
-    } catch (error) {
-      console.log(error);
-      toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
-      });
-
-      return {
-        data: [],
-        totalCount: 0,
-      };
-    }
-  };
-
 
   const handleRowSelection = (state: RowSelectionState) => {
     const selectedRowIds = Object.keys(state);
@@ -525,7 +478,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       });
     }
   };
-
 
   return (
     <div className="grid gap-5 lg:gap-7.5 relative">
@@ -544,29 +496,27 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         </div>
       )}
       {!loading && (
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          serverSide={false}
-          data={filteredItems}
-          loading={loading}
-          rowSelection={true}
-          getRowId={(row: any) => row.id}
-          onRowSelectionChange={handleRowSelection}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={setSearchQuery}
-              defaultStatusType={searchPersonTypeQuery}
-              setDefaultStatusType={setPersonTypeQuery}
-            />
-          }
-          layout={{ card: true }}
-        />
+        <>
+          <DataGrid
+            columns={columns}
+            serverSide={false}
+            data={filteredItems}
+            loading={loading}
+            rowSelection={true}
+            getRowId={(row: any) => row.id}
+            onRowSelectionChange={handleRowSelection}
+            toolbar={
+              <Toolbar
+                defaultSearch={searchQuery}
+                setSearch={setSearchQuery}
+                defaultStatusType={searchPersonTypeQuery}
+                setDefaultStatusType={setPersonTypeQuery}
+              />
+            }
+            layout={{ card: true }}
+          />
+        </>
       )}
-
-
       <ModalCustomer
         open={personModalOpen}
         onOpenChange={(open: boolean) => {

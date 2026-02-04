@@ -533,7 +533,7 @@ def update_item(item_id):
                 print(f"DEBUG: duplicate check result: {existing}")
                 if existing:
                     errors.setdefault("item_code", []).append(
-                        "Item Code already exists for another item"
+                        "Item code already exixts"
                     )      
                 else:
                     print(f"DEBUG: No duplicate found, updating item_code to: {new_code}")

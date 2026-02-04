@@ -84,7 +84,7 @@ export const getCustomerById = async (id: string): Promise<ApiResponse> => {
 export const getCustomers = async (
   search = "",
   page = 1,
-  limit = 10,
+  limit = 5,
 ): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
@@ -95,11 +95,10 @@ export const getCustomers = async (
     };
   }
 
-  const params = new URLSearchParams({
-    search,
-    page: String(page),
-    limit: String(limit),
-  });
+  const params = new URLSearchParams();
+  if (page) params.set("page", String(page));
+  if (limit) params.set("limit", String(limit));
+  if (search) params.set("search", search);
 
   try {
     const response = await axios.get(

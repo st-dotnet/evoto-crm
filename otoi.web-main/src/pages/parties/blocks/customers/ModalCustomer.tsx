@@ -20,11 +20,12 @@ import { ShippingAddressModal } from "./ShippingAddressModal";
 interface IModalCustomerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (newCustomer?: any) => void;
   customer: Person | null;
   defaultStatus?: string;
   title?: string; // Optional custom title for the dialog
   hideStatusField?: boolean;
+  hideSameAsBilling?: boolean; // New prop to hide same as billing checkbox
 }
 
 interface PersonType {
@@ -239,11 +240,10 @@ const ShippingAddressForm = ({
               <label
                 key={type}
                 className={`relative flex items-center justify-center px-4 py-2 text-sm font-medium border cursor-pointer transition-all duration-200
-                                ${
-                                  address.address_type === type
-                                    ? "bg-blue-600 text-white border-blue-600 z-10"
-                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-                                }
+                                ${address.address_type === type
+                    ? "bg-blue-600 text-white border-blue-600 z-10"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                  }
                                 ${type === "home" ? "rounded-l-md" : ""}
                                 ${type === "other" ? "rounded-r-md" : ""}
                                 ${type !== "home" ? "-ml-px" : ""}
@@ -436,6 +436,7 @@ const ModalCustomer = ({
   title,
   defaultStatus,
   hideStatusField = false,
+  hideSameAsBilling = false,
 }: IModalCustomerProps) => {
   const [loading, setLoading] = useState(false);
   const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
@@ -694,44 +695,59 @@ const ModalCustomer = ({
         const payload = { ...values } as Record<string, any>;
 
         // Handle shipping addresses
-        if (!sameAsBilling) {
-          // Filter out empty addresses and format them for API
-          const validShippingAddresses = shippingAddresses
-            .filter(
-              (addr) =>
-                addr.address1 &&
-                addr.city &&
-                addr.state &&
-                addr.country &&
-                addr.pin,
-            )
-            .map((addr) => ({
-              uuid: addr.uuid,
-              address1: addr.address1,
-              address2: addr.address2 || null,
-              city: addr.city,
-              state: addr.state,
-              country: addr.country,
-              pin: addr.pin,
-              address_type: addr.address_type,
-              is_default: addr.is_default,
-            }));
+        const validShippingAddresses = shippingAddresses
+          .filter(
+            (addr) =>
+              addr.address1 &&
+              addr.city &&
+              addr.state &&
+              addr.country &&
+              addr.pin
+          )
+          .map((addr) => ({
+            address1: addr.address1,
+            address2: addr.address2 || null,
+            city: addr.city,
+            state: addr.state,
+            country: addr.country,
+            pin: addr.pin,
+            address_type: addr.address_type || 'home',
+            is_default: addr.is_default || false
+          }));
 
-          // Always send shipping_addresses array (even if empty) when not same as billing
+        // If no shipping addresses but shipping fields are filled, add them
+        if (validShippingAddresses.length === 0 && 
+            (values.shipping_address1 || values.shipping_city || values.shipping_state || 
+             values.shipping_country || values.shipping_pin)) {
+          const newAddress = {
+            address1: values.shipping_address1 || '',
+            address2: values.shipping_address2 || null,
+            city: values.shipping_city || '',
+            state: values.shipping_state || '',
+            country: values.shipping_country || '',
+            pin: values.shipping_pin || '',
+            address_type: 'home' as const,
+            is_default: true
+          };
+          validShippingAddresses.push(newAddress);
+        }
+
+        // Add shipping addresses to payload if any exist
+        if (validShippingAddresses.length > 0) {
           payload.shipping_addresses = validShippingAddresses;
         }
 
-        // Add flag to indicate shipping is same as billing
+        // Set same_as_billing flag
         payload.same_as_billing = sameAsBilling;
 
         // Remove old shipping fields from payload
         const oldShippingFields = [
-          "shipping_address1",
-          "shipping_address2",
-          "shipping_city",
-          "shipping_state",
-          "shipping_country",
-          "shipping_pin",
+          'shipping_address1',
+          'shipping_address2',
+          'shipping_city',
+          'shipping_state',
+          'shipping_country',
+          'shipping_pin',
         ];
         oldShippingFields.forEach((field) => {
           delete payload[field];
@@ -739,22 +755,22 @@ const ModalCustomer = ({
 
         // Clean up remaining empty strings
         Object.keys(payload).forEach((key) => {
-          if (payload[key] === "") {
+          if (payload[key] === '') {
             payload[key] = null;
           }
         });
 
         if (customer?.uuid) {
           // Editing existing customer
-          await axios.put(`${apiBase}/${customer.uuid}`, payload);
+          const response = await axios.put(`${apiBase}/${customer.uuid}`, payload);
           toast.success("Customer updated successfully");
+          onSuccess?.(response.data);
         } else {
           // Creating new customer
-          await axios.post(`${apiBase}/`, payload);
+          const response = await axios.post(`${apiBase}/`, payload);
           toast.success("Customer created successfully");
+          onSuccess?.(response.data);
         }
-
-        onSuccess?.();
         onOpenChange(false);
         resetForm({ values: initialValues });
       } catch (err: any) {
@@ -1177,22 +1193,24 @@ const ModalCustomer = ({
                         )}
                       </div>
                       {/* Same as Billing Checkbox */}
-                      <div className="flex items-center gap-2 col-span-full">
-                        <input
-                          type="checkbox"
-                          id="sameAsBilling"
-                          checked={sameAsBilling}
-                          onChange={(e) => setSameAsBilling(e.target.checked)}
-                        />
-                        <label
-                          htmlFor="sameAsBilling"
-                          className="text-sm font-medium text-gray-700"
-                        >
-                          Shipping Address is same as Billing Address
-                        </label>
-                      </div>
+                      {!hideSameAsBilling && (
+                        <div className="flex items-center gap-2 col-span-full">
+                          <input
+                            type="checkbox"
+                            id="sameAsBilling"
+                            checked={sameAsBilling}
+                            onChange={(e) => setSameAsBilling(e.target.checked)}
+                          />
+                          <label
+                            htmlFor="sameAsBilling"
+                            className="text-sm font-medium text-gray-700"
+                          >
+                            Shipping Address is same as Billing Address
+                          </label>
+                        </div>
+                      )}
                       {/* Shipping Address Section */}
-                      {!sameAsBilling && (
+                      {(!sameAsBilling || hideSameAsBilling) && (
                         <div className="col-span-full mt-4">
                           <div className="flex items-center justify-between mb-3">
                             <h3 className="text-md font-semibold text-gray-900">
@@ -1227,7 +1245,7 @@ const ModalCustomer = ({
                             )}
                           </div>
                           <ShippingAddressList
-                             addresses={shippingAddresses}
+                            addresses={shippingAddresses}
                             onEdit={(uuid) => handleEditAddress(uuid)}
                             onDelete={(uuid) => handleDeleteAddress(uuid)}
                             onSetDefault={(uuid) =>

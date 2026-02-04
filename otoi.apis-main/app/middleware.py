@@ -1,4 +1,4 @@
-from flask import g, request, jsonify
+from flask import g, request, jsonify, abort
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
 from app.models.user import User
 import logging
@@ -8,15 +8,42 @@ logging.basicConfig(level=logging.ERROR)
 def extract_jwt_info():
     """
     Middleware to verify JWT and extract user_id and business_id.
-    Ensures that deactivated users are automatically logged out.
+    Blocks all requests except public endpoints and OPTIONS requests.
     """
-
+    
+    # Allow CORS preflight requests
     if request.method == "OPTIONS":
         return None
+    
+    public_endpoints = [
+        '/api/auth/signup',
+        '/api/auth/login',
 
+        # Swagger / Docs
+        '/apidocs',
+        '/apidocs/',
+        '/apidocs/index.html',
+        '/apidocs/swagger.json',
+        '/apidocs/swagger.yaml',
+
+    # Flask-apispec spec endpoint (IMPORTANT)
+        '/apispec_1.json',
+
+    # Other
+        '/flasgger',
+        '/flasgger/',
+        '/favicon.ico'
+    ]
+    
+    # Check if current endpoint is public
+    print(f"Request path: {request.path}")
+    if any(request.path.startswith(endpoint) for endpoint in public_endpoints):
+        return None
+
+    # Require authentication for all other endpoints
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-        return None
+        abort(401, description="Not authorized.")
 
     try:
         verify_jwt_in_request()
@@ -36,7 +63,4 @@ def extract_jwt_info():
 
     except Exception as e:
         logging.error(f"JWT Verification Error: {e}")
-
-        return jsonify({
-            "message": "Invalid or expired token"
-        }), 401
+        abort(401, description="Invalid or expired token ")

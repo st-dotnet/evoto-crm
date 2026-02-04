@@ -2,6 +2,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify
+from flask_cors import CORS
 from app import create_app
 from app.seed import seed_data, create_database
 

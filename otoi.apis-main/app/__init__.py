@@ -17,10 +17,53 @@ def create_app():
     register_cli(app)
 
     # Enable CORS
-    #
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    # CORS(app)
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "*"}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        expose_headers=["Authorization"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
 
+    # authentication barrier
+    swagger_template = {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "OTOI REST API",
+            "version": "1.0.0",
+            "description": "API documentation for OTOI CRM"
+        },
+        "components": {
+            "securitySchemes": {
+                "BearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT"
+                }
+            }
+        },
+        "security": [
+            {"BearerAuth": []}
+        ]
+    }
 
+    swagger_config = {
+        "headers": [],
+        "uiversion": 3,
+        "specs": [
+            {
+                "endpoint": 'apispec_1',
+                "route": '/apispec_1.json',
+                "rule_filter": lambda rule: True,
+                "model_filter": lambda tag: True,
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/apidocs/"
+    }
 
     # Initialize extensions
     db.init_app(app)
@@ -31,7 +74,7 @@ def create_app():
     app.before_request(extract_jwt_info)
 
     # Initialize Swagger
-    Swagger(app)
+    Swagger(app, template=swagger_template, config=swagger_config)
 
     # Register blueprints
     register_blueprints(app)

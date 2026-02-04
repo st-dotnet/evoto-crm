@@ -19,7 +19,6 @@ const getAuthToken = (): string | null => {
     const parsedAuth = JSON.parse(authData);
     return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
   } catch (error) {
-    console.error('Error parsing auth data:', error);
     return null;
   }
 };
@@ -123,20 +122,29 @@ export const updateItem = async (id: string, payload: any): Promise<ApiResponse>
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error updating item:', {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      responseData: error.response?.data
-    });
-
     let errorMessage = 'Failed to update item';
+    
     if (error.code === 'ERR_NETWORK') {
       errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+    } 
+    // Handle 400 Bad Request
+    else if (error.response?.status === 400) {
+      const responseData = error.response.data;
+      
+      // Handle the error response format from the backend
+      if (responseData.details?.item_code?.[0]) {
+        errorMessage = responseData.details.item_code[0];
+      } 
+      // Handle other validation errors
+      else if (responseData.message) {
+        errorMessage = responseData.message;
+      }
+      // Handle case where error is directly in the response
+      else if (responseData.error) {
+        errorMessage = responseData.error;
+      }
     } else if (error.response) {
-      if (error.response.status === 400 && error.response.data?.message?.includes('already exists')) {
-        errorMessage = 'An item with this name already exists. Please use a different name.';
-      } else if (error.response.status === 401) {
+      if (error.response.status === 401) {
         errorMessage = 'Session expired. Please log in again.';
       } else if (error.response.status === 404) {
         errorMessage = 'Item not found.';
@@ -145,6 +153,7 @@ export const updateItem = async (id: string, payload: any): Promise<ApiResponse>
       }
     }
 
+    
     return {
       success: false,
       error: errorMessage,

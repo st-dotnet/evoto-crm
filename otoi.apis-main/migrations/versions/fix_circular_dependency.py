@@ -15,24 +15,7 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # Make business_id nullable in addresses
-    op.alter_column('addresses', 'business_id',
-                   existing_type=sa.INTEGER(),
-                   nullable=True,
-                   existing_foreign_key=('businesses', 'id'))
-    
-    # Drop existing foreign key constraint on businesses.address_id
-    op.drop_constraint('businesses_address_id_fkey', 'businesses', type_='foreignkey')
-    
-    # Recreate the foreign key with DEFERRABLE
-    op.create_foreign_key(
-        'businesses_address_id_fkey',
-        'businesses', 'addresses',
-        ['address_id'], ['uuid'],
-        ondelete='SET NULL',
-        deferrable=True,
-        initially='DEFERRED'
-    )
+    pass
 
 def downgrade():
     # Revert the changes if needed

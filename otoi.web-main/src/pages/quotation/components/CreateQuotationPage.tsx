@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Plus,
@@ -11,6 +12,9 @@ import {
   MapPinIcon,
   HomeIcon,
   BriefcaseIcon,
+  MoreVertical,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SpinnerDotted } from "spinners-react";
@@ -30,6 +34,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
+import { ShippingAddressList } from "@/pages/parties/blocks/customers/ShippingAddressList";
 
 interface Party {
   id: string;
@@ -77,7 +82,7 @@ interface Customer {
   billing_address?: Address;
   shipping_address?: Address;
   status?: string;
-  [key: string]: any; // For any additional fields
+  [key: string]: any;
 }
 
 /* Shipping Address Formik Setup */
@@ -96,6 +101,25 @@ const shippingAddressValidationSchema = Yup.object().shape({
     .required("Pin Code is required")
     .matches(/^[0-9]+$/, "Pin must be a number"),
 });
+
+// Validation function to check for duplicate address types
+const validateAddressType = (
+  address: ShippingAddress,
+  existingAddresses: ShippingAddress[],
+  editingAddress?: ShippingAddress | null,
+) => {
+  const duplicateAddress = existingAddresses.find(
+    (addr) =>
+      addr.address_type === address.address_type &&
+      addr.uuid !== editingAddress?.uuid,
+  );
+
+  if (duplicateAddress) {
+    throw new Error(`A ${address.address_type} address already exists. Please choose a different address type.`);
+  }
+
+  return true;
+};
 
 /* Date Utilities */
 const addDays = (date: string | number | Date, days: number) => {
@@ -159,14 +183,46 @@ const CreateQuotationPage = () => {
     setShowConfirmModal(false);
   };
   const today = new Date().toISOString().split("T")[0];
+
+  // Form state
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddressLoading, setIsAddressLoading] = useState(false);
+
+  // UI State
+  const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Data state
+  const [parties, setParties] = useState<Party[]>([]);
+  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Party creation state
+  const [isCreatingParty, setIsCreatingParty] = useState(false);
+  const [newPartyName, setNewPartyName] = useState("");
+  const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<string | null>(null);
+
+  // Shipping Address state
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
+  const [editingAddress, setEditingAddress] = useState<ShippingAddress | undefined>();
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
+
+  // Action button state
+  const [activeDropdownUuid, setActiveDropdownUuid] = useState<string | null>(null);
+  const [addressToOperate, setAddressToOperate] = useState<ShippingAddress | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [buttonPosition, setButtonPosition] = useState<{ top: number; left: number } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Formik for shipping address
   const shippingFormik = useFormik({
     initialValues: shippingAddressInitialValues,
     validationSchema: shippingAddressValidationSchema,
     onSubmit: (values) => {
-      // console.log("Shipping address submitted:", values);
     },
   });
 
@@ -177,27 +233,6 @@ const CreateQuotationPage = () => {
     validityDate: addDays(today, 10),
     status: "win",
   });
-
-  const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [parties, setParties] = useState<Party[]>([]);
-  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
-  const [isCreatingParty, setIsCreatingParty] = useState(false);
-  const [newPartyName, setNewPartyName] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  );
-  const [isShippingModalOpen, setIsShippingModalOpen] =
-    useState<boolean>(false);
-  const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(
-    [],
-  );
-  const [selectedAddress, setSelectedAddress] =
-    useState<ShippingAddress | null>(null);
-  const [isAddressLoading, setIsAddressLoading] = useState<boolean>(false);
 
   /* Fetch Parties (Customers with status "4" - Win) */
   const fetchParties = async () => {
@@ -218,10 +253,20 @@ const CreateQuotationPage = () => {
         name: `${customer.first_name} ${customer.last_name}`.trim(),
         balance: 0,
         mobile: customer.mobile,
-        customerData: customer, // Store the full customer data for address population
+        customerData: customer,
       }));
 
       setParties(partiesList);
+
+      // Handle auto-selection if needed
+      if (autoSelectCustomerUUID) {
+        const newCustomer = partiesList.find((p: { uuid: string | null }) => p.uuid === autoSelectCustomerUUID);
+        if (newCustomer) {
+          setSelectedParty(newCustomer);
+          fetchCustomerData(newCustomer.uuid);
+        }
+        setAutoSelectCustomerUUID(null); // Reset after handling
+      }
     } catch {
       toast.error("Failed to fetch parties");
     }
@@ -388,7 +433,6 @@ const CreateQuotationPage = () => {
 
       setSelectedCustomer(customerData);
     } catch (error) {
-      // console.error("Error fetching customer:", error);
       toast.error("Failed to fetch customer details");
     } finally {
       setIsLoading(false);
@@ -403,9 +447,27 @@ const CreateQuotationPage = () => {
 
     setIsAddressLoading(true);
     try {
-      // Prepare the payload with the new shipping address
+      // Check if we're editing an existing address
+      const isEditing = editingAddress && editingAddress.uuid;
+
+      let updatedAddresses: ShippingAddress[];
+
+      if (isEditing) {
+        // Update existing address
+        updatedAddresses = shippingAddresses.map(addr =>
+          addr.uuid === editingAddress.uuid ? newAddress : addr
+        );
+      } else {
+        // Validate address type before proceeding (only for new addresses)
+        validateAddressType(newAddress, shippingAddresses);
+
+        // Add new address
+        updatedAddresses = [...shippingAddresses, newAddress];
+      }
+
+      // Prepare the payload with the updated shipping addresses
       const payload = {
-        shipping_addresses: [...shippingAddresses, newAddress].map(addr => ({
+        shipping_addresses: updatedAddresses.map(addr => ({
           uuid: addr.uuid,
           address1: addr.address1,
           address2: addr.address2 || null,
@@ -418,33 +480,38 @@ const CreateQuotationPage = () => {
         })),
       };
 
-      // Call the API to update the customer with the new address
-      await axios.put(
+      // Call the API to update the customer with the new/updated address
+      const response = await axios.put(
         `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
         payload
       );
 
       // Update local state after successful API call
-      const updatedAddresses = [...shippingAddresses, newAddress];
       setShippingAddresses(updatedAddresses);
-      
-      // Update the customer data with the new address
+
+      // Update the customer data with the new addresses
       const updatedCustomer = {
         ...selectedCustomer,
         shipping_addresses: updatedAddresses,
       };
       setSelectedCustomer(updatedCustomer);
-      
+
       // If this is the first address or set as default, select it
       if (updatedAddresses.length === 1 || newAddress.is_default) {
         setSelectedAddress(newAddress);
+      } else if (isEditing && selectedAddress?.uuid === editingAddress.uuid) {
+        // If we edited the currently selected address, update the selection
+        setSelectedAddress(newAddress);
       }
-      
-      toast.success("Address saved successfully.");
+
+      toast.success(isEditing ? "Address updated successfully." : "Address saved successfully.");
+
+      // Clear editing state
+      setEditingAddress(undefined);
     } catch (error: any) {
       console.error("Error saving address:", error);
       let errorMessage = "Failed to save address. Please try again.";
-      
+
       if (error.response?.data?.error) {
         const errorCode = error.response.data.error;
         switch (errorCode) {
@@ -458,11 +525,177 @@ const CreateQuotationPage = () => {
             errorMessage = error.response.data.error || errorMessage;
         }
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setIsAddressLoading(false);
     }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setActiveDropdownUuid(null);
+      }
+    };
+
+    if (activeDropdownUuid) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeDropdownUuid]);
+
+  // Handle edit address
+  const handleEditAddress = () => {
+    if (activeDropdownUuid) {
+      const addressToEdit = shippingAddresses.find(addr => addr.uuid === activeDropdownUuid);
+      if (addressToEdit) {
+        setEditingAddress(addressToEdit);
+        setAddAddressModalOpen(true);
+      }
+    }
+    setActiveDropdownUuid(null);
+  };
+
+  // Handle set default address
+  const handleSetDefaultAddress = async () => {
+    const targetUuid = activeDropdownUuid;
+    if (!targetUuid || !selectedCustomer?.uuid) {
+      toast.error("No address or customer selected");
+      return;
+    }
+
+    setIsAddressLoading(true);
+    try {
+      // Update all addresses to set the selected one as default
+      const updatedAddresses = shippingAddresses.map((addr) => ({
+        ...addr,
+        is_default: addr.uuid === targetUuid,
+      }));
+
+      // Prepare the payload
+      const payload = {
+        shipping_addresses: updatedAddresses.map(addr => ({
+          uuid: addr.uuid,
+          address1: addr.address1,
+          address2: addr.address2 || null,
+          city: addr.city,
+          state: addr.state,
+          country: addr.country,
+          pin: addr.pin,
+          address_type: addr.address_type,
+          is_default: addr.is_default,
+        })),
+      };
+
+      // Call the API to update the customer
+      await axios.put(
+        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+        payload
+      );
+
+      // Update local state
+      setShippingAddresses(updatedAddresses);
+      
+      const defaultAddress = shippingAddresses.find(addr => addr.uuid === targetUuid);
+      if (defaultAddress) {
+        setSelectedAddress({ ...defaultAddress, is_default: true });
+      }
+
+      toast.success("Default address updated successfully.");
+    } catch (error) {
+      console.error("Error updating default address:", error);
+      toast.error("Failed to update default address.");
+    } finally {
+      setIsAddressLoading(false);
+    }
+  };
+
+  // Handle delete address
+  const handleDeleteAddress = () => {
+    if (activeDropdownUuid) {
+      const addressToDelete = shippingAddresses.find(addr => addr.uuid === activeDropdownUuid);
+      if (addressToDelete) {
+        setAddressToOperate(addressToDelete);
+        setShowDeleteConfirm(true);
+      }
+    }
+    setActiveDropdownUuid(null);
+  };
+
+  // Confirm delete address
+  const handleConfirmDelete = async () => {
+    if (!addressToOperate?.uuid || !selectedCustomer?.uuid) {
+      toast.error("No address or customer selected");
+      return;
+    }
+
+    setIsAddressLoading(true);
+    try {
+      // Remove the address from the list
+      const updatedAddresses = shippingAddresses.filter(
+        (addr) => addr.uuid !== addressToOperate.uuid
+      );
+
+      // If we removed the default address and there are remaining addresses, make the first one default
+      if (addressToOperate.is_default && updatedAddresses.length > 0) {
+        updatedAddresses[0].is_default = true;
+      }
+
+      // Prepare the payload
+      const payload = {
+        shipping_addresses: updatedAddresses.map(addr => ({
+          uuid: addr.uuid,
+          address1: addr.address1,
+          address2: addr.address2 || null,
+          city: addr.city,
+          state: addr.state,
+          country: addr.country,
+          pin: addr.pin,
+          address_type: addr.address_type,
+          is_default: addr.is_default,
+        })),
+      };
+
+      // Call the API to update the customer
+      await axios.put(
+        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+        payload
+      );
+
+      // Update local state
+      setShippingAddresses(updatedAddresses);
+
+      // Set the new selected address
+      if (updatedAddresses.length > 0) {
+        const defaultAddress = updatedAddresses.find((addr) => addr.is_default) || updatedAddresses[0];
+        setSelectedAddress(defaultAddress);
+      } else {
+        setSelectedAddress(null);
+      }
+
+      toast.success("Address deleted successfully.");
+      setShowDeleteConfirm(false);
+      setAddressToOperate(null);
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      toast.error("Failed to delete address.");
+    } finally {
+      setIsAddressLoading(false);
+    }
+  };
+
+  // Cancel delete
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setAddressToOperate(null);
   };
 
   return (
@@ -755,95 +988,100 @@ const CreateQuotationPage = () => {
                           </p>
                         </div>
                       ) : (
-                        <div>
-                          <h4 className="font-medium text-gray-900">
-                            {selectedCustomer.first_name}{" "}
-                            {selectedCustomer.last_name}
-                          </h4>
-                          <div className="mt-2 text-sm text-gray-700 space-y-1">
-                            {selectedCustomer.company_name && (
-                              <p className="font-medium">
-                                {selectedCustomer.company_name}
-                              </p>
-                            )}
-                            {selectedCustomer.contact_person && (
-                              <p>{selectedCustomer.contact_person}</p>
-                            )}
-                            <div className="mt-2 space-y-1">
-                              {selectedCustomer.mobile && (
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Phone:</span>{" "}
-                                  {selectedCustomer.mobile}
-                                </p>
-                              )}
-                              {selectedCustomer.email && (
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Email:</span>{" "}
-                                  {selectedCustomer.email}
-                                </p>
-                              )}
-                              {selectedCustomer.gst && (
-                                <p className="text-gray-600">
-                                  <span className="font-medium">GST:</span>{" "}
-                                  {selectedCustomer.gst}
-                                </p>
-                              )}
-                              <div className="mt-2 space-y-1">
-                                {selectedAddress.address1 && (
-                                  <p className="text-gray-600">
-                                    <span className="font-medium">
-                                      Shipping Address 1:
-                                    </span>{" "}
-                                    {selectedAddress.address1}
+                        <div className="relative group">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">
+                                {selectedCustomer.first_name}{" "}
+                                {selectedCustomer.last_name}
+                              </h4>
+                              <div className="mt-2 text-sm text-gray-700 space-y-1">
+                                {selectedCustomer.company_name && (
+                                  <p className="font-medium">
+                                    {selectedCustomer.company_name}
                                   </p>
                                 )}
-                                {selectedAddress.address2 && (
-                                  <p className="text-gray-600">
-                                    <span className="font-medium">
-                                      Shipping Address 2:
-                                    </span>{" "}
-                                    {selectedAddress.address2}
-                                  </p>
+                                {selectedCustomer.contact_person && (
+                                  <p>{selectedCustomer.contact_person}</p>
                                 )}
-                                <div className="mt-2 text-sm text-gray-600 space-y-1">
-                                  <p>
-                                    {selectedAddress.city && (
-                                      <span>
+                                <div className="mt-2 space-y-1">
+                                  {selectedCustomer.mobile && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Phone:</span>{" "}
+                                      {selectedCustomer.mobile}
+                                    </p>
+                                  )}
+                                  {selectedCustomer.email && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Email:</span>{" "}
+                                      {selectedCustomer.email}
+                                    </p>
+                                  )}
+                                  {selectedCustomer.gst && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">GST:</span>{" "}
+                                      {selectedCustomer.gst}
+                                    </p>
+                                  )}
+                                  <div className="mt-2 space-y-1">
+                                    {selectedAddress.address1 && (
+                                      <p className="text-gray-600">
                                         <span className="font-medium">
-                                          City:
+                                          Shipping Address 1:
                                         </span>{" "}
-                                        {selectedAddress.city},{" "}
-                                      </span>
+                                        {selectedAddress.address1}
+                                      </p>
                                     )}
-                                    {selectedAddress.state && (
-                                      <span>
+                                    {selectedAddress.address2 && (
+                                      <p className="text-gray-600">
                                         <span className="font-medium">
-                                          State:
+                                          Shipping Address 2:
                                         </span>{" "}
-                                        {selectedAddress.state},{" "}
-                                      </span>
+                                        {selectedAddress.address2}
+                                      </p>
                                     )}
-                                    {selectedAddress.pin && (
-                                      <span>
-                                        <span className="font-medium">
-                                          PIN:
-                                        </span>{" "}
-                                        {selectedAddress.pin}
-                                      </span>
-                                    )}
-                                    {selectedAddress.country && (
-                                      <span>
-                                        ,{" "}
-                                        <span className="font-medium">
-                                          Country:
-                                        </span>{" "}
-                                        {selectedAddress.country}
-                                      </span>
-                                    )}
-                                  </p>
+                                    <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                      <p>
+                                        {selectedAddress.city && (
+                                          <span>
+                                            <span className="font-medium">
+                                              City:
+                                            </span>{" "}
+                                            {selectedAddress.city},{" "}
+                                          </span>
+                                        )}
+                                        {selectedAddress.state && (
+                                          <span>
+                                            <span className="font-medium">
+                                              State:
+                                            </span>{" "}
+                                            {selectedAddress.state},{" "}
+                                          </span>
+                                        )}
+                                        {selectedAddress.pin && (
+                                          <span>
+                                            <span className="font-medium">
+                                              PIN:
+                                            </span>{" "}
+                                            {selectedAddress.pin}
+                                          </span>
+                                        )}
+                                        {selectedAddress.country && (
+                                          <span>
+                                            ,{" "}
+                                            <span className="font-medium">
+                                              Country:
+                                            </span>{" "}
+                                            {selectedAddress.country}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
+
                           </div>
                         </div>
                       )}
@@ -1022,25 +1260,22 @@ const CreateQuotationPage = () => {
                       {filteredParties.map((party) => (
                         <li
                           key={party.id}
-                          className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                            selectedParty?.id === party.id ? "bg-gray-100" : ""
-                          }`}
+                          className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id ? "bg-gray-100" : ""
+                            }`}
                           onClick={() => handleSelectParty(party)}
                         >
                           <div className="flex items-center">
                             <div
-                              className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
-                                selectedParty?.id === party.id
-                                  ? "bg-green-100"
-                                  : "bg-gray-100"
-                              }`}
+                              className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
+                                ? "bg-green-100"
+                                : "bg-gray-100"
+                                }`}
                             >
                               <span
-                                className={`font-medium text-sm ${
-                                  selectedParty?.id === party.id
-                                    ? "text-green-700"
-                                    : "text-gray-600"
-                                }`}
+                                className={`font-medium text-sm ${selectedParty?.id === party.id
+                                  ? "text-green-700"
+                                  : "text-gray-600"
+                                  }`}
                               >
                                 {party.name
                                   .split(" ")
@@ -1103,9 +1338,29 @@ const CreateQuotationPage = () => {
         defaultStatus="4"
         title="Create Party"
         hideStatusField={true}
-        onSuccess={() => {
+        hideSameAsBilling={true}
+        onSuccess={(newCustomer?: any) => {
           setIsCustomerModalOpen(false);
-          fetchParties();
+
+          if (newCustomer && newCustomer.uuid) {
+            const party = {
+              id: newCustomer.uuid,
+              uuid: newCustomer.uuid,
+              name: `${newCustomer.first_name} ${newCustomer.last_name}`.trim(),
+              balance: 0,
+              mobile: newCustomer.mobile,
+              customerData: newCustomer,
+            };
+
+            setParties(prev => [party, ...prev]);
+
+            setSelectedParty(party);
+
+            setSelectedCustomer(newCustomer);
+            fetchCustomerData(newCustomer.uuid);
+          } else {
+            fetchParties();
+          }
         }}
       />
 
@@ -1182,26 +1437,24 @@ const CreateQuotationPage = () => {
                 {shippingAddresses.length > 0 ? (
                   <div className="grid gap-3">
                     {shippingAddresses.map((address, index) => {
-                      const isSelected = selectedAddress?.uuid && address.uuid 
+                      const isSelected = selectedAddress?.uuid && address.uuid
                         ? selectedAddress.uuid === address.uuid
                         : selectedAddress === address;
                       return (
                         <div
                           key={address.uuid || index}
-                          className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                            isSelected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                          }`}
+                          className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
                           onClick={() => setSelectedAddress(address)}
                         >
                           <div className="flex items-start gap-3">
                             <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
-                                isSelected
-                                  ? "bg-blue-100"
-                                  : "bg-gray-100 group-hover:bg-gray-200"
-                              }`}
+                              className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
+                                ? "bg-blue-100"
+                                : "bg-gray-100 group-hover:bg-gray-200"
+                                }`}
                             >
                               {address.address_type === "home" ? (
                                 <HomeIcon
@@ -1227,6 +1480,79 @@ const CreateQuotationPage = () => {
                                     </span>
                                   )}
                                 </span>
+
+                                {/* Action Button */}
+                                <div className="relative" ref={address.uuid === activeDropdownUuid ? dropdownRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const uuid = address.uuid || '';
+                                      
+                                      if (activeDropdownUuid === uuid) {
+                                        setActiveDropdownUuid(null);
+                                        setButtonPosition(null);
+                                      } else {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setButtonPosition({
+                                          top: rect.top,
+                                          left: rect.right + 8
+                                        });
+                                        setActiveDropdownUuid(uuid);
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+                                    aria-label="Address actions"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+
+                                  {activeDropdownUuid === address.uuid && (
+                                    <div 
+                                      className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200"
+                                    >
+                                      <div className="py-1" role="menu">
+                                        {!address.is_default && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSetDefaultAddress();
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                          >
+                                            <MapPin className="w-4 h-4 text-green-500" />
+                                            <span>Set as Default</span>
+                                          </button>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditAddress();
+                                          }}
+                                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                          <span>Edit</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteAddress();
+                                          }}
+                                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          <span>Delete</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <div className="space-y-1">
                                 <p className="text-xs text-gray-700 leading-relaxed">
@@ -1235,12 +1561,12 @@ const CreateQuotationPage = () => {
                                     address.address2
                                   ]
                                     .filter(Boolean)
-                                    .join(", ")}, 
-                                  <span className="font-medium text-gray-500"> State:</span> {address.state}, 
+                                    .join(", ")},
+                                  <span className="font-medium text-gray-500"> State:</span> {address.state},
                                   <span className="font-medium text-gray-500"> Country:</span> {address.country}
                                 </p>
                                 <p className="text-xs text-gray-700 leading-relaxed">
-                                  <span className="font-medium text-gray-500">City:</span> {address.city}, 
+                                  <span className="font-medium text-gray-500">City:</span> {address.city},
                                   <span className="font-medium text-gray-500"> Pin:</span> {address.pin}
                                 </p>
                               </div>
@@ -1313,17 +1639,16 @@ const CreateQuotationPage = () => {
                         shipping_pin: selectedAddress.pin,
                       };
                       setSelectedCustomer(updatedCustomer);
-                      
+
                       setIsShippingModalOpen(false);
                       toast.success("Address changed successfully");
                     } catch (error: any) {
-                      console.error("Error saving shipping address:", error);
                       let errorMessage = "Failed to save shipping address. Please try again.";
-                      
+
                       if (error.response?.data?.error) {
                         errorMessage = error.response.data.error || errorMessage;
                       }
-                      
+
                       toast.error(errorMessage);
                     } finally {
                       setIsAddressLoading(false);
@@ -1342,16 +1667,59 @@ const CreateQuotationPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Address Modal */}
+      {/* Add/Edit Address Modal */}
       <ShippingAddressModal
         open={addAddressModalOpen}
-        onOpenChange={setAddAddressModalOpen}
+        onOpenChange={(open) => {
+          setAddAddressModalOpen(open);
+          if (!open) {
+            setEditingAddress(undefined);
+          }
+        }}
+        address={editingAddress}
         onSave={handleAddAddress}
         existingAddresses={shippingAddresses}
-        title="Add Shipping Address"
+        title={editingAddress ? "Edit Shipping Address" : "Add Shipping Address"}
       />
 
-    </div>
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-4 border-b bg-white">
+            <DialogTitle className="text-base font-semibold text-gray-900">
+              Delete Shipping Address
+            </DialogTitle>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-4 bg-white">
+            <DialogDescription className="text-sm text-gray-700">
+              Are you sure you want to delete this shipping address?
+            </DialogDescription>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCancelDelete}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+    </div >
   );
 };
 

@@ -97,7 +97,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
       setItems(mappedItems);
     } catch (err) {
-      console.error("Error fetching items:", err);
       setItems([]);
       toast.error("Failed to fetch items. Please try again.");
     } finally {
@@ -169,7 +168,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       toast.success("Item deleted successfully");
       fetchItems();
     } catch (err) {
-      console.error("Failed to delete item:", err);
       toast.error("Failed to delete item. Please try again.");
     } finally {
       setIsDeleting(false);

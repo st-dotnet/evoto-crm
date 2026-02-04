@@ -165,7 +165,6 @@ export default function CreateItemModal({
                     postData.opening_stock = Number(values.opening_stock || 0);
                 }
 
-                console.log('DEBUG: Sending postData:', postData);
 
                 const currentItemId = item?.item_id || item?.item_id;
 
@@ -177,7 +176,11 @@ export default function CreateItemModal({
                         onSuccess();
                         onOpenChange();
                     } else {
-                        throw new Error(response?.error || "Failed to update item");
+                        // Throw an error with the error message from the response
+                        const error = new Error(response?.error || "Failed to update item");
+                        // @ts-ignore - Add response data to the error object
+                        error.response = { data: { message: response?.error } };
+                        throw error;
                     }
                 } else {
                     // Creating a new item
@@ -192,16 +195,18 @@ export default function CreateItemModal({
                     }
                 }
             } catch (error: any) {
-                console.error('Error:', error);
-                const errorMessage =
-                    error?.response?.data?.details?.item_code?.[0] ||
-                    error?.response?.data?.details?.item_name?.[0] ||
-                    error?.response?.data?.details?.category_id?.[0] ||
-                    error?.response?.data?.details?.measuring_unit_id?.[0] ||
-                    error?.response?.data?.message ||
-                    error?.message ||
-                    "An error occurred. Please try again.";
+                
+                // Get the error message from the error object
+                let errorMessage = error?.message || 
+                                 error?.response?.data?.message || 
+                                 "An error occurred while saving the item.";
 
+                // If the error is about duplicate item code, show a specific message
+                if (errorMessage.toLowerCase().includes('item code') && errorMessage.toLowerCase().includes('already exists')) {
+                    errorMessage = 'Item code already exists. Please use a different code.';
+                }
+
+                // Set the status and show error toast
                 setStatus(errorMessage);
                 toast.error(errorMessage);
             
@@ -351,7 +356,7 @@ export default function CreateItemModal({
                 const data = await getItemCategories();
                 setCategories(data);
             } catch (error) {
-                console.error("Failed to load categories", error);
+                // console.error("Failed to load categories", error);
             }
         };
         if (open) loadCategories();
@@ -743,7 +748,7 @@ export default function CreateItemModal({
                                         setNewCategory("");
                                         setShowCategoryModal(false);
                                     } catch (error: any) {
-                                        console.error("Failed to create category", error);
+                                        // console.error("Failed to create category", error);
                                         const errorMessage = error.response?.data?.message || error.response?.data?.errors || "Category with this name already exists.";
                                         toast.error(errorMessage);
                                     }
