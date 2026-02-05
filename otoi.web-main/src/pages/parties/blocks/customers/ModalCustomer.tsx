@@ -16,6 +16,7 @@ import { Country, State, City } from "country-state-city";
 import { toast } from "sonner";
 import { ShippingAddressList } from "./ShippingAddressList";
 import { ShippingAddressModal } from "./ShippingAddressModal";
+import { ShippingAddress } from "./customer-models";
 
 interface IModalCustomerProps {
   open: boolean;
@@ -36,20 +37,6 @@ interface PersonType {
 interface Status {
   id: number;
   name: string;
-}
-
-interface ShippingAddress {
-  uuid?: string;
-  address1: string;
-  address2: string | null;
-  city: string;
-  state: string;
-  country: string;
-  pin: string;
-  address_type: "home" | "work" | "other";
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Person {
@@ -490,8 +477,6 @@ const ModalCustomer = ({
 
   // Remove shipping address by UUID
   const removeShippingAddress = (uuid: string) => {
-    console.log("Removing address with UUID:", uuid);
-    console.log("Before removal:", shippingAddresses);
 
     const addressToRemove = shippingAddresses.find(
       (addr) => addr.uuid === uuid,
@@ -508,11 +493,9 @@ const ModalCustomer = ({
 
     // If we removed the default address and there are remaining addresses, make the first one default
     if (wasDefault && updatedAddresses.length > 0) {
-      console.log("Removed default address, setting new default");
       updatedAddresses[0].is_default = true;
     }
 
-    console.log("After removal:", updatedAddresses);
     setShippingAddresses(updatedAddresses);
   };
 
@@ -557,8 +540,6 @@ const ModalCustomer = ({
 
   // Handle delete address by UUID
   const handleDeleteAddress = (uuid: string) => {
-    console.log("Delete address called for UUID:", uuid);
-    console.log("Current addresses:", shippingAddresses);
 
     // Find the address to delete
     const addressIndex = shippingAddresses.findIndex(
@@ -572,7 +553,6 @@ const ModalCustomer = ({
     }
 
     const addressToDelete = shippingAddresses[addressIndex];
-    console.log("User confirmed deletion");
     removeShippingAddress(uuid);
     toast.success("Shipping address deleted successfully");
   };

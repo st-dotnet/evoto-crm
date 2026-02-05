@@ -55,6 +55,21 @@ export type Customer = {
   edit: string;
   personType: PersonType; 
   pin: string;
+  shipping_addresses?: ShippingAddress[];
+};
+
+export type ShippingAddress = {
+  uuid: string;
+  address_type: "home" | "work" | "other";
+  address1: string;
+  address2: string | null;
+  city: string;
+  state: string;
+  country: string;
+  pin: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 };
 export type Vendor = {
   id: number;

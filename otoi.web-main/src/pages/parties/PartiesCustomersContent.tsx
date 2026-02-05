@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   Customer,
   QueryApiResponse,
@@ -69,7 +69,7 @@ interface ActivityLead {
 
 import { debounce } from "@/lib/helpers";
 
-const Toolbar = ({
+const Toolbar = memo(({
   defaultSearch,
   setSearch,
   defaultStatusType,
@@ -81,6 +81,7 @@ const Toolbar = ({
   setDefaultStatusType: (query: string) => void;
 }) => {
   const [searchInput, setSearchInput] = useState(defaultSearch);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const debouncedSearch = useMemo(
     () =>
@@ -89,6 +90,10 @@ const Toolbar = ({
       }, 500),
     [setSearch]
   );
+
+  useEffect(() => {
+    setSearchInput(defaultSearch);
+  }, [defaultSearch]);
 
   useEffect(() => {
     return () => {
@@ -124,13 +129,14 @@ const Toolbar = ({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               className="w-full focus:outline-none"
+              ref={inputRef}
             />
           </label>
         </div>
       </div>
     </div>
   );
-};
+});
 
 const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -181,8 +187,8 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       setLoading(true);
       const result = await getCustomers(searchQuery, page, 5);
 
-      if (result.success && result.data) {
-        const payload = result.data as any;
+      if (result?.success && result?.data) {
+        const payload = result?.data as any;
         const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
         const paginationData = payload?.pagination;
 
@@ -196,7 +202,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         }
 
         setCustomersData(rows);
-        setFilteredItems(rows); // Since we're now doing server-side pagination, no client filtering
+        setFilteredItems(rows);
       } else {
         toast.error(result.error || "Failed to fetch customers");
         setCustomersData([]);
@@ -210,6 +216,14 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       setLoading(false);
     }
   };
+
+  const setSearchQueryCallback = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const setPersonTypeQueryCallback = useCallback((query: string) => {
+    setPersonTypeQuery(query);
+  }, []);
 
   useEffect(() => {
     fetchAllCustomers(1);
@@ -268,13 +282,13 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         const result = await getCustomerById(rowData.uuid);
         if (result.success && result.data) {
           const customerData = {
-            ...result.data,
-            shipping_address1: result.data.shipping_address1 || '',
-            shipping_address2: result.data.shipping_address2 || '',
-            shipping_city: result.data.shipping_city || '',
-            shipping_state: result.data.shipping_state || '',
-            shipping_country: result.data.shipping_country || '',
-            shipping_pin: result.data.shipping_pin || result.data.shipping_zip || '',
+            ...result?.data,
+            shipping_address1: result?.data?.shipping_address1 ?? '',
+            shipping_address2: result?.data?.shipping_address2 ?? '',
+            shipping_city: result?.data?.shipping_city ?? '',
+            shipping_state: result?.data?.shipping_state ?? '',
+            shipping_country: result?.data?.shipping_country ?? '',
+            shipping_pin: result?.data?.shipping_pin ?? result?.data?.shipping_zip ?? '',
           };
           setSelectedPerson(customerData);
           setPersonModalOpen(true);
@@ -330,7 +344,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/customer/${info.row.original.id}`);
+                  navigate(`/customer/${info.row.original?.id ?? ''}`);
                 }}
               >
                 {info.row.original.first_name} {info.row.original.last_name}
@@ -339,7 +353,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/customer/${info.row.original.id}`);
+                  navigate(`/customer/${info.row.original?.id ?? ''}`);
                 }}
               >
                 {info.row.original.email || "\u00A0"}
@@ -440,7 +454,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
                 <DropdownMenuItem
                   onSelect={() => {
-                    navigate(`/customer/${row.original.id}`);
+                    navigate(`/customer/${row.original?.id ?? ''}`);
                   }}
                 >
                   <Eye className="mr-2 h-4 w-4" />
@@ -488,7 +502,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           </div>
         </div>
       )}
-      {loading && customersData.length === 0 && (
+      {loading && !customersData?.length && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
@@ -499,7 +513,20 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         <>
           <DataGrid
             columns={columns}
-            serverSide={false}
+            serverSide={true}
+            onFetchData={async (params) => {
+              const result = await getCustomers(searchQuery, params.pageIndex + 1, params.pageSize);
+              if (result.success && result.data) {
+                const payload = result.data as any;
+                const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+                const paginationData = payload?.pagination;
+                return {
+                  data: rows,
+                  totalCount: paginationData?.total ?? rows.length
+                };
+              }
+              return { data: [], totalCount: 0 };
+            }}
             data={filteredItems}
             loading={loading}
             rowSelection={true}
@@ -508,11 +535,12 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             toolbar={
               <Toolbar
                 defaultSearch={searchQuery}
-                setSearch={setSearchQuery}
+                setSearch={setSearchQueryCallback}
                 defaultStatusType={searchPersonTypeQuery}
-                setDefaultStatusType={setPersonTypeQuery}
+                setDefaultStatusType={setPersonTypeQueryCallback}
               />
             }
+            pagination={{ size: 5 }}
             layout={{ card: true }}
           />
         </>
@@ -531,22 +559,10 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           setPersonModalOpen(false);
           setRefreshKey((prev) => prev + 1);
         }}
-        customer={
-          selectedPerson
-            ? {
-              ...selectedPerson,
-              person_type_id: (selectedPerson as any).person_type_id ?? 1
-            }
-            : null
-        }
+        customer={selectedPerson ? { ...selectedPerson, person_type_id: (selectedPerson as any).person_type_id ?? 1 } : null}
       />
 
-      <ActivityForm
-        open={activityModalOpen}
-        onOpenChange={() => setActivityModalOpen(false)}
-        lead={selectedCustomerForActivity}
-      />
-
+      <ActivityForm open={activityModalOpen} onOpenChange={() => setActivityModalOpen(false)} lead={selectedCustomerForActivity} />
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-[420px] p-6">
           <DialogHeader className="flex flex-col items-center text-center gap-3">
@@ -554,9 +570,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               <AlertCircle className="h-6 w-6 text-red-600" />
             </div>
 
-            <DialogTitle className="text-lg font-semibold">
-              Delete Customer
-            </DialogTitle>
+            <DialogTitle className="text-lg font-semibold">Delete Customer</DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
               Are you sure you want to delete <strong>{selectedPerson?.first_name} {selectedPerson?.last_name}</strong> this customer?

@@ -475,7 +475,6 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         totalCount: response.data.pagination.total,
       };
     } catch (error) {
-      console.log(error);
       toast(`Connection Error`, {
         description: `An error occurred while fetching leads. Please try again later`,
         action: { label: "Ok", onClick: () => console.log("Ok") },

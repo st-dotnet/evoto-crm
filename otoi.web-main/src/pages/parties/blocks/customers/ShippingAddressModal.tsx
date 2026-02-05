@@ -12,20 +12,8 @@ import {
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
 import { toast } from "sonner";
-
-interface ShippingAddress {
-  uuid?: string;
-  address1: string;
-  address2: string | null;
-  city: string;
-  state: string;
-  country: string;
-  pin: string;
-  address_type: "home" | "work" | "other";
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { uniqueID } from "@/lib/helpers";
+import { ShippingAddress } from "./customer-models";
 
 interface IShippingAddressModalProps {
   open: boolean;
@@ -95,6 +83,7 @@ const getDefaultAddressType = (existingAddresses: ShippingAddress[]): "home" | "
 };
 
 const initialAddressValues: ShippingAddress = {
+  uuid: "", // Will be generated when saving
   address1: "",
   address2: "",
   city: "",
@@ -130,7 +119,7 @@ const ShippingAddressModal = ({
       try {
         const addressToSave: ShippingAddress = {
           ...values,
-          uuid: address?.uuid,
+          uuid: address?.uuid || uniqueID(),
           created_at: address?.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };

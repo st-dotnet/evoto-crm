@@ -48,7 +48,7 @@ export function ActivityForm({ open, onOpenChange, lead }: ActivityFormProps) {
     validationSchema,
     onSubmit: async (values) => {
       setLoading(true);
-      console.log("Form submitted with:", values);
+      // console.log("Form submitted with:", values);
       setLoading(false);
     },
   });

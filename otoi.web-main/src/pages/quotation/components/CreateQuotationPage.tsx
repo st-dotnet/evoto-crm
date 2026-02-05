@@ -25,16 +25,18 @@ import * as Yup from "yup";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { ModalCustomer } from "@/pages/parties/blocks/customers/ModalCustomer";
 import axios from "axios";
 import { toast } from "sonner";
-import { DialogDescription } from "@radix-ui/react-dialog";
+import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 import { ShippingAddressList } from "@/pages/parties/blocks/customers/ShippingAddressList";
+import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
 
 interface Party {
   id: string;
@@ -52,20 +54,6 @@ interface Address {
   postal_code?: string;
   country?: string;
   [key: string]: any; // For any additional fields
-}
-
-interface ShippingAddress {
-  uuid?: string;
-  address_type: "home" | "work" | "other";
-  address1: string;
-  address2: string | null;
-  city: string;
-  state: string;
-  country: string;
-  pin: string;
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Customer {
@@ -1437,9 +1425,7 @@ const CreateQuotationPage = () => {
                 {shippingAddresses.length > 0 ? (
                   <div className="grid gap-3">
                     {shippingAddresses.map((address, index) => {
-                      const isSelected = selectedAddress?.uuid && address.uuid
-                        ? selectedAddress.uuid === address.uuid
-                        : selectedAddress === address;
+                      const isSelected = selectedAddress?.uuid === address.uuid || address.is_default;
                       return (
                         <div
                           key={address.uuid || index}
@@ -1487,7 +1473,12 @@ const CreateQuotationPage = () => {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const uuid = address.uuid || '';
+                                      const uuid = address.uuid;
+                                      
+                                      if (!uuid) {
+                                        console.error('Address UUID is missing:', address);
+                                        return;
+                                      }
                                       
                                       if (activeDropdownUuid === uuid) {
                                         setActiveDropdownUuid(null);

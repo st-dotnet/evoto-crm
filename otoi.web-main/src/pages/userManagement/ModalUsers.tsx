@@ -144,9 +144,6 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           // Update user (no password in update)
           const { password, confirmPassword, ...updateData } = values;
 
-          console.log("API URL:", `${apiBaseUsers}/${user.id}`);
-          console.log("Payload:", updateData);
-
           response = await axios.put(
             `${apiBaseUsers}/${user.id}`,
             updateData

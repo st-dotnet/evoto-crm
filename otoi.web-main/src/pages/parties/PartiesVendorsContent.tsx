@@ -452,7 +452,7 @@ const openPersonModal = (rowData: Vendor | null = null) => {
         totalCount: total,
       };
     } catch (error: any) {
-      console.log(error);
+      // console.log(error);
       const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "An error occurred while fetching data. Please try again later";
       toast.error(errorMessage);
 

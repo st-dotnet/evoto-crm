@@ -135,19 +135,20 @@ def login():
     ---
     tags:
       - Authentication
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-                example: "info@evototechnologies.com"
-              password:
-                type: string
-                example: "admin123"
+    consumes:
+      - application/json
+      - application/x-www-form-urlencoded
+    parameters:
+      - in: formData
+        name: username
+        type: string
+        required: true
+        description: User email (OAuth2 uses username field)
+      - in: formData
+        name: password
+        type: string
+        required: true
+        description: User password
     responses:
       200:
         description: Successful login
@@ -164,25 +165,27 @@ def login():
         description: Invalid credentials
     """
     try:
-        data = request.get_json()
-        print(f"Login attempt - data received: {data}")
-        if not data or "email" not in data or "password" not in data:
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+        elif request.form:
+            data = request.form.to_dict()
+        else:
+            # Try to get JSON as fallback
+            data = request.get_json() or {}        
+        # Handle OAuth2 password flow - it might send username instead of email
+        email = data.get("email") or data.get("username", "")
+        password = data.get("password", "")
+        
+        if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
 
-        email = data["email"].strip().lower()
-        password = data["password"]
-        print(f"Login attempt for email: {email}")
-
         user = User.query.filter_by(email=email).first()
-        print(f"User found: {user}")
 
         if not user:
-            print(f"No user found with email: {email}")
             return jsonify({"error": "Invalid email or password"}), 401
 
-        print(f"User uuid: {user.uuid}, checking password...")
         if not user.check_password(password):
-            print(f"Password check failed for user: {email}")
             return jsonify({"error": "Invalid password"}), 401
 
         if not user.isActive:
@@ -220,7 +223,6 @@ def login():
         
     except Exception as e:
         # Log the error for debugging
-        print(f"Login error: {str(e)}")
         return jsonify({"error": "An error occurred during login. Please try again."}), 500
 
     return jsonify({"error": "Invalid credentials"}), 401

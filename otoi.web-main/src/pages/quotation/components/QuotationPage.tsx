@@ -204,13 +204,11 @@ const QuotationPage = () => {
 
         const handleEdit = (quotation: Quotation) => {
           // Handle edit action
-          console.log('Edit', quotation);
           setIsOpen(false);
         };
 
         const handleDelete = (id: string) => {
           // Handle delete action
-          console.log('Delete', id);
           setIsOpen(false);
         };
 

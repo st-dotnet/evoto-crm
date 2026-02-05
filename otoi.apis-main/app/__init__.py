@@ -18,14 +18,7 @@ def create_app():
 
     # Enable CORS
     # CORS(app)
-    CORS(
-        app,
-        resources={r"/api/*": {"origins": "*"}},
-        supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
-        expose_headers=["Authorization"],
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    )
+    CORS( app,resources={r"/api/*": {"origins": "*"}},supports_credentials=True,allow_headers=["Content-Type", "Authorization"],expose_headers=["Authorization"],methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],)
 
     # authentication barrier
     swagger_template = {
@@ -37,15 +30,19 @@ def create_app():
         },
         "components": {
             "securitySchemes": {
-                "BearerAuth": {
-                    "type": "http",
-                    "scheme": "bearer",
-                    "bearerFormat": "JWT"
+                "OAuth2Password": {
+                    "type": "oauth2",
+                    "flows": {
+                        "password": {
+                            "tokenUrl": "/api/auth/login",
+                            "scopes": {}
+                        }
+                    }
                 }
             }
         },
         "security": [
-            {"BearerAuth": []}
+            {"OAuth2Password": []}
         ]
     }
 

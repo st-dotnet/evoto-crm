@@ -36,7 +36,7 @@ def extract_jwt_info():
     ]
     
     # Check if current endpoint is public
-    print(f"Request path: {request.path}")
+    # print(f"Request path: {request.path}")
     if any(request.path.startswith(endpoint) for endpoint in public_endpoints):
         return None
 
