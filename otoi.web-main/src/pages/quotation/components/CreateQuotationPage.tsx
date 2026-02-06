@@ -37,13 +37,10 @@ import { createQuotation, getQuotationById, updateQuotation } from "../services/
 import { updateInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import AddItemPage from "./AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
-import { DialogDescription } from "@radix-ui/react-dialog";
-import { Value } from "@radix-ui/react-select";
 import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 import { ShippingAddressList } from "@/pages/parties/blocks/customers/ShippingAddressList";
 import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
-import { count } from "console";
 
 interface Party {
   id: string;
@@ -63,19 +60,6 @@ interface Address {
   [key: string]: any; // For any additional fields
 }
 
-interface ShippingAddress {
-  uuid?: string;
-  address_type: "home" | "work" | "other";
-  address1: string;
-  address2: string | null;
-  city: string;
-  state: string;
-  country: string;
-  pin: string;
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface Customer {
   uuid: string;
@@ -122,9 +106,6 @@ interface InventoryItem {
   quantity?: number;
 }
 
-  [key: string]: any;
-}
-
 /* Shipping Address Formik Setup */
 const shippingAddressInitialValues = {
   country: "",
@@ -141,25 +122,6 @@ const shippingAddressValidationSchema = Yup.object().shape({
     .required("Pin Code is required")
     .matches(/^[0-9]+$/, "Pin must be a number"),
 });
-
-// Validation function to check for duplicate address types
-const validateAddressType = (
-  address: ShippingAddress,
-  existingAddresses: ShippingAddress[],
-  editingAddress?: ShippingAddress | null,
-) => {
-  const duplicateAddress = existingAddresses.find(
-    (addr) =>
-      addr.address_type === address.address_type &&
-      addr.uuid !== editingAddress?.uuid,
-  );
-
-  if (duplicateAddress) {
-    throw new Error(`A ${address.address_type} address already exists. Please choose a different address type.`);
-  }
-
-  return true;
-};
 
 // Validation function to check for duplicate address types
 const validateAddressType = (
@@ -225,27 +187,26 @@ const CreateQuotationPage = () => {
   const [isAddressLoading, setIsAddressLoading] = useState(false);
 
   // UI State
-  const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  // const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  // const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // const [searchQuery, setSearchQuery] = useState("");
 
   // Data state
-  const [parties, setParties] = useState<Party[]>([]);
-  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  // const [parties, setParties] = useState<Party[]>([]);
+  // const [selectedParty, setSelectedParty] = useState<Party | null>(null);
+  // const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // Party creation state
-  const [isCreatingParty, setIsCreatingParty] = useState(false);
-  const [newPartyName, setNewPartyName] = useState("");
+  // const [isCreatingParty, setIsCreatingParty] = useState(false);
+  // const [newPartyName, setNewPartyName] = useState("");
   const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<string | null>(null);
 
   // Shipping Address state
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
+  // const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
+  // const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
   const [editingAddress, setEditingAddress] = useState<ShippingAddress | undefined>();
-  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
-  const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
+  // const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  // const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
 
   // Action button state
   const [activeDropdownUuid, setActiveDropdownUuid] = useState<string | null>(null);
@@ -292,7 +253,6 @@ const CreateQuotationPage = () => {
   );
   const [selectedAddress, setSelectedAddress] =
     useState<ShippingAddress | null>(null);
-  const [isAddressLoading, setIsAddressLoading] = useState<boolean>(false);
 
   const [notes, setNotes] = useState("");
   const [showNotesField, setShowNotesField] = useState(false);
@@ -364,7 +324,6 @@ const CreateQuotationPage = () => {
         name: `${customer.first_name} ${customer.last_name}`.trim(),
         balance: 0,
         mobile: customer.mobile,
-        customerData: customer,
         customerData: customer,
       }));
       setParties(partiesList);
@@ -1148,8 +1107,8 @@ const CreateQuotationPage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-[70px] z-60 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3 overflow-hidden">
           <Button
             type="button"
             variant="ghost"
@@ -1334,9 +1293,9 @@ const CreateQuotationPage = () => {
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
               {selectedCustomer ? (
-                <div className="border rounded-xl min-h-[180px] p-4 bg-white">
+                <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="h-[150px] overflow-hidden">
                       {!selectedAddress && shippingAddresses.length === 0 ? (
                         <div>
                           <h4 className="font-medium text-gray-900 flex items-center gap-2">
@@ -1446,7 +1405,7 @@ const CreateQuotationPage = () => {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative group">
+                        <div className="relative group" style={{ position: 'static' }}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900">
@@ -1456,7 +1415,7 @@ const CreateQuotationPage = () => {
                               <div className="mt-2 text-sm text-gray-700 space-y-1">
                                 {selectedCustomer.company_name && (
                                   <p className="font-medium">
-                                    {selectedCustomer.company_name}
+                                    {selectedCustomer.company_name} 
                                   </p>
                                 )}
                                 {selectedCustomer.contact_person && (
@@ -1583,22 +1542,12 @@ const CreateQuotationPage = () => {
           <h3 className="text-sm font-semibold text-gray-700 mb-4">
             Quotation Details
           </h3>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs text-gray-600">Quotation No.</label>
               <Input
                 name="quotationNo"
                 value={formData.quotationNo}
-                onChange={handleChange}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Quotation Date</label>
-              <Input
-                type="date"
-                name="quotationDate"
-                value={formData.quotationDate}
                 onChange={handleChange}
                 className="h-8 text-sm"
               />
@@ -1612,6 +1561,16 @@ const CreateQuotationPage = () => {
                 onChange={handleChange}
                 className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-gray-600">Quotation Date</label>
+              <Input
+                type="date"
+                name="quotationDate"
+                value={formData.quotationDate}
+                onChange={handleChange}
+                className="h-8 text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -2031,8 +1990,8 @@ const CreateQuotationPage = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8 px-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="mx-auto w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
+                    <div className="fixed top-0 left-0 right-0 bg-white px-6 py-4 z-40 shadow-sm flex items-center justify-between">
                       <MapPinIcon className="h-5 w-5 text-red-400" />
                     </div>
                     <p className="text-xs font-medium text-gray-600 mb-1">
@@ -2155,13 +2114,13 @@ const CreateQuotationPage = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
                   HSN/SAC
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-24">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-28">
                   QTY
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-36">
                   PRICE/ITEM (₹)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-24">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-28">
                   DISCOUNT
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-20">
@@ -2284,7 +2243,7 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                          className="w-16 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
+                          className="w-20 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
                         />
                         <span className="px-3 py-1.5 bg-gray-100 text-sm text-gray-700 rounded-r-md border-l border-gray-300">
                           {getMeasuringUnit(item.measuring_unit_id)}
@@ -2303,7 +2262,7 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value))}
-                          className="w-24 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-28 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <span className="absolute left-2 top-1.5 text-xs text-gray-500">₹</span>
                       </div>
@@ -2330,7 +2289,7 @@ const CreateQuotationPage = () => {
                                 value === "" ? 0 : Math.min(100, parseFloat(value))
                               );
                             }}
-                            className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center
+                            className="w-20 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center
                                       [appearance:textfield]
                                       [&::-webkit-outer-spin-button]:appearance-none
                                       [&::-webkit-inner-spin-button]:appearance-none"
@@ -2769,7 +2728,7 @@ const CreateQuotationPage = () => {
         </DialogContent>
       </Dialog>
 
-    </div >
+    </div>
   );
 };
 

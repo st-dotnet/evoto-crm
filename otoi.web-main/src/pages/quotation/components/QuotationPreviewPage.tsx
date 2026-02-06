@@ -226,7 +226,7 @@ const QuotationPreviewPage: React.FC = () => {
 
       const lakh = Math.floor(remainder / 100000);
       if (lakh) {
-        parts.push(`${threeDigits(lakh)} Lakh`);
+        parts.push(`${threeDigits(lakh)} Lakh`);  
         remainder %= 100000;
       }
 
@@ -362,7 +362,7 @@ const QuotationPreviewPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
+      <div className="bg-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
