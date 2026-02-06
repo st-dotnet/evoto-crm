@@ -2,6 +2,7 @@ from app.models.inventory import Item
 from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models.person import Lead, LeadAddress
+from app.models.customer import Customer
 from app.models.active import Active, ActiveType
 from app.models.common import Address
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
@@ -123,6 +124,7 @@ def get_leads():
                 or_(
                     Lead.first_name.ilike(f"%{query_value}%"),
                     Lead.last_name.ilike(f"%{query_value}%"),
+                    func.concat(Lead.first_name, " ", Lead.last_name).ilike(f"%{query_value}%"),
                     Lead.email.ilike(f"%{query_value}%"),
                     Lead.gst.ilike(f"%{query_value}%"),
                     Lead.mobile.ilike(f"%{query_value}%"),
@@ -186,11 +188,20 @@ def get_leads():
                       query = query.filter(Lead.status == key)
                     break
 
-
+    
+        # Return all leads for dropdown if requested
+        if request.args.get("dropdown") == "true":
+            return jsonify([
+                {
+                    "uuid": str(lead.uuid),
+                    "name": f"{lead.first_name} {lead.last_name}".strip()
+                }
+                for lead in query.all()
+            ])
 
         # Pagination
         page = int(request.args.get("page", 1))
-        per_page = int(request.args.get("items_per_page", 10))
+        per_page = int(request.args.get("items_per_page", 5))
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         leads = pagination.items
 
@@ -229,6 +240,7 @@ def get_leads():
         db.session.rollback()
         import traceback; print("ERROR in get_leads:", traceback.format_exc())
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
 
 #TEST CASE
 @lead_blueprint.route("/test", methods=["GET"])
@@ -399,6 +411,10 @@ def create_lead():
             reason=reason,
         )
 
+        # Automatically mark as deleted if status is "Lose" (5)
+        if status.lower() in ["lose", "5"]:
+            lead.is_deleted = True
+
         set_created_fields(lead)
         set_business(lead)
         db.session.add(lead)
@@ -533,6 +549,15 @@ def update_lead(lead_id):
         lead.email = data.get("email", lead.email)
         lead.gst = data.get("gst", lead.gst)
         lead.status = data.get("status", lead.status)
+
+        # Automatically mark as deleted if status is set to "Lose" (5)
+        if str(lead.status).strip().lower() in ["lose", "5"]:
+            lead.is_deleted = True
+            # Also find and delete linked customer if exists
+            customer = Customer.query.filter_by(lead_id=lead.uuid).first()
+            if customer:
+                customer.is_deleted = True
+                set_updated_fields(customer)
         data = request.get_json() or {}
 
         # ---- BASIC VALIDATION ----

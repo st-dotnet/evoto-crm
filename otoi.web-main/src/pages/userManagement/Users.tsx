@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Eye, AlertCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Eye, AlertCircle, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SpinnerDotted } from 'spinners-react';
 import {
@@ -31,6 +31,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ModalUser } from "./ModalUsers";
 import { useAuthContext } from "@/auth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 // Define User Interface (updated to match backend)
 interface User {
@@ -56,56 +59,142 @@ interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
 }
 
+// const Toolbar = ({
+//   defaultSearch,
+//   setSearch,
+//   onAddUser,
+// }: {
+//   defaultSearch: string;
+//   setSearch: (query: string) => void;
+//   onAddUser: () => void;
+// }) => {
+//   const [searchInput, setSearchInput] = useState(defaultSearch);
+
+//   useEffect(() => {
+//     const timer = setTimeout(() => {
+//       setSearch(searchInput);
+//     }, 400);
+
+//     return () => clearTimeout(timer);
+//   }, [searchInput, setSearch]);
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     setSearchInput(e.target.value);
+//   };
+
+//   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+//     if (event.key === "Enter") {
+//       setSearch(searchInput);
+//     }
+//   };
+
 const Toolbar = ({
-    defaultSearch,
-    setSearch,
-    onAddUser,
+  defaultSearch,
+  setSearch,
+  onAddUser,
 }: {
-    defaultSearch: string;
-    setSearch: (query: string) => void;
-    onAddUser: () => void;
+  defaultSearch: string;
+  setSearch: (query: string) => void;
+  onAddUser: () => void;
 }) => {
-    const [searchInput, setSearchInput] = useState(defaultSearch);
+  const [searchInput, setSearchInput] = useState(defaultSearch);
+  const [open, setOpen] = useState(false);
+  const [searchableUsers, setSearchableUsers] = useState<{ uuid: string; name: string }[]>([]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setSearch(searchInput);
-        }, 400);
-
-        return () => clearTimeout(timer);
-    }, [searchInput, setSearch]);
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchInput(e.target.value);
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/?dropdown=true`);
+        setSearchableUsers(response?.data);
+      } catch (error) {
+        console.error("Failed to fetch all users dropdown", error);
+      }
     };
+    fetchAllUsers();
+  }, []);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === "Enter") {
-            setSearch(searchInput);
-        }
-    };
-
-    return (
-        <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-            <div className="flex flex-wrap gap-2 lg:gap-5">
-                <label className="input input-sm">
-                    <KeenIcon icon="magnifier" />
-                    <input
-                        type="text"
-                        placeholder="Search user"
-                        value={searchInput}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                    />
-                </label>
-            </div>
-      {/* <div className="flex items-center gap-2.5">
-            <button className="btn btn-sm btn-primary" onClick={onAddUser}>
-              <KeenIcon icon="plus" /> Add User
-            </button>
-          </div> */}
-        </div>
+  // Handle input change and trigger debounced search
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    setOpen(true); // Keep dropdown open while typing
+  };
+  const filteredUsers = useMemo(() => {
+    if (!searchInput) return searchableUsers;
+    return searchableUsers.filter((u) =>
+      u?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
     );
+  }, [searchableUsers, searchInput]);
+
+  return (
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex grow md:grow-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <div className="relative w-full md:w-64 lg:w-72">
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <KeenIcon
+                  icon="magnifier"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                />
+                <Input
+                  placeholder="Search users..."
+                  value={searchInput}
+                  onChange={handleInputChange}
+                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                  className="pl-9 pr-9 h-9 text-xs"
+                />
+                {searchInput && (
+                  <X
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearch("");
+                    }}
+                  />
+                )}
+              </div>
+            </PopoverTrigger>
+          </div>
+
+          <PopoverContent
+            className="p-0 w-[var(--radix-popover-trigger-width)]"
+            align="start"
+            onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+          >
+            <Command>
+              <CommandList>
+                {filteredUsers.length === 0 && (
+                  <CommandEmpty>No user found.</CommandEmpty>
+                )}
+                <CommandGroup>
+                  {filteredUsers?.map((user) => (
+                    <CommandItem
+                      key={user?.uuid}
+                      value={user?.name}
+                      onSelect={() => {
+                        setSearchInput(user?.name);
+                        setSearch(user?.name); // Hit the API with exact selection
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          searchInput === user?.name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {user?.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
 };
 
 // Main UsersContent Component
@@ -114,67 +203,53 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   const isAdmin = currentUser?.role === 'Admin';
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredItems, setFilteredItems] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
 
   const navigate = useNavigate();
 
-  // Fetch Users from API (updated for all users)
-  const fetchUsers = async () => {
+  useEffect(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, [refreshStatus, searchQuery]);
+
+  // Server-side fetch function
+  const fetchUsers = async (params: TDataGridRequestParams) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/`, {
-        params: {
-          page: 1,
-          items_per_page: 1000, // Fetch all users
-        },
-      });
-      setUsers(response.data.data);
+      const queryParams = new URLSearchParams();
+      queryParams.set("page", String(params?.pageIndex + 1));
+      queryParams.set("items_per_page", String(params?.pageSize));
+
+      if (searchQuery.trim()?.length > 0) {
+        queryParams.set("query", searchQuery);
+      }
+
+      if (params.sorting?.[0]?.id) {
+        queryParams.set("sort", params.sorting[0]?.id);
+        queryParams.set("order", params.sorting[0]?.desc ? "desc" : "asc");
+      }
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_APP_API_URL}/users/?${queryParams.toString()}`
+      );
+
+      setUsers(response?.data?.data);
+      return {
+        data: response?.data?.data,
+        totalCount: response?.data?.pagination?.total || 0,
+      };
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch users");
+      return { data: [], totalCount: 0 };
     } finally {
       setLoading(false);
     }
   };
-
-  // Fetch Single User Details
-  const fetchUserDetails = async (userId: string) => {
-    try {
-      setFetchingUser(true);
-      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
-      setSelectedUser(response.data);
-      return response.data;
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch user details");
-      return null;
-    } finally {
-      setFetchingUser(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, [refreshStatus]);
-
-  // Filter Users (updated for username/mobile)
-  useEffect(() => {
-    let result = Array.isArray(users) ? [...users] : [];
-    const trimmedQuery = searchQuery.trim().toLowerCase();
-    if (trimmedQuery) {
-      result = result.filter(
-        (user) =>
-          `${user.first_name || ""} ${user.last_name || ""}`.toLowerCase().includes(trimmedQuery) ||
-          user.email.toLowerCase().includes(trimmedQuery) ||
-          (user.mobile && user.mobile.includes(trimmedQuery))
-      );
-    }
-    setFilteredItems(result);
-  }, [searchQuery, users]);
 
   // Column Filter Component
   const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
@@ -197,13 +272,29 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
     );
   };
 
+
+  // Fetch Single User Details
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setFetchingUser(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
+      setSelectedUser(response?.data);
+      return response?.data;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch user details");
+      return null;
+    } finally {
+      setFetchingUser(false);
+    }
+  };
+
   // Delete User (updated endpoint)
   const deleteUser = async (userId: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_APP_API_URL}/users/${userId}`);
       toast.success("User deleted successfully");
       setShowDeleteDialog(false);
-      fetchUsers();
+      setRefreshKey((prev) => prev + 1);
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "Delete failed";
       toast.error(errorMessage);
@@ -350,8 +441,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
     []
   );
 
-  // Handle Row Selection
   const handleRowSelection = (state: RowSelectionState) => {
+    setRowSelection(state);
     const selectedRowIds = Object.keys(state);
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} users are selected.`);
@@ -359,7 +450,7 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   };
   const handleClose = () => {
     setLeadModalOpen(false);
-    fetchUsers();
+    setRefreshKey((prev) => prev + 1);
   };
   // Search Handler
   const handleSearch = (query: string) => {
@@ -368,14 +459,14 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {(loading || fetchingUser) && users.length === 0 && (
+      {/* {(loading || fetchingUser) && users.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-black">
+          <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
-      )}
-      {fetchingUser && users.length > 0 && (
+      )} */}
+      {fetchingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
           <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
             <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
@@ -383,30 +474,29 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
           </div>
         </div>
       )}
-      {!loading && (
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          serverSide={false}
-          data={filteredItems}
-          loading={loading}
-          rowSelection={true}
-          getRowId={(row: any) => row.id}
-          onRowSelectionChange={handleRowSelection}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={handleSearch}
-              onAddUser={() => {
-                setSelectedUser(null);
-                setLeadModalOpen(true);
-              }}
-            />
-          }
-          layout={{ card: true }}
-        />
-      )}
+      <DataGrid
+        key={refreshKey}
+        columns={columns}
+        serverSide={true}
+        onFetchData={fetchUsers}
+        loading={loading}
+        rowSelection={true}
+        rowSelectionState={rowSelection}
+        getRowId={(row: any) => row.id}
+        onRowSelectionChange={handleRowSelection}
+        pagination={{ size: 5 }}
+        toolbar={
+          <Toolbar
+            defaultSearch={searchQuery}
+            setSearch={handleSearch}
+            onAddUser={() => {
+              setSelectedUser(null);
+              setLeadModalOpen(true);
+            }}
+          />
+        }
+        layout={{ card: true }}
+      />
       <ModalUser
         open={leadModalOpen}
         onOpenChange={handleClose}

@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import {
   Customer,
   QueryApiResponse,
-} from "./blocks/customers/customer-models";
-import { ModalCustomer } from "./blocks/customers/ModalCustomer";
-import { ActivityForm } from "./blocks/leads/ActivityForm";
+} from "./customer-models";
+import { ModalCustomer } from "./ModalCustomer";
+import { ActivityForm } from "../leads/ActivityForm";
 
 import {
   DataGrid,
@@ -20,7 +21,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Eye, AlertCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Eye, AlertCircle, Check, ChevronsUpDown, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
@@ -65,8 +75,6 @@ interface ActivityLead {
   activity_type?: string;
 }
 
-import { debounce } from "@/lib/helpers";
-
 const Toolbar = ({
   defaultSearch,
   setSearch,
@@ -79,52 +87,100 @@ const Toolbar = ({
   setDefaultStatusType: (query: string) => void;
 }) => {
   const [searchInput, setSearchInput] = useState(defaultSearch);
-
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((query: string) => {
-        setSearch(query);
-      }, 500),
-    [setSearch]
-  );
+  const [open, setOpen] = useState(false);
+  const [customers, setCustomers] = useState<{ uuid: string; name: string }[]>([]);
 
   useEffect(() => {
-    return () => {
-      debouncedSearch.cancel?.();
+    const fetchAllCustomers = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/customers/?dropdown=true`);
+        setCustomers(response.data);
+      } catch (error) {
+        console.error("Failed to fetch all customers dropdown", error);
+      }
     };
-  }, [debouncedSearch]);
+    fetchAllCustomers();
+  }, []);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      debouncedSearch.cancel?.();
-      setSearch(searchInput);
-    }
-  };
-
+  // Handle input change and trigger debounced search
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    debouncedSearch(value);
+    setOpen(true); // Keep dropdown open while typing
   };
+  const filteredCustomers = useMemo(() => {
+    if (!searchInput) return customers;
+    return customers.filter((c) =>
+      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+    );
+  }, [customers, searchInput]);
 
   return (
     <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
-        <div className="flex grow md:grow-0">
-          <label className="input input-sm w-full md:w-64 lg:w-72">
-            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
-              <KeenIcon icon="magnifier" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search customers..."
-              value={searchInput}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              className="w-full focus:outline-none"
-            />
-          </label>
-        </div>
+      <div className="flex grow md:grow-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <div className="relative w-full md:w-64 lg:w-72">
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <KeenIcon
+                  icon="magnifier"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchInput}
+                  onChange={handleInputChange}
+                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                  className="pl-9 pr-9 h-9 text-xs"
+                />
+                {searchInput && (
+                  <X
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearch("");
+                    }}
+                  />
+                )}
+              </div>
+            </PopoverTrigger>
+          </div>
+
+          <PopoverContent
+            className="p-0 w-[var(--radix-popover-trigger-width)]"
+            align="start"
+            onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+          >
+            <Command>
+              <CommandList>
+                {filteredCustomers.length === 0 && (
+                  <CommandEmpty>No customer found.</CommandEmpty>
+                )}
+                <CommandGroup>
+                  {filteredCustomers?.map((customer) => (
+                    <CommandItem
+                      key={customer?.uuid}
+                      value={customer?.name}
+                      onSelect={() => {
+                        setSearchInput(customer?.name);
+                        setSearch(customer?.name); // Hit the API with exact selection
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          searchInput === customer?.name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {customer?.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
@@ -140,13 +196,33 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<ActivityLead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
-  const [customersData, setCustomersData] = useState<Customer[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const handleDeleteClick = (uuid: string) => {
-    setCustomerToDelete(uuid);
-    setShowDeleteDialog(true);
+  // handle click for delete customer
+  const handleDeleteClick = async (uuid: string) => {
+    const details = await fetchCustomerDetails(uuid);
+    if (details) {
+      setCustomerToDelete(uuid);
+      setShowDeleteDialog(true);
+    }
+  };
+
+  // Fetch latest customer details from server to ensure data accuracy before edit/delete
+  const fetchCustomerDetails = async (uuid: string) => {
+    try {
+      setFetchingDetails(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/customers/${uuid}`);
+      setSelectedPerson(response?.data);
+      return response?.data;
+    } catch (error: any) {
+      toast.error("Failed to fetch customer details");
+      return null;
+    } finally {
+      setFetchingDetails(false);
+    }
   };
 
   const deleteCustomer = async () => {
@@ -164,54 +240,11 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     }
   };
 
-
   const navigate = useNavigate();
-
-  const fetchAllCustomers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?items_per_page=1000`
-      );
-      const rows = response.data.data;
-      setCustomersData(rows);
-    } catch (error) {
-      toast.error("Failed to fetch customers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAllCustomers();
-  }, [refreshStatus, refreshKey]);
-
-  useEffect(() => {
-    let result = [...customersData];
-
-    // Apply search filter
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery !== "") {
-      const lowerQuery = trimmedQuery.toLowerCase();
-      result = result.filter((customer) => {
-        const fullName = `${customer.first_name || ""} ${customer.last_name || ""}`.toLowerCase();
-        return (
-          fullName.includes(lowerQuery) ||
-          (customer.email || "").toLowerCase().includes(lowerQuery) ||
-          (customer.mobile || "").includes(trimmedQuery) ||
-          (customer.gst || "").toLowerCase().includes(lowerQuery)
-        );
-      });
-    }
-
-    setFilteredItems(result);
-  }, [searchQuery, customersData]);
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus]);
-
-
+  }, [refreshStatus, searchQuery, searchPersonTypeQuery]);
 
   const ColumnInputFilter = <TData, TValue>({
     column,
@@ -246,12 +279,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     setSelectedPerson(rowData);
     setPersonModalOpen(true);
   };
-
-  // const handleClose = () => {
-  //   setPersonModalOpen(false);
-  //   setRefreshKey((prev) => prev + 1); // Trigger refresh on close
-
-  // };
 
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
@@ -365,9 +392,9 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    setSelectedPerson(row.original);
-                    setPersonModalOpen(true);
+                  onSelect={async () => {
+                    const details = await fetchCustomerDetails(row?.original?.uuid);
+                    if (details) setPersonModalOpen(true);
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
@@ -376,7 +403,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
                 <DropdownMenuItem
                   onSelect={() => {
-                    navigate(`/customer/${row.original.id}`);
+                    navigate(`/customer/${row?.original?.id}`);
                   }}
                 >
                   <Eye className="mr-2 h-4 w-4" />
@@ -385,7 +412,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
                 <DropdownMenuItem
                   onSelect={() => {
-                    handleDeleteClick(row.original.uuid);
+                    handleDeleteClick(row?.original?.uuid);
                   }}
                   className="text-red-500 focus:text-red-500"
                 >
@@ -406,8 +433,10 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     []
   );
 
-  const fetchUsers = async (params: TDataGridRequestParams) => {
+  // Fetch customers from API with pagination, sorting, and search
+  const fetchCustomers = async (params: TDataGridRequestParams) => {
     try {
+      setLoading(true);
       const queryParams = new URLSearchParams();
       queryParams.set("page", String(params.pageIndex + 1));
       queryParams.set("items_per_page", String(params.pageSize));
@@ -436,15 +465,13 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       }
 
       const response = await axios.get<CustomersQueryApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}&t=${Date.now()}`,
+        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
       );
-      const payload: any = response.data as any;
+      const payload: any = response?.data as any;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
       const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
 
-      // Update state with the fetched data
-      setCustomersData(rows);
-
+      setCustomers(rows);
       return {
         data: rows,
         totalCount: total,
@@ -463,11 +490,14 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         data: [],
         totalCount: 0,
       };
+    } finally {
+      setLoading(false);
     }
   };
 
-
+  // Handle row selection changes
   const handleRowSelection = (state: RowSelectionState) => {
+    setRowSelection(state);
     const selectedRowIds = Object.keys(state);
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} are selected.`, {
@@ -475,40 +505,47 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     }
   };
 
-
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {loading && customersData.length === 0 && (
+      {/* {loading && customers.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
-      )}
-      {!loading && (
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          serverSide={false}
-          data={filteredItems}
-          loading={loading}
-          rowSelection={true}
-          getRowId={(row: any) => row.id}
-          onRowSelectionChange={handleRowSelection}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={setSearchQuery}
-              defaultStatusType={searchPersonTypeQuery}
-              setDefaultStatusType={setPersonTypeQuery}
-            />
-          }
-          layout={{ card: true }}
-        />
+      )} */}
+
+      {fetchingDetails && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
+          </div>
+        </div>
       )}
 
-
+      <DataGrid
+        key={refreshKey}
+        columns={columns}
+        serverSide={true}
+        onFetchData={fetchCustomers}
+        loading={loading}
+        rowSelection={true}
+        rowSelectionState={rowSelection}
+        getRowId={(row: any) => row.id}
+        onRowSelectionChange={handleRowSelection}
+        pagination={{ size: 5 }}
+        toolbar={
+          <Toolbar
+            defaultSearch={searchQuery}
+            setSearch={setSearchQuery}
+            defaultStatusType={searchPersonTypeQuery}
+            setDefaultStatusType={setPersonTypeQuery}
+          />
+        }
+        layout={{ card: true }}
+      />
+      {/* Modal for adding/editing customers */}
       <ModalCustomer
         open={personModalOpen}
         onOpenChange={(open: boolean) => {
@@ -516,7 +553,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
           if (!open) {
             setSelectedPerson(null);
-            setRefreshKey((prev) => prev + 1);
+            setRefreshKey((prev) => prev + 1); // Increment key to trigger grid refresh
           }
         }}
         onSuccess={() => {
@@ -527,12 +564,13 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           selectedPerson
             ? {
               ...selectedPerson,
-              person_type_id: (selectedPerson as any).person_type_id ?? 1
+              person_type_id: (selectedPerson as any)?.person_type_id ?? 1
             }
             : null
         }
       />
 
+      {/* Activity log form */}
       <ActivityForm
         open={activityModalOpen}
         onOpenChange={() => setActivityModalOpen(false)}
@@ -574,7 +612,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

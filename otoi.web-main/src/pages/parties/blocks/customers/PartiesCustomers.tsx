@@ -1,5 +1,4 @@
 import { Fragment, useRef, useState } from "react";
-import { ModalCustomer } from "./blocks/customers/ModalCustomer";
 import { Container } from "@/components/container";
 import {
   Toolbar,
@@ -9,12 +8,13 @@ import {
   ToolbarPageTitle,
 } from "@/partials/toolbar";
 
-import { PartiesCustomerContent } from "./PartiesCustomersContent";
 import { useLayout } from "@/providers";
-import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
 import { toast } from "sonner";
 import { SpinnerDotted } from 'spinners-react';
+import { Lead } from "../leads/lead-models";
+import { PartiesCustomerContent } from "./PartiesCustomersContent";
+import { ModalCustomer } from "./ModalCustomer";
 
 export interface IPersonModalContentProps {
   state: boolean;

@@ -27,7 +27,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
@@ -44,6 +45,14 @@ import {
   DialogFooter,
   DialogHeader
 } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -63,6 +72,7 @@ interface ActivityLead {
 }
 
 import { debounce } from "@/lib/helpers";
+import { cn } from "@/lib/utils";
 
 const Toolbar = ({
   defaultSearch,
@@ -99,16 +109,44 @@ const Toolbar = ({
     }
   };
 
+  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const value = e.target.value;
+  //   setSearchInput(value);
+  //   debouncedSearch(value);
+  // };
+
+  const [open, setOpen] = useState(false);
+  const [leads, setLeads] = useState<{ uuid: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const fetchAllLeads = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/?dropdown=true`);
+        setLeads(response.data);
+      } catch (error) {
+        console.error("Failed to fetch all leads dropdown", error);
+      }
+    };
+    fetchAllLeads();
+  }, []);
+
+  // Handle input change and trigger debounced search
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    debouncedSearch(value);
+    setOpen(true); // Keep dropdown open while typing
   };
+  const filteredLeads = useMemo(() => {
+    if (!searchInput) return leads;
+    return leads.filter((c) =>
+      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+    );
+  }, [leads, searchInput]);
 
   return (
     <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
       <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
-        <div className="flex grow md:grow-0">
+        {/* <div className="flex grow md:grow-0">
           <label className="input input-sm w-full md:w-48 lg:w-64">
             <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
               <KeenIcon icon="magnifier" />
@@ -121,6 +159,71 @@ const Toolbar = ({
               onKeyDown={handleKeyDown}
             />
           </label>
+        </div> */}
+        <div className="flex grow md:grow-0">
+          <Popover open={open} onOpenChange={setOpen}>
+            <div className="relative w-full md:w-64 lg:w-72">
+              <PopoverTrigger asChild>
+                <div className="relative">
+                  <KeenIcon
+                    icon="magnifier"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                  />
+                  <Input
+                    placeholder="Search leads..."
+                    value={searchInput}
+                    onChange={handleInputChange}
+                    onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                    className="pl-9 pr-9 h-9 text-xs"
+                  />
+                  {searchInput && (
+                    <X
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                      onClick={() => {
+                        setSearchInput("");
+                        setSearch("");
+                      }}
+                    />
+                  )}
+                </div>
+              </PopoverTrigger>
+            </div>
+
+            <PopoverContent
+              className="p-0 w-[var(--radix-popover-trigger-width)]"
+              align="start"
+              onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+            >
+              <Command>
+                <CommandList>
+                  {filteredLeads.length === 0 && (
+                    <CommandEmpty>No lead found.</CommandEmpty>
+                  )}
+                  <CommandGroup>
+                    {filteredLeads?.map((lead) => (
+                      <CommandItem
+                        key={lead?.uuid}
+                        value={lead?.name}
+                        onSelect={() => {
+                          setSearchInput(lead?.name);
+                          setSearch(lead?.name); // Hit the API with exact selection
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            searchInput === lead?.name ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {lead?.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
         {/* Status Filter */}
         <div className="flex items-center flex-wrap gap-2.5">
@@ -161,69 +264,16 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [selectedLeadForActivity, setSelectedLeadForActivity] =
     useState<ActivityLead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingLead, setFetchingLead] = useState(false);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const navigate = useNavigate();
 
-  const fetchAllLeads = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get<QueryLeadApiResponse>(
-        `${import.meta.env.VITE_APP_API_URL}/leads/?items_per_page=1000`
-      );
-      setLeads(response.data.data);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch leads");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAllLeads();
-  }, [refreshStatus]);
-
-  useEffect(() => {
-    let result = [...leads];
-
-    // Apply search filter
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery !== "") {
-      const lowerQuery = trimmedQuery.toLowerCase();
-      result = result.filter((lead) => {
-        const fullName = `${lead.first_name || ""} ${lead.last_name || ""}`.toLowerCase();
-        return (
-          fullName.includes(lowerQuery) ||
-          (lead.email || "").toLowerCase().includes(lowerQuery) ||
-          (lead.mobile || "").includes(trimmedQuery)
-        );
-      });
-    }
-
-    // Apply status filter
-    if (searchStatusTypeQuery !== "-1") {
-      const statusMap: Record<string, string> = {
-        "1": "New",
-        "2": "In Progress",
-        "3": "Quote Given",
-        "4": "Win",
-        "5": "Lose",
-      };
-      const targetStatus = statusMap[searchStatusTypeQuery];
-      if (targetStatus) {
-        result = result.filter((lead) => lead.status === targetStatus);
-      }
-    }
-
-    setFilteredItems(result);
-  }, [searchQuery, searchStatusTypeQuery, leads]);
-
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus]);
+  }, [refreshStatus, searchQuery, searchStatusTypeQuery]);
 
   const ColumnInputFilter = <TData, TValue>({
     column,
@@ -258,18 +308,19 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     setLeadModalOpen(true);
   };
 
+  // Handle modal close and trigger grid refresh
   const handleClose = () => {
     setLeadModalOpen(false);
-    fetchAllLeads();
+    setRefreshKey((prev) => prev + 1); // Increment key to force DataGrid reload
   };
 
-  // Fetch Single User Details
+  // Fetch Single User Details from server to ensure fresh data
   const fetchLeadDetails = async (userId: string) => {
     try {
       setFetchingLead(true);
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/${userId}`);
-      setSelectedLead(response.data);
-      return response.data;
+      setSelectedLead(response?.data);
+      return response?.data;
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch lead details");
       return null;
@@ -287,7 +338,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
       toast.success("Lead deleted successfully");
       setShowDeleteDialog(false);
-      fetchAllLeads();
+      setRefreshKey((prev) => prev + 1);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.response?.data?.error || "Delete failed");
     }
@@ -442,6 +493,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   const fetchLeads = async (params: TDataGridRequestParams) => {
     try {
+      setLoading(true);
       const queryParams = new URLSearchParams();
       queryParams.set("page", String(params.pageIndex + 1));
       queryParams.set("items_per_page", String(params.pageSize));
@@ -470,9 +522,12 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         `${import.meta.env.VITE_APP_API_URL}/leads/?${queryParams.toString()}`
       );
 
+      // Safely set leads data using optional chaining to prevent crashes
+      setLeads(response?.data?.data);
+
       return {
-        data: response.data.data,
-        totalCount: response.data.pagination.total,
+        data: response?.data?.data,
+        totalCount: response?.data?.pagination?.total || 0,
       };
     } catch (error) {
       console.log(error);
@@ -481,10 +536,13 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         action: { label: "Ok", onClick: () => console.log("Ok") },
       });
       return { data: [], totalCount: 0 };
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRowSelection = (state: RowSelectionState) => {
+    setRowSelection(state);
     const selectedRowIds = Object.keys(state);
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} are selected.`, {
@@ -506,13 +564,13 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {(loading || fetchingLead) && leads.length === 0 && (
+      {/* {(loading || fetchingLead) && leads.length === 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-black">
             <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
           </div>
         </div>
-      )}
+      )} */}
       {fetchingLead && leads.length > 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
           <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
@@ -521,28 +579,27 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
           </div>
         </div>
       )}
-      {!loading && (
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          serverSide={false}
-          data={filteredItems}
-          loading={loading}
-          rowSelection={true}
-          getRowId={(row: any) => row.id}
-          onRowSelectionChange={handleRowSelection}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={handleSearch}
-              defaultStatusType={searchStatusTypeQuery}
-              setDefaultStatusType={handleStatusTypeSearch}
-            />
-          }
-          layout={{ card: true }}
-        />
-      )}
+      <DataGrid
+        key={refreshKey}
+        columns={columns}
+        serverSide={true}
+        onFetchData={fetchLeads}
+        loading={loading}
+        rowSelection={true}
+        rowSelectionState={rowSelection}
+        getRowId={(row: any) => row.id}
+        onRowSelectionChange={handleRowSelection}
+        pagination={{ size: 5 }}
+        toolbar={
+          <Toolbar
+            defaultSearch={searchQuery}
+            setSearch={handleSearch}
+            defaultStatusType={searchStatusTypeQuery}
+            setDefaultStatusType={handleStatusTypeSearch}
+          />
+        }
+        layout={{ card: true }}
+      />
       <ModalLead
         open={leadModalOpen}
         onOpenChange={handleClose}

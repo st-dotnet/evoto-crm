@@ -1,21 +1,26 @@
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import {
     DataGrid,
     DataGridColumnHeader,
+    TDataGridRequestParams,
     KeenIcon,
     DataGridRowSelectAll,
     DataGridRowSelect,
 } from "@/components";
-import { ColumnDef } from "@tanstack/react-table";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, AlertCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2, AlertCircle, X, Check } from "lucide-react";
 import { SpinnerDotted } from 'spinners-react';
 import {
     Dialog,
@@ -33,6 +38,33 @@ interface IPurchaseContentProps {
     refreshStatus: number;
 }
 
+// const Toolbar = ({
+//     defaultSearch,
+//     setSearch,
+// }: {
+//     defaultSearch: string;
+//     setSearch: (query: string) => void;
+// }) => {
+//     const [searchInput, setSearchInput] = useState(defaultSearch);
+
+//     useEffect(() => {
+//         const timer = setTimeout(() => {
+//             setSearch(searchInput);
+//         }, 400);
+
+//         return () => clearTimeout(timer);
+//     }, [searchInput, setSearch]);
+
+//     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//         setSearchInput(e.target.value);
+//     };
+
+//     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+//         if (event.key === "Enter") {
+//             setSearch(searchInput);
+//         }
+//     };
+
 const Toolbar = ({
     defaultSearch,
     setSearch,
@@ -41,109 +73,169 @@ const Toolbar = ({
     setSearch: (query: string) => void;
 }) => {
     const [searchInput, setSearchInput] = useState(defaultSearch);
+    const [open, setOpen] = useState(false);
+    const [purchases, setPurchases] = useState<{ uuid: string; name: string }[]>([]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setSearch(searchInput);
-        }, 400);
+        const fetchAllPurchases = async () => {
+            try {
+                const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/purchase/?dropdown=true`);
+                setPurchases(response?.data);
+            } catch (error) {
+                console.error("Failed to fetch all purchase dropdown", error);
+            }
+        };
+        fetchAllPurchases();
+    }, []);
 
-        return () => clearTimeout(timer);
-    }, [searchInput, setSearch]);
-
+    // Handle input change and trigger debounced search
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchInput(e.target.value);
+        const value = e?.target?.value;
+        setSearchInput(value);
+        setOpen(true); // Keep dropdown open while typing
     };
-    
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === "Enter") {
-            setSearch(searchInput);
-        }
-    };
+    const filteredPurchases = useMemo(() => {
+        if (!searchInput) return purchases;
+        return purchases.filter((c) =>
+            c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+        );
+    }, [purchases, searchInput]);
 
     return (
-        <div className="card-header flex justify-between flex-wrap gap-2 border-b-0 px-5">
-            <div className="flex flex-wrap gap-2 lg:gap-5">
-                <label className="input input-sm">
-                    <KeenIcon icon="magnifier" />
-                    <input
-                        type="text"
-                        placeholder="Search invoice"
-                        value={searchInput}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                    />
-                </label>
+        <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+            <div className="flex grow md:grow-0">
+                <Popover open={open} onOpenChange={setOpen}>
+                    <div className="relative w-full md:w-64 lg:w-72">
+                        <PopoverTrigger asChild>
+                            <div className="relative">
+                                <KeenIcon
+                                    icon="magnifier"
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                                />
+                                <Input
+                                    placeholder="Search purchases..."
+                                    value={searchInput}
+                                    onChange={handleInputChange}
+                                    onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                                    className="pl-9 pr-9 h-9 text-xs"
+                                />
+                                {searchInput && (
+                                    <X
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                                        onClick={() => {
+                                            setSearchInput("");
+                                            setSearch("");
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </PopoverTrigger>
+                    </div>
+
+                    <PopoverContent
+                        className="p-0 w-[var(--radix-popover-trigger-width)]"
+                        align="start"
+                        onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+                    >
+                        <Command>
+                            <CommandList>
+                                {filteredPurchases.length === 0 && (
+                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                )}
+                                <CommandGroup>
+                                    {filteredPurchases?.map((customer) => (
+                                        <CommandItem
+                                            key={customer?.uuid}
+                                            value={customer?.name}
+                                            onSelect={() => {
+                                                setSearchInput(customer?.name);
+                                                setSearch(customer?.name); // Hit the API with exact selection
+                                                setOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    searchInput === customer?.name ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {customer?.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
-            {/* Add button removed here as it is handled by the parent page */}
         </div>
     );
 };
 
 const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
     const [searchQuery, setSearchQuery] = useState("");
-    const [entries, setEntries] = useState<PurchaseEntry[]>([]);
-    const [filteredEntries, setFilteredEntries] = useState<PurchaseEntry[]>([]);
+    const [refreshKey, setRefreshKey] = useState(0);
     const [loading, setLoading] = useState(false);
     const [fetchingDetails, setFetchingDetails] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<PurchaseEntry | null>(null);
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [modalOpen, setModalOpen] = useState(false);
 
-    const fetchEntries = async () => {
+    useEffect(() => {
+        setRefreshKey((prev) => prev + 1);
+    }, [refreshStatus, searchQuery]);
+
+    const fetchPurchaseEntries = async (params: TDataGridRequestParams) => {
         try {
-            setLoading(true);
-            const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/purchase/`, {
-                params: {
-                    page: 1,
-                    items_per_page: 1000,
-                },
-            });
-            setEntries(response.data.data);
+            const queryParams = new URLSearchParams();
+            queryParams.set("page", String(params.pageIndex + 1));
+            queryParams.set("items_per_page", String(params.pageSize));
+
+            if (searchQuery.trim().length > 0) {
+                queryParams.set("query", searchQuery);
+            }
+
+            if (params.sorting?.[0]?.id) {
+                queryParams.set("sort", params?.sorting[0]?.id);
+                queryParams.set("order", params?.sorting[0]?.desc ? "desc" : "asc");
+            }
+
+            const response = await axios.get(
+                `${import.meta.env.VITE_APP_API_URL}/purchase/?${queryParams.toString()}`
+            );
+
+            return {
+                data: response?.data?.data,
+                totalCount: response?.data?.pagination?.total,
+            };
         } catch (error: any) {
             toast.error("Failed to fetch purchase entries");
-        } finally {
-            setLoading(false);
+            return { data: [], totalCount: 0 };
         }
     };
 
+    // Fetch full details for a specific entry before editing/deleting
     const fetchPurchaseDetails = async (uuid: string) => {
         try {
             setFetchingDetails(true);
             const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/purchase/${uuid}`);
-            setSelectedEntry(response.data);
-            return response.data;
+            setSelectedEntry(response?.data);
+            return response?.data;
         } catch (error: any) {
-            toast.error("Failed to fetch purchase entry details");
+            toast.error("Failed to fetch purchase details");
             return null;
         } finally {
             setFetchingDetails(false);
         }
     };
-    
-    useEffect(() => {
-      fetchEntries();
-    }, [refreshStatus]);
-
-    useEffect(() => {
-        const trimmedQuery = searchQuery.trim().toLowerCase();
-        if (!trimmedQuery) {
-            setFilteredEntries(entries);
-            return;
-        }
-
-        setFilteredEntries(
-            entries.filter((entry) =>
-                (entry.invoice_number || "").toLowerCase().includes(trimmedQuery)
-            )
-        );
-    }, [searchQuery, entries]);
 
     const deleteEntry = async (uuid: string) => {
         try {
             await axios.delete(`${import.meta.env.VITE_APP_API_URL}/purchase/${uuid}`);
             toast.success("Purchase entry deleted successfully");
             setShowDeleteDialog(false);
-            fetchEntries();
+            setRefreshKey((prev) => prev + 1);
         } catch (error: any) {
             toast.error("Delete failed");
         }
@@ -162,24 +254,31 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
             {
                 accessorKey: "invoice_number",
                 header: ({ column }) => <DataGridColumnHeader title="Invoice Number" column={column} />,
+                enableSorting: true,
                 cell: (info) => <span className="font-medium text-gray-900">{info.row.original.invoice_number}</span>,
                 meta: { headerClassName: "min-w-[150px]" },
             },
             {
                 accessorKey: "date",
                 header: ({ column }) => <DataGridColumnHeader title="Date" column={column} />,
+                enableSorting: true,
                 cell: (info) => info.row.original.date,
                 meta: { headerClassName: "min-w-[120px]" },
             },
             {
                 accessorKey: "amount",
-                header: ({ column }) => <DataGridColumnHeader title="Amount" column={column} />,
-                cell: (info) => info.row.original.amount,
+                id: "amount",
+                header: ({ column }) => (
+                    <DataGridColumnHeader title="Amount" column={column} />
+                ),
+                enableSorting: true,
+                cell: (info: any) => { return info.row.original.amount },
                 meta: { headerClassName: "min-w-[100px]" },
             },
             {
                 accessorKey: "entered_bill",
                 header: ({ column }) => <DataGridColumnHeader title="Entered Bill" column={column} />,
+                enableSorting: true,
                 cell: ({ row }) => (
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${row.original.entered_bill ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
                         {row.original.entered_bill ? "Register" : "Pending"}
@@ -220,17 +319,12 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                 meta: { headerClassName: "w-28" },
             },
         ],
-        []
+        [fetchPurchaseDetails]
     );
 
     return (
         <div className="grid gap-5 lg:gap-7.5">
-            {(loading || fetchingDetails) && entries.length === 0 && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20">
-                    <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-                </div>
-            )}
-            {fetchingDetails && entries.length > 0 && (
+            {fetchingDetails && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
                     <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
                         <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
@@ -239,12 +333,16 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                 </div>
             )}
             <DataGrid
+                key={refreshKey}
                 columns={columns}
-                data={filteredEntries}
-                // loading={loading}
+                serverSide={true}
+                onFetchData={fetchPurchaseEntries}
+                loading={loading}
                 rowSelection={true}
+                rowSelectionState={rowSelection}
                 getRowId={(row: any) => row.uuid}
-                pagination={{ size: 10 }}
+                onRowSelectionChange={setRowSelection}
+                pagination={{ size: 5 }}
                 toolbar={
                     <Toolbar
                         defaultSearch={searchQuery}
@@ -256,9 +354,13 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
 
             <ModalPurchase
                 open={modalOpen}
-                onOpenChange={setModalOpen}
+                onOpenChange={(isOpen) => {
+                    setModalOpen(isOpen);
+                    if (!isOpen) {
+                        setRefreshKey((prev) => prev + 1);
+                    }
+                }}
                 purchase_entry={selectedEntry}
-                onSuccess={fetchEntries}
             />
 
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

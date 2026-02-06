@@ -84,15 +84,15 @@ import {
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
 import { CustomerDetails } from '@/pages/parties/blocks/customers/CustomerDetails';
-import { PartiesCustomersPage } from '@/pages/parties/PartiesCustomers';
 import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
-import { PartiesVendorsPage } from '@/pages/parties/PartiesVendors';
+import { PartiesVendorsPage } from '@/pages/parties/blocks/vendors/PartiesVendors';
 import InventoryPage from '@/pages/items/InventoryPage';
 import ItemDetailsPage from '@/pages/items/ItemDetails';
 import { UserDetails } from '@/pages/userManagement/UserDetails';
 import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
 import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
+import { PartiesCustomersPage } from '@/pages/parties/blocks/customers/PartiesCustomers';
 
 
 const AppRoutingSetup = (): ReactElement => {

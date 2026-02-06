@@ -2,18 +2,14 @@ from flask import Blueprint, current_app, jsonify, request
 from app.models.customer import Customer
 from app.models.person import Lead
 from app.extensions import db
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 from flask import send_file
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.worksheet.datavalidation import DataValidation
-
-
 customer_blueprint = Blueprint("customer", __name__, url_prefix="/customers")
-
-
 # GET all customers (support both with and without trailing slash)
 @customer_blueprint.route("/", methods=["GET"])
 def get_customers():
@@ -31,6 +27,22 @@ def get_customers():
               type: array
     """
     query = Customer.query.filter_by(is_deleted=False)
+
+    # Search query filter
+    if "query" in request.args:
+        query_value = request.args.get("query", "").strip()
+        if query_value:
+            query = query.filter(
+                or_(
+                    Customer.first_name.ilike(f"%{query_value}%"),
+                    Customer.last_name.ilike(f"%{query_value}%"),
+                    func.concat(Customer.first_name, " ", Customer.last_name).ilike(f"%{query_value}%"), #For search customer by dropdown
+                    Customer.email.ilike(f"%{query_value}%"),
+                    Customer.mobile.ilike(f"%{query_value}%"),
+                    Customer.gst.ilike(f"%{query_value}%"),
+                )
+            )
+
     sort = request.args.get("sort", "created_at")  # Default sort by created_at
     order = request.args.get("order", "desc").upper()  # Default order is now 'desc'
 
@@ -64,9 +76,19 @@ def get_customers():
             else:
                 query = query.order_by(getattr(Customer, field, "uuid"))
 
-    # Pagination
+    # Return all customers for dropdown if requested
+    if request.args.get("dropdown") == "true":
+        return jsonify([
+            {
+                "uuid": str(c.uuid),
+                "name": f"{c.first_name} {c.last_name}".strip()
+            }
+            for c in query.all()
+        ])
+
+    # Paginated results for the main grid
     page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("items_per_page", 10))
+    per_page = int(request.args.get("items_per_page", 5))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     customers = pagination.items
 
@@ -109,8 +131,7 @@ def get_customers():
         }
     )
 
-
-# CREATE a new customer (support both with and without trailing slash)
+# CREATE a new customer
 @customer_blueprint.route("/", methods=["POST"])
 def create_customer():
     data = request.get_json() or {}
@@ -296,7 +317,6 @@ def create_customer():
         201,
     )
 
-
 # GET a single customer by UUID
 @customer_blueprint.route("/<uuid:customer_id>", methods=["GET"])
 def get_customer(customer_id):
@@ -331,7 +351,7 @@ def get_customer(customer_id):
             "pin": customer.pin,
         }
     )
-
+# UPDATE an existing customer
 @customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
 def update_customer(customer_id):
     try:
@@ -418,6 +438,7 @@ def update_customer(customer_id):
         current_app.logger.error(str(e))
         return jsonify({"error": "Unexpected error while updating customer"}), 500
 
+# Delete a customer (soft delete)
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     try:
@@ -518,4 +539,3 @@ def download_customer_template():
         import traceback
         print(traceback.format_exc())
         return {"error": str(e)}, 500
-       

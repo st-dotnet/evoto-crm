@@ -164,7 +164,7 @@ const ModalPurchase = ({ open, onOpenChange, purchase_entry, onSuccess }: IModal
                     onChange={(e) => {
                         const value = e.target.value;
                         // allow: empty, digits, digits., digits.decimal
-                        if (/^\d*\.?\d*$/.test(value)) {
+                        if (/^\d*\.?\d{0,2}$/.test(value)) {
                             formik.setFieldValue("amount", value);
                         }
                     }}
