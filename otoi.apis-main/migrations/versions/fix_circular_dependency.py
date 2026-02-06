@@ -18,8 +18,16 @@ def upgrade():
     pass
 
 def downgrade():
+    # Check if constraint exists before dropping it
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    constraints = inspector.get_foreign_keys('businesses')
+    
     # Revert the changes if needed
-    op.drop_constraint('businesses_address_id_fkey', 'businesses', type_='foreignkey')
+    for constraint in constraints:
+        if constraint['name'] == 'businesses_address_id_fkey':
+            op.drop_constraint('businesses_address_id_fkey', 'businesses', type_='foreignkey')
+            break
     
     op.create_foreign_key(
         'businesses_address_id_fkey',

@@ -69,8 +69,8 @@ class LeadAddress(BaseMixin, db.Model):
     # shipping_id = Column(UUID(as_uuid=True), ForeignKey("shippings.uuid", ondelete="CASCADE"), nullable=True)
 
     # Relationships
-    lead = relationship("Lead", back_populates="lead_addresses")
-    address = relationship("Address", back_populates="lead_addresses")
+    lead = relationship("Lead", back_populates="lead_addresses", overlaps="addresses,leads")
+    address = relationship("Address", back_populates="lead_addresses", overlaps="addresses,leads")
     # shipping = relationship("Shipping", foreign_keys=[shipping_id], back_populates="lead_addresses")
 
     def __repr__(self):

@@ -56,6 +56,7 @@ export interface TDataGridProps<TData extends object> {
   filters?: { id: string; value: unknown }[];
   serverSide?: boolean;
   onFetchData?: (params: TDataGridRequestParams) => Promise<any>;
+  onRowClick?: (row: import('@tanstack/react-table').Row<TData>) => void;
   children?: ReactNode;
 }
 

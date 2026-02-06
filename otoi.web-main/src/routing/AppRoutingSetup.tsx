@@ -91,10 +91,12 @@ import InventoryPage from '@/pages/items/InventoryPage';
 import ItemDetailsPage from '@/pages/items/ItemDetails';
 import QuotationPage from '@/pages/quotation/components/QuotationPage';
 import CreateQuotationPage from '@/pages/quotation/components/CreateQuotationPage';
+import QuotationPreviewPage from '@/pages/quotation/components/QuotationPreviewPage';
 import { UserDetails } from '@/pages/userManagement/UserDetails';
 import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
 import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
+import InvoicePage from '@/pages/invoice/components/InvoicePage';
 
 
 const AppRoutingSetup = (): ReactElement => {
@@ -114,7 +116,7 @@ const AppRoutingSetup = (): ReactElement => {
             <Route path="/user/:id" element={<UserDetails />} />
             <Route path="/items/inventory" element={<InventoryPage />} />
             <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
-            <Route path='/accounting/purchase-entry' element={<PartiesPurchaseEntry />}/>
+            <Route path='/accounting/purchase-entry' element={<PartiesPurchaseEntry />} />
             {/* Add more Manager/Admin routes here as needed */}
           </Route>
 
@@ -229,13 +231,18 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
           <Route path="/user/:id" element={<UserDetails />} />
           <Route path="/user/:id/edit" element={<UserEdit />} />
-          <Route path="/items/inventory" element={<InventoryPage/>} />
+          <Route path="/items/inventory" element={<InventoryPage />} />
           <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
-          <Route path="/quotes/list" element={<QuotationPage/>} />
+          <Route path="/quotes/list" element={<QuotationPage />} />
           <Route path="/quotes/new-quotation" element={<CreateQuotationPage />} />
-          <Route path="/quotes/list" element={<QuotationPage/>} />
-          <Route path="/quotes/new-quotation" element={<CreateQuotationPage />} />
-          
+          <Route path="/quotes/:id" element={<QuotationPreviewPage />} />
+          <Route path="/quotes/:id/edit" element={<CreateQuotationPage />} />
+          <Route path="/quotes/preview" element={<QuotationPreviewPage />} />
+
+          {/* Invoice Routes */}
+          <Route path="/invoices/list" element={<InvoicePage />} />
+          <Route path="/invoices" element={<InvoicePage />} />
+
           <Route
             path="/auth/account-deactivated"
             element={<AuthenticationAccountDeactivatedPage />}

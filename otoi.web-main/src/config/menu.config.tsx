@@ -17,11 +17,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
         title: "Leads",
         path: "/parties/leads",
       },
-       {
+      {
         title: "Customers",
         path: "/parties/customers",
       },
-       {
+      {
         title: "Vendors",
         path: "/parties/vendors",
       }
@@ -61,7 +61,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Invoices",
-        path: "/sales/invoices"
+        path: "/invoices/list"
       },
       {
         title: "Payment In",

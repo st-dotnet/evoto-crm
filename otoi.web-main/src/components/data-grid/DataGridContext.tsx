@@ -65,7 +65,7 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
     serverSide: false
   };
 
-  const mergedProps = deepMerge(defaultValues, props);
+  const mergedProps = { ...deepMerge(defaultValues, props), onRowClick: props.onRowClick };
 
   const [data, setData] = useState<TData[]>(mergedProps.data || []);
   const [loading, setLoading] = useState<boolean>(mergedProps.loading || false);
