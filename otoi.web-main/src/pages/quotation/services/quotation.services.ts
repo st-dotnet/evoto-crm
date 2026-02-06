@@ -69,6 +69,35 @@ const getBusinessId = (): number | null => {
   }
 };
 
+export const getNextQuotationNumber = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(`${API_URL}/quotations/next-number`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    console.error('Error fetching next quotation number:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to fetch next quotation number',
+      status: error.response?.status || 500,
+    };
+  }
+};
+
 export const createQuotation = async (quotationData: QuotationData): Promise<ApiResponse> => {
   const token = getAuthToken();
 
@@ -235,6 +264,8 @@ export const getQuotationById = async (id: string): Promise<ApiResponse> => {
     const data = response.data;
     const transformedData = {
       ...data,
+      // Include customer information
+      customer: data.customer,
       // Extract charges from JSON
       subtotal: data.charges?.subtotal || 0,
       tax_total: data.charges?.tax_total || 0,
@@ -343,13 +374,22 @@ export const updateQuotation = async (id: string, quotationData: Partial<Quotati
       uuid: item.id,
       item_id: item.item_id,
       product_name: item.item_name,
+      hsn_sac_code: item.hsn_sac,
       description: item.description || null,
       quantity: item.quantity,
       unit_price: item.price_per_item,
-      discount: item.discount,
+      discount_percentage: item.discount,
       discount_amount: (item.quantity * item.price_per_item * item.discount) / 100,
-      tax: item.tax,
+      tax_percentage: item.tax,
       tax_amount: (item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100,
+      discount: {
+        discount_percentage: item.discount,
+        discount_amount: (item.quantity * item.price_per_item * item.discount) / 100,
+      },
+      tax: {
+        tax_percentage: item.tax,
+        tax_amount: (item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100,
+      },
       total_price: item.amount,
       measuring_unit_id: item.measuring_unit_id,
     }));

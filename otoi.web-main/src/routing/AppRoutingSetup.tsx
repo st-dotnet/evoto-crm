@@ -96,7 +96,7 @@ import { UserDetails } from '@/pages/userManagement/UserDetails';
 import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
 import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
-import InvoicePage from '@/pages/invoice/components/InvoicePage';
+// import InvoicePage from '@/pages/invoice/components/InvoicePage';
 
 
 const AppRoutingSetup = (): ReactElement => {
@@ -240,8 +240,9 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/quotes/preview" element={<QuotationPreviewPage />} />
 
           {/* Invoice Routes */}
-          <Route path="/invoices/list" element={<InvoicePage />} />
-          <Route path="/invoices" element={<InvoicePage />} />
+          {/* <Route path="/invoices/list" element={<InvoicePage />} />
+          <Route path="/invoices" element={<InvoicePage />} /> */}
+          <Route path="/invoices/:id" element={<QuotationPreviewPage />} />
 
           <Route
             path="/auth/account-deactivated"

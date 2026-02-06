@@ -547,7 +547,6 @@ const ModalCustomer = ({
     );
 
     if (addressIndex === -1) {
-      console.error("Address not found for UUID:", uuid);
       toast.error("Address not found");
       return;
     }

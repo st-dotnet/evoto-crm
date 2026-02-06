@@ -20,6 +20,24 @@ def generate_quotation_number():
     return "QT-1001"
 
 
+@quotation_blueprint.route("/next-number", methods=["GET"])
+def get_next_quotation_number():
+    """
+    Get the next available quotation number
+    ---
+    tags:
+      - Quotations
+    responses:
+      200:
+        description: Next quotation number
+    """
+    try:
+        next_number = generate_quotation_number()
+        return jsonify({"next_quotation_number": next_number}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to generate quotation number", "details": str(e)}), 500
+
+
 @quotation_blueprint.route("/", methods=["POST"])
 def create_quotation():
     """
@@ -256,74 +274,134 @@ def get_quotation(quotation_id):
 @quotation_blueprint.route("/<uuid:quotation_id>", methods=["PUT"])
 def update_quotation(quotation_id):
     """
-    Update a quotation
+    Update a quotation with items
     ---
     tags:
       - Quotations
-    parameters:
+    parameters: 
       - name: quotation_id
         in: path
         required: true
         type: string
         format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              quotation_date:
+                type: string
+                format: date
+              valid_till:
+                type: string
+                format: date
+              total_amount:
+                type: number
+              status:
+                type: string
+              charges:
+                type: object
+              additional_notes:
+                type: object
+              items:
+                type: array
     responses:
       200:
         description: Quotation updated successfully
+      400:  
+        description: Validation error
       404:
         description: Quotation not found
+      500:  
+        description: Server error
+
     """
     data = request.get_json()
     quotation = Quotation.query.get_or_404(quotation_id)
 
     try:
-        # Update basic fields
-        if "quotation_date" in data:
-            quotation.quotation_date = data["quotation_date"]
-        if "valid_till" in data:
-            quotation.valid_till = data["valid_till"]
-        if "total_amount" in data:
-            quotation.total_amount = data["total_amount"]
-        if "status" in data:
-            quotation.status = data["status"]
-        
-        # Update charges JSON
-        if any(key in data for key in ["subtotal", "total_tax", "total_discount", "additional_charges_total", "round_off"]):
-            charges = quotation.charges or {}
-            if "subtotal" in data:
-                charges["subtotal"] = data["subtotal"]
-            if "total_tax" in data:
-                charges["tax_total"] = data["total_tax"]
-            if "total_discount" in data:
-                charges["discount_total"] = data["total_discount"]
-            if "additional_charges_total" in data:
-                charges["additional_charges_total"] = data["additional_charges_total"]
-            if "round_off" in data:
-                charges["round_off"] = data["round_off"]
-            quotation.charges = charges
-        
-        # Update additional_notes JSON
-        if any(key in data for key in ["notes", "terms_and_conditions"]):
-            additional_notes = quotation.additional_notes or {}
-            if "notes" in data:
-                additional_notes["notes"] = data["notes"]
-            if "terms_and_conditions" in data:
-                additional_notes["terms_and_conditions"] = data["terms_and_conditions"]
-            # Increment version on update
-            additional_notes["version"] = additional_notes.get("version", 0) + 1
-            quotation.additional_notes = additional_notes
+        # -----------------------------
+        # Update quotation basic fields
+        # -----------------------------
+        quotation.quotation_date = data.get("quotation_date", quotation.quotation_date)
+        quotation.valid_till = data.get("valid_till") or data.get("validity_date") or quotation.valid_till
+        quotation.total_amount = data.get("total_amount", quotation.total_amount)
+        quotation.status = data.get("status", quotation.status)
 
-        # set_updated_fields(quotation, user_id=data.get("user_id"))
+        # -----------------------------
+        # Update charges JSON
+        # -----------------------------
+        quotation.charges = {
+            "subtotal": data.get("subtotal", quotation.charges.get("subtotal", 0)),
+            "tax_total": data.get("total_tax", quotation.charges.get("tax_total", 0)),
+            "discount_total": data.get("total_discount", quotation.charges.get("discount_total", 0)),
+            "additional_charges_total": data.get(
+                "additional_charges_total",
+                quotation.charges.get("additional_charges_total", 0),
+            ),
+            "round_off": data.get("round_off", quotation.charges.get("round_off", 0)),
+        }
+
+        # -----------------------------
+        # Update additional_notes JSON
+        # -----------------------------
+        additional_notes = quotation.additional_notes or {}
+        additional_notes["notes"] = data.get("notes", additional_notes.get("notes", ""))
+        additional_notes["terms_and_conditions"] = data.get(
+            "terms_and_conditions",
+            additional_notes.get("terms_and_conditions", ""),
+        )
+        additional_notes["version"] = additional_notes.get("version", 0) + 1
+        quotation.additional_notes = additional_notes
+
+        # -----------------------------
+        # Update quotation items
+        # Strategy: delete + reinsert
+        # -----------------------------
+        QuotationItem.query.filter_by(quotation_id=quotation.uuid).delete()
+
+        for item_data in data.get("items", []):
+            discount = {
+                "discount_percentage": item_data.get("discount", 0),
+                "discount_amount": item_data.get("discount_amount", 0),
+            }
+
+            tax = {
+                "tax_percentage": item_data.get("tax", 0),
+                "tax_amount": item_data.get("tax_amount", 0),
+            }
+
+            item = QuotationItem(
+                quotation_id=quotation.uuid,
+                item_id=item_data.get("item_id"),
+                description=item_data.get("description"),
+                quantity=item_data["quantity"],
+                unit_price=item_data.get("unit_price") or item_data.get("price_per_item"),
+                discount=discount,
+                tax=tax,
+                total_price=item_data.get("total_price") or item_data.get("amount"),
+            )
+            db.session.add(item)
+
         db.session.commit()
 
-        return jsonify({"message": "Quotation updated successfully"}), 200
-        
+        return jsonify({
+            "message": "Quotation updated successfully",
+            "quotation_uuid": str(quotation.uuid),
+            "quotation_number": quotation.quotation_number
+        }), 200
+
     except IntegrityError as e:
         db.session.rollback()
         return jsonify({"error": "Integrity error", "details": str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
+    
 
+    
 
 @quotation_blueprint.route("/<uuid:quotation_id>", methods=["DELETE"])
 def delete_quotation(quotation_id):

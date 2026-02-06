@@ -16,7 +16,9 @@ import {
   MoreVertical,
   Edit,
   Eye,
-  Trash2
+  Copy,
+  Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -25,8 +27,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
-import { getQuotations, getQuotationById } from "../services/quotation.services";
+import { getQuotations, deleteQuotation, getQuotationById, createQuotation } from "../services/quotation.services";
 import { toast } from "sonner";
 
 interface Quotation {
@@ -43,6 +53,9 @@ const QuotationPage = () => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed'>('open');
   const navigate = useNavigate();
 
@@ -247,8 +260,63 @@ const QuotationPage = () => {
           setIsOpen(false);
         };
 
-        const handleDelete = (id: string) => {
-          // Handle delete action
+        const handleDeleteClick = (id: string) => {
+          setQuotationToDelete(id);
+          setShowDeleteDialog(true);
+          setIsOpen(false);
+        };
+
+        const handleDuplicate = async (id: string) => {
+          try {
+            // Fetch the original quotation details
+            const response = await getQuotationById(id);
+            if (response.success && response.data) {
+              const originalQuotation = response.data;
+              
+              // Transform data for CreateQuotationPage format
+              const duplicateData = {
+                quotationNo: '', // Will be auto-generated
+                quotationDate: new Date().toISOString().split('T')[0],
+                validFor: 30,
+                validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                status: 'open',
+                selectedCustomer: originalQuotation.customer,
+                quotationItems: originalQuotation.items.map((item: any) => ({
+                  id: '', // Remove existing ID
+                  item_id: item.item_id,
+                  item_name: item.product_name || item.description || "Item",
+                  description: item.description,
+                  quantity: item.quantity,
+                  price_per_item: item.unit_price,
+                  discount: item.discount_percentage || 0,
+                  tax: item.tax_percentage || 0,
+                  amount: item.total_price,
+                  measuring_unit_id: 1
+                })),
+                notes: originalQuotation.notes,
+                terms: originalQuotation.terms_and_conditions,
+                // Flag to indicate this is a duplicate
+                isDuplicate: true,
+                originalQuotationId: id
+              };
+
+              // Navigate to CreateQuotationPage with pre-filled data
+              navigate('/quotes/new-quotation', { 
+                state: { 
+                  quotationData: duplicateData,
+                  isDuplicate: true 
+                } 
+              });
+              
+              toast.success('Quotation opened for editing!');
+              setIsOpen(false);
+            } else {
+              toast.error('Failed to fetch original quotation');
+            }
+          } catch (error) {
+            console.error('Error duplicating quotation:', error);
+            toast.error('Failed to duplicate quotation');
+          }
           setIsOpen(false);
         };
 
@@ -292,12 +360,21 @@ const QuotationPage = () => {
                   <Eye className="mr-2 h-4 w-4" />
                   View Details
                 </DropdownMenuItem>
-
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleDelete(row.original.id);
+                    handleDuplicate(row.original.id);
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteClick(row.original.id);
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -316,16 +393,16 @@ const QuotationPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Quotation</h1>
         <div className="flex items-center gap-2">
-          <div className="w-36">
+          {/* <div className="w-36">
             <Button variant="outline" size="sm" className="h-8 w-full gap-1">
               <Calendar className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Last 365 Days
               </span>
             </Button>
-          </div>
+          </div> */}
 
-          <div className="w-44">
+          {/* <div className="w-44">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 w-full gap-1">
@@ -365,7 +442,7 @@ const QuotationPage = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </div> */}
           <Button
             size="sm"
             className="h-8 gap-1"
@@ -378,6 +455,64 @@ const QuotationPage = () => {
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setQuotationToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px] p-6">
+          <DialogHeader className="flex flex-col items-center text-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            </div>
+
+            <DialogTitle className="text-lg font-semibold">
+              Delete quotation
+            </DialogTitle>
+
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this quotation?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="mt-6 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!quotationToDelete || isDeleting) return;
+                setIsDeleting(true);
+                const response = await deleteQuotation(quotationToDelete);
+                if (response.success) {
+                  toast.success("Quotation deleted successfully");
+                  fetchQuotations();
+                  setShowDeleteDialog(false);
+                } else {
+                  toast.error(response.error || "Failed to delete quotation");
+                }
+                setQuotationToDelete(null);
+                setIsDeleting(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting || !quotationToDelete}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="bg-white border rounded-lg overflow-hidden">
         <div className="p-4 border-b">
