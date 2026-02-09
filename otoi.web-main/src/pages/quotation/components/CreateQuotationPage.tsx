@@ -185,28 +185,8 @@ const CreateQuotationPage = () => {
   // Form state
   const [isLoading, setIsLoading] = useState(false);
   const [isAddressLoading, setIsAddressLoading] = useState(false);
-
-  // UI State
-  // const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  // const [showConfirmModal, setShowConfirmModal] = useState(false);
-  // const [searchQuery, setSearchQuery] = useState("");
-
-  // Data state
-  // const [parties, setParties] = useState<Party[]>([]);
-  // const [selectedParty, setSelectedParty] = useState<Party | null>(null);
-  // const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-
-  // Party creation state
-  // const [isCreatingParty, setIsCreatingParty] = useState(false);
-  // const [newPartyName, setNewPartyName] = useState("");
   const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<string | null>(null);
-
-  // Shipping Address state
-  // const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
-  // const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
   const [editingAddress, setEditingAddress] = useState<ShippingAddress | undefined>();
-  // const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
-  // const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
 
   // Action button state
   const [activeDropdownUuid, setActiveDropdownUuid] = useState<string | null>(null);
@@ -742,7 +722,7 @@ const CreateQuotationPage = () => {
 
       // Update local state
       setShippingAddresses(updatedAddresses);
-      
+
       const defaultAddress = shippingAddresses.find(addr => addr.uuid === targetUuid);
       if (defaultAddress) {
         setSelectedAddress({ ...defaultAddress, is_default: true });
@@ -1415,7 +1395,7 @@ const CreateQuotationPage = () => {
                               <div className="mt-2 text-sm text-gray-700 space-y-1">
                                 {selectedCustomer.company_name && (
                                   <p className="font-medium">
-                                    {selectedCustomer.company_name} 
+                                    {selectedCustomer.company_name}
                                   </p>
                                 )}
                                 {selectedCustomer.contact_person && (
@@ -1741,39 +1721,39 @@ const CreateQuotationPage = () => {
           </DialogContent>
         </Dialog>
 
-      {/* Customer Creation Modal */}
-      <ModalCustomer
-        open={isCustomerModalOpen}
-        onOpenChange={setIsCustomerModalOpen}
-        customer={null}
-        defaultStatus="4"
-        title="Create Party"
-        hideStatusField={true}
-        hideSameAsBilling={true}
-        onSuccess={(newCustomer?: any) => {
-          setIsCustomerModalOpen(false);
+        {/* Customer Creation Modal */}
+        <ModalCustomer
+          open={isCustomerModalOpen}
+          onOpenChange={setIsCustomerModalOpen}
+          customer={null}
+          defaultStatus="4"
+          title="Create Party"
+          hideStatusField={true}
+          hideSameAsBilling={true}
+          onSuccess={(newCustomer?: any) => {
+            setIsCustomerModalOpen(false);
 
-          if (newCustomer && newCustomer.uuid) {
-            const party = {
-              id: newCustomer.uuid,
-              uuid: newCustomer.uuid,
-              name: `${newCustomer.first_name} ${newCustomer.last_name}`.trim(),
-              balance: 0,
-              mobile: newCustomer.mobile,
-              customerData: newCustomer,
-            };
+            if (newCustomer && newCustomer.uuid) {
+              const party = {
+                id: newCustomer.uuid,
+                uuid: newCustomer.uuid,
+                name: `${newCustomer.first_name} ${newCustomer.last_name}`.trim(),
+                balance: 0,
+                mobile: newCustomer.mobile,
+                customerData: newCustomer,
+              };
 
-            setParties(prev => [party, ...prev]);
+              setParties(prev => [party, ...prev]);
 
-            setSelectedParty(party);
+              setSelectedParty(party);
 
-            setSelectedCustomer(newCustomer);
-            fetchCustomerData(newCustomer.uuid);
-          } else {
-            fetchParties();
-          }
-        }}
-      />
+              setSelectedCustomer(newCustomer);
+              fetchCustomerData(newCustomer.uuid);
+            } else {
+              fetchParties();
+            }
+          }}
+        />
 
         <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
           <DialogContent className="sm:max-w-[400px] p-6">
@@ -1843,167 +1823,167 @@ const CreateQuotationPage = () => {
                   <div className="h-px bg-gray-200 flex-1"></div>
                 </div>
 
-              <div className="space-y-3">
-                {shippingAddresses.length > 0 ? (
-                  <div className="grid gap-3">
-                    {shippingAddresses.map((address, index) => {
-                      const isSelected = selectedAddress?.uuid === address.uuid || address.is_default;
-                      return (
-                        <div
-                          key={address.uuid || index}
-                          className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                            }`}
-                          onClick={() => setSelectedAddress(address)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
-                                ? "bg-blue-100"
-                                : "bg-gray-100 group-hover:bg-gray-200"
-                                }`}
-                            >
-                              {address.address_type === "home" ? (
-                                <HomeIcon
-                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
-                                />
-                              ) : address.address_type === "work" ? (
-                                <BriefcaseIcon
-                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
-                                />
-                              ) : (
-                                <MapPinIcon
-                                  className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
-                                />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
-                                  {address.address_type}
-                                  {address.is_default && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                      Default
-                                    </span>
-                                  )}
-                                </span>
+                <div className="space-y-3">
+                  {shippingAddresses.length > 0 ? (
+                    <div className="grid gap-3">
+                      {shippingAddresses.map((address, index) => {
+                        const isSelected = selectedAddress?.uuid === address.uuid || address.is_default;
+                        return (
+                          <div
+                            key={address.uuid || index}
+                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                            onClick={() => setSelectedAddress(address)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
+                                  ? "bg-blue-100"
+                                  : "bg-gray-100 group-hover:bg-gray-200"
+                                  }`}
+                              >
+                                {address.address_type === "home" ? (
+                                  <HomeIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                  />
+                                ) : address.address_type === "work" ? (
+                                  <BriefcaseIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                  />
+                                ) : (
+                                  <MapPinIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
+                                    {address.address_type}
+                                    {address.is_default && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        Default
+                                      </span>
+                                    )}
+                                  </span>
 
-                                {/* Action Button */}
-                                <div className="relative" ref={address.uuid === activeDropdownUuid ? dropdownRef : null}>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const uuid = address.uuid;
-                                      
-                                      if (!uuid) {
-                                        console.error('Address UUID is missing:', address);
-                                        return;
-                                      }
-                                      
-                                      if (activeDropdownUuid === uuid) {
-                                        setActiveDropdownUuid(null);
-                                        setButtonPosition(null);
-                                      } else {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setButtonPosition({
-                                          top: rect.top,
-                                          left: rect.right + 8
-                                        });
-                                        setActiveDropdownUuid(uuid);
-                                      }
-                                    }}
-                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
-                                    aria-label="Address actions"
-                                  >
-                                    <MoreVertical className="w-4 h-4" />
-                                  </button>
+                                  {/* Action Button */}
+                                  <div className="relative" ref={address.uuid === activeDropdownUuid ? dropdownRef : null}>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const uuid = address.uuid;
 
-                                  {activeDropdownUuid === address.uuid && (
-                                    <div 
-                                      className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200"
+                                        if (!uuid) {
+                                          console.error('Address UUID is missing:', address);
+                                          return;
+                                        }
+
+                                        if (activeDropdownUuid === uuid) {
+                                          setActiveDropdownUuid(null);
+                                          setButtonPosition(null);
+                                        } else {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setButtonPosition({
+                                            top: rect.top,
+                                            left: rect.right + 8
+                                          });
+                                          setActiveDropdownUuid(uuid);
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+                                      aria-label="Address actions"
                                     >
-                                      <div className="py-1" role="menu">
-                                        {!address.is_default && (
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+
+                                    {activeDropdownUuid === address.uuid && (
+                                      <div
+                                        className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200"
+                                      >
+                                        <div className="py-1" role="menu">
+                                          {!address.is_default && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSetDefaultAddress();
+                                              }}
+                                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                            >
+                                              <MapPin className="w-4 h-4 text-green-500" />
+                                              <span>Set as Default</span>
+                                            </button>
+                                          )}
+
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleSetDefaultAddress();
+                                              handleEditAddress();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
                                           >
-                                            <MapPin className="w-4 h-4 text-green-500" />
-                                            <span>Set as Default</span>
+                                            <Edit className="w-4 h-4" />
+                                            <span>Edit</span>
                                           </button>
-                                        )}
 
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditAddress();
-                                          }}
-                                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                          <span>Edit</span>
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteAddress();
-                                          }}
-                                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                          <span>Delete</span>
-                                        </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteAddress();
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                            <span>Delete</span>
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-xs text-gray-700 leading-relaxed">
-                                  <span className="font-medium text-gray-500">Address:</span> {[
-                                    address.address1,
-                                    address.address2
-                                  ]
-                                    .filter(Boolean)
-                                    .join(", ")},
-                                  <span className="font-medium text-gray-500"> State:</span> {address.state},
-                                  <span className="font-medium text-gray-500"> Country:</span> {address.country}
-                                </p>
-                                <p className="text-xs text-gray-700 leading-relaxed">
-                                  <span className="font-medium text-gray-500">City:</span> {address.city},
-                                  <span className="font-medium text-gray-500"> Pin:</span> {address.pin}
-                                </p>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-gray-700 leading-relaxed">
+                                    <span className="font-medium text-gray-500">Address:</span> {[
+                                      address.address1,
+                                      address.address2
+                                    ]
+                                      .filter(Boolean)
+                                      .join(", ")},
+                                    <span className="font-medium text-gray-500"> State:</span> {address.state},
+                                    <span className="font-medium text-gray-500"> Country:</span> {address.country}
+                                  </p>
+                                  <p className="text-xs text-gray-700 leading-relaxed">
+                                    <span className="font-medium text-gray-500">City:</span> {address.city},
+                                    <span className="font-medium text-gray-500"> Pin:</span> {address.pin}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
-                    <div className="fixed top-0 left-0 right-0 bg-white px-6 py-4 z-40 shadow-sm flex items-center justify-between">
-                      <MapPinIcon className="h-5 w-5 text-red-400" />
+                        );
+                      })}
                     </div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      No saved addresses found
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      No shipping addresses available for this customer
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
+                      <div className="fixed top-0 left-0 right-0 bg-white px-6 py-4 z-40 shadow-sm flex items-center justify-between">
+                        <MapPinIcon className="h-5 w-5 text-red-400" />
+                      </div>
+                      <p className="text-xs font-medium text-gray-600 mb-1">
+                        No saved addresses found
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        No shipping addresses available for this customer
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
             </div>
 
@@ -2041,44 +2021,44 @@ const CreateQuotationPage = () => {
                           payload
                         );
 
-                      // Update the selected customer with the new shipping address
-                      const updatedCustomer: Customer = {
-                        ...selectedCustomer,
-                        shipping_address1: selectedAddress.address1,
-                        shipping_address2: selectedAddress.address2 || "",
-                        shipping_city: selectedAddress.city,
-                        shipping_state: selectedAddress.state,
-                        shipping_country: selectedAddress.country,
-                        shipping_pin: selectedAddress.pin,
-                      };
-                      setSelectedCustomer(updatedCustomer);
+                        // Update the selected customer with the new shipping address
+                        const updatedCustomer: Customer = {
+                          ...selectedCustomer,
+                          shipping_address1: selectedAddress.address1,
+                          shipping_address2: selectedAddress.address2 || "",
+                          shipping_city: selectedAddress.city,
+                          shipping_state: selectedAddress.state,
+                          shipping_country: selectedAddress.country,
+                          shipping_pin: selectedAddress.pin,
+                        };
+                        setSelectedCustomer(updatedCustomer);
 
-                      setIsShippingModalOpen(false);
-                      toast.success("Address changed successfully");
-                    } catch (error: any) {
-                      let errorMessage = "Failed to save shipping address. Please try again.";
+                        setIsShippingModalOpen(false);
+                        toast.success("Address changed successfully");
+                      } catch (error: any) {
+                        let errorMessage = "Failed to save shipping address. Please try again.";
 
-                      if (error.response?.data?.error) {
-                        errorMessage = error.response.data.error || errorMessage;
+                        if (error.response?.data?.error) {
+                          errorMessage = error.response.data.error || errorMessage;
+                        }
+
+                        toast.error(errorMessage);
+                      } finally {
+                        setIsAddressLoading(false);
                       }
-
-                      toast.error(errorMessage);
-                    } finally {
-                      setIsAddressLoading(false);
+                    } else {
+                      toast.error("Please select a shipping address");
                     }
-                  } else {
-                    toast.error("Please select a shipping address");
-                  }
-                }}
-                disabled={!selectedAddress}
-                className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
-              >
-                Confirm Selection
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  }}
+                  disabled={!selectedAddress}
+                  className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  Confirm Selection
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
 
       </div>
@@ -2243,7 +2223,7 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                          className="w-20 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
+                          className="w-16 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
                         />
                         <span className="px-3 py-1.5 bg-gray-100 text-sm text-gray-700 rounded-r-md border-l border-gray-300">
                           {getMeasuringUnit(item.measuring_unit_id)}
@@ -2262,7 +2242,7 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value))}
-                          className="w-28 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <span className="absolute left-2 top-1.5 text-xs text-gray-500">₹</span>
                       </div>
@@ -2289,7 +2269,7 @@ const CreateQuotationPage = () => {
                                 value === "" ? 0 : Math.min(100, parseFloat(value))
                               );
                             }}
-                            className="w-20 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center
+                            className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center
                                       [appearance:textfield]
                                       [&::-webkit-outer-spin-button]:appearance-none
                                       [&::-webkit-inner-spin-button]:appearance-none"
