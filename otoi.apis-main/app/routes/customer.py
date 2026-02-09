@@ -34,18 +34,20 @@ def get_customers():
 
     query = Customer.query.filter_by(is_deleted=False)
 
-    search = request.args.get("search", "").strip()
-    if search:
-        search_filter = f"%{search}%"
-        query = query.filter(
-            or_(
-                Customer.first_name.ilike(search_filter),
-                Customer.last_name.ilike(search_filter),
-                Customer.email.ilike(search_filter),
-                Customer.mobile.ilike(search_filter),
-                Customer.gst.ilike(search_filter),
+    # Search query filter
+    if "query" in request.args:
+        query_value = request.args.get("query", "").strip()
+        if query_value:
+            query = query.filter(
+                or_(
+                    Customer.first_name.ilike(f"%{query_value}%"),
+                    Customer.last_name.ilike(f"%{query_value}%"),
+                    func.concat(Customer.first_name, " ", Customer.last_name).ilike(f"%{query_value}%"), #For search customer by dropdown
+                    Customer.email.ilike(f"%{query_value}%"),
+                    Customer.mobile.ilike(f"%{query_value}%"),
+                    Customer.gst.ilike(f"%{query_value}%"),
+                )
             )
-        )
 
     sort = request.args.get("sort", "created_at")  # Default sort by created_at
     order = request.args.get("order", "desc").upper()  # Default order is now 'desc'
@@ -83,11 +85,19 @@ def get_customers():
             else:
                 query = query.order_by(getattr(Customer, field, "uuid"))
 
+    # Return all customers for dropdown if requested
+    if request.args.get("dropdown") == "true":
+        return jsonify([
+            {
+                "uuid": str(c.uuid),
+                "name": f"{c.first_name} {c.last_name}".strip()
+            }
+            for c in query.all()
+        ])
 
-    # Pagination
+    # Paginated results for the main grid
     page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("items_per_page") or request.args.get("limit") or 10)
-    per_page = int(per_page)
+    per_page = int(request.args.get("items_per_page", 5))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     customers = pagination.items
 
@@ -138,6 +148,7 @@ def get_customers():
 
 # CREATE a new customer (support both with and without trailing slash)
 
+# CREATE a new customer
 @customer_blueprint.route("/", methods=["POST"])
 
 def create_customer():
@@ -543,44 +554,28 @@ def create_customer():
             return jsonify({"error": f"Failed to process shipping address: {str(e)}"}), 500
     
     db.session.commit()
-    
-    # Get shipping address details if exists
-    shipping_details = None
-    shipping = Shipping.query.filter_by(customer_id=customer.uuid).first()
-    if shipping:
-        shipping_details = {
-            "shipping_address1": shipping.address1,
-            "shipping_city": shipping.city,
-            "shipping_state": shipping.state,
-            "shipping_country": shipping.country,
-            "shipping_pin": shipping.pin,
-            "shipping_address_type": shipping.address_type,
-            "is_default_shipping": shipping.is_default
-        }
-    
-    # Prepare base response
-    response_data = {
-        "uuid": str(customer.uuid),
-        "customer_id": str(customer.uuid),
-        "first_name": customer.first_name,
-        "last_name": customer.last_name,
-        "mobile": customer.mobile,
-        "email": customer.email,
-        "gst": customer.gst,
-        "status": customer.status,
-        "address1": customer.address1,
-        "address2": customer.address2,
-        "city": customer.city,
-        "state": customer.state,
-        "country": customer.country,
-        "pin": customer.pin,
-    }
-    
-    # Add shipping details if they exist
-    if shipping_details:
-        response_data.update(shipping_details)
-    
-    return jsonify(response_data), 201
+
+    return (
+        jsonify(
+            {
+                "uuid": str(customer.uuid),
+                "customer_id": str(customer.uuid),
+                "first_name": customer.first_name,
+                "last_name": customer.last_name,
+                "mobile": customer.mobile,
+                "email": customer.email,
+                "gst": customer.gst,
+                "status": customer.status,
+                "address1": customer.address1,
+                "address2": customer.address2,
+                "city": customer.city,
+                "state": customer.state,
+                "country": customer.country,
+                "pin": customer.pin,
+            }
+        ),
+        201,
+    )
 
 
 # GET a single customer by UUID
@@ -654,7 +649,7 @@ def get_customer(customer_id):
         } for addr in shipping_addresses]
     
     return jsonify(response_data)
-
+# UPDATE an existing customer
 @customer_blueprint.route("/<uuid:customer_id>", methods=["PUT"])
 def update_customer(customer_id):
     try:
@@ -996,7 +991,7 @@ def update_customer(customer_id):
         current_app.logger.error(f"Error updating customer: {str(e)}", exc_info=True)
         return jsonify({"error": "Unexpected error while updating customer"}), 500
 
-
+# Delete a customer (soft delete)
 @customer_blueprint.route("/<uuid:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     try:

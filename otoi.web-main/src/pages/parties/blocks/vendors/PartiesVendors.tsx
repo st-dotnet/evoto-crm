@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ModalVendor } from "./blocks/vendors/ModalVendor";
+import { ModalVendor } from "./ModalVendor";
 import { Container } from "@/components/container";
 import {
   Toolbar,
@@ -9,8 +9,8 @@ import {
   ToolbarPageTitle,
 } from "@/partials/toolbar";
 
-import { PartiesVendorsContent } from "./PartiesVendorsContent";
 import { useLayout } from "@/providers";
+import { PartiesVendorsContent } from "./PartiesVendorsContent";
 // import { useNavigate } from "react-router-dom";
 // import { toast } from "sonner";
 // import axios from "axios";

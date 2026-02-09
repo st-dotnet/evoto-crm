@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, memo } from "react";
+import { cn } from "@/lib/utils";
 import {
   Customer,
   QueryApiResponse,
-} from "./blocks/customers/customer-models";
-import { ModalCustomer } from "./blocks/customers/ModalCustomer";
-import { ActivityForm } from "./blocks/leads/ActivityForm";
+} from "./customer-models";
+import { ModalCustomer } from "./ModalCustomer";
+import { ActivityForm } from "../leads/ActivityForm";
 
 import {
   DataGrid,
@@ -20,7 +21,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Eye, AlertCircle, Loader2 } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Eye, AlertCircle, Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
@@ -69,7 +79,7 @@ interface ActivityLead {
 
 import { debounce } from "@/lib/helpers";
 
-const Toolbar = memo(({
+const Toolbar = ({
   defaultSearch,
   setSearch,
   defaultStatusType,
@@ -82,57 +92,104 @@ const Toolbar = memo(({
 }) => {
   const [searchInput, setSearchInput] = useState(defaultSearch);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((query: string) => {
-        setSearch(query);
-      }, 500),
-    [setSearch]
-  );
+  const [open, setOpen] = useState(false);
+  const [customers, setCustomers] = useState<{ uuid: string; name: string }[]>([]);
 
   useEffect(() => {
     setSearchInput(defaultSearch);
   }, [defaultSearch]);
 
   useEffect(() => {
-    return () => {
-      debouncedSearch.cancel?.();
+    const fetchAllCustomers = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/customers/?dropdown=true`);
+        setCustomers(response.data);
+      } catch (error) {
+        console.error("Failed to fetch all customers dropdown", error);
+      }
     };
-  }, [debouncedSearch]);
+    fetchAllCustomers();
+  }, []);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      debouncedSearch.cancel?.();
-      setSearch(searchInput);
-    }
-  };
-
+  // Handle input change and trigger debounced search
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    debouncedSearch(value);
+    setOpen(true); // Keep dropdown open while typing
   };
+  const filteredCustomers = useMemo(() => {
+    if (!searchInput) return customers;
+    return customers.filter((c) =>
+      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+    );
+  }, [customers, searchInput]);
 
   return (
     <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
-        <div className="flex grow md:grow-0">
-          <label className="input input-sm w-full md:w-64 lg:w-72">
-            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
-              <KeenIcon icon="magnifier" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search customers..."
-              value={searchInput}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              className="w-full focus:outline-none"
-              ref={inputRef}
-            />
-          </label>
-        </div>
+      <div className="flex grow md:grow-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <div className="relative w-full md:w-64 lg:w-72">
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <KeenIcon
+                  icon="magnifier"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchInput}
+                  onChange={handleInputChange}
+                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                  className="pl-9 pr-9 h-9 text-xs"
+                />
+                {searchInput && (
+                  <X
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearch("");
+                    }}
+                  />
+                )}
+              </div>
+            </PopoverTrigger>
+          </div>
+
+          <PopoverContent
+            className="p-0 w-[var(--radix-popover-trigger-width)]"
+            align="start"
+            onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+          >
+            <Command>
+              <CommandList>
+                {filteredCustomers.length === 0 && (
+                  <CommandEmpty>No customer found.</CommandEmpty>
+                )}
+                <CommandGroup>
+                  {filteredCustomers?.map((customer) => (
+                    <CommandItem
+                      key={customer?.uuid}
+                      value={customer?.name}
+                      onSelect={() => {
+                        setSearchInput(customer?.name);
+                        setSearch(customer?.name); // Hit the API with exact selection
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          searchInput === customer?.name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {customer?.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
@@ -148,20 +205,33 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<ActivityLead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
-  const [customersData, setCustomersData] = useState<Customer[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Customer[]>([]);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    current_page: 1,
-    last_page: 1,
-    items_per_page: 5
-  });
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const handleDeleteClick = (uuid: string) => {
-    setCustomerToDelete(uuid);
-    setShowDeleteDialog(true);
+  // handle click for delete customer
+  const handleDeleteClick = async (uuid: string) => {
+    const details = await fetchCustomerDetails(uuid);
+    if (details) {
+      setCustomerToDelete(uuid);
+      setShowDeleteDialog(true);
+    }
+  };
+
+  // Fetch latest customer details from server to ensure data accuracy before edit/delete
+  const fetchCustomerDetails = async (uuid: string) => {
+    try {
+      setFetchingDetails(true);
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/customers/${uuid}`);
+      setSelectedPerson(response?.data);
+      return response?.data;
+    } catch (error: any) {
+      toast.error("Failed to fetch customer details");
+      return null;
+    } finally {
+      setFetchingDetails(false);
+    }
   };
 
   const deleteCustomer = async () => {
@@ -179,69 +249,11 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
     }
   };
 
-
   const navigate = useNavigate();
-
-  const fetchAllCustomers = async (page = 1) => {
-    try {
-      setLoading(true);
-      const result = await getCustomers(searchQuery, page, 5);
-
-      if (result?.success && result?.data) {
-        const payload = result?.data as any;
-        const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-        const paginationData = payload?.pagination;
-
-        if (paginationData) {
-          setPagination({
-            total: paginationData.total || 0,
-            current_page: paginationData.current_page || 1,
-            last_page: paginationData.last_page || 1,
-            items_per_page: paginationData.items_per_page || 5
-          });
-        }
-
-        setCustomersData(rows);
-        setFilteredItems(rows);
-      } else {
-        toast.error(result.error || "Failed to fetch customers");
-        setCustomersData([]);
-        setFilteredItems([]);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch customers");
-      setCustomersData([]);
-      setFilteredItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setSearchQueryCallback = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  const setPersonTypeQueryCallback = useCallback((query: string) => {
-    setPersonTypeQuery(query);
-  }, []);
-
-  useEffect(() => {
-    fetchAllCustomers(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshStatus, refreshKey]);
-
-  useEffect(() => {
-    // Reset to page 1 when search query changes
-    setPagination(prev => ({ ...prev, current_page: 1 }));
-    fetchAllCustomers(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus]);
-
-
+  }, [refreshStatus, searchQuery, searchPersonTypeQuery]);
 
   const ColumnInputFilter = <TData, TValue>({
     column,
@@ -273,39 +285,8 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
   const openPersonModal = async (event: React.SyntheticEvent, rowData: Customer | null = null) => {
     event.preventDefault();
-
-    if (rowData?.uuid) {
-      setSelectedPerson(rowData);
-      setIsEditing(true);
-
-      try {
-        const result = await getCustomerById(rowData.uuid);
-        if (result.success && result.data) {
-          const customerData = {
-            ...result?.data,
-            shipping_address1: result?.data?.shipping_address1 ?? '',
-            shipping_address2: result?.data?.shipping_address2 ?? '',
-            shipping_city: result?.data?.shipping_city ?? '',
-            shipping_state: result?.data?.shipping_state ?? '',
-            shipping_country: result?.data?.shipping_country ?? '',
-            shipping_pin: result?.data?.shipping_pin ?? result?.data?.shipping_zip ?? '',
-          };
-          setSelectedPerson(customerData);
-          setPersonModalOpen(true);
-        } else {
-          toast.error(result.error || 'Failed to load customer data');
-        }
-      } catch (error) {
-        console.error('Error fetching customer:', error);
-        toast.error('An error occurred while loading customer data');
-      } finally {
-        setIsEditing(false);
-      }
-    } else {
-      // For new customer
-      setSelectedPerson(null);
-      setPersonModalOpen(true);
-    }
+    setSelectedPerson(rowData);
+    setPersonModalOpen(true);
   };
 
   // const handleClose = () => {
@@ -433,10 +414,9 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    if (!loading || selectedPerson?.uuid !== row.original.uuid) {
-                      openPersonModal({ preventDefault: () => { } } as React.SyntheticEvent, row.original);
-                    }
+                  onSelect={async () => {
+                    const details = await fetchCustomerDetails(row?.original?.uuid);
+                    if (details) setPersonModalOpen(true);
                   }}
                 >
                   {loading && selectedPerson?.uuid === row.original.uuid ? (
@@ -454,7 +434,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
                 <DropdownMenuItem
                   onSelect={() => {
-                    navigate(`/customer/${row.original?.id ?? ''}`);
+                    navigate(`/customer/${row?.original?.id}`);
                   }}
                 >
                   <Eye className="mr-2 h-4 w-4" />
@@ -463,7 +443,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
                 <DropdownMenuItem
                   onSelect={() => {
-                    handleDeleteClick(row.original.uuid);
+                    handleDeleteClick(row?.original?.uuid);
                   }}
                   className="text-red-500 focus:text-red-500"
                 >
@@ -481,11 +461,74 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         },
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, selectedPerson, navigate]
+    []
   );
 
+  // Fetch customers from API with pagination, sorting, and search
+  const fetchCustomers = async (params: TDataGridRequestParams) => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams();
+      queryParams.set("page", String(params.pageIndex + 1));
+      queryParams.set("items_per_page", String(params.pageSize));
+
+      if (params.sorting?.[0]?.id) {
+        queryParams.set("sort", params.sorting[0].id);
+        queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
+      }
+
+      if (searchQuery) {
+        queryParams.set("query", searchQuery);
+      } else {
+        queryParams.delete("query");
+      }
+
+      if (searchPersonTypeQuery !== "-1") {
+        queryParams.set("person_type", searchPersonTypeQuery);
+      }
+
+      if (params.columnFilters) {
+        params.columnFilters.forEach(({ id, value }) => {
+          if (value !== undefined && value !== null) {
+            queryParams.set(`filter[${id}]`, String(value));
+          }
+        });
+      }
+
+      const response = await axios.get<CustomersQueryApiResponse>(
+        `${import.meta.env.VITE_APP_API_URL}/customers/?${queryParams.toString()}`,
+      );
+      const payload: any = response?.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
+
+      setCustomers(rows);
+      return {
+        data: rows,
+        totalCount: total,
+      };
+    } catch (error) {
+      console.log(error);
+      toast(`Connection Error`, {
+        description: `An error occurred while fetching data. Please try again later`,
+        action: {
+          label: "Ok",
+          onClick: () => console.log("Ok"),
+        },
+      });
+
+      return {
+        data: [],
+        totalCount: 0,
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle row selection changes
   const handleRowSelection = (state: RowSelectionState) => {
+    setRowSelection(state);
     const selectedRowIds = Object.keys(state);
     if (selectedRowIds.length > 0) {
       toast(`Total ${selectedRowIds.length} are selected.`, {
@@ -508,43 +551,39 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
           </div>
         </div>
+      )} */}
+
+      {fetchingDetails && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
+          </div>
+        </div>
       )}
-      {!loading && (
-        <>
-          <DataGrid
-            columns={columns}
-            serverSide={true}
-            onFetchData={async (params) => {
-              const result = await getCustomers(searchQuery, params.pageIndex + 1, params.pageSize);
-              if (result.success && result.data) {
-                const payload = result.data as any;
-                const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-                const paginationData = payload?.pagination;
-                return {
-                  data: rows,
-                  totalCount: paginationData?.total ?? rows.length
-                };
-              }
-              return { data: [], totalCount: 0 };
-            }}
-            data={filteredItems}
-            loading={loading}
-            rowSelection={true}
-            getRowId={(row: any) => row.id}
-            onRowSelectionChange={handleRowSelection}
-            toolbar={
-              <Toolbar
-                defaultSearch={searchQuery}
-                setSearch={setSearchQueryCallback}
-                defaultStatusType={searchPersonTypeQuery}
-                setDefaultStatusType={setPersonTypeQueryCallback}
-              />
-            }
-            pagination={{ size: 5 }}
-            layout={{ card: true }}
+
+      <DataGrid
+        key={refreshKey}
+        columns={columns}
+        serverSide={true}
+        onFetchData={fetchCustomers}
+        loading={loading}
+        rowSelection={true}
+        rowSelectionState={rowSelection}
+        getRowId={(row: any) => row.id}
+        onRowSelectionChange={handleRowSelection}
+        pagination={{ size: 5 }}
+        toolbar={
+          <Toolbar
+            defaultSearch={searchQuery}
+            setSearch={setSearchQuery}
+            defaultStatusType={searchPersonTypeQuery}
+            setDefaultStatusType={setPersonTypeQuery}
           />
-        </>
-      )}
+        }
+        layout={{ card: true }}
+      />
+      {/* Modal for adding/editing customers */}
       <ModalCustomer
         open={personModalOpen}
         onOpenChange={(open: boolean) => {
@@ -552,14 +591,21 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
           if (!open) {
             setSelectedPerson(null);
-            setRefreshKey((prev) => prev + 1);
+            setRefreshKey((prev) => prev + 1); // Increment key to trigger grid refresh
           }
         }}
         onSuccess={() => {
           setPersonModalOpen(false);
           setRefreshKey((prev) => prev + 1);
         }}
-        customer={selectedPerson ? { ...selectedPerson, person_type_id: (selectedPerson as any).person_type_id ?? 1 } : null}
+        customer={
+          selectedPerson
+            ? {
+              ...selectedPerson,
+              person_type_id: (selectedPerson as any)?.person_type_id ?? 1
+            }
+            : null
+        }
       />
 
       <ActivityForm open={activityModalOpen} onOpenChange={() => setActivityModalOpen(false)} lead={selectedCustomerForActivity} />
@@ -596,7 +642,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

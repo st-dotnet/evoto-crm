@@ -51,10 +51,33 @@ def get_purchase_entries():
                     # Add other searchable fields if needed
                 )
             )
+        # Return all purchase for dropdown if requested
+        if request.args.get("dropdown") == "true":
+            return jsonify([
+                {
+                    "uuid": str(c.uuid),
+                    "name": f"{c.invoice_number}".strip()
+                }
+                for c in query.all()
+            ])
+
+        # Sorting
+        sort = request.args.get("sort", "created_at")
+        order = request.args.get("order", "desc")
+        
+        valid_sort_fields = ["invoice_number", "date", "amount", "entered_bill", "created_at"]
+        if sort not in valid_sort_fields:
+            sort = "created_at"
+
+        sort_column = getattr(PurchaseEntry, sort)
+        if order == "desc":
+            query = query.order_by(db.desc(sort_column))
+        else:
+            query = query.order_by(sort_column)
 
         # Pagination
         page = int(request.args.get("page", 1))
-        per_page = int(request.args.get("items_per_page", 10))
+        per_page = int(request.args.get("items_per_page", 5))
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         entries = pagination.items
 
