@@ -47,7 +47,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { SpinnerDotted } from 'spinners-react';
 
-import { getCustomers, getCustomerById } from "./services/customer.service";
+import { getCustomers, getCustomerById } from "../../services/customer.service";
 
 // import { PersonTypeEnum } from "@/enums/PersonTypeEnum";
 import {
@@ -76,8 +76,6 @@ interface ActivityLead {
   created_at?: string;
   activity_type?: string;
 }
-
-import { debounce } from "@/lib/helpers";
 
 const Toolbar = ({
   defaultSearch,
@@ -193,7 +191,7 @@ const Toolbar = ({
       </div>
     </div>
   );
-});
+};
 
 const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -209,6 +207,8 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const[customersData, setCustomersData] = useState<Customer[]>([]);
 
   // handle click for delete customer
   const handleDeleteClick = async (uuid: string) => {
@@ -285,8 +285,39 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
   const openPersonModal = async (event: React.SyntheticEvent, rowData: Customer | null = null) => {
     event.preventDefault();
-    setSelectedPerson(rowData);
-    setPersonModalOpen(true);
+
+    if (rowData?.uuid) {
+      setSelectedPerson(rowData);
+      setIsEditing(true);
+
+      try {
+        const result = await getCustomerById(rowData.uuid);
+        if (result.success && result.data) {
+          const customerData = {
+            ...result?.data,
+            shipping_address1: result?.data?.shipping_address1 ?? '',
+            shipping_address2: result?.data?.shipping_address2 ?? '',
+            shipping_city: result?.data?.shipping_city ?? '',
+            shipping_state: result?.data?.shipping_state ?? '',
+            shipping_country: result?.data?.shipping_country ?? '',
+            shipping_pin: result?.data?.shipping_pin ?? result?.data?.shipping_zip ?? '',
+          };
+          setSelectedPerson(customerData);
+          setPersonModalOpen(true);
+        } else {
+          toast.error(result.error || 'Failed to load customer data');
+        }
+      } catch (error) {
+        console.error('Error fetching customer:', error);
+        toast.error('An error occurred while loading customer data');
+      } finally {
+        setIsEditing(false);
+      }
+    } else {
+      // For new customer
+      setSelectedPerson(null);
+      setPersonModalOpen(true);
+    }
   };
 
   // const handleClose = () => {
@@ -551,7 +582,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
           </div>
         </div>
-      )} */}
+      )}
 
       {fetchingDetails && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
