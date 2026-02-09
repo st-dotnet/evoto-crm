@@ -160,11 +160,11 @@ const Toolbar = ({
           >
             <Command>
               <CommandList>
-                {filteredCustomers.length === 0 && (
+                {(filteredCustomers || [])?.length === 0 && (
                   <CommandEmpty>No customer found.</CommandEmpty>
                 )}
                 <CommandGroup>
-                  {filteredCustomers?.map((customer) => (
+                  {(filteredCustomers || [])?.map((customer) => (
                     <CommandItem
                       key={customer?.uuid}
                       value={customer?.name}
