@@ -413,7 +413,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Activity" column={column} className="justify-center" />
+          <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
         ),
         enableSorting: false,
         cell: ({ row }) => (

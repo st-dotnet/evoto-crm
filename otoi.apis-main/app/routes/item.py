@@ -163,7 +163,6 @@ def create_item():
         description: Item created successfully.
     """
     data = request.json or {}
-    print(f"Received create item request with data: {data}")
  
     # Validate required fields
     item_name = data.get("item_name", "").strip()
@@ -175,19 +174,18 @@ def create_item():
         return jsonify({"message": "Item Code is required"}), 400
  
     # Check for duplicate name
-    if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
-        print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
-        return jsonify({
-            "message": "An item with this name already exists",
-            "suggestion": "Please choose a different name"
-        }), 400
+    # if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
+    #     print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
+    #     return jsonify({
+    #         "message": "An item with this name already exists",
+    #         "suggestion": "Please choose a different name"
+    #     }), 400
     
  
-    # Check for duplicate item_code
-    if Item.query.filter_by(item_code=item_code).first():
-        print("Duplicate item code found>>>>>>>>>>>>>>>>>>>>>", item_code)
+    # Check for duplicate item_code (only among active items)
+    if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
         return jsonify({
-            "message": "Item Code already exists",
+            "message": "An Item code already exists",
             "suggestion": "Please choose a different item code"
         }), 400
  
@@ -459,17 +457,17 @@ def update_item(item_id):
             new_name = data["item_name"].strip()
             if not new_name:
                 errors.setdefault("item_name", []).append("Item name cannot be empty")
-            elif new_name != item.item_name:
-                existing = db.session.query(Item).filter(
-                    Item.item_name == new_name,
-                    Item.id != item_id,  # Direct UUID comparison instead of string
-                    Item.is_deleted.is_(False)
-                ).first()
-                print("item_id:", item_id, type(item_id))
-                if existing:
-                    errors.setdefault("item_name", []).append(
-                        "An item with this name already exists"
-                    )
+            # elif new_name != item.item_name:
+            #     existing = db.session.query(Item).filter(
+            #         Item.item_name == new_name,
+            #         Item.id != item_id,  # Direct UUID comparison instead of string
+            #         Item.is_deleted.is_(False)
+            #     ).first()
+            #     print("item_id:", item_id, type(item_id))
+            #     if existing:
+            #         errors.setdefault("item_name", []).append(
+            #             "An item with this name already exists"
+            #         )
         print("item_id:", item_id, type(item_id))
 
         if "category_id" in data:

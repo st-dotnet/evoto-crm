@@ -85,31 +85,23 @@ const QuotationPage = () => {
   const columns = useMemo<ColumnDef<Quotation>[]>(() => [
     {
       id: "select",
-      header: ({ table }) => (
+      header: () => (
         <div className="w-full flex items-center justify-center h-full p-0 m-0">
-          <input
-            type="checkbox"
-            checked={table.getIsAllPageRowsSelected()}
-            onChange={table.getToggleAllPageRowsSelectedHandler()}
-            onClick={(event) => event.stopPropagation()}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          />
+          <DataGridRowSelectAll />
         </div>
       ),
       cell: ({ row }) => (
         <div className="w-full flex items-center justify-center h-full p-0 m-0">
-          <input
-            type="checkbox"
-            checked={row.getIsSelected()}
-            disabled={!row.getCanSelect()}
-            onChange={row.getToggleSelectedHandler()}
-            onClick={(event) => event.stopPropagation()}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          />
+          <DataGridRowSelect row={row} />
         </div>
       ),
       enableSorting: false,
       enableHiding: false,
+      meta: {
+        headerClassName: "w-12 text-center align-middle p-0 m-0",
+        cellClassName: "text-center align-middle pointer-events-auto p-0 m-0",
+        disableRowClick: true,
+      },
     },
     {
       accessorKey: "date",

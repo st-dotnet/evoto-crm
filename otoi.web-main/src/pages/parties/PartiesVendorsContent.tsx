@@ -347,7 +347,7 @@ const openPersonModal = (rowData: Vendor | null = null) => {
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Activity" column={column} className="justify-center" />
+          <DataGridColumnHeader title="Action" column={column} className="justify-center" />
         ),
         enableSorting: false,
         cell: ({ row }) => (

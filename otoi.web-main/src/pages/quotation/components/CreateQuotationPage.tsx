@@ -185,6 +185,7 @@ const CreateQuotationPage = () => {
   // Form state
   const [isLoading, setIsLoading] = useState(false);
   const [isAddressLoading, setIsAddressLoading] = useState(false);
+  const [isPartiesLoading, setIsPartiesLoading] = useState(false);
   const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<string | null>(null);
   const [editingAddress, setEditingAddress] = useState<ShippingAddress | undefined>();
 
@@ -290,6 +291,7 @@ const CreateQuotationPage = () => {
   };
 
   const fetchParties = async () => {
+    setIsPartiesLoading(true);
     try {
       const response = await axios.get(
         `${import.meta.env.VITE_APP_API_URL}/customers/?items_per_page=1000`,
@@ -319,6 +321,8 @@ const CreateQuotationPage = () => {
       }
     } catch {
       toast.error("Failed to fetch parties");
+    } finally {
+      setIsPartiesLoading(false);
     }
   };
 
@@ -555,6 +559,14 @@ const CreateQuotationPage = () => {
       handleFetchQuotation(id);
     }
   }, [id, isEditMode]);
+
+  // Ensure proper address selection when shipping modal opens
+  useEffect(() => {
+    if (isShippingModalOpen && shippingAddresses.length > 0 && !selectedAddress) {
+      const defaultAddress = shippingAddresses.find((addr) => addr.is_default) || shippingAddresses[0];
+      setSelectedAddress(defaultAddress);
+    }
+  }, [isShippingModalOpen, shippingAddresses, selectedAddress]);
 
   const handleAddAddress = async (newAddress: ShippingAddress) => {
     if (!selectedCustomer?.uuid) {
@@ -1634,7 +1646,16 @@ const CreateQuotationPage = () => {
                   </div>
                 ) : (
                   <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {filteredParties.length === 0 ? (
+                    {isPartiesLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                          <SpinnerDotted size={20} />
+                        </div>
+                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                          Loading Parties...
+                        </h3>
+                      </div>
+                    ) : filteredParties.length === 0 ? (
                       <div className="p-8 text-center">
                         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
                           <UserPlus className="h-5 w-5 text-gray-600" />
@@ -1827,7 +1848,7 @@ const CreateQuotationPage = () => {
                   {shippingAddresses.length > 0 ? (
                     <div className="grid gap-3">
                       {shippingAddresses.map((address, index) => {
-                        const isSelected = selectedAddress?.uuid === address.uuid || address.is_default;
+                        const isSelected = selectedAddress?.uuid === address.uuid;
                         return (
                           <div
                             key={address.uuid || index}
