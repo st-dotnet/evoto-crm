@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
@@ -33,13 +33,12 @@ import {
 import { ModalCustomer } from "@/pages/parties/blocks/customers/ModalCustomer";
 import axios from "axios";
 import { toast } from "sonner";
-import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
-import { updateInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
+import { createQuotation, getQuotationById, updateQuotation, getNextQuotationNumber } from "../services/quotation.services";
+// import { updateInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import AddItemPage from "./AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
-import { ShippingAddressList } from "@/pages/parties/blocks/customers/ShippingAddressList";
 import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
 
 interface Party {
@@ -55,11 +54,17 @@ interface Address {
   address_line2?: string;
   city?: string;
   state?: string;
-  postal_code?: string;
   country?: string;
-  [key: string]: any; // For any additional fields
+  postal_code?: string;
 }
 
+interface FormData {
+  quotationNo: string;
+  quotationDate: string;
+  validFor: number;
+  validityDate: string;
+  status: string;
+}
 
 interface Customer {
   uuid: string;
@@ -179,7 +184,9 @@ const diffDays = (
 const CreateQuotationPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const isEditMode = !!id;
+  const isDuplicateMode = location.state?.isDuplicate;
   const today = new Date().toISOString().split("T")[0];
 
   // Form state
@@ -205,12 +212,13 @@ const CreateQuotationPage = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     quotationNo: "",
     quotationDate: today,
     validFor: 10,
     validityDate: addDays(today, 10),
-    status: "win",
+    status: "open",
+    ...location.state?.quotationData, // Pre-fill with duplicate data
   });
   const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -326,9 +334,37 @@ const CreateQuotationPage = () => {
     }
   };
 
+  const fetchNextQuotationNumber = async () => {
+    try {
+      const response = await getNextQuotationNumber();
+      if (response.success && response.data?.next_quotation_number) {
+        setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
+      }
+    } catch (error) {
+      console.error("Error fetching next quotation number:", error);
+    }
+  };
+
+  const fetchNextQuotationNumber = async () => {
+    try {
+      const response = await getNextQuotationNumber();
+      if (response.success && response.data?.next_quotation_number) {
+        setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
+      }
+    } catch (error) {
+      console.error("Error fetching next quotation number:", error);
+    }
+  };
+
   useEffect(() => {
     fetchParties();
   }, []);
+
+  useEffect(() => {
+    if (!isEditMode && !isDuplicateMode) {
+      fetchNextQuotationNumber();
+    }
+  }, [isEditMode, isDuplicateMode]);
 
   useEffect(() => {
     if (!formData.quotationDate || !formData.validFor) return;
@@ -486,12 +522,16 @@ const CreateQuotationPage = () => {
       const response = await getQuotationById(quotationId);
       if (response.success && response.data) {
         const data = response.data;
+        const quotationDate = data.quotation_date ? data.quotation_date.split('T')[0] : today;
+        const validityDate = data.valid_till ? data.valid_till.split('T')[0] : "";
+        const validFor = validityDate ? diffDays(quotationDate, validityDate) : 0;
+
         setFormData({
           quotationNo: data.quotation_number,
-          quotationDate: data.quotation_date ? data.quotation_date.split('T')[0] : today,
-          validFor: 0,
-          validityDate: data.valid_till ? data.valid_till.split('T')[0] : "",
-          status: data.status,
+          quotationDate,
+          validFor,
+          validityDate,
+          status: data.status || "draft",
         });
 
         if (data.customer) {
@@ -499,28 +539,55 @@ const CreateQuotationPage = () => {
         }
 
         if (data.items) {
-          const mappedItems = data.items.map((item: any) => ({
-            id: item.uuid || item.id,
-            item_id: item.item_id,
-            item_name: item.product_name || item.item_name || item.description || "Item",
-            description: item.description || item.item_description || "",
-            quantity: item.quantity,
-            price_per_item: item.unit_price,
-            discount:
-              item.discount_percentage ??
-              item.discount?.discount_percentage ??
-              0,
-            tax:
-              item.tax_percentage ??
-              item.tax?.tax_percentage ??
-              0,
-            amount: item.total_price,
-            measuring_unit_id: item.measuring_unit_id || 1,
-          }));
+          const mappedItems = data.items.map((item: any) => {
+            // Handle nested discount object - check for deeply nested structure
+            let discountValue = 0;
+            if (item.discount?.discount_percentage?.discount_percentage !== undefined) {
+              discountValue = item.discount.discount_percentage.discount_percentage;
+            } else if (item.discount?.discount_percentage !== undefined) {
+              discountValue = item.discount.discount_percentage;
+            } else if (item.discount_percentage !== undefined) {
+              discountValue = item.discount_percentage;
+            }
+
+            // Handle nested tax object - check for deeply nested structure
+            let taxValue = 0;
+            if (item.tax?.tax_percentage?.tax_percentage !== undefined) {
+              taxValue = item.tax.tax_percentage.tax_percentage;
+            } else if (item.tax?.tax_percentage !== undefined) {
+              taxValue = item.tax.tax_percentage;
+            } else if (item.tax_percentage !== undefined) {
+              taxValue = item.tax_percentage;
+            }
+
+            return {
+              id: item.uuid || item.id,
+              item_id: item.item_id,
+              item_name: item.product_name || item.item_name || item.description || "Item",
+              description: item.description || item.item_description || "",
+              quantity: Number(item.quantity) || 1,
+              price_per_item: Number(item.unit_price) || 0,
+              discount: Number(discountValue) || 0,
+              tax: Number(taxValue) || 0,
+              amount: Number(item.total_price) || 0,
+              measuring_unit_id: Number(item.measuring_unit_id) || 1,
+            };
+          });
+
           setQuotationItems(mappedItems);
+
+          // Set the first item's tax as the default tax
           if (mappedItems.length > 0) {
             const firstTax = mappedItems[0].tax || 0;
-            setTax(firstTax);
+            setTax(Number(firstTax) || 0);
+          }
+
+          // Set the discount if available in the data
+          if (data.discount) {
+            setDiscount({
+              type: data.discount_type === 'amount' ? 'amount' : 'percentage',
+              value: Number(data.discount) || 0
+            });
           }
         }
 
@@ -547,7 +614,6 @@ const CreateQuotationPage = () => {
         navigate('/quotes/list');
       }
     } catch (error) {
-      console.error("Error loading quotation:", error);
       toast.error("Failed to load quotation details");
     } finally {
       setIsLoading(false);
@@ -560,13 +626,128 @@ const CreateQuotationPage = () => {
     }
   }, [id, isEditMode]);
 
-  // Ensure proper address selection when shipping modal opens
+  // Handle duplicate mode data loading
   useEffect(() => {
-    if (isShippingModalOpen && shippingAddresses.length > 0 && !selectedAddress) {
-      const defaultAddress = shippingAddresses.find((addr) => addr.is_default) || shippingAddresses[0];
-      setSelectedAddress(defaultAddress);
+    if (isDuplicateMode && location.state?.quotationData) {
+      const duplicateData = location.state.quotationData;
+
+
+      // Set form data from duplicate
+      setFormData({
+        quotationNo: "", // Will be generated fresh
+        quotationDate: today,
+        validFor: duplicateData.validFor || 10,
+        validityDate: duplicateData.validityDate || addDays(today, 10),
+        status: "open", // Always set to 'open' for duplicates
+      });
+
+      // Set selected customer and fetch their data
+      if (duplicateData.selectedCustomer) {
+        setSelectedCustomer(duplicateData.selectedCustomer);
+
+        // Fetch customer data to get addresses (same as edit mode)
+        if (duplicateData.selectedCustomer.uuid) {
+          fetchCustomerData(duplicateData.selectedCustomer.uuid);
+        }
+      }
+
+      // Set quotation items with proper mapping (same as edit mode)
+      if (duplicateData.quotationItems) {
+
+        const mappedItems = duplicateData.quotationItems.map((item: any) => {
+          // Handle nested discount object - check for deeply nested structure (same as edit mode)
+          let discountValue = 0;
+          if (item.discount?.discount_percentage?.discount_percentage !== undefined) {
+            discountValue = item.discount.discount_percentage.discount_percentage;
+          } else if (item.discount?.discount_percentage !== undefined) {
+            discountValue = item.discount.discount_percentage;
+          } else if (item.discount_percentage !== undefined) {
+            discountValue = item.discount_percentage;
+          } else {
+            // Handle direct discount values
+            discountValue = typeof item.discount === 'string' ? parseFloat(item.discount) : Number(item.discount) || 0;
+          }
+
+          // Handle nested tax object - check for deeply nested structure (same as edit mode)
+          let taxValue = 0;
+          if (item.tax?.tax_percentage?.tax_percentage !== undefined) {
+            taxValue = item.tax.tax_percentage.tax_percentage;
+          } else if (item.tax?.tax_percentage !== undefined) {
+            taxValue = item.tax.tax_percentage;
+          } else if (item.tax_percentage !== undefined) {
+            taxValue = item.tax_percentage;
+          } else {
+            // Handle direct tax values
+            taxValue = typeof item.tax === 'string' ? parseFloat(item.tax) : Number(item.tax) || 0;
+          }
+
+          return {
+            id: item.uuid || item.id || `dup-${Date.now()}-${Math.random()}`,
+            item_id: item.item_id || item.uuid,
+            item_name: item.product_name || item.item_name || item.description || "Item",
+            description: item.description || item.item_description || "",
+            quantity: Number(item.quantity) || 1,
+            price_per_item: Number(item.unit_price) || Number(item.price_per_item) || 0,
+            discount: Number(discountValue) || 0,
+            tax: Number(taxValue) || 0,
+            amount: Number(item.total_price) || Number(item.amount) || (Number(item.quantity || 1) * Number(item.unit_price || item.price_per_item || 0) * (1 - Number(discountValue) / 100) * (1 + Number(taxValue) / 100)),
+            measuring_unit_id: Number(item.measuring_unit_id) || 1,
+          };
+        });
+
+        setQuotationItems(mappedItems);
+
+        // Set the first item's tax as the default tax (same as edit mode)
+        if (mappedItems.length > 0) {
+          const firstTax = mappedItems[0].tax || 0;
+          setTax(Number(firstTax) || 0);
+        }
+
+        // Set the discount if available in the data (same as edit mode)
+        if (duplicateData.discount || duplicateData.discount_value) {
+          const discountValue = Number(duplicateData.discount || duplicateData.discount_value) || 0;
+          const discountType = duplicateData.discount_type === 'amount' ? 'amount' : 'percentage';
+          setDiscount({
+            type: discountType,
+            value: discountValue
+          });
+          setShowDiscountField(discountValue > 0); // Show discount field if there's a discount
+        }
+
+        // Set additional charges if available
+        if (duplicateData.additionalCharges && Array.isArray(duplicateData.additionalCharges)) {
+          setAdditionalCharges(duplicateData.additionalCharges);
+          setShowAdditionalChargesField(duplicateData.additionalCharges.length > 0);
+        }
+
+        // Set round off if available
+        if (duplicateData.autoRoundOff !== undefined) {
+          setAutoRoundOff(duplicateData.autoRoundOff);
+        }
+        if (duplicateData.roundOffAmount !== undefined) {
+          setRoundOffAmount(Number(duplicateData.roundOffAmount) || 0);
+        }
+      }
+
+      // Set notes and terms
+      const resolvedNotes = duplicateData.notes || "";
+      const resolvedTerms = duplicateData.terms || duplicateData.termsAndConditions || "";
+
+      if (resolvedNotes) {
+        setNotes(resolvedNotes);
+        setShowNotesField(true);
+      }
+      if (resolvedTerms) {
+        setTermsAndConditions(resolvedTerms);
+        setShowTermsField(true);
+      }
+
+      // Force a recalculation by triggering a state update
+      setTimeout(() => {
+        setQuotationItems(prev => [...prev]);
+      }, 100);
     }
-  }, [isShippingModalOpen, shippingAddresses, selectedAddress]);
+  }, [isDuplicateMode, location.state]);
 
   const handleAddAddress = async (newAddress: ShippingAddress) => {
     if (!selectedCustomer?.uuid) {
@@ -742,7 +923,6 @@ const CreateQuotationPage = () => {
 
       toast.success("Default address updated successfully.");
     } catch (error) {
-      console.error("Error updating default address:", error);
       toast.error("Failed to update default address.");
     } finally {
       setIsAddressLoading(false);
@@ -816,7 +996,6 @@ const CreateQuotationPage = () => {
       setShowDeleteConfirm(false);
       setAddressToOperate(null);
     } catch (error) {
-      console.error("Error deleting address:", error);
       toast.error("Failed to delete address.");
     } finally {
       setIsAddressLoading(false);
@@ -1028,18 +1207,7 @@ const CreateQuotationPage = () => {
       const totalAmount = calculateTotal();
 
       // Prepare submission data
-      const submissionData = {
-        ...formData,
-        selectedCustomer,
-        quotationItems,
-        notes,
-        terms: termsAndConditions,
-        subtotal,
-        total_discount: totalDiscount,
-        total_tax: totalTax,
-        total_amount: totalAmount,
-        created_at: new Date().toISOString(),
-      };
+      const submissionData = { ...formData, selectedCustomer, quotationItems, notes, terms: termsAndConditions, subtotal, total_discount: totalDiscount, total_tax: totalTax, total_amount: totalAmount, created_at: new Date().toISOString(), };
 
       let response;
       if (isEditMode && id) {
@@ -1051,12 +1219,12 @@ const CreateQuotationPage = () => {
       if (response.success) {
         toast.success(isEditMode ? "Quotation updated successfully!" : "Quotation saved successfully!");
 
-        if (isEditMode && id) {
-          const invoiceResult = await updateInvoiceFromQuotation(id, submissionData);
-          if (!invoiceResult.success) {
-            toast.error(invoiceResult.error || "Failed to update linked invoice");
-          }
-        }
+        // if (isEditMode && id) {
+        //   const invoiceResult = await updateInvoiceFromQuotation(id, submissionData);
+        //   if (!invoiceResult.success) {
+        //     toast.error(invoiceResult.error || "Failed to update linked invoice");
+        //   }
+        // }
 
         if (navigateAfterSave) {
           navigate("/quotes/list");
@@ -1068,7 +1236,6 @@ const CreateQuotationPage = () => {
         return null;
       }
     } catch (error) {
-      console.error("Error saving quotation:", error);
       toast.error("Failed to save quotation");
       return null;
     } finally {
@@ -1134,10 +1301,22 @@ const CreateQuotationPage = () => {
             }
 
             // Prepare quotation data
+
             const quotationData = {
               ...formData,
               selectedCustomer,
-              quotationItems,
+              quotationItems: quotationItems.map(item => ({
+                id: item.id,
+                item_id: item.item_id,
+                item_name: item.item_name,
+                description: item.description,
+                quantity: item.quantity,
+                price_per_item: item.price_per_item,
+                discount: item.discount,
+                tax: item.tax,
+                amount: item.amount,
+                measuring_unit_id: item.measuring_unit_id
+              })),
               notes,
               terms: termsAndConditions,
             };
@@ -1535,15 +1714,19 @@ const CreateQuotationPage = () => {
             Quotation Details
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Quotation No.</label>
-              <Input
-                name="quotationNo"
-                value={formData.quotationNo}
-                onChange={handleChange}
-                className="h-8 text-sm"
-              />
-            </div>
+            {isEditMode && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-gray-600">Quotation No.</label>
+                <Input
+                  name="quotationNo"
+                  value={formData.quotationNo}
+                  onChange={handleChange}
+                  className="h-8 text-sm"
+                  readOnly
+                  disabled={true}
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-xs text-gray-600">Valid For (Days)</label>
               <Input
@@ -2301,8 +2484,7 @@ const CreateQuotationPage = () => {
                         {/* Calculated Discount Amount */}
                         {item.discount > 0 && (
                           <span className="text-xs text-red-600">
-                            ₹{" "}
-                            {(
+                            ₹ -{(
                               (item.quantity * item.price_per_item * item.discount) / 100
                             ).toFixed(2)}
                           </span>

@@ -53,10 +53,19 @@ def get_vendors():
                 query = query.order_by(db.desc(getattr(Vendor, field[1:], "uuid")))
             else:
                 query = query.order_by(getattr(Vendor, field, "uuid"))
+    # Return all vendors for dropdown if requested
+    if request.args.get("dropdown") == "true":
+        return jsonify([
+            {
+                "uuid": str(v.uuid),
+                "name": f"{v.company_name}".strip() # Use company_name as the display name for dropdown because vendor_name is optional and may be None
+            }
+            for v in query.all()
+        ])
 
     # Pagination
     page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("items_per_page", 10))
+    per_page = int(request.args.get("items_per_page", 5))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     vendors = pagination.items
 

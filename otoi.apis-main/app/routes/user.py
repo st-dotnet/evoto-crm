@@ -174,10 +174,15 @@ def get_all_users():
                 filter_conditions = [
                     User.username.ilike(f"%{query_value}%"),
                     User.email.ilike(f"%{query_value}%"),
+                    User.firstName.ilike(f"%{query_value}%"),
+                    User.lastName.ilike(f"%{query_value}%"),
+                    func.concat(User.firstName, " ", User.lastName).ilike(f"%{query_value}%")
                 ]
                 # Add mobile number search if the field exists
                 if hasattr(User, 'mobileNo'):
                     filter_conditions.append(cast(User.mobileNo, String).ilike(f"%{query_value}%"))
+                
+                # Combine conditions with OR
                 query = query.filter(or_(*filter_conditions))
 
         # --- Sorting ---
@@ -194,9 +199,19 @@ def get_all_users():
         else:
             query = query.order_by(sort_column)
 
+        # Return all users for dropdown if requested
+        if request.args.get("dropdown") == "true":
+            return jsonify([
+                {
+                    "uuid": str(user.uuid),
+                    "name": f"{user.firstName} {user.lastName}".strip()
+                }
+                for user in query.all()
+            ])
+
         # --- Pagination ---
         page = int(request.args.get("page", 1))
-        per_page = int(request.args.get("items_per_page", 10))
+        per_page = int(request.args.get("items_per_page", 5))
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         users = pagination.items
 

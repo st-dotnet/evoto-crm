@@ -4,7 +4,7 @@ import { ArrowLeft, Download, Printer, Share, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
-import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
+// import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 
 interface QuotationItem {
   id: string;
@@ -69,6 +69,28 @@ const QuotationPreviewPage: React.FC = () => {
           const response = await getQuotationById(id);
           if (response.success && response.data) {
             const data = response.data;
+            
+            // Fetch customer details separately to get address information
+            const token = (() => {
+              try {
+                const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+                if (!authData) return null;
+                const parsedAuth = JSON.parse(authData);
+                return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+              } catch (error) {
+                return null;
+              }
+            })();
+
+            const customerResponse = await fetch(`${import.meta.env.VITE_APP_API_URL}/customers/${data.customer_id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            const customerDetails = await customerResponse.json();
+            
             // Transform API data to QuotationData format
             const transformedData: QuotationData = {
               quotationNo: data.quotation_number,
@@ -76,19 +98,36 @@ const QuotationPreviewPage: React.FC = () => {
               validFor: 0, // calc
               validityDate: data.valid_till,
               status: data.status,
-              selectedCustomer: data.customer, // Ensure shape matches
-              quotationItems: data.items.map((item: any) => ({
-                id: item.uuid,
-                item_id: item.item_id,
-                item_name: item.description || "Item",
-                description: item.description,
-                quantity: item.quantity,
-                price_per_item: item.unit_price,
-                discount: item.discount_percentage,
-                tax: item.tax_percentage,
-                amount: item.total_price,
-                measuring_unit_id: 1
-              })),
+              selectedCustomer: {
+                ...data.customer,
+                ...customerDetails,
+                billing_address: customerDetails.billing_address || data.customer?.billing_address,
+                shipping_address: customerDetails.shipping_address || data.customer?.shipping_address,
+              },
+              quotationItems: data.items.map((item: any) => {
+                // Handle nested discount object
+                const discount = typeof item.discount?.discount_percentage === 'object' 
+                  ? item.discount.discount_percentage.discount_percentage 
+                  : item.discount?.discount_percentage || 0;
+                
+                // Handle nested tax object
+                const tax = typeof item.tax?.tax_percentage === 'object'
+                  ? item.tax.tax_percentage.tax_percentage
+                  : item.tax?.tax_percentage || 0;
+                
+                return {
+                  id: item.uuid,
+                  item_id: item.item_id || item.uuid,
+                  item_name: item.product_name || item.description || "Item",
+                  description: item.description,
+                  quantity: item.quantity || 0,
+                  price_per_item: item.unit_price || 0,
+                  discount: discount,
+                  tax: tax,
+                  amount: item.total_price || 0,
+                  measuring_unit_id: item.measuring_unit_id || 1
+                };
+              }),
               notes: data.notes,
               terms: data.terms_and_conditions
             };
@@ -108,16 +147,33 @@ const QuotationPreviewPage: React.FC = () => {
   const calculateTotals = () => {
     const items = quotationData.quotationItems || [];
     const subtotal = items.reduce((sum, item) => sum + (item.price_per_item * item.quantity), 0);
-    const totalDiscount = items.reduce((sum, item) => sum + (item.discount * item.quantity), 0);
-    const totalTax = items.reduce((sum, item) => sum + item.tax, 0);
+    const totalDiscount = items.reduce((sum, item) => sum + (item.price_per_item * item.quantity * item.discount) / 100, 0);
+    const totalTax = items.reduce((sum, item) => sum + ((item.price_per_item * item.quantity * (1 - item.discount / 100)) * item.tax) / 100, 0);
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+
+    // Calculate CGST and SGST based on actual item tax rates
+    const totalCGST = items.reduce((sum, item) => {
+      const taxableAmount = (item.price_per_item * item.quantity * (1 - item.discount / 100));
+      const itemTaxAmount = taxableAmount * (item.tax / 100);
+      // Assuming CGST is half of item tax (common in India)
+      return sum + (itemTaxAmount / 2);
+    }, 0);
+
+    const totalSGST = items.reduce((sum, item) => {
+      const taxableAmount = (item.price_per_item * item.quantity * (1 - item.discount / 100));
+      const itemTaxAmount = taxableAmount * (item.tax / 100);
+      // Assuming SGST is half of item tax (common in India)
+      return sum + (itemTaxAmount / 2);
+    }, 0);
 
     return {
       subtotal,
       totalDiscount,
       totalTax,
       totalAmount,
-      totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0)
+      totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+      totalCGST,
+      totalSGST
     };
   };
 
@@ -348,17 +404,7 @@ const QuotationPreviewPage: React.FC = () => {
     return units[unitId || 1] || "PCS";
   };
 
-  if (!quotationData.selectedCustomer) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500">No quotation data found</p>
-        <Button onClick={() => navigate(-1)} className="mt-4">
-          Go Back
-        </Button>
-      </div>
-    );
-  }
-
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -460,6 +506,9 @@ const QuotationPreviewPage: React.FC = () => {
             return (
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold text-gray-900">{businessInfo?.name || "XYZ"}</h2>
+                {businessInfo?.rawBusiness?.contact_person && (
+                  <p className="text-gray-600">Contact: {businessInfo.rawBusiness.contact_person}</p>
+                )}
                 {addressLines.map((line, index) => (
                   <p key={index} className="text-gray-600">{line}</p>
                 ))}
@@ -485,7 +534,7 @@ const QuotationPreviewPage: React.FC = () => {
               {new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}
             </p>
           </div>
-          <div>
+          <div className="text-right">
             <p className="text-sm text-gray-500">Expiry Date</p>
             <p className="font-semibold">
               {new Date(quotationData.validityDate).toLocaleDateString('en-IN')}
@@ -493,45 +542,60 @@ const QuotationPreviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bill To / Ship To Section */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">BILL TO</h3>
-            <div className="space-y-1">
-              <p className="font-medium">
-                {quotationData.selectedCustomer.first_name} {quotationData.selectedCustomer.last_name}
-              </p>
-              {quotationData.selectedCustomer.company_name && (
-                <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
-              )}
-              <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-              {quotationData.selectedCustomer.email && (
-                <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
-              )}
-              {quotationData.selectedCustomer.gst && (
-                <p className="text-gray-600">GST: {quotationData.selectedCustomer.gst}</p>
-              )}
-              {formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "billing")).map((line, index) => (
-                <p key={index} className="text-gray-600">{line}</p>
-              ))}
+        {/* Bill To / Ship To */}
+        <div className="mb-8">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">BILL TO</h3>
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {quotationData.selectedCustomer ? 
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 
+                    'No customer selected'
+                  }
+                </p>
+                {quotationData.selectedCustomer?.company_name && (
+                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                )}
+                {quotationData.selectedCustomer && (
+                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
+                )}
+                {quotationData.selectedCustomer?.email && (
+                  <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
+                )}
+                {quotationData.selectedCustomer?.gst && (
+                  <p className="text-gray-600">GST: {quotationData.selectedCustomer.gst}</p>
+                )}
+                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "billing")).map((line, index) => (
+                  <p key={index} className="text-gray-600">{line}</p>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">SHIP TO</h3>
-            <div className="space-y-1">
-              <p className="font-medium">
-                {quotationData.selectedCustomer.first_name} {quotationData.selectedCustomer.last_name}
-              </p>
-              {quotationData.selectedCustomer.company_name && (
-                <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
-              )}
-              <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-              {quotationData.selectedCustomer.email && (
-                <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
-              )}
-              {formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "shipping")).map((line, index) => (
-                <p key={index} className="text-gray-600">{line}</p>
-              ))}
+            <div className="col-span-2">
+              <h3 className="font-semibold text-gray-900 mb-2">SHIP TO</h3>
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {quotationData.selectedCustomer ? 
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 
+                    'No customer selected'
+                  }
+                </p>
+                {quotationData.selectedCustomer?.company_name && (
+                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                )}
+                {quotationData.selectedCustomer && (
+                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
+                )}
+                {quotationData.selectedCustomer?.email && (
+                  <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
+                )}
+                {quotationData.selectedCustomer?.gst && (
+                  <p className="text-gray-600">GST: {quotationData.selectedCustomer.gst}</p>
+                )}
+                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "shipping")).map((line, index) => (
+                  <p key={index} className="text-gray-600">{line}</p>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -539,65 +603,69 @@ const QuotationPreviewPage: React.FC = () => {
         {/* Items Table */}
         <div className="mb-8">
           <h3 className="font-semibold text-gray-900 mb-4">ITEMS</h3>
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse border border-gray-300">
             <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Item Description</th>
-                <th className="text-center py-2">QTY</th>
-                <th className="text-right py-2">RATE</th>
-                <th className="text-right py-2">DISC.</th>
-                <th className="text-right py-2">TAX</th>
-                <th className="text-right py-2">AMOUNT</th>
+              <tr className="border-b bg-gray-50">
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">Item Description</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-sm">QTY</th>
+                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">RATE</th>
+                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">DISC.</th>
+                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">TAX</th>
+                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">AMOUNT</th>
               </tr>
             </thead>
             <tbody>
               {quotationData.quotationItems?.map((item) => (
-                <tr key={item.id} className="border-b">
-                  <td className="py-3">
+                <tr key={item.id} className="border-b hover:bg-gray-50">
+                  <td className="border border-gray-300 px-3 py-2">
                     <div>
-                      <p className="font-medium">{item.item_name}</p>
+                      <p className="font-medium text-sm">{item.item_name}</p>
                       {item.description && (
-                        <p className="text-sm text-gray-500">{item.description}</p>
+                        <p className="text-xs text-gray-500">{item.description}</p>
                       )}
                     </div>
                   </td>
-                  <td className="text-center py-3">
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">
                     {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}
                   </td>
-                  <td className="text-right py-3">{formatCurrency(item.price_per_item)}</td>
-                  <td className="text-right py-3">
-                    {formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}
-                    {item.discount > 0 && (
-                      <span className="text-sm text-gray-500">
-                        ({item.discount.toFixed(0)}%)
-                      </span>
-                    )}
+                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(item.price_per_item)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">
+                    <div>
+                      ₹ -{((item.price_per_item * item.quantity * item.discount) / 100).toFixed(2)}
+                      {item.discount > 0 && (
+                        <div className="text-xs text-gray-500">
+                          ({item.discount.toFixed(0)}%)
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="text-right py-3">
-                    {formatCurrency(
-                      (item.price_per_item *
-                        item.quantity *
-                        (1 - item.discount / 100) *
-                        item.tax) /
-                      100
-                    )}
-                    {item.tax > 0 && (
-                      <span className="text-sm text-gray-500">
-                        ({item.tax.toFixed(0)}%)
-                      </span>
-                    )}
+                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">
+                    <div>
+                      {formatCurrency(
+                        (item.price_per_item *
+                          item.quantity *
+                          (1 - item.discount / 100) *
+                          item.tax) /
+                        100
+                      )}
+                      {item.tax > 0 && (
+                        <div className="text-xs text-gray-500">
+                          ({item.tax.toFixed(0)}%)
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="text-right py-3 font-semibold">{formatCurrency(item.amount)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">{formatCurrency(item.amount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2">
-                <td colSpan={2} className="py-3 font-semibold">SUBTOTAL</td>
-                <td className="text-right py-3">{totals.totalQuantity}</td>
-                <td className="text-right py-3">{formatCurrency(totals.totalDiscount)}</td>
-                <td className="text-right py-3">{formatCurrency(totals.totalTax)}</td>
-                <td className="text-right py-3 font-semibold">{formatCurrency(totals.totalAmount)}</td>
+              <tr className="bg-gray-50 font-semibold">
+                <td colSpan={2} className="border border-gray-300 px-3 py-2 text-right text-sm">SUBTOTAL</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-sm">-</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-sm">₹ -{totals.totalDiscount.toFixed(2)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(totals.totalTax)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(totals.totalAmount)}</td>
               </tr>
             </tfoot>
           </table>

@@ -134,7 +134,7 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
 
     if (mergedProps.onRowSelectionChange) {
       const newSelection = typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection) : updaterOrValue;
-      mergedProps.onRowSelectionChange(newSelection, table);
+      mergedProps.onRowSelectionChange?.(newSelection, table);
     }
   };
 

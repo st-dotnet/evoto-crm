@@ -165,7 +165,6 @@ export default function CreateItemModal({
                     postData.opening_stock = Number(values.opening_stock || 0);
                 }
 
-
                 const currentItemId = item?.item_id || item?.item_id;
 
                 if (currentItemId) {
