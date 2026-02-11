@@ -100,14 +100,16 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
-    gst: Yup.string()
+
+  gst: Yup.string()
     .min(15, "Minimum 15 symbols")
     .max(15, "Maximum 15 symbols")
     .when("status", {
       is: (val: string) => val === "4",
       then: (schema) => schema.required("GST is required"),
-      otherwise: (schema) => schema. nullable(),
-    }),    
+      otherwise: (schema) => schema.nullable(),
+    }),
+
   pin: Yup.string()
     .matches(/^[0-9]+$/, "Pin must be a number")
     .when("status", {
