@@ -10,7 +10,7 @@ interface INavbarMenuItems extends Array<INavbarMenuItem> {}
 const NavbarMenu = () => {
   const items: INavbarMenuItems = [
     {
-      title: 'Dashboards',
+      title: 'Dashboard',
       path: '/',
       partial: false
     },

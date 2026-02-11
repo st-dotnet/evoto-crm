@@ -27,7 +27,12 @@ const signupSchema = Yup.object().shape({
     .email('Wrong email format')
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
-    .required('Email is required'),
+    .required('Email is required')
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Invalid email format"
+    ),
   mobileNo: Yup.string()
     .min(10, 'Minimum 10 symbols')
     .max(10, 'Maximum 10 symbols')

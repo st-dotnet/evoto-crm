@@ -5,7 +5,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
     heading: "General"
   },
   {
-    title: "Dashboards",
+    title: "Dashboard",
     icon: "element-11",
     path: "/"
   },
