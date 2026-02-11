@@ -170,7 +170,7 @@ const Toolbar = ({
                     className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
                   />
                   <Input
-                    placeholder="Search leads..."
+                    placeholder="Search lead"
                     value={searchInput}
                     onChange={handleInputChange}
                     onClick={() => setOpen(true)} // Added to ensure popover opens on click

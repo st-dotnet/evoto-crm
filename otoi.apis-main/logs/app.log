@@ -13,3 +13,78 @@
 2025-09-26 14:41:35,825 [INFO] in run: Application startup complete
 2025-09-26 14:41:35,844 [INFO] in run: Application startup complete
 2025-09-26 14:41:35,921 [INFO] in run: Application startup complete
+2026-02-10 17:45:34,582 [INFO] in run: Application startup complete
+2026-02-10 17:45:37,431 [INFO] in run: Application startup complete
+2026-02-10 17:47:40,780 [INFO] in run: Application startup complete
+2026-02-10 17:47:43,852 [INFO] in run: Application startup complete
+2026-02-10 17:48:39,633 [INFO] in run: Application startup complete
+2026-02-10 17:50:29,546 [INFO] in run: Application startup complete
+2026-02-10 17:51:07,337 [INFO] in run: Application startup complete
+2026-02-10 17:52:27,313 [INFO] in run: Application startup complete
+2026-02-10 17:56:50,177 [INFO] in run: Application startup complete
+2026-02-10 17:57:51,121 [INFO] in run: Application startup complete
+2026-02-10 17:59:08,480 [INFO] in run: Application startup complete
+2026-02-10 18:01:00,757 [INFO] in run: Application startup complete
+2026-02-10 18:02:28,772 [INFO] in run: Application startup complete
+2026-02-10 18:09:47,044 [INFO] in run: Application startup complete
+2026-02-10 18:10:27,516 [INFO] in run: Application startup complete
+2026-02-10 18:11:59,469 [INFO] in run: Application startup complete
+2026-02-10 18:13:10,004 [INFO] in run: Application startup complete
+2026-02-10 18:13:24,079 [INFO] in run: Application startup complete
+2026-02-10 18:15:51,105 [INFO] in run: Application startup complete
+2026-02-10 18:17:47,282 [INFO] in run: Application startup complete
+2026-02-10 18:22:52,240 [INFO] in run: Application startup complete
+2026-02-10 18:22:57,932 [INFO] in run: Application startup complete
+2026-02-10 18:24:14,675 [INFO] in run: Application startup complete
+2026-02-10 18:24:21,872 [INFO] in run: Application startup complete
+2026-02-10 18:24:42,766 [INFO] in run: Application startup complete
+2026-02-10 18:25:04,140 [INFO] in run: Application startup complete
+2026-02-10 18:25:10,877 [INFO] in run: Application startup complete
+2026-02-10 18:27:12,865 [INFO] in run: Application startup complete
+2026-02-10 18:36:53,381 [INFO] in run: Application startup complete
+2026-02-10 18:37:12,436 [INFO] in run: Application startup complete
+2026-02-10 18:37:49,282 [INFO] in run: Application startup complete
+2026-02-10 18:39:34,946 [INFO] in run: Application startup complete
+2026-02-10 18:40:28,861 [INFO] in run: Application startup complete
+2026-02-10 18:40:54,037 [INFO] in run: Application startup complete
+2026-02-10 18:41:39,005 [INFO] in run: Application startup complete
+2026-02-10 18:42:04,604 [INFO] in run: Application startup complete
+2026-02-10 18:42:30,010 [INFO] in run: Application startup complete
+2026-02-10 18:43:00,744 [INFO] in run: Application startup complete
+2026-02-10 18:43:50,332 [INFO] in run: Application startup complete
+2026-02-10 18:44:36,807 [INFO] in run: Application startup complete
+2026-02-10 18:45:40,587 [INFO] in run: Application startup complete
+2026-02-10 18:46:04,564 [INFO] in run: Application startup complete
+2026-02-10 18:46:13,278 [INFO] in run: Application startup complete
+2026-02-10 18:46:23,674 [INFO] in run: Application startup complete
+2026-02-10 18:46:49,488 [INFO] in run: Application startup complete
+2026-02-10 18:47:33,460 [INFO] in run: Application startup complete
+2026-02-10 18:47:59,354 [INFO] in run: Application startup complete
+2026-02-10 18:48:46,593 [INFO] in run: Application startup complete
+2026-02-10 18:49:14,356 [INFO] in run: Application startup complete
+2026-02-10 18:52:41,957 [INFO] in run: Application startup complete
+2026-02-10 19:03:00,872 [INFO] in run: Application startup complete
+2026-02-10 19:05:57,323 [INFO] in run: Application startup complete
+2026-02-10 19:07:00,586 [INFO] in run: Application startup complete
+2026-02-10 19:08:31,949 [INFO] in run: Application startup complete
+2026-02-10 19:09:07,325 [INFO] in run: Application startup complete
+2026-02-10 19:09:21,302 [INFO] in run: Application startup complete
+2026-02-10 19:09:58,220 [INFO] in run: Application startup complete
+2026-02-10 19:10:24,676 [INFO] in run: Application startup complete
+2026-02-10 19:47:28,774 [INFO] in run: Application startup complete
+2026-02-10 19:54:14,768 [INFO] in run: Application startup complete
+2026-02-10 20:10:58,423 [INFO] in person: Syncing lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 4
+2026-02-10 20:10:58,441 [INFO] in person: Created/Updated customer 513cc848-7692-4671-b25e-b27f36838f68 for lead 51bfb771-6fe0-485e-a03f-b2463a95536b
+2026-02-10 20:12:11,831 [INFO] in person: Syncing updated lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 5
+2026-02-10 20:13:03,909 [INFO] in person: Syncing updated lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 4
+2026-02-10 20:13:59,142 [INFO] in customer: Updating customer 513cc848-7692-4671-b25e-b27f36838f68 with data: {'first_name': 'Paras', 'last_name': 'Sharma', 'mobile': '8396923125', 'email': None, 'gst': '839692312549028', 'person_type_id': 1, 'status': '5', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'Lose', 'customer_id': '513cc848-7692-4671-b25e-b27f36838f68', 'uuid': '513cc848-7692-4671-b25e-b27f36838f68', 'same_as_billing': True}
+2026-02-10 20:38:48,997 [INFO] in run: Application startup complete
+2026-02-10 20:43:38,436 [INFO] in run: Application startup complete
+2026-02-10 20:43:49,293 [INFO] in run: Application startup complete
+2026-02-10 20:43:55,211 [INFO] in run: Application startup complete
+2026-02-10 20:49:27,055 [INFO] in customer: Updating customer 513cc848-7692-4671-b25e-b27f36838f68 with data: {'first_name': 'Paras', 'last_name': 'Sharma', 'mobile': '8396923125', 'email': None, 'gst': '839692312549028', 'person_type_id': 1, 'status': '5', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'Lose', 'customer_id': '513cc848-7692-4671-b25e-b27f36838f68', 'uuid': '513cc848-7692-4671-b25e-b27f36838f68', 'same_as_billing': True}
+2026-02-10 20:51:33,674 [INFO] in person: Syncing updated lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 5
+2026-02-10 20:53:08,810 [INFO] in run: Application startup complete
+2026-02-10 20:55:45,766 [INFO] in customer: Updating customer 513cc848-7692-4671-b25e-b27f36838f68 with data: {'first_name': 'Paras', 'last_name': 'Sharma', 'mobile': '8396923125', 'email': None, 'gst': '839692312549028', 'person_type_id': 1, 'status': '5', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'Lose', 'customer_id': '513cc848-7692-4671-b25e-b27f36838f68', 'uuid': '513cc848-7692-4671-b25e-b27f36838f68', 'same_as_billing': True}
+2026-02-10 21:06:11,819 [INFO] in customer: Updating customer 513cc848-7692-4671-b25e-b27f36838f68 with data: {'first_name': 'Paras', 'last_name': 'Sharma', 'mobile': '8396923125', 'email': None, 'gst': '839692312549028', 'person_type_id': 1, 'status': '4', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'Lose', 'customer_id': '513cc848-7692-4671-b25e-b27f36838f68', 'uuid': '513cc848-7692-4671-b25e-b27f36838f68', 'same_as_billing': True}
+2026-02-10 21:06:22,250 [INFO] in customer: Updating customer 513cc848-7692-4671-b25e-b27f36838f68 with data: {'first_name': 'Paras', 'last_name': 'Sharma', 'mobile': '8396923125', 'email': None, 'gst': '839692312549028', 'person_type_id': 1, 'status': '5', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'Lose', 'customer_id': '513cc848-7692-4671-b25e-b27f36838f68', 'uuid': '513cc848-7692-4671-b25e-b27f36838f68', 'same_as_billing': True}

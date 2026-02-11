@@ -53,8 +53,9 @@ export type Customer = {
   created_at: string | undefined;
   person_type: string;
   edit: string;
-  personType: PersonType; 
+  personType: PersonType;
   pin: string;
+  reason?: string;
   shipping_addresses?: ShippingAddress[];
 };
 

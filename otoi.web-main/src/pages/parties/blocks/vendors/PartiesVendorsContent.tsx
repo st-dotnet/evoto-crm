@@ -242,7 +242,7 @@ const Toolbar = ({
             <Command>
               <CommandList>
                 {filteredVenders.length === 0 && (
-                  <CommandEmpty>No customer found.</CommandEmpty>
+                  <CommandEmpty>No vendor found.</CommandEmpty>
                 )}
                 <CommandGroup>
                   {filteredVenders?.map((customer) => (

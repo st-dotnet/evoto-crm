@@ -40,13 +40,14 @@ class Customer(db.Model):
     email = Column(String(255), nullable=True)
     gst = Column(String(20), nullable=True)
     status = Column(String(80), nullable=False)
- 
+    
     address1 = Column(String(255), nullable=False)
     address2 = Column(String(255), nullable=True)
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
     country = Column(String(100), nullable=False)
     pin = Column(String(20), nullable=False)
+    reason = Column(String(500), nullable=True)
     # Soft delete column
     is_deleted = Column(Boolean, default=False)
  

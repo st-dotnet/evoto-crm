@@ -122,6 +122,7 @@ def get_customers():
                     "state": c.state,
                     "country": c.country,
                     "pin": c.pin,
+                    "reason": c.reason,
                 }
                 for c in customers
             ],
@@ -160,6 +161,13 @@ def create_customer():
     email = (data.get("email") or "").strip() or None
     gst = (data.get("gst") or "").strip() or None
     status = (data.get("status") or "").strip() or "1"
+    reason = (data.get("reason") or "").strip() or None
+
+    LOSE_STATUSES = {"Lose", "5"}
+    if status in LOSE_STATUSES and not reason:
+        return jsonify({"error": "Reason is required when status is Lose"}), 400
+    
+    is_deleted = status in LOSE_STATUSES
 
     REQUIRED_ADDRESS_STATUSES = {"Win", "4"}
     is_address_required = status in REQUIRED_ADDRESS_STATUSES
@@ -310,6 +318,7 @@ def create_customer():
         existing_customer.state = state
         existing_customer.country = country
         existing_customer.pin = pin
+        existing_customer.reason = data.get("reason", existing_customer.reason)
 
 
         # Handle shipping address update if different from billing
@@ -405,6 +414,7 @@ def create_customer():
                     "state": existing_customer.state,
                     "country": existing_customer.country,
                     "pin": existing_customer.pin,
+                    "reason": existing_customer.reason,
                 }
             ),
             200,
@@ -427,6 +437,8 @@ def create_customer():
         state=state,
         country=country,
         pin=pin,
+        reason=reason,
+        is_deleted=is_deleted,
     )
     db.session.add(customer)
     db.session.flush()
@@ -572,6 +584,7 @@ def create_customer():
                 "state": customer.state,
                 "country": customer.country,
                 "pin": customer.pin,
+                "reason": customer.reason,
             }
         ),
         201,
@@ -610,6 +623,7 @@ def get_customer(customer_id):
         "state": customer.state,
         "country": customer.country,
         "pin": customer.pin,
+        "reason": customer.reason,
     }
     
     # Get all shipping addresses
@@ -666,6 +680,12 @@ def update_customer(customer_id):
         final_status = data.get("status", customer.status)
         is_address_required = str(final_status) in REQUIRED_ADDRESS_STATUSES
 
+        LOSE_STATUSES = {"Lose", "5"}
+        if str(final_status) in LOSE_STATUSES and not data.get("reason", customer.reason):
+            return jsonify({"error": "Reason is required when status is Lose"}), 400
+        
+        customer.is_deleted = str(final_status) in LOSE_STATUSES
+
         # ---------------- DUPLICATE CHECKS ----------------
         if "mobile" in data and data["mobile"]:
             mobile = str(data["mobile"]).strip()
@@ -690,7 +710,6 @@ def update_customer(customer_id):
                     return jsonify({"error": "Customer with this GST number already exists"}), 400
 
         # ---------------- UPDATE BASIC FIELDS ----------------
-        # Only update non-address related fields
         for field in ["first_name", "last_name", "mobile", "email", "gst", "status"]:
             if field in data:
                 value = str(data[field]).strip() if data[field] is not None else None
@@ -698,6 +717,9 @@ def update_customer(customer_id):
 
                    return jsonify({"error": f"Field '{field}' is required"}), 400
                 setattr(customer, field, value)
+        
+        if "reason" in data:
+            customer.reason = str(data["reason"]).strip() if data["reason"] is not None else None
 
 
        # ---------------- BILLING ADDRESS VALIDATION ----------------
