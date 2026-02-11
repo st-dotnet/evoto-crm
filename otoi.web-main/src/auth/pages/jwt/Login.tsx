@@ -12,10 +12,14 @@ import { ModalAccountDeactivated } from "@/partials/modals/account-deactivated";
 
 const loginSchema = Yup.object().shape({
   email: Yup.string()
-    .email("Wrong email format")
-    .min(3, "Minimum 3 symbols")
-    .max(50, "Maximum 50 symbols")
-    .required("Email is required"),
+      .nullable()
+      .email("Invalid email format")
+      .required("Email is required")
+      .trim()
+      .matches(
+        /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+        "Invalid email format"
+      ),
   password: Yup.string()
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols")
