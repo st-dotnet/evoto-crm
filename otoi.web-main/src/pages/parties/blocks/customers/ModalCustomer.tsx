@@ -154,7 +154,7 @@ const saveCustomerSchema = Yup.object().shape({
     .matches(/^[0-9]+$/, "Pin must be a number"),
 
   reason: Yup.string().when("status", {
-    is: (status: string) => status === "5",
+    is: (status: string) => status === "5" || status === "Lose",
     then: (schema) => schema.required("Reason is required when status is Lose"),
     otherwise: (schema) => schema.nullable(),
   }),
@@ -639,7 +639,12 @@ const ModalCustomer = ({
     // axios.get(`${import.meta.env.VITE_APP_API_URL}/person-types/`).then((res) => setPersonTypes(res.data));
     axios
       .get(`${import.meta.env.VITE_APP_API_URL}/status-list/`)
-      .then((res) => setStatusList(res.data));
+      .then((res) => {
+        const filtered = res.data.filter((s: Status) =>
+          ["win", "lose"].includes(s.name.toLowerCase()),
+        );
+        setStatusList(filtered);
+      });
   }, []);
 
   const formik = useFormik({
@@ -695,9 +700,9 @@ const ModalCustomer = ({
           }));
 
         // If no shipping addresses but shipping fields are filled, add them
-        if (validShippingAddresses.length === 0 && 
-            (values.shipping_address1 || values.shipping_city || values.shipping_state || 
-             values.shipping_country || values.shipping_pin)) {
+        if (validShippingAddresses.length === 0 &&
+          (values.shipping_address1 || values.shipping_city || values.shipping_state ||
+            values.shipping_country || values.shipping_pin)) {
           const newAddress = {
             address1: values.shipping_address1 || '',
             address2: values.shipping_address2 || null,
@@ -1236,7 +1241,7 @@ const ModalCustomer = ({
                     </>
                   );
                 }
-                if (selectedStatus === "5") {
+                if (selectedStatus === "5" || selectedStatus === "Lose") {
                   return (
                     <div className="flex flex-col gap-1.5 col-span-full">
                       <label className="block text-sm font-medium text-gray-700">

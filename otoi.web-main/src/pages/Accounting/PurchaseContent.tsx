@@ -113,7 +113,7 @@ const Toolbar = ({
                                     className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
                                 />
                                 <Input
-                                    placeholder="Search purchases..."
+                                    placeholder="Search invoice"
                                     value={searchInput}
                                     onChange={handleInputChange}
                                     onClick={() => setOpen(true)} // Added to ensure popover opens on click
@@ -140,7 +140,7 @@ const Toolbar = ({
                         <Command>
                             <CommandList>
                                 {filteredPurchases.length === 0 && (
-                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                    <CommandEmpty>No invoice found.</CommandEmpty>
                                 )}
                                 <CommandGroup>
                                     {filteredPurchases?.map((customer) => (
@@ -272,7 +272,7 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                     <DataGridColumnHeader title="Amount" column={column} />
                 ),
                 enableSorting: true,
-                cell: (info: any) => { return info.row.original.amount },
+                cell: (info: any) => { return `₹ ${info.row.original.amount?.toLocaleString('en-IN')}` },
                 meta: { headerClassName: "min-w-[100px]" },
             },
             {
