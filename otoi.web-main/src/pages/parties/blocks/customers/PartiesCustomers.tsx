@@ -82,23 +82,26 @@ const PartiesCustomersPage = () => {
         const { message, details } = response.data;
         const { imported, skipped_no_contact, skipped_internal_duplicates, skipped_database_duplicates } = details;
         
-        // Success toast for imported records
-        toast.success(`${imported} records imported successfully.`, {
-          duration: 4000,
-        });
-        
         // Calculate total skipped records
         const totalSkipped = skipped_no_contact + skipped_internal_duplicates + skipped_database_duplicates;
         
-        // Show warning toast if any records were skipped
+        // Create a single comprehensive toast message
+        let toastMessage = `${imported} records imported successfully`;
+        
         if (totalSkipped > 0) {
           let skipReasons = [];
           if (skipped_no_contact > 0) skipReasons.push(`${skipped_no_contact} missing contact info`);
           if (skipped_internal_duplicates > 0) skipReasons.push(`${skipped_internal_duplicates} internal duplicates`);
           if (skipped_database_duplicates > 0) skipReasons.push(`${skipped_database_duplicates} existing duplicates`);
           
-          toast.warning(`${totalSkipped} records were skipped: ${skipReasons.join(', ')}.`, {
-            duration: 6000,
+          toastMessage += `. ${totalSkipped} records were skipped: ${skipReasons.join(', ')}.`;
+          
+          toast.warning(toastMessage, {
+            duration: 4000,
+          });
+        } else {
+          toast.success(toastMessage, {
+            duration: 4000,
           });
         }
         
@@ -131,7 +134,7 @@ const PartiesCustomersPage = () => {
                 </div>
               </ToolbarDescription>
             </ToolbarHeading>
-            {/* <ToolbarActions>
+            <ToolbarActions>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -154,7 +157,7 @@ const PartiesCustomersPage = () => {
               <a className="btn btn-sm btn-primary" onClick={openCustomerModal}>
                 Add Customer
               </a>
-            </ToolbarActions> */}
+            </ToolbarActions>
           </Toolbar>
         </Container>
       )}

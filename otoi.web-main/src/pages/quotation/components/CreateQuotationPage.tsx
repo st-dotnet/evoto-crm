@@ -345,17 +345,6 @@ const CreateQuotationPage = () => {
     }
   };
 
-  const fetchNextQuotationNumber = async () => {
-    try {
-      const response = await getNextQuotationNumber();
-      if (response.success && response.data?.next_quotation_number) {
-        setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
-      }
-    } catch (error) {
-      console.error("Error fetching next quotation number:", error);
-    }
-  };
-
   useEffect(() => {
     fetchParties();
   }, []);
