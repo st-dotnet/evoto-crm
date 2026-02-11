@@ -2,12 +2,11 @@ from app.models.common import BaseMixin
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import relationship
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from app.models.business import user_business
-from datetime import datetime, timedelta
+from datetime import datetime
 import uuid
-import secrets
-import bcrypt
 
 class Role(db.Model):
     __tablename__ = "roles"
@@ -16,18 +15,6 @@ class Role(db.Model):
 
     # Relationships
     users = relationship("User", back_populates="role")
-
-
-class PasswordResetToken(db.Model):
-    __tablename__ = "password_reset_tokens"
-    id = Column(postgresql.UUID(), primary_key=True, default=uuid.uuid4)
-    user_id = Column(postgresql.UUID(), ForeignKey("users.uuid", ondelete="CASCADE"), nullable=False)
-    token_hash = Column(String(255), nullable=False)
-    expiry = Column(DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(days=7))
-    used = Column(db.Boolean, default=False, nullable=False)
-
-    # Relationship
-    user = relationship("User", back_populates="reset_tokens")
 
 
 class User(BaseMixin, db.Model):
@@ -44,16 +31,12 @@ class User(BaseMixin, db.Model):
     # Relationships
     role = relationship("Role", back_populates="users")
     businesses = relationship("Business", secondary=user_business, back_populates="users")
-    reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
-        salt = bcrypt.gensalt()
-        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        if not self.password_hash:
-            return False
-        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f"<User(username={self.username}, email={self.email})>"

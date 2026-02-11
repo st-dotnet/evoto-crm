@@ -91,12 +91,3 @@
 2026-02-11 15:36:01,293 [INFO] in person: Syncing updated lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 4
 2026-02-11 15:36:45,966 [INFO] in person: Syncing lead 9f495061-6c4e-43fd-84ca-f49d30fe38b9 with status 4
 2026-02-11 15:36:45,996 [INFO] in person: Created/Updated customer a9dafcf5-8dd7-4ee0-83e8-e9001510393b for lead 9f495061-6c4e-43fd-84ca-f49d30fe38b9
-2026-02-11 18:40:59,299 [INFO] in customer: Updating customer a9dafcf5-8dd7-4ee0-83e8-e9001510393b with data: {'first_name': 'dfshbkg', 'last_name': 'hkbfa', 'mobile': '8237573506', 'email': None, 'gst': 'higfdaisr737583', 'person_type_id': 1, 'status': '5', 'address1': None, 'address2': None, 'city': 'Yamunanagar', 'state': 'HR', 'country': 'IN', 'pin': '135001', 'reason': 'test', 'customer_id': 'a9dafcf5-8dd7-4ee0-83e8-e9001510393b', 'uuid': 'a9dafcf5-8dd7-4ee0-83e8-e9001510393b', 'same_as_billing': True}
-2026-02-11 19:40:47,900 [INFO] in run: Application startup complete
-2026-02-11 19:41:21,524 [INFO] in run: Application startup complete
-2026-02-11 19:41:33,515 [INFO] in run: Application startup complete
-2026-02-11 19:42:58,880 [INFO] in run: Application startup complete
-2026-02-11 19:53:35,907 [INFO] in run: Application startup complete
-2026-02-11 20:05:48,902 [INFO] in run: Application startup complete
-2026-02-11 20:06:12,784 [INFO] in run: Application startup complete
-2026-02-11 20:21:43,765 [INFO] in run: Application startup complete
