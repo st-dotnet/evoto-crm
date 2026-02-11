@@ -227,10 +227,10 @@ def login():
 
     return jsonify({"error": "Invalid credentials"}), 401
 
-@auth_blueprint.route("/check-email", methods=["POST"])
-def check_email():
+@auth_blueprint.route("/forgot-password", methods=["POST"])
+def forgot_password():
     """
-    Check if the email exists in the database
+    Request a password reset link via email (Stateless JWT)
     ---
     tags:
       - Authentication
@@ -240,34 +240,149 @@ def check_email():
         application/json:
           schema:
             type: object
+            required: [email]
             properties:
               email:
                 type: string
                 example: "user@example.com"
     responses:
       200:
-        description: Email found
+        description: Password reset email sent
       404:
         description: Email not found
+      500:
+        description: Failed to send email
     """
-    data = request.get_json()
-    email = data.get("email")
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"error": "Email not found"}), 404
-    return jsonify({"message": "Email found"}), 200
+    from app.services.mail_service import send_password_reset_email
+    from flask import current_app
+    from app.models.user import PasswordResetToken
+    import secrets
+    import bcrypt
+    from datetime import datetime
 
-@auth_blueprint.route("/update-password", methods=["POST"])
-def update_password():
-    data = request.get_json()
-    email = data.get("email")
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    
+    # Generic response regardless of existence to prevent email enumeration
+    message = "If an account exists with this email, a password reset link has been sent."
+
+    if user:
+        try:
+            # Generate secure random token
+            token = secrets.token_urlsafe(32)
+            token_hash = bcrypt.hashpw(token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Store hashed token in DB
+            reset_token = PasswordResetToken(user_id=user.uuid, token_hash=token_hash)
+            db.session.add(reset_token)
+            db.session.commit()
+
+            # Build the reset link with RAW token
+            # Dynamically use the Origin from which the request came
+            # Prioritize 'origin' from request body if provided by frontend
+            origin = data.get('origin') or request.headers.get('Origin')
+            frontend_url = origin.rstrip('/') if origin else current_app.config.get("FRONTEND_URL", "http://localhost:5173").rstrip('/')
+            reset_link = f"{frontend_url}/auth/reset-password/change?token={token}"
+
+            # Send the email
+            user_name = user.firstName or ""
+            send_password_reset_email(user.email, reset_link, user_name)
+
+        except Exception as e:
+            # Still return 200 to not leak information, but log the error
+            current_app.logger.error(f"Error in forgot_password: {str(e)}")
+            pass
+
+    current_app.logger.info(f"Forgot password request for email: {email}")
+    return jsonify({"message": message}), 200
+
+
+@auth_blueprint.route("/validate-reset-token/<token>", methods=["GET"])
+def validate_reset_token(token):
+    """
+    Validate a password reset token (Database Token)
+    """
+    from app.models.user import PasswordResetToken
+    from datetime import datetime
+    import bcrypt
+
+    try:
+        # Find all active tokens for checking
+        # Since we use bcrypt, we have to check each one (slow but secure)
+        # Or we could index by user_id if we passed it in the reset link
+        # To keep it simple and secure, we'll fetch all unexpired, unused tokens
+        active_tokens = PasswordResetToken.query.filter(
+            PasswordResetToken.expiry > datetime.utcnow(),
+            PasswordResetToken.used == False
+        ).all()
+
+        for t in active_tokens:
+            if bcrypt.checkpw(token.encode('utf-8'), t.token_hash.encode('utf-8')):
+                return jsonify({"message": "Token is valid"}), 200
+
+        return jsonify({"error": "This reset link is invalid or has expired"}), 400
+
+    except Exception:
+        return jsonify({"error": "Invalid or expired reset link"}), 400
+
+
+@auth_blueprint.route("/reset-password", methods=["POST"])
+def reset_password():
+    """
+    Reset password using a valid token (Database Token)
+    """
+    from app.models.user import PasswordResetToken
+    from datetime import datetime
+    import bcrypt
+
+    data = request.get_json(silent=True) or {}
+    token = data.get("token")
     new_password = data.get("newPassword")
+    confirm_password = data.get("confirmPassword", new_password)
 
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"error": "Email not found"}), 404
+    if not token or not new_password:
+        return jsonify({"error": "Token and new password are required"}), 400
 
-    user.set_password(new_password)
-    db.session.commit()
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match"}), 400
 
-    return jsonify({"message": "Password updated"}), 200
+    if len(new_password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    try:
+        active_tokens = PasswordResetToken.query.filter(
+            PasswordResetToken.expiry > datetime.utcnow(),
+            PasswordResetToken.used == False
+        ).all()
+
+        valid_token = None
+        for t in active_tokens:
+            if bcrypt.checkpw(token.encode('utf-8'), t.token_hash.encode('utf-8')):
+                valid_token = t
+                break
+
+        if not valid_token:
+            return jsonify({"error": "This reset link is invalid or has expired"}), 400
+
+        user = User.query.get(valid_token.user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 400
+
+        # Update password
+        user.set_password(new_password)
+        
+        # Mark token as used
+        valid_token.used = True
+        
+        db.session.commit()
+
+        current_app.logger.info(f"Password reset successful for user_id: {user.uuid}")
+        return jsonify({"message": "Password has been reset successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An error occurred. Please try again."}), 500

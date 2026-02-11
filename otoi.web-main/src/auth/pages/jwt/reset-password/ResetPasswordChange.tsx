@@ -2,9 +2,9 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Alert, KeenIcon } from '@/components';
 import { useAuthContext } from '@/auth';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLayout } from '@/providers';
 import { AxiosError } from 'axios';
 
@@ -19,12 +19,41 @@ const passwordSchema = Yup.object().shape({
 
 const ResetPasswordChange = () => {
   const { currentLayout } = useLayout();
-  const { changePassword } = useAuthContext();
+  const { validateResetToken, changePassword } = useAuthContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(true);
+  const [tokenValid, setTokenValid] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [hasErrors, setHasErrors] = useState<boolean | undefined>(undefined);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showNewPasswordConfirmation, setShowNewPasswordConfirmation] = useState(false);
+
+  const token = new URLSearchParams(window.location.search).get('token');
+
+  // Validate token on mount
+  useEffect(() => {
+    const validate = async () => {
+      if (!token) {
+        setTokenError('Invalid or missing reset link. Please request a new one.');
+        setValidating(false);
+        return;
+      }
+      try {
+        await validateResetToken(token);
+        setTokenValid(true);
+      } catch (error) {
+        if (error instanceof AxiosError && error.response) {
+          setTokenError(error.response.data.error || 'This reset link is invalid or has expired.');
+        } else {
+          setTokenError('This reset link is invalid or has expired.');
+        }
+      } finally {
+        setValidating(false);
+      }
+    };
+    validate();
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -33,18 +62,11 @@ const ResetPasswordChange = () => {
     },
     validationSchema: passwordSchema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
+      if (!token) return;
       setLoading(true);
       setHasErrors(undefined);
-      const email = new URLSearchParams(window.location.search).get('email');
-      if (!email) {
-        setHasErrors(true);
-        setStatus('Email is required');
-        setLoading(false);
-        setSubmitting(false);
-        return;
-      }
       try {
-        await changePassword(email, values.newPassword, values.confirmPassword, values.confirmPassword);
+        await changePassword(token, values.newPassword, values.confirmPassword);
         setHasErrors(false);
         navigate(
           currentLayout?.name === 'auth-branded'
@@ -53,7 +75,7 @@ const ResetPasswordChange = () => {
         );
       } catch (error) {
         if (error instanceof AxiosError && error.response) {
-          setStatus(error.response.data.message);
+          setStatus(error.response.data.error || 'Password reset failed.');
         } else {
           setStatus('Password reset failed. Please try again.');
         }
@@ -64,6 +86,47 @@ const ResetPasswordChange = () => {
       }
     }
   });
+
+  // Show loading while validating token
+  if (validating) {
+    return (
+      <div className="card max-w-[370px] w-full">
+        <div className="card-body flex flex-col items-center gap-5 p-10">
+          <div className="text-center">
+            <h3 className="text-lg font-medium text-gray-900">Validating Reset Link</h3>
+            <span className="text-2sm text-gray-700 mt-2">Please wait...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if token is invalid/expired
+  if (!tokenValid) {
+    return (
+      <div className="card max-w-[370px] w-full">
+        <div className="card-body flex flex-col items-center gap-5 p-10">
+          <div className="text-center">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Link Expired</h3>
+            <p className="text-2sm text-gray-700 mb-5">{tokenError}</p>
+          </div>
+          <Link
+            to={currentLayout?.name === 'auth-branded' ? '/auth/reset-password' : '/auth/classic/reset-password'}
+            className="btn btn-primary flex justify-center"
+          >
+            Request New Link
+          </Link>
+          <Link
+            to={currentLayout?.name === 'auth-branded' ? '/auth/login' : '/auth/classic/login'}
+            className="flex items-center justify-center text-sm gap-2 text-gray-700 hover:text-primary"
+          >
+            <KeenIcon icon="black-left" />
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card max-w-[370px] w-full">
@@ -157,7 +220,7 @@ const ResetPasswordChange = () => {
           className="btn btn-primary flex justify-center grow"
           disabled={loading}
         >
-          {loading ? 'Please wait...' : 'Submit'}
+          {loading ? 'Please wait...' : 'Reset Password'}
         </button>
       </form>
     </div>

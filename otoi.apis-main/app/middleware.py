@@ -18,6 +18,9 @@ def extract_jwt_info():
     public_endpoints = [
         '/api/auth/signup',
         '/api/auth/login',
+        '/api/auth/forgot-password',
+        '/api/auth/validate-reset-token',
+        '/api/auth/reset-password',
 
         # Swagger / Docs
         '/apidocs',
