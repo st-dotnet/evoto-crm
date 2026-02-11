@@ -272,7 +272,7 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                     <DataGridColumnHeader title="Amount" column={column} />
                 ),
                 enableSorting: true,
-                cell: (info: any) => { return info.row.original.amount },
+                cell: (info: any) => { return `₹ ${info.row.original.amount?.toLocaleString('en-IN')}` },
                 meta: { headerClassName: "min-w-[100px]" },
             },
             {
