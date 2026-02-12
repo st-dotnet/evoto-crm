@@ -41,21 +41,18 @@ const ResetPassword = () => {
       setLoading(true);
       setHasErrors(undefined);
       try {
-        await requestPasswordResetLink(values.email, window.location.origin);
-        setHasErrors(false);
-        // Navigate to "check your email" page
         const params = new URLSearchParams();
         params.append('email', values.email);
         navigate({
           pathname:
             currentLayout?.name === 'auth-branded'
-              ? '/auth/reset-password/check-email'
-              : '/auth/classic/reset-password/check-email',
+              ? '/auth/reset-password/change'
+              : '/auth/classic/reset-password/change',
           search: params.toString()
         });
       } catch (error) {
         if (error instanceof AxiosError && error.response) {
-          setStatus(error.response.data.error || 'Failed to send reset link');
+          setStatus(error.response.data.message);
         } else {
           setStatus('Password reset failed. Please try again.');
         }
@@ -73,9 +70,9 @@ const ResetPassword = () => {
         onSubmit={formik.handleSubmit}
       >
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900">Forgot Password?</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Your Email</h3>
           <span className="text-2sm text-gray-600 font-medium">
-            Enter your email to receive a reset link
+            Enter your email to reset password
           </span>
         </div>
 
@@ -83,7 +80,7 @@ const ResetPassword = () => {
 
         {hasErrors === false && (
           <Alert variant="success">
-            Password reset link sent. Please check your email.
+            Password reset link sent. Please check your email to proceed
           </Alert>
         )}
 
@@ -117,7 +114,7 @@ const ResetPassword = () => {
             className="btn btn-primary flex justify-center grow"
             disabled={loading || formik.isSubmitting}
           >
-            {loading ? 'Sending...' : 'Send Reset Link'}
+            {loading ? 'Please wait...' : 'Continue'}
           </button>
 
           <Link
