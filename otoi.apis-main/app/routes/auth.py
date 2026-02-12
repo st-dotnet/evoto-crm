@@ -120,8 +120,18 @@ def signup():
         "role": user.role.name if user.role else None,
         "business_id": business_id
     })
-
-    return jsonify({"access_token": token, "token_type": "Bearer"}), 201
+    # for signup endpoint, return user data in response
+    return jsonify({
+        "access_token": token, 
+        "token_type": "Bearer",
+        "user": {
+            "id": str(user.uuid),
+            "username": user.username,
+            "email": user.email,
+            "role": user.role.name if user.role else None,
+            "business_id": business_id
+        }
+    }), 201
 
 @auth_blueprint.route("/signup", methods=["POST"])
 def register():

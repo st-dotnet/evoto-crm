@@ -2,6 +2,7 @@ import { User as Auth0UserModel } from "@auth0/auth0-spa-js";
 
 import { getData, setData } from "@/utils";
 import { type AuthModel } from "./_models";
+import { toast } from "sonner";
 
 const AUTH_LOCAL_STORAGE_KEY = `${import.meta.env.VITE_APP_NAME}-auth-v${
   import.meta.env.VITE_APP_VERSION
@@ -50,6 +51,24 @@ export function setupAxios(axios: any) {
       return config;
     },
     async (err: any) => await Promise.reject(err)
+  );
+// Response interceptor to handle 403 errors globally when any user deactivation occurs
+  axios.interceptors.response.use(
+    (response: any) => {
+      return response;
+    },
+    async (error: any) => {
+      if (error.response && error.response.status === 403) {
+        const message = error.response.data.message || error.response.data.error;
+        if (message === "Account deactivated or user not found. Please log in again.") {
+          toast.error(message);
+          // Optional: clear auth and redirect
+          removeAuth();
+          // window.location.reload();
+        }
+      }
+      return await Promise.reject(error);
+    }
   );
 }
 

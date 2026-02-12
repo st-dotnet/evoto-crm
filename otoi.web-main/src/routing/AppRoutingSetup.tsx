@@ -120,7 +120,7 @@ const AppRoutingSetup = (): ReactElement => {
           </Route>
 
           {/* User & Admin Routes */}
-          <Route element={<CheckRole allowedRoles={['Admin', 'User']} />}>
+          <Route element={<CheckRole allowedRoles={['Admin', 'User', 'Manager']} />}>
             <Route path="/public-profile/profiles/default" element={<ProfileDefaultPage />} />
             <Route path="/public-profile/profiles/creator" element={<ProfileCreatorPage />} />
             <Route path="/public-profile/profiles/company" element={<ProfileCompanyPage />} />

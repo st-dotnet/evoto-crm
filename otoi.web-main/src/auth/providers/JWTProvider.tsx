@@ -115,6 +115,7 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       saveAuth(auth);
       const { data: user } = await getUser();
       setCurrentUser(user);
+      return auth;
     } catch (error) {
       saveAuth(undefined);
       throw new Error(`Error ${error}`);

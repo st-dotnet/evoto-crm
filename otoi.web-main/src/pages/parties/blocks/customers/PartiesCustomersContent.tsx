@@ -576,13 +576,13 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           </div>
         </div>
       )}
-      {loading && !customersData?.length && (
+      {/* {loading && !customersData?.length && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
           <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
           </div>
         </div>
-      )}
+      )} */}
 
       {fetchingDetails && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">

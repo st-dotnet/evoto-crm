@@ -68,8 +68,15 @@ const Signup = () => {
         if (!register) {
           throw new Error('JWTProvider is required for this form.');
         }
-        await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
-        navigate(from, { replace: true });
+        // Call the register function and handle navigation based on user role
+        const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
+        const userRole = (response as any)?.user?.role;
+        
+        if (userRole === 'User' || userRole === 3) {
+          navigate('/account/home/user-profile', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
       } catch (error) {
         console.error(error);
         setStatus('The sign up details are incorrect');

@@ -136,19 +136,19 @@ def get_leads():
             query = query.filter(Lead.mobile.ilike(f"%{request.args['mobile']}%"))
 
         # Exact filtering for duplicate checks (OR logic)
-        exact_filters = []
-        if "exact_mobile" in request.args:
-            exact_filters.append(Lead.mobile == request.args["exact_mobile"])
-        if "exact_gst" in request.args:
-            exact_filters.append(func.upper(Lead.gst) == request.args["exact_gst"].upper())
-        if "exact_email" in request.args:
-            exact_filters.append(func.upper(Lead.email) == request.args["exact_email"].upper())
+        # exact_filters = []
+        # if "exact_mobile" in request.args:
+        #     exact_filters.append(Lead.mobile == request.args["exact_mobile"])
+        # if "exact_gst" in request.args:
+        #     exact_filters.append(func.upper(Lead.gst) == request.args["exact_gst"].upper())
+        # if "exact_email" in request.args:
+        #     exact_filters.append(func.upper(Lead.email) == request.args["exact_email"].upper())
         
-        if exact_filters:
-            query = query.filter(or_(*exact_filters))
+        # if exact_filters:
+        #     query = query.filter(or_(*exact_filters))
 
-        if "exclude_uuid" in request.args:
-            query = query.filter(Lead.uuid != request.args["exclude_uuid"])
+        # if "exclude_uuid" in request.args:
+        #     query = query.filter(Lead.uuid != request.args["exclude_uuid"])
 
         # Sorting
         sort = request.args.get("sort", "uuid")
@@ -358,8 +358,8 @@ def create_lead():
         # ---- BASIC VALIDATION ----
         first_name = data.get("first_name")
         last_name = data.get("last_name")
-        email = (data.get("email") or "").strip()
-        mobile = (data.get("mobile") or "").strip()
+        email = (data.get("email") or "").strip() or None
+        mobile = (data.get("mobile") or "").strip() or None
         status = str(data.get("status") or "").strip()
 
         if not first_name or not last_name:
@@ -542,14 +542,18 @@ def update_lead(lead_id):
                 if existing:
                     return jsonify({"error": "A lead with this mobile already exists"}), 400
 
-        # Update Lead basic fields
+        # Consolidate updates
         lead.first_name = data.get("first_name", lead.first_name)
         lead.last_name = data.get("last_name", lead.last_name)
-        lead.mobile = data.get("mobile", lead.mobile)
-        lead.email = data.get("email", lead.email)
+        # Special handling for mobile and email to allow null/empty
+        if "mobile" in data:
+            lead.mobile = (data.get("mobile") or "").strip() or None
+        if "email" in data:
+            lead.email = (data.get("email") or "").strip() or None
         lead.gst = data.get("gst", lead.gst)
         lead.status = data.get("status", lead.status)
-
+        lead.reason = data.get("reason", lead.reason)
+        lead.referenced_by = data.get("referenced_by", lead.referenced_by)
         # Automatically mark as deleted if status is set to "Lose" (5)
         if str(lead.status).strip().lower() in ["lose", "5"]:
             lead.is_deleted = True
@@ -567,10 +571,10 @@ def update_lead(lead_id):
         mobile = (data.get("mobile") or "").strip()
         status = str(data.get("status") or "").strip()
 
-        if not first_name or not last_name:
+        # Basic validation (if name/mobile/email are being updated)
+        if not lead.first_name or not lead.last_name:
             return jsonify({"error": "First name and last name are required"}), 400
-
-        if not mobile and not email:
+        if not lead.mobile and not lead.email:
             return jsonify({"error": "Either mobile or email is required"}), 400
 
         # Update Lead basic fields
