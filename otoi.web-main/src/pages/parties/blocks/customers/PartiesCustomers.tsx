@@ -124,7 +124,7 @@ const PartiesCustomersPage = () => {
 
   return (
     <Fragment>
-      {currentLayout?.name === "demo1-layout" && (
+      {/* {currentLayout?.name === "demo1-layout" && (
         <Container>
           <Toolbar>
             <ToolbarHeading>
@@ -160,7 +160,7 @@ const PartiesCustomersPage = () => {
             </ToolbarActions>
           </Toolbar>
         </Container>
-      )}
+      )} */}
 
       <Container>
         <PartiesCustomerContent refreshStatus={refreshKey} />

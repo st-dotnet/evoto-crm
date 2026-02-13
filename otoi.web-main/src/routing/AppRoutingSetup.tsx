@@ -1,78 +1,81 @@
-import { ReactElement } from 'react';
+import { ReactElement, lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { DefaultPage, Demo1DarkSidebarPage } from '@/pages/dashboards';
-import {
-  ProfileActivityPage,
-  ProfileBloggerPage,
-  CampaignsCardPage,
-  CampaignsListPage,
-  ProjectColumn2Page,
-  ProjectColumn3Page,
-  ProfileCompanyPage,
-  ProfileCreatorPage,
-  ProfileCRMPage,
-  ProfileDefaultPage,
-  ProfileEmptyPage,
-  ProfileFeedsPage,
-  ProfileGamerPage,
-  ProfileModalPage,
-  ProfileNetworkPage,
-  ProfileNFTPage,
-  ProfilePlainPage,
-  ProfileTeamsPage,
-  ProfileWorksPage
-} from '@/pages/public-profile';
-import {
-  AccountActivityPage,
-  AccountAllowedIPAddressesPage,
-  AccountApiKeysPage,
-  AccountAppearancePage,
-  AccountBackupAndRecoveryPage,
-  AccountBasicPage,
-  AccountCompanyProfilePage,
-  AccountCurrentSessionsPage,
-  AccountDeviceManagementPage,
-  AccountEnterprisePage,
-  AccountGetStartedPage,
-  AccountHistoryPage,
-  AccountImportMembersPage,
-  AccountIntegrationsPage,
-  AccountInviteAFriendPage,
-  AccountMembersStarterPage,
-  AccountNotificationsPage,
-  AccountOverviewPage,
-  AccountPermissionsCheckPage,
-  AccountPermissionsTogglePage,
-  AccountPlansPage,
-  AccountPrivacySettingsPage,
-  AccountRolesPage,
-  AccountSecurityGetStartedPage,
-  AccountSecurityLogPage,
-  AccountSettingsEnterprisePage,
-  AccountSettingsModalPage,
-  AccountSettingsPlainPage,
-  AccountSettingsSidebarPage,
-  AccountTeamInfoPage,
-  AccountTeamMembersPage,
-  AccountTeamsPage,
-  AccountTeamsStarterPage,
-  AccountUserProfilePage
-} from '@/pages/account';
-import {
-  NetworkAppRosterPage,
-  NetworkMarketAuthorsPage,
-  NetworkAuthorPage,
-  NetworkGetStartedPage,
-  NetworkMiniCardsPage,
-  NetworkNFTPage,
-  NetworkSocialPage,
-  NetworkUserCardsTeamCrewPage,
-  NetworkSaasUsersPage,
-  NetworkStoreClientsPage,
-  NetworkUserTableTeamCrewPage,
-  NetworkVisitorsPage
-} from '@/pages/network';
-import { LeadsPage } from '@/pages/parties/PartiesLeads';
+// Lazy loaded components
+const ProfileActivityPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileActivityPage })));
+const ProfileBloggerPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileBloggerPage })));
+const CampaignsCardPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.CampaignsCardPage })));
+const CampaignsListPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.CampaignsListPage })));
+const ProjectColumn2Page = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProjectColumn2Page })));
+const ProjectColumn3Page = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProjectColumn3Page })));
+const ProfileCompanyPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileCompanyPage })));
+const ProfileCreatorPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileCreatorPage })));
+const ProfileCRMPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileCRMPage })));
+const ProfileDefaultPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileDefaultPage })));
+const ProfileEmptyPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileEmptyPage })));
+const ProfileFeedsPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileFeedsPage })));
+const ProfileGamerPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileGamerPage })));
+const ProfileModalPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileModalPage })));
+const ProfileNetworkPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileNetworkPage })));
+const ProfileNFTPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileNFTPage })));
+const ProfilePlainPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfilePlainPage })));
+const ProfileTeamsPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileTeamsPage })));
+const ProfileWorksPage = lazy(() => import('@/pages/public-profile').then(module => ({ default: module.ProfileWorksPage })));
+// Lazy loaded account pages
+const AccountActivityPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountActivityPage })));
+const AccountAllowedIPAddressesPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountAllowedIPAddressesPage })));
+const AccountApiKeysPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountApiKeysPage })));
+const AccountAppearancePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountAppearancePage })));
+const AccountBackupAndRecoveryPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountBackupAndRecoveryPage })));
+const AccountBasicPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountBasicPage })));
+const AccountCompanyProfilePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountCompanyProfilePage })));
+const AccountCurrentSessionsPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountCurrentSessionsPage })));
+const AccountDeviceManagementPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountDeviceManagementPage })));
+const AccountEnterprisePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountEnterprisePage })));
+const AccountGetStartedPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountGetStartedPage })));
+const AccountHistoryPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountHistoryPage })));
+const AccountImportMembersPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountImportMembersPage })));
+const AccountIntegrationsPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountIntegrationsPage })));
+const AccountInviteAFriendPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountInviteAFriendPage })));
+const AccountMembersStarterPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountMembersStarterPage })));
+const AccountNotificationsPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountNotificationsPage })));
+const AccountOverviewPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountOverviewPage })));
+const AccountPermissionsCheckPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountPermissionsCheckPage })));
+const AccountPermissionsTogglePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountPermissionsTogglePage })));
+const AccountPlansPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountPlansPage })));
+const AccountPrivacySettingsPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountPrivacySettingsPage })));
+const AccountRolesPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountRolesPage })));
+const AccountSecurityGetStartedPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSecurityGetStartedPage })));
+const AccountSecurityLogPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSecurityLogPage })));
+const AccountSettingsEnterprisePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSettingsEnterprisePage })));
+const AccountSettingsModalPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSettingsModalPage })));
+const AccountSettingsPlainPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSettingsPlainPage })));
+const AccountSettingsSidebarPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountSettingsSidebarPage })));
+const AccountTeamInfoPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountTeamInfoPage })));
+const AccountTeamMembersPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountTeamMembersPage })));
+const AccountTeamsPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountTeamsPage })));
+const AccountTeamsStarterPage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountTeamsStarterPage })));
+const AccountUserProfilePage = lazy(() => import('@/pages/account').then(module => ({ default: module.AccountUserProfilePage })));
+// Lazy loaded network pages
+const NetworkAppRosterPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkAppRosterPage })));
+const NetworkMarketAuthorsPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkMarketAuthorsPage })));
+const NetworkAuthorPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkAuthorPage })));
+const NetworkGetStartedPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkGetStartedPage })));
+const NetworkMiniCardsPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkMiniCardsPage })));
+const NetworkNFTPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkNFTPage })));
+const NetworkSocialPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkSocialPage })));
+const NetworkUserCardsTeamCrewPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkUserCardsTeamCrewPage })));
+const NetworkSaasUsersPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkSaasUsersPage })));
+const NetworkStoreClientsPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkStoreClientsPage })));
+const NetworkUserTableTeamCrewPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkUserTableTeamCrewPage })));
+const NetworkVisitorsPage = lazy(() => import('@/pages/network').then(module => ({ default: module.NetworkVisitorsPage })));
+
+// Lazy loaded party pages
+const LeadsPage = lazy(() => import('@/pages/parties/PartiesLeads').then(module => ({ default: module.LeadsPage })));
+const CustomerDetails = lazy(() => import('@/pages/parties/blocks/customers/CustomerDetails').then(module => ({ default: module.CustomerDetails })));
+const LeadDetails = lazy(() => import('@/pages/parties/blocks/leads/LeadDetails').then(module => ({ default: module.LeadDetails })));
+const PartiesVendorsPage = lazy(() => import('@/pages/parties/blocks/vendors/PartiesVendors').then(module => ({ default: module.PartiesVendorsPage })));
+const PartiesCustomersPage = lazy(() => import('@/pages/parties/blocks/customers/PartiesCustomers').then(module => ({ default: module.PartiesCustomersPage })));
 import { AuthPage } from '@/auth';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { Demo1Layout } from '@/layouts/demo1';
@@ -83,20 +86,24 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
-import { CustomerDetails } from '@/pages/parties/blocks/customers/CustomerDetails';
-import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
-import { PartiesVendorsPage } from '@/pages/parties/blocks/vendors/PartiesVendors';
-import InventoryPage from '@/pages/items/InventoryPage';
-import ItemDetailsPage from '@/pages/items/ItemDetails';
-import QuotationPage from '@/pages/quotation/components/QuotationPage';
-import CreateQuotationPage from '@/pages/quotation/components/CreateQuotationPage';
-import QuotationPreviewPage from '@/pages/quotation/components/QuotationPreviewPage';
-import { UserDetails } from '@/pages/userManagement/UserDetails';
-import { UserEdit } from '@/pages/userManagement/UserEdit';
-import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
-import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
-import { PartiesCustomersPage } from '@/pages/parties/blocks/customers/PartiesCustomers';
+// Lazy loaded other pages
+const InventoryPage = lazy(() => import('@/pages/items/InventoryPage').then(module => ({ default: module.default })));
+const ItemDetailsPage = lazy(() => import('@/pages/items/ItemDetails').then(module => ({ default: module.default })));
+const QuotationPage = lazy(() => import('@/pages/quotation/components/QuotationPage').then(module => ({ default: module.default })));
+const CreateQuotationPage = lazy(() => import('@/pages/quotation/components/CreateQuotationPage').then(module => ({ default: module.default })));
+const QuotationPreviewPage = lazy(() => import('@/pages/quotation/components/QuotationPreviewPage').then(module => ({ default: module.default })));
+const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
+const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
+const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));
+const PartiesPurchaseEntry = lazy(() => import('@/pages/Accounting/PartiesPurchaseEntry').then(module => ({ default: module.PartiesPurchaseEntry })));
 
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -106,16 +113,56 @@ const AppRoutingSetup = (): ReactElement => {
           {/* Manager & Admin Routes */}
           <Route element={<CheckRole allowedRoles={['Admin', 'Manager']} />}>
             <Route path="/" element={<DefaultPage />} />
-            <Route path="/parties/leads" element={<LeadsPage />} />
-            <Route path="/parties/customers" element={<PartiesCustomersPage />} />
-            <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
-            <Route path="/lead/:uuid" element={<LeadDetails />} />
-            <Route path="/customer/:uuid" element={<CustomerDetails />} />
-            <Route path="/user-management/users" element={<PartiesUsersPage />} />
-            <Route path="/user/:id" element={<UserDetails />} />
-            <Route path="/items/inventory" element={<InventoryPage />} />
-            <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
-            <Route path='/accounting/purchase-entry' element={<PartiesPurchaseEntry />} />
+            <Route path="/parties/leads" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <LeadsPage />
+              </Suspense>
+            } />
+            <Route path="/parties/customers" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <PartiesCustomersPage />
+              </Suspense>
+            } />
+            <Route path="/parties/vendors" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <PartiesVendorsPage />
+              </Suspense>
+            } />
+            <Route path="/lead/:uuid" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <LeadDetails />
+              </Suspense>
+            } />
+            <Route path="/customer/:uuid" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <CustomerDetails />
+              </Suspense>
+            } />
+            <Route path="/user-management/users" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <PartiesUsersPage />
+              </Suspense>
+            } />
+            <Route path="/user/:id" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <UserDetails />
+              </Suspense>
+            } />
+            <Route path="/items/inventory" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <InventoryPage />
+              </Suspense>
+            } />
+            <Route path="/items/inventory/:itemId" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <ItemDetailsPage />
+              </Suspense>
+            } />
+            <Route path='/accounting/purchase-entry' element={
+              <Suspense fallback={<LoadingFallback />}>
+                <PartiesPurchaseEntry />
+              </Suspense>
+            } />
             {/* Add more Manager/Admin routes here as needed */}
           </Route>
 
