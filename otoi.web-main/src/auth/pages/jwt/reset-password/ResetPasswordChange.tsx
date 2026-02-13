@@ -2,11 +2,14 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Alert, KeenIcon } from '@/components';
 import { useAuthContext } from '@/auth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useLayout } from '@/providers';
 import { AxiosError } from 'axios';
+import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+import { toAbsoluteUrl } from '@/utils';
 
 const passwordSchema = Yup.object().shape({
   newPassword: Yup.string()
@@ -19,12 +22,39 @@ const passwordSchema = Yup.object().shape({
 
 const ResetPasswordChange = () => {
   const { currentLayout } = useLayout();
-  const { changePassword } = useAuthContext();
+  const { changePassword, verifyResetToken } = useAuthContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [isTokenValid, setIsTokenValid] = useState(true);
   const [hasErrors, setHasErrors] = useState<boolean | undefined>(undefined);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showNewPasswordConfirmation, setShowNewPasswordConfirmation] = useState(false);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const e = searchParams.get('e');
+    const token = searchParams.get('token');
+
+    const checkToken = async () => {
+      if (!e || !token) {
+        setIsVerifying(false);
+        setIsTokenValid(false);
+        return;
+      }
+
+      try {
+        await verifyResetToken(token, e);
+        setIsTokenValid(true);
+      } catch (error) {
+        setIsTokenValid(false);
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    checkToken();
+  }, [verifyResetToken]);
 
   const formik = useFormik({
     initialValues: {
@@ -35,16 +65,19 @@ const ResetPasswordChange = () => {
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
       setHasErrors(undefined);
-      const email = new URLSearchParams(window.location.search).get('email');
-      if (!email) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const e = searchParams.get('e');
+      const token = searchParams.get('token');
+
+      if (!e || !token) {
         setHasErrors(true);
-        setStatus('Email is required');
+        setStatus('Token or Email identifier is missing');
         setLoading(false);
         setSubmitting(false);
         return;
       }
       try {
-        await changePassword(email, values.newPassword, values.confirmPassword, values.confirmPassword);
+        await changePassword(e, token, values.newPassword, values.confirmPassword);
         setHasErrors(false);
         navigate(
           currentLayout?.name === 'auth-branded'
@@ -53,9 +86,13 @@ const ResetPasswordChange = () => {
         );
       } catch (error) {
         if (error instanceof AxiosError && error.response) {
-          setStatus(error.response.data.message);
+          const errorMessage = error.response.data.error || error.response.data.message || 'Password reset failed.';
+          setStatus(errorMessage);
+          toast.error(errorMessage);
         } else {
-          setStatus('Password reset failed. Please try again.');
+          const errorMessage = 'Password reset failed. Please try again.';
+          setStatus(errorMessage);
+          toast.error(errorMessage);
         }
         setHasErrors(true);
       } finally {
@@ -64,6 +101,48 @@ const ResetPasswordChange = () => {
       }
     }
   });
+
+  if (isVerifying) {
+    return (
+      <div className="card max-w-[370px] w-full min-h-[400px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          <span className="text-gray-700 text-sm">Verifying reset link...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isTokenValid) {
+    return (
+      <div className="card max-w-[370px] w-full p-10 flex flex-col items-center gap-5">
+        <div className="flex justify-center p-5">
+          <img
+            src={toAbsoluteUrl('/media/illustrations/31.svg')}
+            className="dark:hidden max-h-[150px]"
+            alt=""
+          />
+          <img
+            src={toAbsoluteUrl('/media/illustrations/31-dark.svg')}
+            className="light:hidden max-h-[150px]"
+            alt=""
+          />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Expired or Invalid Link</h3>
+          <p className="text-gray-700 text-sm mb-6">
+            The password reset link you clicked is no longer valid. For security reasons, links expire after 10 minutes or after being used.
+          </p>
+          <Link
+            to={currentLayout?.name === 'auth-branded' ? '/auth/reset-password' : '/auth/classic/reset-password'}
+            className="btn btn-primary w-full flex justify-center"
+          >
+            Request New Link
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card max-w-[370px] w-full">
@@ -159,6 +238,13 @@ const ResetPasswordChange = () => {
         >
           {loading ? 'Please wait...' : 'Submit'}
         </button>
+        <Link
+          to={currentLayout?.name === 'auth-branded' ? '/auth/login' : '/auth/classic/login'}
+          className="flex items-center justify-center text-sm gap-2 text-gray-700 hover:text-primary"
+        >
+          <KeenIcon icon="black-left" />
+          Back to Login
+        </Link>
       </form>
     </div>
   );

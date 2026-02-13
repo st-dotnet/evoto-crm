@@ -1,8 +1,13 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from flask_jwt_extended import create_access_token
 from app.models.user import User, Role
 from app.extensions import db
-from flask import g
+from app.services.mail_service import send_reset_password_email
+import os
+import jwt
+from datetime import datetime, timedelta
+from itsdangerous import URLSafeTimedSerializer
+import base64
 
 auth_blueprint = Blueprint("auth", __name__)
 
@@ -281,3 +286,123 @@ def update_password():
     db.session.commit()
 
     return jsonify({"message": "Password updated"}), 200
+
+@auth_blueprint.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    """
+    Step 1: Accept email and send reset link with dynamic JWT
+    """
+    data = request.get_json()
+    email = data.get("email")
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # For security, don't reveal if user exists. 
+        # But in many CRMs, it's okay. I'll stick to a generic success message or 404 depending on preference.
+        # User requested: "Check if the user exists... If found, generate...".
+        return jsonify({"error": "User with this email does not exist"}), 404
+
+    # Generate dynamic secret for itsdangerous
+    dynamic_secret = current_app.config["SECRET_KEY"] + user.password_hash
+    serializer = URLSafeTimedSerializer(dynamic_secret)
+    token = serializer.dumps(user.email, salt="password-reset")
+
+    # Base64 encode email for obfuscation in URL
+    encoded_email = base64.urlsafe_b64encode(user.email.encode()).decode().rstrip("=")
+
+    frontend_url = current_app.config["FRONTEND_URL"] #change URL based on diff environments
+    reset_link = f"{frontend_url}/auth/reset-password/change?token={token}&e={encoded_email}"
+    
+    if send_reset_password_email(user.email, reset_link, user.firstName):
+        return jsonify({"message": "Password reset link sent to your email"}), 200
+    else:
+        return jsonify({"error": "Failed to send email. Please try again later."}), 500
+
+@auth_blueprint.route("/verify-reset-token", methods=["POST"])
+def verify_reset_token():
+    """
+    Check if a reset token is still valid (on page load)
+    """
+    data = request.get_json()
+    token = data.get("token")
+    encoded_email = data.get("e")
+
+    if not token or not encoded_email:
+        return jsonify({"error": "Token and encoded email are required"}), 400
+
+    try:
+        # Decode base64 email
+        missing_padding = len(encoded_email) % 4
+        if missing_padding:
+            encoded_email += '=' * (4 - missing_padding)
+        email = base64.urlsafe_b64decode(encoded_email).decode()
+    except Exception:
+        return jsonify({"error": "Invalid email encoding"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Verify token using dynamic secret
+    dynamic_secret = current_app.config["SECRET_KEY"] + user.password_hash
+    serializer = URLSafeTimedSerializer(dynamic_secret)
+    try:
+        # Verify token (expires in 10 mins = 600s)
+        token_email = serializer.loads(token, salt="password-reset", max_age=600)
+        if token_email != email:
+            return jsonify({"error": "This reset link is not valid for the provided email.", "valid": False}), 400
+        
+        return jsonify({"message": "Token is valid", "valid": True}), 200
+    except Exception:
+        return jsonify({"error": "Reset link has expired or is invalid.", "valid": False}), 400
+
+@auth_blueprint.route("/reset-password-confirm", methods=["POST"])
+def reset_password_confirm():
+    """
+    Step 2: Verify token and update password
+    """
+    data = request.get_json()
+    token = data.get("token")
+    new_password = data.get("newPassword")
+    confirm_password = data.get("confirmPassword")
+    encoded_email = data.get("e") 
+
+    if not token or not new_password or not confirm_password or not encoded_email:
+        return jsonify({"error": "Token, encoded email, newPassword, and confirmPassword are required"}), 400
+
+    try:
+        # Decode base64 email
+        # Add padding if necessary
+        missing_padding = len(encoded_email) % 4
+        if missing_padding:
+            encoded_email += '=' * (4 - missing_padding)
+        email = base64.urlsafe_b64decode(encoded_email).decode()
+    except Exception:
+        return jsonify({"error": "Invalid email encoding"}), 400
+
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Verify token using dynamic secret
+    dynamic_secret = current_app.config["SECRET_KEY"] + user.password_hash
+    serializer = URLSafeTimedSerializer(dynamic_secret)
+    try:
+        # Verify token (expires in 10 mins = 600s)
+        token_email = serializer.loads(token, salt="password-reset", max_age=600)
+        if token_email != email:
+            return jsonify({"error": "This reset link is not valid for the provided email."}), 400
+    except Exception:
+        # serializer.loads raises BadSignature or SignatureExpired
+        return jsonify({"error": "Your reset password token has expired or is invalid. Please request a new link."}), 400
+
+    # Update password
+    user.set_password(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Password has been successfully reset"}), 200

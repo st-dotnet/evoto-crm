@@ -15,8 +15,9 @@ import { type AuthModel, type UserModel } from "@/auth";
 const API_URL = import.meta.env.VITE_APP_API_URL; //"https://preview.keenthemes.com/hero-api/api";
 export const LOGIN_URL = `${API_URL}/auth/login`;
 export const REGISTER_URL = `${API_URL}/auth/signup`;
-export const FORGOT_PASSWORD_URL = `${API_URL}/forgot-password`;
-export const RESET_PASSWORD_URL = `${API_URL}/reset-password`;
+export const FORGOT_PASSWORD_URL = `${API_URL}/auth/forgot-password`;
+export const RESET_PASSWORD_URL = `${API_URL}/auth/reset-password-confirm`;
+export const VERIFY_RESET_TOKEN_URL = `${API_URL}/auth/verify-reset-token`;
 export const GET_USER_URL = `${API_URL}/user/profile`;
 
 interface AuthContextProps {
@@ -42,9 +43,10 @@ interface AuthContextProps {
   changePassword: (
     email: string,
     token: string,
-    password: string,
-    password_confirmation: string,
-  ) => Promise<void>;
+    newPassword: string,
+    confirmPassword: string,
+  ) => Promise<any>;
+  verifyResetToken: (token: string, e: string) => Promise<any>;
   getUser: () => Promise<AxiosResponse<any>>;
   logout: () => void;
   verify: () => Promise<void>;
@@ -142,15 +144,17 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
   //   });
   // };
   const requestPasswordResetLink = async (email: string) => {
-    const response = await axios.post(`${API_URL}/auth/check-email`, { email });
+    const response = await axios.post(FORGOT_PASSWORD_URL, { email });
     return response.data;
   };
 
-  const changePassword = async (email: string, newPassword: string, confirmPassword: string) => {
-    if (newPassword !== confirmPassword) {
-      throw new Error("Passwords do not match");
-    }
-    const response = await axios.post(`${API_URL}/auth/update-password`, { email, newPassword });
+  const changePassword = async (e: string, token: string, newPassword: string, confirmPassword: string) => {
+    const response = await axios.post(RESET_PASSWORD_URL, { e, token, newPassword, confirmPassword });
+    return response.data;
+  };
+
+  const verifyResetToken = async (token: string, e: string) => {
+    const response = await axios.post(VERIFY_RESET_TOKEN_URL, { token, e });
     return response.data;
   };
 
@@ -179,6 +183,7 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
         register,
         requestPasswordResetLink,
         changePassword,
+        verifyResetToken,
         getUser,
         logout,
         verify

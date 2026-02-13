@@ -72,7 +72,7 @@ const Signup = () => {
         const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
         const userRole = (response as any)?.user?.role;
         
-        if (userRole === 'User' || userRole === 3) {
+        if (userRole === 'User') {
           navigate('/account/home/user-profile', { replace: true });
         } else {
           navigate('/', { replace: true });

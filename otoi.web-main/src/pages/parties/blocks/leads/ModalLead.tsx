@@ -84,10 +84,12 @@ const STATUS_LABEL_TO_VALUE: Record<string, string> = {
 // Validation Schema
 const saveLeadSchema = Yup.object().shape({
   first_name: Yup.string()
+    .trim()
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols")
     .required("First Name is required"),
   last_name: Yup.string()
+    .trim()
     .min(3, "Minimum 3 symbols")
     .max(50, "Maximum 50 symbols")
     .required("Last Name is required"),
@@ -100,14 +102,15 @@ const saveLeadSchema = Yup.object().shape({
     .test("mobile-length", "Mobile must be 10 digits", (value) =>
       !value || value.length === 10
     ),
-    gst: Yup.string()
+  gst: Yup.string()
+    .trim()
     .min(15, "Minimum 15 symbols")
     .max(15, "Maximum 15 symbols")
     .when("status", {
       is: (val: string) => val === "4",
       then: (schema) => schema.required("GST is required"),
-      otherwise: (schema) => schema. nullable(),
-    }),    
+      otherwise: (schema) => schema.nullable(),
+    }),
   pin: Yup.string()
     .matches(/^[0-9]+$/, "Pin must be a number")
     .when("status", {
@@ -269,11 +272,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const submitLead = async (values: any, { setStatus, setSubmitting }: any) => {
     try {
       const postData = {
-        first_name: values.first_name,
-        last_name: values.last_name,
+        first_name: values.first_name?.trim(),
+        last_name: values.last_name?.trim(),
         mobile: values.mobile || null,
-        email: values.email || null,
-        gst: values.gst,
+        email: values.email?.trim() || null,
+        gst: values.gst?.trim(),
         status: values.status,
         city: values.city,
         state: values.state,
@@ -568,6 +571,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
                             { "border-red-500": formik.touched.gst && formik.errors.gst }
                           )}
+                          onInput={(e) => {
+                            const input = e.target as HTMLInputElement;
+                            if (input.value.length > 15) {
+                              input.value = input.value.slice(0, 15);
+                            }
+                          }}
                         />
                         {formik.touched.gst && formik.errors.gst && (
                           <span role="alert" className="text-xs text-red-500">
