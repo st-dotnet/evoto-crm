@@ -345,16 +345,16 @@ const CreateQuotationPage = () => {
     }
   };
 
-  const fetchNextQuotationNumber = async () => {
-    try {
-      const response = await getNextQuotationNumber();
-      if (response.success && response.data?.next_quotation_number) {
-        setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
-      }
-    } catch (error) {
-      console.error("Error fetching next quotation number:", error);
-    }
-  };
+  // const fetchNextQuotationNumber = async () => {
+  //   try {
+  //     const response = await getNextQuotationNumber();
+  //     if (response.success && response.data?.next_quotation_number) {
+  //       setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching next quotation number:", error);
+  //   }
+  // };
 
   useEffect(() => {
     fetchParties();
@@ -636,8 +636,8 @@ const CreateQuotationPage = () => {
       setFormData({
         quotationNo: "", // Will be generated fresh
         quotationDate: today,
-        validFor: duplicateData.validFor || 10,
-        validityDate: duplicateData.validityDate || addDays(today, 10),
+        validFor: 10,
+        validityDate: addDays(today, 10),
         status: "open", // Always set to 'open' for duplicates
       });
 
@@ -1736,6 +1736,7 @@ const CreateQuotationPage = () => {
                 onChange={handleChange}
                 className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="0"
+                disabled={formData.status === 'closed'}
               />
             </div>
             <div className="space-y-1.5">
@@ -1745,7 +1746,9 @@ const CreateQuotationPage = () => {
                 name="quotationDate"
                 value={formData.quotationDate}
                 onChange={handleChange}
-                className="h-8 text-sm"
+                min={today}
+                className="w-full"
+                disabled={formData.status === 'closed'}
               />
             </div>
             <div className="space-y-1.5">
@@ -1755,7 +1758,9 @@ const CreateQuotationPage = () => {
                 name="validityDate"
                 value={formData.validityDate}
                 onChange={handleChange}
+                min={today}
                 className="h-8 text-sm"
+                disabled={formData.status === 'closed'}
               />
             </div>
           </div>

@@ -39,14 +39,18 @@ export const getItems = async (
     limit: String(limit),
   });
 
-  const token = localStorage.getItem('token');
+  const token = getAuthToken();
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const response = await axios.get<ItemsApiResponse>(
-    `${API_URL}/items/?${params.toString()}`,
-    { headers }
-  );
-  return response.data;
+  try {
+    const response = await axios.get<ItemsApiResponse>(
+      `${API_URL}/items/?${params.toString()}`,
+      { headers }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
 export const createItem = async (payload: any): Promise<ApiResponse> => {
