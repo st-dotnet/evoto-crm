@@ -52,7 +52,7 @@ export function setupAxios(axios: any) {
     },
     async (err: any) => await Promise.reject(err)
   );
-// Response interceptor to handle 403 errors globally when any user deactivation occurs
+  // Response interceptor to handle 403 errors globally when any user deactivation occurs
   axios.interceptors.response.use(
     (response: any) => {
       return response;
@@ -61,7 +61,7 @@ export function setupAxios(axios: any) {
       if (error.response && error.response.status === 403) {
         const message = error.response.data.message || error.response.data.error;
         if (message === "Account deactivated or user not found. Please log in again.") {
-          toast.error(message);
+          toast.error(message, { id: 'account-deactivated' });
           // Optional: clear auth and redirect
           removeAuth();
           // window.location.reload();
