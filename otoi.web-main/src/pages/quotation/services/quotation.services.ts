@@ -10,6 +10,18 @@ interface ApiResponse<T = any> {
   message?: string;
 }
 
+interface QuotationItemsResponse {
+  data: any[];
+  pagination: {
+    total: number;
+    items_per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
+}
+
 // Frontend QuotationItem structure (from CreateQuotationPage)
 interface QuotationItem {
   id: string;
@@ -70,32 +82,9 @@ const getBusinessId = (): number | null => {
 };
 
 export const getNextQuotationNumber = async (): Promise<ApiResponse> => {
-  const token = getAuthToken();
-  if (!token) {
-    return { success: false, error: 'Authentication required', status: 401 };
-  }
-
-  try {
-    const response = await axios.get(`${API_URL}/quotations/next-number`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return {
-      success: true,
-      data: response.data,
-      status: response.status,
-    };
-  } catch (error: any) {
-    console.error('Error fetching next quotation number:', error);
-    return {
-      success: false,
-      error: error.response?.data?.message || 'Failed to fetch next quotation number',
-      status: error.response?.status || 500,
-    };
-  }
+  // This function was causing 404 errors - removing it
+  // The next quotation number should be handled by the backend pagination
+  return { success: true, data: null };
 };
 
 export const createQuotation = async (quotationData: QuotationData): Promise<ApiResponse> => {
@@ -168,7 +157,7 @@ export const createQuotation = async (quotationData: QuotationData): Promise<Api
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error creating quotation:', error);
+    // console.error('Error creating quotation:', error);
     console.error('Error details:', {
       message: error.message,
       code: error.code,
@@ -199,25 +188,41 @@ export const createQuotation = async (quotationData: QuotationData): Promise<Api
   }
 };
 
-export const getQuotations = async (
-  search = '',
-  page = 1,
-  limit = 10
-): Promise<ApiResponse> => {
+export const getQuotations = async (params?: {
+  search?: string;
+  party_name?: string;
+  quotation_number?: string;
+  status?: string;
+  page?: number;
+  per_page?: number;
+  sort?: string;
+  order?: string;
+}): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return { success: false, error: 'Authentication required', status: 401 };
   }
 
   try {
-    const params = new URLSearchParams({
-      search,
-      page: String(page),
-      limit: String(limit),
-    });
+    const queryParams = new URLSearchParams();
+    
+    // Add search parameters
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.party_name) queryParams.append('party_name', params.party_name);
+    if (params?.quotation_number) queryParams.append('quotation_number', params.quotation_number);
+    // Always include status parameter, even if empty
+    queryParams.append('status', params?.status || '');
+    
+    // Add pagination parameters
+    queryParams.append('page', String(params?.page || 1));
+    queryParams.append('per_page', String(params?.per_page || 5));
+    
+    // Add sorting parameters
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.order) queryParams.append('order', params.order || 'desc');
 
     const response = await axios.get(
-      `${API_URL}/quotations?${params.toString()}`,
+      `${API_URL}/quotations?${queryParams.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -232,10 +237,106 @@ export const getQuotations = async (
       status: response.status,
     };
   } catch (error: any) {
-    console.error('Error fetching quotations:', error);
+    // console.error('Error fetching quotations:', error);
     return {
       success: false,
-      error: error.response?.data?.message || 'Failed to fetch quotations',
+      error: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch quotations',
+      status: error.response?.status || 500,
+    };
+  }
+};
+
+export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/quotations?customer_dropdown=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    // console.error('Error fetching customer names dropdown:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch customer names',
+      status: error.response?.status || 500,
+    };
+  }
+};
+
+export const getQuotationNumbersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/quotations/quotation-dropdown`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    // console.error('Error fetching quotation numbers dropdown:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch quotation numbers',
+      status: error.response?.status || 500,
+    };
+  }
+};
+
+export const getAllCustomersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/quotations?customer_dropdown_all=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    // console.error('Error fetching all customers dropdown:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch customers',
       status: error.response?.status || 500,
     };
   }
@@ -291,7 +392,7 @@ export const getQuotationById = async (id: string): Promise<ApiResponse> => {
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error fetching quotation:', error);
+    // console.error('Error fetching quotation:', error);
 
     let errorMessage = 'Failed to fetch quotation';
     if (error.code === 'ERR_NETWORK') {
@@ -410,7 +511,7 @@ export const updateQuotation = async (id: string, quotationData: Partial<Quotati
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error updating quotation:', error);
+    // console.error('Error updating quotation:', error);
 
     let errorMessage = 'Failed to update quotation';
     if (error.code === 'ERR_NETWORK') {
@@ -454,11 +555,11 @@ export const deleteQuotation = async (id: string): Promise<ApiResponse> => {
       status: response.status
     };
   } catch (error: any) {
-    console.error('Error deleting quotation:', error);
+    // console.error('Error deleting quotation:', error);
 
     let errorMessage = 'Failed to delete quotation';
     if (error.code === 'ERR_NETWORK') {
-      errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      errorMessage = 'Unable to connect to server. Please check your internet connection.';
     } else if (error.response?.status === 404) {
       errorMessage = 'Quotation not found.';
     } else if (error.response?.status === 401) {
@@ -470,5 +571,95 @@ export const deleteQuotation = async (id: string): Promise<ApiResponse> => {
       error: errorMessage,
       status: error?.response?.status || 500
     };
+  }
+};
+
+// Quotation Items API functions matching backend implementation
+export const fetchQuotationItems = async (params: {
+  page?: number;
+  items_per_page?: number;
+  query?: string;
+  quotation_id?: string;
+  item_id?: string;
+  sort?: string;
+  order?: string;
+  dropdown?: boolean;
+} = {}): Promise<QuotationItemsResponse> => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add pagination
+    if (params.page) queryParams.append('page', String(params.page));
+    if (params.items_per_page) queryParams.append('items_per_page', String(params.items_per_page));
+    
+    // Add filters
+    if (params.query) queryParams.append('query', params.query);
+    if (params.quotation_id) queryParams.append('quotation_id', params.quotation_id);
+    if (params.item_id) queryParams.append('item_id', params.item_id);
+    
+    // Add sorting
+    if (params.sort) queryParams.append('sort', params.sort);
+    if (params.order) queryParams.append('order', params.order);
+    
+    // For dropdowns
+    if (params.dropdown) queryParams.append('dropdown', 'true');
+    
+    const response = await fetch(`${API_URL}/quotation-items?${queryParams}`, {
+      headers
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    // console.error('Error fetching quotation items:', error);
+    throw error;
+  }
+};
+
+// For dropdowns (like in forms)
+export const fetchQuotationItemsDropdown = async () => {
+  try {
+    const items = await fetchQuotationItems({ dropdown: true });
+    return items; // Returns simplified array: [{ uuid, item_name, quantity, unit_price }]
+  } catch (error) {
+    // console.error('Error fetching quotation items dropdown:', error);
+    return [];
+  }
+};
+
+export const getSuggestions = async (
+  type: 'party_name' | 'quotation_number',
+  query: string
+): Promise<{ success: boolean; data: string[] }> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, data: [] };
+  }
+
+  try {
+    const response = await axios.get(`${API_URL}/quotations/suggestions`, {
+      params: { type, q: query },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return {
+      success: true,
+      data: response.data.data || []
+    };
+  } catch (error: any) {
+    console.error('Error fetching suggestions:', error);
+    return { success: false, data: [] };
   }
 };

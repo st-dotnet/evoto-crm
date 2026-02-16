@@ -5,27 +5,81 @@ from uuid import UUID
 import uuid
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, or_
 from app.extensions import db
-from app.models import Item, ItemCategory, MeasuringUnit
+from app.models import Item, ItemCategory, MeasuringUnit, ItemType
 from app.utils.stamping import set_created_fields, set_updated_fields
 
 item_blueprint = Blueprint("item", __name__, url_prefix="/items")
+
 @item_blueprint.route("/", methods=["GET"])
 def get_items():
     """
-    Get all items (excluding soft-deleted items).
+    Get all items with pagination, search, sorting, and item type filtering.
     ---
     tags:
       - Items
+    parameters:
+      - name: item_type
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filter by item type name ('Product' or 'Service', case-insensitive)
+      - name: item_type_id
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Filter by item type ID (1 for Product, 2 for Service)
+      - name: query
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Search term for item name, code, description, or HSN code
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Page number (default: 1)
+      - name: items_per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Items per page (default: 5)
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Sort field (default: created_at)
+      - name: order
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Sort order: asc or desc (default: desc)
+      - name: dropdown
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Return simplified format for dropdowns
     responses:
       200:
-        description: A list of items.
+        description: A paginated list of items.
         content:
           application/json:
             schema:
-              type: array
-              items:
-                type: object
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
                 properties:
                   id:
                     type: integer
@@ -78,41 +132,133 @@ def get_items():
                     description: Business ID
     """
     try:
-        items = Item.query.filter_by(is_deleted=False).all()
-        result = []
+           
+        query = Item.query.filter_by(is_deleted=False)
 
+        # Filter by item_type_id first (for frontend compatibility)
+        # if "item_type_id" in request.args:
+        #     item_type_id_value = request.args.get("item_type_id", "").strip()
+        #     if item_type_id_value:
+        #         try:
+        #             item_type_id = int(item_type_id_value)
+        #             query = query.filter(Item.item_type_id == item_type_id)
+        #         except ValueError:
+        #             pass
+        
+        # # Filter by item_type if provided (alternative by name)
+        # elif "item_type" in request.args:
+        #     item_type_value = request.args.get("item_type", "").strip().lower()
+        #     if item_type_value:
+        #         # Use subquery approach to filter by item type name
+        #         matching_type = ItemType.query.filter(ItemType.name.ilike(item_type_value)).first()
+        #         if matching_type:
+        #             query = query.filter(Item.item_type_id == matching_type.id)
+        #         else:
+        #             # If no matching type found, return empty result
+        #             query = query.filter(Item.item_type_id == -1) 
+
+        # Search query filter
+        if "query" in request.args:
+            query_value = request.args.get("query", "").strip()
+            if query_value:
+                query = query.filter(
+                    or_(
+                        Item.item_name.ilike(f"%{query_value}%"),
+                        Item.item_code.ilike(f"%{query_value}%"),
+                        Item.description.ilike(f"%{query_value}%"),
+                        Item.hsn_code.ilike(f"%{query_value}%")
+                    )
+                )
+
+        sort = request.args.get("sort", "created_at")  # Default sort by created_at
+        order = request.args.get("order", "desc").upper()  # Default order is 'desc'
+
+        for field in sort.split(","):
+            if field == "item_name":
+                if order == "desc":
+                    query = query.order_by(db.desc(Item.item_name))
+                else:
+                    query = query.order_by(Item.item_name)
+            elif field == "item_code":
+                if order == "desc":
+                    query = query.order_by(db.desc(Item.item_code))
+                else:
+                    query = query.order_by(Item.item_code)
+            elif field == "sales_price":
+                if order == "desc":
+                    query = query.order_by(db.desc(Item.sales_price))
+                else:
+                    query = query.order_by(Item.sales_price)
+            else:
+                # Handle other fields
+                if field.startswith("-"):
+                    query = query.order_by(db.desc(getattr(Item, field[1:], "id")))
+                else:
+                    query = query.order_by(getattr(Item, field, "id"))
+
+        # Return all items for dropdown if requested
+        if request.args.get("dropdown") == "true":
+            items = query.all()
+            return jsonify([
+                {
+                    "id": str(item.id),
+                    "item_name": item.item_name or "",
+                    "item_code": item.item_code or ""
+                }
+                for item in items
+            ])
+
+        # Paginated results for the main grid
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("items_per_page", 5))
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = pagination.items
+
+        # Shape response to match frontend expectations: { data: [...], pagination: { total, ... } }
+        result = []
         for item in items:
             category = item.category
             item_type = item.item_type
             measuring_unit = item.measuring_unit
 
             result.append({
-                "id": item.id,
+                "id": str(item.id),  # Convert to string for consistency
+                "uuid": str(item.id),  # Add uuid field for frontend compatibility
                 "item_name": item.item_name or "",
-
                 "item_type": item_type.name if item_type else None,
                 "item_type_id": item.item_type_id,
-
                 "category": category.name if category else None,
                 "category_id": str(item.category_id) if item.category_id else None,
-
                 "sales_price": float(item.sales_price or 0),
                 "purchase_price": float(item.purchase_price or 0),
                 "gst_tax_rate": float(item.gst_tax_rate or 0),
                 "opening_stock": float(item.opening_stock or 0),
-
                 "item_code": item.item_code or "",
                 "hsn_code": item.hsn_code or "",
                 "description": item.description or "",
-
                 "measuring_unit": measuring_unit.name if measuring_unit else None,
                 "measuring_unit_id": item.measuring_unit_id,
             })
 
-        return jsonify(result)
+        response_data = {
+            "data": result,
+            "pagination": {
+                "total": pagination.total,
+                "items_per_page": per_page,
+                "current_page": page,
+                "last_page": pagination.pages,
+                "from": (
+                    (pagination.page - 1) * per_page + 1 if pagination.total > 0 else 0
+                ),
+                "to": min(pagination.page * per_page, pagination.total),
+                "prev_page_url": None,
+                "next_page_url": None,
+                "first_page_url": None,
+            },
+        }
+        return jsonify(response_data)
 
     except Exception as e:
-        print(f"Error in get_items: {str(e)}")
         return jsonify({
             "error": "Failed to fetch items",
             "details": str(e)
@@ -427,7 +573,6 @@ def get_item(item_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error in get_item: {str(e)}")
         return jsonify({
             "error": "Failed to fetch item",
             "details": str(e)
@@ -445,7 +590,6 @@ def update_item(item_id):
 
         # data.pop("item_code", None)
 
-        print(f"Updating item {item_id} with data: {data}")
 
         item = db.session.query(Item).with_for_update().get(item_id)
         if not item or item.is_deleted:
@@ -457,19 +601,6 @@ def update_item(item_id):
             new_name = data["item_name"].strip()
             if not new_name:
                 errors.setdefault("item_name", []).append("Item name cannot be empty")
-            # elif new_name != item.item_name:
-            #     existing = db.session.query(Item).filter(
-            #         Item.item_name == new_name,
-            #         Item.id != item_id,  # Direct UUID comparison instead of string
-            #         Item.is_deleted.is_(False)
-            #     ).first()
-            #     print("item_id:", item_id, type(item_id))
-            #     if existing:
-            #         errors.setdefault("item_name", []).append(
-            #             "An item with this name already exists"
-            #         )
-        print("item_id:", item_id, type(item_id))
-
         if "category_id" in data:
             if not data["category_id"]:
                 item.category_id = None
@@ -481,7 +612,6 @@ def update_item(item_id):
                     errors.setdefault("category_id", []).append("Invalid category")
                 else:
                     item.category_id = category.uuid
-
         if "measuring_unit_id" in data:
             if not data["measuring_unit_id"]:
                 errors.setdefault("measuring_unit_id", []).append(
@@ -495,7 +625,6 @@ def update_item(item_id):
                     )
                 else:
                     item.measuring_unit_id = measuring_unit.id
-
         numeric_fields = {
             "sales_price": (0, None),
             "purchase_price": (0, None),
@@ -516,28 +645,25 @@ def update_item(item_id):
 
         if "item_code" in data:
             new_code = str(data["item_code"]).strip()
-            print(f"DEBUG: item_code update - new_code: '{new_code}', current item.item_code: '{item.item_code}', types: {type(new_code)}, {type(item.item_code)}")
             
             if not new_code:
                 errors.setdefault("item_code", []).append("Item code cannot be empty")
             elif new_code != item.item_code:
-                print(f"DEBUG: item_code changed, checking for duplicates...")
                 existing = db.session.query(Item).filter(
                     Item.item_code == new_code,
                     Item.id != item_id,  # Direct UUID comparison instead of string
                     Item.is_deleted.is_(False)
                      
                 ).first()
-                print(f"DEBUG: duplicate check result: {existing}")
                 if existing:
                     errors.setdefault("item_code", []).append(
                         "Item code already exixts"
                     )      
                 else:
-                    print(f"DEBUG: No duplicate found, updating item_code to: {new_code}")
                     item.item_code = new_code
             else:
-                print(f"DEBUG: item_code unchanged, skipping duplicate check")     
+                pass
+     
 
         if errors:
             return jsonify({
@@ -580,7 +706,6 @@ def update_item(item_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error in update_item: {str(e)}")
         return jsonify({
             "error": "Failed to update item",
             "details": str(e)

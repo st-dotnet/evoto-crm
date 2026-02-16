@@ -1,5 +1,6 @@
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -14,11 +15,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreVertical, Edit, Trash2, Eye } from "lucide-react";
-import { ColumnDef, Column } from "@tanstack/react-table";
+import { MoreVertical, Edit, Trash2, Eye, X, Check, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { SpinnerDotted } from 'spinners-react';
+import axios from "axios";
 import CreateItemModal from "./CreateItemModal";
 import { getItems, deleteItem, getItemById } from "../../pages/items/services/items.service";
 
@@ -43,100 +56,295 @@ interface InventoryItem {
 
 interface IColumnFilterProps<TData, TValue> {
   column: Column<TData, TValue>;
-  table?: any; // Add this line to fix the missing property error
+  table?: any;
 }
 
 interface IInventoryItemsProps {
   refreshStatus?: number;
 }
 
+const Toolbar = ({
+  defaultSearch,
+  setSearch,
+  defaultLowStock,
+  setDefaultLowStock,
+  defaultProductType,
+  setDefaultProductType,
+  onCreateItem,
+}: {
+  defaultSearch: string;
+  setSearch: (query: string) => void;
+  defaultLowStock: boolean;
+  setDefaultLowStock: (query: boolean) => void;
+  defaultProductType: string;
+  setDefaultProductType: (type: string) => void;
+  onCreateItem: () => void;
+}) => {
+  const [searchInput, setSearchInput] = useState(defaultSearch);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<{ item_id: string; item_name: string }[]>([]);
+
+  useEffect(() => {
+    setSearchInput(defaultSearch);
+  }, [defaultSearch]);
+
+  useEffect(() => {
+    const fetchAllItems = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?dropdown=true`);
+        // Remove duplicates by item_name, keeping only unique items with safety checks
+        const responseData = response?.data ?? [];
+        const uniqueItems = responseData.reduce((acc: any[], item: any) => {
+          if (!item?.item_name) return acc; // Skip items without names
+          const existingItem = acc.find(existing => existing?.item_name === item?.item_name);
+          if (!existingItem) {
+            acc.push(item);
+          }
+          return acc;
+        }, []);
+        
+        // Sort items alphabetically by item_name
+        const sortedItems = uniqueItems.sort((a: any, b: any) => {
+          const nameA = a?.item_name?.toLowerCase() ?? '';
+          const nameB = b?.item_name?.toLowerCase() ?? '';
+          return nameA.localeCompare(nameB);
+        });
+        
+        setItems(sortedItems);
+      } catch (error) {
+        console.error("Failed to fetch all items dropdown", error);
+        setItems([]); // Set empty array on error
+      }
+    };
+    fetchAllItems();
+  }, []);
+
+  // Handle input change and trigger debounced search
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    setOpen(true); // Keep dropdown open while typing
+  };
+  
+  const filteredItems = useMemo(() => {
+    if (!searchInput) return items;
+    return items.filter((item) =>
+      item?.item_name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+    );
+  }, [items, searchInput]);
+
+  return (
+    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
+      <div className="flex grow md:grow-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <div className="relative w-full md:w-64 lg:w-72">
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <KeenIcon
+                  icon="magnifier"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                />
+                <Input
+                  placeholder="Search items..."
+                  value={searchInput}
+                  onChange={handleInputChange}
+                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
+                  className="pl-9 pr-9 h-9 text-xs"
+                />
+                {searchInput && (
+                  <X
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearch("");
+                    }}
+                  />
+                )}
+              </div>
+            </PopoverTrigger>
+          </div>
+
+          <PopoverContent
+            className="p-0 w-[var(--radix-popover-trigger-width)]"
+            align="start"
+            onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
+          >
+            <Command>
+              <CommandList>
+                {(filteredItems || [])?.length === 0 && (
+                  <CommandEmpty>No item found.</CommandEmpty>
+                )}
+                <CommandGroup>
+                  {(filteredItems || [])?.map((item) => (
+                    <CommandItem
+                      key={item?.item_id}
+                      value={item?.item_name}
+                      onSelect={() => {
+                        setSearchInput(item?.item_name);
+                        setSearch(item?.item_name); // Hit the API with exact selection
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          searchInput === item?.item_name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {item?.item_name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="flex items-center gap-2">
+        {/* <select 
+          value={defaultProductType === "all" ? "" : defaultProductType} 
+          onChange={(e) => setDefaultProductType(e.target.value || "all")}
+          className="item-type-filter px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">All Items</option>
+          <option value="Product">Products</option>
+          <option value="Service">Services</option>
+        </select> */}
+        <button
+          className={`btn btn-sm ${defaultLowStock ? "btn-primary" : "btn-light"}`}
+          onClick={() => setDefaultLowStock(!defaultLowStock)}
+        >
+          {defaultLowStock ? "Showing Low Stock" : "Show Low Stock"}
+        </button>
+        <button
+          className="btn btn-sm btn-primary"
+          onClick={onCreateItem}
+        >
+          Create Item
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [lowStock, setLowStock] = useState(false);
+  const [productType, setProductType] = useState<string>("all"); // "all", "Product", "Service"
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [itemsData, setItemsData] = useState<InventoryItem[]>([]);
 
   const navigate = useNavigate();
 
-  // Fetch items from API
-  const fetchItems = async () => {
+  // Helper function to safely convert to number with fallback
+  const toNumber = (value: any, fallback = 0): number => {
+    if (value === null || value === undefined || value === 'None') return fallback;
+    const num = Number(value);
+    return isNaN(num) ? fallback : num;
+  };
+
+  // Fetch items from API with pagination, sorting, and search
+  const fetchItems = async (params: TDataGridRequestParams) => {
     try {
       setLoading(true);
-      const response = await getItems("", 1, 1000); // Fetch all items at once
+      const queryParams = new URLSearchParams();
+      queryParams.set("page", String(params.pageIndex + 1));
+      queryParams.set("items_per_page", String(params.pageSize));
 
-      const itemsData = Array.isArray(response)
-        ? response
-        : (response && 'items' in response)
-          ? response.items
-          : [];
+      if (params.sorting?.[0]?.id) {
+        queryParams.set("sort", params.sorting[0].id);
+        queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
+      }
 
-      const mappedItems = itemsData
-        .map((item: any) => ({
-          item_id: item.id || "",
-          item_name: item.item_name || "Unnamed Item",
-          item_code: item.item_code || `ITEM-${Date.now()}`,
-          opening_stock: toNumber(item.opening_stock, 0),
-          sales_price: toNumber(item.sales_price, 0),
-          purchase_price:
-            item.purchase_price !== null && item.purchase_price !== "None"
-              ? toNumber(item.purchase_price, 0)
-              : null,
-          type: item.item_type || item.type || "Product",
-          item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
-          category: item.category || "Uncategorized",
-          business_id: item.business_id || null,
-        }))
-        .sort((a, b) => b.item_id - a.item_id);
+      if (searchQuery) {
+        queryParams.set("query", searchQuery);
+      } else {
+        queryParams.delete("query");
+      }
+
+      if (lowStock) {
+        queryParams.set("low_stock", "true");
+      }
+
+      if (productType && productType !== "all") {
+        queryParams.set("item_type_id", productType === "Product" ? "1" : "2");
+      }
+
+      if (params.columnFilters) {
+        params.columnFilters.forEach(({ id, value }) => {
+          if (value !== undefined && value !== null) {
+            queryParams.set(`filter[${id}]`, String(value));
+          }
+        });
+      }
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_APP_API_URL}/items/?${queryParams.toString()}`,
+      );
+      const payload: any = response?.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
+
+      // Map response data to our interface
+      const mappedItems = rows.map((item: any) => ({
+        item_id: item.id || "",
+        item_name: item.item_name || "Unnamed Item",
+        item_code: item.item_code || `ITEM-${Date.now()}`,
+        opening_stock: toNumber(item.opening_stock, 0),
+        sales_price: toNumber(item.sales_price, 0),
+        purchase_price:
+          item.purchase_price !== null && item.purchase_price !== "None"
+            ? toNumber(item.purchase_price, 0)
+            : null,
+        type: item.item_type || item.type || "Product",
+        item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
+        category: item.category || "Uncategorized",
+        business_id: item.business_id || null,
+        description: item.description,
+        hsn_code: item.hsn_code,
+        category_id: item.category_id,
+        measuring_unit_id: item.measuring_unit_id,
+        gst_tax_rate: item.gst_tax_rate,
+      }));
 
       setItems(mappedItems);
-    } catch (err) {
-      setItems([]);
-      toast.error("Failed to fetch items. Please try again.");
+      return {
+        data: mappedItems,
+        totalCount: total,
+      };
+    } catch (error) {
+      console.log(error);
+      toast(`Connection Error`, {
+        description: `An error occurred while fetching data. Please try again later`,
+        action: {
+          label: "Ok",
+          onClick: () => console.log("Ok"),
+        },
+      });
+
+      return {
+        data: [],
+        totalCount: 0,
+      };
     } finally {
       setLoading(false);
     }
   };
 
   // Fetch items on component mount or when dependencies change
-  // useEffect(() => {
-  //   fetchItems();
-  // }, [refreshStatus, searchQuery, lowStock]);
-  useEffect(() => {
-    fetchItems();
-  }, [refreshStatus]); // Remove searchQuery from dependencies
-
-  useEffect(() => {
-    let result = [...items];
-
-    // Apply search filter
-    if (searchQuery.trim() !== "") {
-      result = result.filter(
-        (item) =>
-          item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.item_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.category.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Apply low stock filter (Products only)
-    if (lowStock) {
-      result = result.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5);
-    }
-
-    setFilteredItems(result);
-  }, [searchQuery, lowStock, items]);
-
-  // Update refresh key when refreshStatus changes
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus]);
+  }, [refreshStatus, searchQuery, lowStock]);
 
   // Calculate stock value and low stock count (Products only)
   const stockValue = items
@@ -152,13 +360,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     setDeleteDialogOpen(true);
   };
 
-  // Helper function to safely convert to number with fallback
-  const toNumber = (value: any, fallback = 0): number => {
-    if (value === null || value === undefined || value === 'None') return fallback;
-    const num = Number(value);
-    return isNaN(num) ? fallback : num;
-  };
-
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
 
@@ -166,7 +367,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     try {
       await deleteItem(itemToDelete);
       toast.success("Item deleted successfully");
-      fetchItems();
+      setRefreshKey((prev) => prev + 1); // Trigger refresh instead of calling fetchItems directly
     } catch (err) {
       toast.error("Failed to delete item. Please try again.");
     } finally {
@@ -417,17 +618,32 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     []
   );
 
+  // Handle row selection changes
+  const handleRowSelection = (state: RowSelectionState) => {
+    setRowSelection(state);
+    const selectedRowIds = Object.keys(state);
+    if (selectedRowIds.length > 0) {
+      toast(`Total ${selectedRowIds.length} are selected.`);
+    }
+  };
   // Render the component
   return (
-    <div className="container-fluid p-6">
+    <div className="grid gap-5 lg:gap-7.5 relative">
+      {(loading || isDeleting || isEditing) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 mx-4 lg:mx-6">
         <h1 className="text-2xl font-bold">Items</h1>
       </div>
 
-
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5 mx-4 lg:mx-6">
         {/* Stock Value */}
         <div className="card border rounded-3 grow">
           <div className="card-body py-4 px-5 flex justify-between items-center">
@@ -457,85 +673,68 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         </div>
       </div>
 
-      {/* Search and Buttons */}
-      <div className="flex flex-wrap gap-2.5 mb-5">
-        <button
-          className={`btn btn-sm ${lowStock ? "btn-primary" : "btn-light"}`}
-          onClick={() => setLowStock(!lowStock)}
-        >
-          {lowStock ? "Showing Low Stock" : "Show Low Stock"}
-        </button>
-        <button
-          className="btn btn-sm btn-primary"
-          onClick={() => {
-            setSelectedItem(null);
-            setShowModal(true);
-          }}
-        >
-          Create Item
-        </button>
-      </div>
-
-
-
-      {/* Search Bar */}
-      <div className="bg-white border rounded-lg overflow-hidden flex flex-col mt-4 h-full">
-        <div className="p-4 border-b">
-          <label className="input input-sm w-full md:w-64">
-            <KeenIcon icon="magnifier" />
-            <input
-              type="text"
-              placeholder="Search items"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+      <div className="mx-4 lg:mx-6">
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={true}
+          onFetchData={fetchItems}
+          loading={false}
+          rowSelection={true}
+          rowSelectionState={rowSelection}
+          getRowId={(row: any) => row.item_id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          toolbar={
+            <Toolbar
+              defaultSearch={searchQuery}
+              setSearch={setSearchQuery}
+              defaultLowStock={lowStock}
+              setDefaultLowStock={setLowStock}
+              defaultProductType={productType}
+              setDefaultProductType={setProductType}
+              onCreateItem={() => {
+                setSelectedItem(null);
+                setShowModal(true);
+              }}
             />
-          </label>
-        </div>
-
-        {/* DataGrid Container */}
-        <div className="flex-grow overflow-hidden">
-          {loading ? (
-            <div className="text-center py-10">Loading...</div>
-          ) : (
-            <div className="h-full">
-              <DataGrid
-                key={refreshKey}
-                columns={columns}
-                data={filteredItems}
-                rowSelection
-                getRowId={(row) => row.item_id}
-                pagination={{ size: 5 }}
-              />
-            </div>
-          )}
-        </div>
+          }
+          layout={{ card: true }}
+        />
       </div>
 
 
       {/* Modal */}
-      <CreateItemModal
-        open={showModal}
-        onOpenChange={() => {
-          setShowModal(false);
-          setSelectedItem(null);
-          fetchItems();
-        }}
-        onSuccess={fetchItems}
-        item={
-          selectedItem
-            ? {
-                ...selectedItem,
-              
-                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
-                item_type_id: (selectedItem as any).item_type_id ?? 0,
-                category_id: (selectedItem as any).category_id ?? 0,
-                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-              }
-            : null
-        }
+      <div className="mx-4 lg:mx-6">
+        <CreateItemModal
+          open={showModal}
+          onOpenChange={(open: boolean) => {
+            setShowModal(open);
 
-      />
+            if (!open) {
+              setSelectedItem(null);
+              setRefreshKey((prev) => prev + 1); // Increment key to trigger grid refresh
+            }
+          }}
+          onSuccess={() => {
+            setShowModal(false);
+            setRefreshKey((prev) => prev + 1);
+          }}
+          item={
+            selectedItem
+              ? {
+                  ...selectedItem,
+                
+                  purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                  item_type_id: (selectedItem as any).item_type_id ?? 0,
+                  category_id: (selectedItem as any).category_id ?? 0,
+                  measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                  gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+                }
+              : null
+          }
+        />
+      </div>
 
       {/* Delete Confirmation Dialog */}
       {deleteDialogOpen && (

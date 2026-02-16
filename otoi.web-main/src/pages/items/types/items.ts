@@ -21,6 +21,13 @@ export interface Item {
   sales_price: number;
 }
 export interface ItemsApiResponse {
-  items: Item[];
-  total: number;
+  data: Item[];
+  pagination: {
+    total: number;
+    items_per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
 }

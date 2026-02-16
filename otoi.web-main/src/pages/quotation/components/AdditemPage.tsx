@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, X } from "lucide-react";
 import { getItems } from "../../items/services/items.service";
+import { ItemsApiResponse } from "../../items/types/items";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -52,16 +53,36 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await getItems("", 1, 1000);
+      let allItems: any[] = [];
+      let currentPage = 1;
+      let hasMoreItems = true;
+      const pageSize = 100; // Reasonable page size
 
-      const itemsData = Array.isArray(response)
-        ? response
-        : response && "items" in response
-        ? response.items
-        : [];
+      // Fetch all pages until we have all items
+      while (hasMoreItems) {
+        const response: ItemsApiResponse = await getItems("", currentPage, pageSize);
+        
+        if (response.data && response.data.length > 0) {
+          allItems = [...allItems, ...response.data];
+          
+          // Check if there are more pages based on pagination info
+          if (response.pagination) {
+            hasMoreItems = currentPage < response.pagination.last_page;
+          } else {
+            // Fallback: if no pagination info, assume no more items if we got less than requested
+            hasMoreItems = response.data.length === pageSize;
+          }
+          
+          currentPage++;
+        } else {
+          hasMoreItems = false;
+        }
+      }
+
+      const itemsData = allItems;
 
       const mappedItems: InventoryItem[] = itemsData.map((item: any) => ({
-        item_id: item.id || "",
+        item_id: item.id?.toString() || "",
         item_name: item.item_name || "Unnamed Item",
         item_code: item.item_code || `ITEM-${Date.now()}`,
         opening_stock: Number(item.opening_stock) || 0,
@@ -83,7 +104,6 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
       );
       setCategories(uniqueCategories);
     } catch (err) {
-      console.error("Error fetching items:", err);
       toast.error("Failed to fetch items. Please try again.");
       setItems([]);
     } finally {
@@ -135,7 +155,7 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
       // Set default quantity to 1 when item is selected
       setItemQuantities(prev => ({ ...prev, [itemId]: 1 }));
     }
-    setSelectedItems(newSelected);
+    setSelectedItems(newSelected);  
   };
 
   const updateItemQuantity = (itemId: string, quantity: number) => {
