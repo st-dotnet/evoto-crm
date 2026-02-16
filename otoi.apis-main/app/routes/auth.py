@@ -240,14 +240,9 @@ def login():
         # Log the error for debugging
         return jsonify({"error": "An error occurred during login. Please try again."}), 500
 
-    return jsonify({"error": "Invalid credentials"}), 401
-
-@auth_blueprint.route("/check-email", methods=["POST"])
-def check_email():
 @auth_blueprint.route("/check-email", methods=["POST"])
 def check_email():
     """
-    Check if the email exists in the database
     Check if the email exists in the database
     ---
     tags:
@@ -264,7 +259,6 @@ def check_email():
                 example: "user@example.com"
     responses:
       200:
-        description: Email found
         description: Email found
       404:
         description: Email not found

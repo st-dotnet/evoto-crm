@@ -108,12 +108,8 @@ const ResetPasswordEnterEmail = () => {
           )}
         </div>
 
-        <Link
-          to={
-            currentLayout?.name === 'auth-branded'
-              ? '/auth/reset-password/check-email'
-              : '/auth/classic/reset-password/check-email'
-          }
+        <button
+          type="submit"
           className="btn btn-primary flex justify-center grow"
           disabled={loading || formik.isSubmitting}
         >
