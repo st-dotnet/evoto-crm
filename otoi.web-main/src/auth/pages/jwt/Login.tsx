@@ -68,7 +68,7 @@ const Login = () => {
         if (userRole === 'User') {
           navigate('/account/home/user-profile', { replace: true });
         } else {
-          navigate(from, { replace: true });
+          navigate('/', { replace: true });
         }
       } catch (error: any) {
         // Check if the error is an Axios error and has a response

@@ -90,8 +90,8 @@ const initialValues: Person = {
 };
 
 const saveCustomerSchema = Yup.object().shape({
-  first_name: Yup.string().min(3).max(50).required("First Name is required"),
-  last_name: Yup.string().min(3).max(50).required("Last Name is required"),
+  first_name: Yup.string().trim().min(3).max(50).required("First Name is required"),
+  last_name: Yup.string().trim().min(3).max(50).required("Last Name is required"),
 
   mobile: Yup.string()
     .nullable()
@@ -141,6 +141,7 @@ const saveCustomerSchema = Yup.object().shape({
     .matches(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, "Invalid email format"),
 
   gst: Yup.string()
+    .trim()
     .nullable()
     .min(15, "GST must be 15 characters")
     .max(15, "GST must be 15 characters"),
@@ -1044,7 +1045,13 @@ const ModalCustomer = ({
                 <label className="block text-sm font-medium text-gray-700">
                   GST
                 </label>
-                <input {...formik.getFieldProps("gst")} className="input" />
+                <input {...formik.getFieldProps("gst")} className="input"
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    if (input.value.length > 15) {
+                      input.value = input.value.slice(0, 15);
+                    }
+                  }} />
                 {formik.touched.gst && formik.errors.gst && (
                   <span role="alert" className="text-xs text-red-500">
                     {formik.errors.gst}

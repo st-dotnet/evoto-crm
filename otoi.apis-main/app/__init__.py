@@ -5,6 +5,10 @@ from flask_cors import CORS
 from app.routes import register_blueprints
 from app.middleware import extract_jwt_info
 from app.cli import register_cli
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # from app.events import person_events  # IMPORTANT
 

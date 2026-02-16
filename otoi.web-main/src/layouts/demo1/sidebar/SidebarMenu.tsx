@@ -299,7 +299,8 @@ const SidebarMenu = () => {
 
       if (currentUser.role === 'Manager') {
         // Manager sees General, Accounting, Workspace, Apps, etc. but NOT "User" heading items or "Miscellaneous"
-        return currentHeading !== 'User' && currentHeading !== 'Miscellaneous';
+        // return currentHeading !== 'User' && currentHeading !== 'Miscellaneous';
+        return currentHeading !== 'Miscellaneous';
       }
 
       if (currentUser.role === 'User') {

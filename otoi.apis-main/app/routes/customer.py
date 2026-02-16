@@ -712,9 +712,13 @@ def update_customer(customer_id):
         # ---------------- UPDATE BASIC FIELDS ----------------
         for field in ["first_name", "last_name", "mobile", "email", "gst", "status"]:
             if field in data:
-                value = str(data[field]).strip() if data[field] is not None else None
+                # Special handling for mobile and email to allow null/empty
+                if field in ["mobile", "email"]:
+                    value = (str(data[field]) or "").strip() or None
+                else:
+                    value = str(data[field]).strip() if data[field] is not None else None
+                # Validate required fields
                 if field in ["first_name", "last_name"] and not value:
-
                    return jsonify({"error": f"Field '{field}' is required"}), 400
                 setattr(customer, field, value)
         

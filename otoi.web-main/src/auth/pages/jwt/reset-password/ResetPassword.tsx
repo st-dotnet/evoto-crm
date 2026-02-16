@@ -9,6 +9,7 @@ import { useAuthContext } from '@/auth/useAuthContext';
 import { Alert, KeenIcon } from '@/components';
 import { useLayout } from '@/providers';
 import { AxiosError } from 'axios';
+import { toast } from 'sonner';
 
 const initialValues = {
   email: ''
@@ -41,20 +42,27 @@ const ResetPassword = () => {
       setLoading(true);
       setHasErrors(undefined);
       try {
-        const params = new URLSearchParams();
-        params.append('email', values.email);
-        navigate({
-          pathname:
-            currentLayout?.name === 'auth-branded'
-              ? '/auth/reset-password/change'
-              : '/auth/classic/reset-password/change',
-          search: params.toString()
-        });
+        await requestPasswordResetLink(values.email);
+        setHasErrors(false);
+        setLoading(false);
+        setSubmitting(false);
+
+        // Redirect to check-email page using state to hide email from URL
+        navigate(
+          currentLayout?.name === 'auth-branded'
+            ? '/auth/reset-password/check-email'
+            : '/auth/classic/reset-password/check-email',
+          { state: { email: values.email } }
+        );
       } catch (error) {
         if (error instanceof AxiosError && error.response) {
-          setStatus(error.response.data.message);
+          const errorMessage = error.response.data.error || error.response.data.message || 'An error occurred.';
+          setStatus(errorMessage);
+          toast.error(errorMessage);
         } else {
-          setStatus('Password reset failed. Please try again.');
+          const errorMessage = 'User not found or an error occurred. Please try again.';
+          setStatus(errorMessage);
+          toast.error(errorMessage);
         }
         setHasErrors(true);
         setLoading(false);
