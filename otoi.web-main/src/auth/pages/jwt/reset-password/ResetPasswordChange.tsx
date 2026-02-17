@@ -28,8 +28,7 @@ const ResetPasswordChange = () => {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [hasErrors, setHasErrors] = useState<boolean | undefined>(undefined);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showNewPasswordConfirmation, setShowNewPasswordConfirmation] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -162,7 +161,7 @@ const ResetPasswordChange = () => {
           <label className="form-label text-gray-900">New Password</label>
           <label className="input">
             <input
-              type={showNewPassword ? 'text' : 'password'}
+              type={showPassword ? 'text' : 'password'}
               placeholder="Enter a new password"
               autoComplete="off"
               {...formik.getFieldProps('newPassword')}
@@ -176,13 +175,13 @@ const ResetPasswordChange = () => {
               className="btn btn-icon"
               onClick={(e) => {
                 e.preventDefault();
-                setShowNewPassword(!showNewPassword);
+                setShowPassword(!showPassword);
               }}
             >
-              <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showNewPassword })} />
+              <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showPassword })} />
               <KeenIcon
                 icon="eye-slash"
-                className={clsx('text-gray-500', { hidden: !showNewPassword })}
+                className={clsx('text-gray-500', { hidden: !showPassword })}
               />
             </button>
           </label>
@@ -197,7 +196,7 @@ const ResetPasswordChange = () => {
           <label className="form-label font-normal text-gray-900">Confirm New Password</label>
           <label className="input">
             <input
-              type={showNewPasswordConfirmation ? 'text' : 'password'}
+              type={showPassword ? 'text' : 'password'}
               placeholder="Re-enter a new Password"
               autoComplete="off"
               {...formik.getFieldProps('confirmPassword')}
@@ -211,16 +210,16 @@ const ResetPasswordChange = () => {
               className="btn btn-icon"
               onClick={(e) => {
                 e.preventDefault();
-                setShowNewPasswordConfirmation(!showNewPasswordConfirmation);
+                setShowPassword(!showPassword);
               }}
             >
               <KeenIcon
                 icon="eye"
-                className={clsx('text-gray-500', { hidden: showNewPasswordConfirmation })}
+                className={clsx('text-gray-500', { hidden: showPassword })}
               />
               <KeenIcon
                 icon="eye-slash"
-                className={clsx('text-gray-500', { hidden: !showNewPasswordConfirmation })}
+                className={clsx('text-gray-500', { hidden: !showPassword })}
               />
             </button>
           </label>

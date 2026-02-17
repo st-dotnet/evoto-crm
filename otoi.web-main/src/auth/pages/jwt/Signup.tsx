@@ -56,7 +56,6 @@ const Signup = () => {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { currentLayout } = useLayout();
 
   const formik = useFormik({
@@ -71,7 +70,7 @@ const Signup = () => {
         // Call the register function and handle navigation based on user role
         const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
         const userRole = (response as any)?.user?.role;
-        
+
         if (userRole === 'User') {
           navigate('/account/home/user-profile', { replace: true });
         } else {
@@ -85,16 +84,6 @@ const Signup = () => {
       }
     }
   });
-
-  const togglePassword = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setShowPassword(!showPassword);
-  };
-
-  const toggleConfirmPassword = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setShowConfirmPassword(!showConfirmPassword);
-  };
 
   return (
     <div className="card max-w-[700px] w-full">
@@ -111,7 +100,7 @@ const Signup = () => {
               to={currentLayout?.name === 'auth-branded' ? '/auth/login' : '/auth/classic/login'}
               className="text-2sm link"
             >
-              Sign In
+              Sign in
             </Link>
           </div>
         </div>
@@ -136,8 +125,6 @@ const Signup = () => {
           </a>
         </div> */}
         <div className="flex items-center gap-2">
-          <span className="border-t border-gray-200 w-full"></span>
-          <span className="text-2xs text-gray-500 font-medium uppercase">Or</span>
           <span className="border-t border-gray-200 w-full"></span>
         </div>
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
@@ -223,6 +210,18 @@ const Signup = () => {
                   { 'is-invalid': formik.touched.mobileNo && formik.errors.mobileNo },
                   { 'is-valid': formik.touched.mobileNo && !formik.errors.mobileNo }
                 )}
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  if (input.value.length > 10) {
+                    input.value = input.value.slice(0, 10);
+                  }
+                }}
+                onChange={(e) => {
+                  let value = e.target.value.replace(/[^0-9-]/g, '');
+                  value = value.replace(/--+/g, '-');
+                  e.target.value = value;
+                  formik.setFieldValue('mobileNo', value);
+                }}
               />
             </label>
             {formik.touched.mobileNo && formik.errors.mobileNo && (
@@ -250,7 +249,13 @@ const Signup = () => {
                   { 'is-valid': formik.touched.password && !formik.errors.password }
                 )}
               />
-              <button className="btn btn-icon" onClick={togglePassword}>
+              <button
+                className="btn btn-icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPassword(!showPassword);
+                }}
+              >
                 <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showPassword })} />
                 <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showPassword })} />
               </button>
@@ -267,7 +272,7 @@ const Signup = () => {
             </label>
             <label className="input">
               <input
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Re-enter Password"
                 autoComplete="off"
                 {...formik.getFieldProps('changepassword')}
@@ -277,9 +282,15 @@ const Signup = () => {
                   { 'is-valid': formik.touched.changepassword && !formik.errors.changepassword }
                 )}
               />
-              <button className="btn btn-icon" onClick={toggleConfirmPassword}>
-                <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showConfirmPassword })} />
-                <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showConfirmPassword })} />
+              <button
+                className="btn btn-icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPassword(!showPassword);
+                }}
+              >
+                <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showPassword })} />
+                <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showPassword })} />
               </button>
             </label>
             {formik.touched.changepassword && formik.errors.changepassword && (
@@ -314,7 +325,7 @@ const Signup = () => {
           className="btn btn-primary flex justify-center grow"
           disabled={loading || formik.isSubmitting}
         >
-          {loading ? 'Please wait...' : 'Sign UP'}
+          {loading ? 'Please wait...' : 'Sign up'}
         </button>
       </form>
     </div>

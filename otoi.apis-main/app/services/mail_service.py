@@ -20,7 +20,7 @@ def send_reset_password_email(to_email, reset_link, user_name=None):
 
     # body = f"Please click the following link to reset your password: {reset_link}\n\nThis link will expire in 10 minutes."
     # msg.attach(MIMEText(body, "plain"))
-    subject = "Reset Your Password - Evoto technologies"
+    subject = "Reset Your Password - Evoto Technologies"
 
     html_body = f"""
     <!DOCTYPE html>
@@ -30,12 +30,12 @@ def send_reset_password_email(to_email, reset_link, user_name=None):
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }}
             .container {{ max-width: 520px; margin: 40px auto; background: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }}
-            .header {{ background: linear-gradient(135deg, #1B84FF 0%, #0D6EFD 100%); padding: 32px 24px; text-align: center; }}
+            .header {{ background-color: #1B84FF; background: linear-gradient(135deg, #1B84FF 0%, #0D6EFD 100%); padding: 32px 24px; text-align: center; }}
             .header h1 {{ color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; }}
             .body {{ padding: 32px 24px; }}
             .body p {{ color: #4B5563; font-size: 15px; line-height: 1.6; margin: 0 0 16px; }}
-            .btn {{ display: inline-block; background: #1B84FF; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; margin: 8px 0 24px; }}
-            .warning {{ background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 4px; margin: 16px 0; }}
+            .btn {{ display: inline-block; background-color: #1B84FF; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; margin: 8px 0 24px; }}
+            .warning {{ background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 4px; margin: 16px 0; }}
             .warning p {{ color: #92400E; font-size: 13px; margin: 0; }}
             .footer {{ text-align: center; padding: 20px 24px; border-top: 1px solid #E5E7EB; }}
             .footer p {{ color: #9CA3AF; font-size: 12px; margin: 0; }}
@@ -45,7 +45,7 @@ def send_reset_password_email(to_email, reset_link, user_name=None):
         <div class="container">
             <div class="header">
                 <h1>Password Reset Request</h1>
-                <p style="color: #ffffff; font-size: 14px; opacity: 0.8;">Evoto technologies</p>
+                <p style="color: #e0e0e0; font-size: 14px; margin: 4px 0 0;">Evoto Technologies</p>
             </div>
             <div class="body">
                 <p>Hi{(' ' + user_name) if user_name else ''},</p>
@@ -59,7 +59,7 @@ def send_reset_password_email(to_email, reset_link, user_name=None):
                 <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
             </div>
             <div class="footer">
-                <p>&copy; EVOTO Technologies. All rights reserved.</p>
+                <p>&copy; Evoto Technologies. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -78,7 +78,7 @@ This link will expire in 10 minutes and can only be used once.
 
 If you didn't request a password reset, you can safely ignore this email.
 
-- EVOTO Technologies
+- Evoto Technologies
     """
 
     msg = MIMEMultipart("alternative")
