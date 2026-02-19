@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, FileText } from "lucide-react";
+import { ArrowLeft, Download, Printer, Share, FileText, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
+import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
@@ -60,7 +61,10 @@ const QuotationPreviewPage: React.FC = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const [showBusinessAddressBanner, setShowBusinessAddressBanner] = useState(true);
   const [fetchedData, setFetchedData] = useState<QuotationData | null>(null);
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
   const quotationRef = useRef<HTMLDivElement>(null);
 
   const quotationData: QuotationData = fetchedData || location.state?.quotationData || {
@@ -77,9 +81,8 @@ const QuotationPreviewPage: React.FC = () => {
           console.log("=== API Response:", response);
           if (response.success && response.data) {
             const data = response.data;
-            console.log("=== Quotation data:", data);
-            console.log("=== Customer data:", data.customer);
 
+            // Fetch customer details separately to get address information
             const token = (() => {
               try {
                 const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
@@ -99,8 +102,8 @@ const QuotationPreviewPage: React.FC = () => {
             });
 
             const customerDetails = await customerResponse.json();
-            console.log("=== Customer details response:", customerDetails);
 
+            // Transform API data to QuotationData format
             const transformedData: QuotationData = {
               quotationNo: data.quotation_number,
               quotationDate: data.quotation_date,
@@ -114,10 +117,12 @@ const QuotationPreviewPage: React.FC = () => {
                 shipping_address: customerDetails.shipping_address || data.customer?.shipping_address,
               },
               quotationItems: data.items.map((item: any) => {
+                // Handle nested discount object
                 const discount = typeof item.discount?.discount_percentage === 'object'
                   ? item.discount.discount_percentage.discount_percentage
                   : item.discount?.discount_percentage || 0;
 
+                // Handle nested tax object
                 const tax = typeof item.tax?.tax_percentage === 'object'
                   ? item.tax.tax_percentage.tax_percentage
                   : item.tax?.tax_percentage || 0;
@@ -148,6 +153,21 @@ const QuotationPreviewPage: React.FC = () => {
       };
       fetchData();
     }
+
+    // Check if a linked invoice already exists for this quotation
+    if (id) {
+      const checkLinkedInvoice = async () => {
+        try {
+          const invoiceRes = await getInvoiceByQuotationId(id);
+          if (invoiceRes.success && invoiceRes.data?.uuid) {
+            setLinkedInvoiceId(invoiceRes.data.uuid);
+          }
+        } catch {
+          // ignore — no linked invoice
+        }
+      };
+      checkLinkedInvoice();
+    }
   }, [id, location.state]);
 
   const calculateTotals = () => {
@@ -171,6 +191,8 @@ const QuotationPreviewPage: React.FC = () => {
   const totals = calculateTotals();
   const locationState = location.state as { quotationData?: any; quotationId?: string };
   const isAlreadySaved = !!locationState?.quotationId || !!id;
+
+  // const totals = calculateTotals();
 
   const handleSaveQuotation = async () => {
     if (isAlreadySaved) {
@@ -201,6 +223,38 @@ const QuotationPreviewPage: React.FC = () => {
     }
   };
 
+  const handleConvertToInvoice = async () => {
+    // If already converted, navigate to the existing invoice
+    if (linkedInvoiceId) {
+      navigate(`/invoices/${linkedInvoiceId}`);
+      return;
+    }
+
+    const quotationId = id || locationState?.quotationId;
+    if (!quotationId) {
+      toast.error("Please save the quotation first before converting to invoice.");
+      return;
+    }
+
+    setIsConverting(true);
+    try {
+      const response = await createInvoiceFromQuotation(quotationId);
+      if (response.success && response.data) {
+        const invoiceId = response.data.uuid || response.data.id;
+        toast.success("Quotation successfully converted to invoice!");
+        setLinkedInvoiceId(invoiceId);
+        navigate(`/invoices/${invoiceId}`);
+      } else {
+        toast.error(response.error || "Failed to convert quotation to invoice");
+      }
+    } catch (error) {
+      console.error("Error converting to invoice:", error);
+      toast.error("Failed to convert quotation to invoice");
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!quotationRef.current) return;
     const downloadToast = toast.loading("Generating PDF...");
@@ -214,7 +268,7 @@ const QuotationPreviewPage: React.FC = () => {
         backgroundColor: "#ffffff",
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
-        onclone: (clonedDoc) => {
+        onclone: (clonedDoc: { getElementById: (arg0: string) => any; }) => {
           // You can modify the cloned element here if needed for PDF-only styles
           const clonedElement = clonedDoc.getElementById('quotation-print-area');
           if (clonedElement) {
@@ -267,7 +321,10 @@ const QuotationPreviewPage: React.FC = () => {
     const shareToast = toast.loading("Preparing for share...");
     try {
       const canvas = await html2canvas(quotationRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to generate blob"));
+      }, "image/png"));
       const file = new File([blob], `Quotation-${quotationData.quotationNo}.png`, { type: "image/png" });
 
       if (navigator.share) {
@@ -467,6 +524,7 @@ const QuotationPreviewPage: React.FC = () => {
     return units[unitId || 1] || "PCS";
   };
 
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative">
       {isLoading && (
@@ -532,12 +590,49 @@ const QuotationPreviewPage: React.FC = () => {
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
             <Button
-              className={`${isAlreadySaved ? "bg-[#1B84FF] hover:bg-gray-800" : "bg-blue-600 hover:bg-blue-700"} text-white gap-2`}
-              onClick={handleSaveQuotation}
-              disabled={isSaving}
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPDF}
+              className="gap-2"
             >
-              <FileText className="h-4 w-4" />
-              {isAlreadySaved ? "Convert to Invoice" : "Save Quotation"}
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintPDF}
+              className="gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="gap-2"
+            >
+              <Share className="h-4 w-4" />
+              Share
+            </Button>
+            {!isAlreadySaved && (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                onClick={handleSaveQuotation}
+                disabled={isSaving}
+              >
+                <FileText className="h-4 w-4" />
+                {isSaving ? "Saving..." : "Save Quotation"}
+              </Button>
+            )}
+            <Button
+              className={`${linkedInvoiceId ? "bg-green-600 hover:bg-green-700" : "bg-indigo-600 hover:bg-indigo-700"} text-white gap-2`}
+              onClick={handleConvertToInvoice}
+              disabled={isConverting}
+            >
+              <Receipt className="h-4 w-4" />
+              {isConverting ? "Converting..." : linkedInvoiceId ? "View Invoice" : "Convert to Invoice"}
             </Button>
           </div>
         </div>
@@ -599,6 +694,18 @@ const QuotationPreviewPage: React.FC = () => {
                 {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
               </p>
               <div className="space-y-1">
+                <p className="font-medium">
+                  {quotationData.selectedCustomer ?
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
+                    'No customer selected'
+                  }
+                </p>
+                {quotationData.selectedCustomer?.company_name && (
+                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                )}
+                {quotationData.selectedCustomer && (
+                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
+                )}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
                     <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
@@ -622,6 +729,18 @@ const QuotationPreviewPage: React.FC = () => {
                 {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
               </p>
               <div className="space-y-1">
+                <p className="font-medium">
+                  {quotationData.selectedCustomer ?
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
+                    'No customer selected'
+                  }
+                </p>
+                {quotationData.selectedCustomer?.company_name && (
+                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                )}
+                {quotationData.selectedCustomer && (
+                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
+                )}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
                     <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}

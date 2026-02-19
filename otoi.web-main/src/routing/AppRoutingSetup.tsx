@@ -92,6 +92,9 @@ const ItemDetailsPage = lazy(() => import('@/pages/items/ItemDetails').then(modu
 const QuotationPage = lazy(() => import('@/pages/quotation/components/QuotationPage').then(module => ({ default: module.default })));
 const CreateQuotationPage = lazy(() => import('@/pages/quotation/components/CreateQuotationPage').then(module => ({ default: module.default })));
 const QuotationPreviewPage = lazy(() => import('@/pages/quotation/components/QuotationPreviewPage').then(module => ({ default: module.default })));
+const InvoicePage = lazy(() => import('@/pages/invoice/components/InvoicePage').then(module => ({ default: module.default })));
+const InvoiceDetailsPage = lazy(() => import('@/pages/invoice/components/InvoiceDetailsPage').then(module => ({ default: module.default })));
+const CreateInvoicePage = lazy(() => import('@/pages/invoice/components/CreateInvoicePage').then(module => ({ default: module.default })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
 const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
 const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));
@@ -286,9 +289,32 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/quotes/preview" element={<QuotationPreviewPage />} />
 
           {/* Invoice Routes */}
-          {/* <Route path="/invoices/list" element={<InvoicePage />} />
-          <Route path="/invoices" element={<InvoicePage />} /> */}
-          <Route path="/invoices/:id" element={<QuotationPreviewPage />} />
+          <Route path="/invoices/list" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <InvoicePage />
+            </Suspense>
+          } />
+          <Route path="/invoices" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <InvoicePage />
+            </Suspense>
+          } />
+          <Route path="/invoices/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <InvoiceDetailsPage />
+            </Suspense>
+          } />
+          <Route path="/invoices/new-invoice" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateInvoicePage />
+            </Suspense>
+          } />
+          <Route path="/invoices/:id/edit" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateInvoicePage />
+            </Suspense>
+          } />
+
 
           <Route
             path="/auth/account-deactivated"

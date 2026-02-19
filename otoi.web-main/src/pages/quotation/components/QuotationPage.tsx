@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { DataGrid, DataGridColumnHeader, DataGridRowSelect, DataGridRowSelectAll } from "@/components";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X } from "lucide-react";
+import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X, Receipt } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { getQuotations, deleteQuotation, getQuotationById, createQuotation, fetchQuotationItems, getAllCustomersDropdown, getQuotationNumbersDropdown } from "../services/quotation.services";
+import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
@@ -522,6 +523,22 @@ const QuotationPage = () => {
           setIsOpen(false);
         };
 
+        const handleConvertToInvoice = async (id: string) => {
+          setIsOpen(false);
+          try {
+            const response = await createInvoiceFromQuotation(id);
+            if (response.success && response.data) {
+              const invoiceId = response.data.uuid || response.data.id;
+              toast.success('Quotation converted to invoice successfully!');
+              navigate(`/invoices/${invoiceId}`);
+            } else {
+              toast.error(response.error || 'Failed to convert quotation to invoice');
+            }
+          } catch (error) {
+            toast.error('Failed to convert quotation to invoice');
+          }
+        };
+
         return (
           <div
             className="flex justify-center"
@@ -571,6 +588,16 @@ const QuotationPage = () => {
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleConvertToInvoice(row.original.id);
+                  }}
+                >
+                  <Receipt className="mr-2 h-4 w-4 text-indigo-500" />
+                  <span className="text-indigo-600">Convert to Invoice</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {

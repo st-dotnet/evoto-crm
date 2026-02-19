@@ -168,7 +168,7 @@ const InvoicePage = () => {
             accessorKey: "invoice_number",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Invoice #"
+                    title="Invoice Number"
                     column={column}
                     className="justify-start"
                 />
@@ -186,7 +186,7 @@ const InvoicePage = () => {
             accessorKey: "party_name",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Customer"
+                    title="Party Name"
                     column={column}
                     className="justify-start"
                 />
@@ -204,7 +204,7 @@ const InvoicePage = () => {
             accessorKey: "due_date",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Due Date"
+                    title="Due In"
                     column={column}
                     className="justify-start"
                 />
@@ -241,51 +241,51 @@ const InvoicePage = () => {
                 cellClassName: "text-right",
             },
         },
-        {
-            accessorKey: "balance_due",
-            header: ({ column }) => (
-                <DataGridColumnHeader
-                    title="Balance"
-                    column={column}
-                    className="justify-end"
-                />
-            ),
-            cell: (info) => {
-                const balance = info.getValue() as number;
-                return (
-                    <div className={`text-sm font-medium text-right ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        ₹{balance?.toLocaleString('en-IN') || '0'}
-                    </div>
-                );
-            },
-            meta: {
-                headerClassName: "min-w-[100px] justify-end",
-                cellClassName: "text-right",
-            },
-        },
-        {
-            accessorKey: "payment_status",
-            header: ({ column }) => (
-                <DataGridColumnHeader
-                    title="Payment"
-                    column={column}
-                    className="justify-center"
-                />
-            ),
-            cell: (info) => {
-                const status = info.getValue() as string;
-                return (
-                    <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(status)}`}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
-                    </div>
-                );
-            },
-            meta: {
-                headerClassName: "min-w-[100px]",
-            },
-        },
+        // {
+        //     accessorKey: "balance_due",
+        //     header: ({ column }) => (
+        //         <DataGridColumnHeader
+        //             title="Balance"
+        //             column={column}
+        //             className="justify-end"
+        //         />
+        //     ),
+        //     cell: (info) => {
+        //         const balance = info.getValue() as number;
+        //         return (
+        //             <div className={`text-sm font-medium text-right ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        //                 ₹{balance?.toLocaleString('en-IN') || '0'}
+        //             </div>
+        //         );
+        //     },
+        //     meta: {
+        //         headerClassName: "min-w-[100px] justify-end",
+        //         cellClassName: "text-right",
+        //     },
+        // },
+        // {
+        //     accessorKey: "payment_status",
+        //     header: ({ column }) => (
+        //         <DataGridColumnHeader
+        //             title="Payment"
+        //             column={column}
+        //             className="justify-center"
+        //         />
+        //     ),
+        //     cell: (info) => {
+        //         const status = info.getValue() as string;
+        //         return (
+        //             <div className="flex items-center justify-center">
+        //                 <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(status)}`}>
+        //                     {status.charAt(0).toUpperCase() + status.slice(1)}
+        //                 </span>
+        //             </div>
+        //         );
+        //     },
+        //     meta: {
+        //         headerClassName: "min-w-[100px]",
+        //     },
+        // },
         {
             accessorKey: "status",
             header: ({ column }) => (
@@ -361,17 +361,7 @@ const InvoicePage = () => {
                                     Edit
                                 </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        navigate(`/invoices/${row.original.id}/payment`);
-                                        setIsOpen(false);
-                                    }}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Record Payment
-                                </DropdownMenuItem>
+
 
                                 <DropdownMenuItem
                                     onSelect={(e) => {
@@ -460,7 +450,7 @@ const InvoicePage = () => {
                     <Button
                         size="sm"
                         className="h-8 gap-1"
-                        onClick={() => navigate('/invoices/new')}
+                        onClick={() => navigate('/invoices/new-invoice')}
                     >
                         <Plus className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
