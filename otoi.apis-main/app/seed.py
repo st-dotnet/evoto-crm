@@ -73,7 +73,7 @@ def seed_data():
             lastName="admin",
             username="admin",
             email="info@evototechnologies.com",
-            mobileNo="0000000000",
+            mobileNo="7009861539",
             role=admin_role,
             created_at=datetime.utcnow(),
         )
