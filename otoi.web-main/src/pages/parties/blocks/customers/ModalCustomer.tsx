@@ -700,8 +700,8 @@ const ModalCustomer = ({
             is_default: addr.is_default || false
           }));
 
-        // If no shipping addresses but shipping fields are filled, add them
-        if (validShippingAddresses.length === 0 &&
+        // If no shipping addresses but shipping fields are filled, add them (Fallback for legacy data, now limited to new customers)
+        if (!customer?.uuid && validShippingAddresses.length === 0 &&
           (values.shipping_address1 || values.shipping_city || values.shipping_state ||
             values.shipping_country || values.shipping_pin)) {
           const newAddress = {
@@ -717,10 +717,8 @@ const ModalCustomer = ({
           validShippingAddresses.push(newAddress);
         }
 
-        // Add shipping addresses to payload if any exist
-        if (validShippingAddresses.length > 0) {
-          payload.shipping_addresses = validShippingAddresses;
-        }
+        // Always include shipping_addresses in the payload for updates to ensure deletion persists
+        payload.shipping_addresses = validShippingAddresses;
 
         // Set same_as_billing flag
         payload.same_as_billing = sameAsBilling;
