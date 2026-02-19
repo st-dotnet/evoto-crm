@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { DataGrid, DataGridColumnHeader, DataGridRowSelect, DataGridRowSelectAll } from "@/components";
 import { Button } from "@/components/ui/button";
-import {Plus,Settings, FileText,ChevronDown,Search,Calendar,Filter,Check,Circle,CircleOff,CircleCheck,MoreVertical,Edit,Eye,Copy,Trash2,AlertCircle,List,X} from "lucide-react";
+import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger,} from "@/components/ui/dropdown-menu";
-import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,} from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { getQuotations, deleteQuotation, getQuotationById, createQuotation, fetchQuotationItems, getAllCustomersDropdown, getQuotationNumbersDropdown } from "../services/quotation.services";
 import { toast } from "sonner";
@@ -62,28 +62,28 @@ interface QuotationItemsResponse {
 }
 
 const QuotationPage = () => {
-const [quotations, setQuotations] = useState<Quotation[]>([]);
- const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
- const [isLoading, setIsLoading] = useState(false);
- const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
- const [showDeleteDialog, setShowDeleteDialog] = useState(false);
- const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
- const [isDeleting, setIsDeleting] = useState(false);
- const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed'>('all');
- const [activeTab, setActiveTab] = useState<'quotations' | 'items'>('quotations');
- const [searchTerm, setSearchTerm] = useState('');
- const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
- const [searchType, setSearchType] = useState<'party_name' | 'quotation_number'>('party_name');
- const [showSuggestions, setShowSuggestions] = useState(false);
- const [allCustomerNames, setAllCustomerNames] = useState<string[]>([]);  
- const [allQuotationNumbers, setAllQuotationNumbers] = useState<string[]>([]);
- const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
- const [isSearchLoading, setIsSearchLoading] = useState(false);
- const [isDropdownLoading, setIsDropdownLoading] = useState(false);
- const [showFilterDropdown, setShowFilterDropdown] = useState(false);
- const [sorting, setSorting] = useState([{ id: 'due_in', desc: false }]);
- const [refreshKey, setRefreshKey] = useState(0);
- const [pagination, setPagination] = useState<PaginationData>({
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed'>('all');
+  const [activeTab, setActiveTab] = useState<'quotations' | 'items'>('quotations');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'party_name' | 'quotation_number'>('party_name');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allCustomerNames, setAllCustomerNames] = useState<string[]>([]);
+  const [allQuotationNumbers, setAllQuotationNumbers] = useState<string[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isDropdownLoading, setIsDropdownLoading] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [sorting, setSorting] = useState([{ id: 'due_in', desc: false }]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [pagination, setPagination] = useState<PaginationData>({
 
     total: 0,
     items_per_page: 5,
@@ -101,7 +101,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
   const fetchAutocompleteData = useCallback(async () => {
     try {
       setIsDropdownLoading(true);
-      
+
       // Fetch all customers using the dedicated dropdown API
       const customerResponse = await getAllCustomersDropdown();
       if (customerResponse.success && customerResponse.data) {
@@ -124,7 +124,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
     }
   }, []);
 
- // Fetch autocomplete data on component mount and when search type changes
+  // Fetch autocomplete data on component mount and when search type changes
   useEffect(() => {
     fetchAutocompleteData();
   }, [fetchAutocompleteData]);
@@ -134,7 +134,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
     fetchAutocompleteData();
   }, [searchType]);
 
-  
+
   // Handle search type change
   const handleSearchTypeChange = (type: 'party_name' | 'quotation_number') => {
     setSearchType(type);
@@ -164,7 +164,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
 
   // Fetch quotations from database
   const fetchQuotations = useCallback(async (params: TDataGridRequestParams) => {
-    
+
     try {
       setIsLoading(true);
       const queryParams = new URLSearchParams();
@@ -196,7 +196,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
       if (response.success && response.data) {
         const quotationsData = response.data.data || [];
         const paginationData = response.data.pagination || {};
-        
+
         // Transform data to match interface
         const transformedQuotations = quotationsData.map((item: any) => ({
           id: item.uuid,
@@ -265,10 +265,10 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
     const response = await deleteQuotation(quotationToDelete);
     if (response.success) {
       toast.success("Quotation deleted successfully");
-      
+
       // Immediately remove the deleted quotation from UI
       setQuotations(prev => prev.filter(q => q.id !== quotationToDelete));
-      
+
       // Update customer dropdown if this was the last quotation for that customer
       const deletedQuotation = quotations.find(q => q.id === quotationToDelete);
       if (deletedQuotation) {
@@ -277,11 +277,11 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
           // Remove customer from dropdown if no more quotations exist
           setAllCustomerNames(prev => prev.filter(name => name !== deletedQuotation.party_name));
         }
-        
+
         // Remove quotation number from local dropdown state
         setAllQuotationNumbers(prev => prev.filter(q => q !== deletedQuotation.quotation_number.toString()));
       }
-      
+
       fetchQuotations({ pageIndex: 0, pageSize: 5 });
       setRefreshKey(prev => prev + 1);
       setShowDeleteDialog(false);
@@ -352,13 +352,13 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
     {
       accessorKey: "party_name",
       header: ({ column }) => (
-       <DataGridColumnHeader
-         title="Party Name"
-         column={column}
-         className="justify-start"
-       />
-     ),
-     cell: (info) => (
+        <DataGridColumnHeader
+          title="Party Name"
+          column={column}
+          className="justify-start"
+        />
+      ),
+      cell: (info) => (
         <div className="text-sm text-gray-900">
           {info.getValue() as string}
         </div>
@@ -428,13 +428,12 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
       ),
       cell: (info) => {
         const status = info.getValue() as string;
-        
+
         return (
           <div className="flex items-center justify-center">
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              status === 'open' ? 'bg-green-100 text-green-800' :
-              status === 'closed' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
+            <span className={`px-2 py-1 text-xs rounded-full ${status === 'open' ? 'bg-green-100 text-green-800' :
+                status === 'closed' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
               }`}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </span>
@@ -568,13 +567,13 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
                     e.preventDefault();
                     e.stopPropagation();
                     handleDuplicate(row.original.id);
-                 }}
-               >
-                 <Copy className="mr-2 h-4 w-4" />
-                 Duplicate
-               </DropdownMenuItem>
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
                 <DropdownMenuItem
-                 onClick={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleDeleteClick(row.original.id);
@@ -668,7 +667,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
             className="h-8 gap-1"
             onClick={() => navigate('/quotes/new-quotation')}
           >
-           <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Create Quotation
             </span>
@@ -704,7 +703,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-            disabled={isDeleting}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
@@ -749,7 +748,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => {
                         setSearchTerm('');
                         setRefreshKey(prev => prev + 1);
@@ -767,8 +766,8 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
                       </DropdownMenuItem>
                     ) : (
                       (searchType === 'party_name' ? allCustomerNames : allQuotationNumbers).map((item, index) => (
-                        <DropdownMenuItem 
-                          key={index} 
+                        <DropdownMenuItem
+                          key={index}
                           onClick={() => {
                             setSearchTerm(item);
                             setRefreshKey(prev => prev + 1);
@@ -796,7 +795,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-48">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => {
                         handleSearchTypeChange('party_name');
                         setShowFilterDropdown(false);
@@ -806,7 +805,7 @@ const [quotations, setQuotations] = useState<Quotation[]>([]);
                       <Filter className="h-3.5 w-3.5 mr-2" />
                       Party Name
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => {
                         handleSearchTypeChange('quotation_number');
                         setShowFilterDropdown(false);
