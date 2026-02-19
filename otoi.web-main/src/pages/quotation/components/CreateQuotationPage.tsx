@@ -95,6 +95,7 @@ interface QuotationItem {
   amount: number;
   measuring_unit_id?: number;
   description?: string | null;
+  descriptionError?: string;
 }
 
 interface InventoryItem {
@@ -1027,7 +1028,7 @@ const CreateQuotationPage = () => {
     const newItems: QuotationItem[] = items.map((item, index) => {
       const quantity = item.quantity || 1;
       const discount = 0;
-      const tax = item.gst_tax_rate || 0;
+      const tax = 18;
       const amount = Math.round(
         (quantity * item.sales_price * (1 - discount / 100) * (1 + tax / 100)) * 100
       ) / 100;
@@ -1266,7 +1267,7 @@ const CreateQuotationPage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="sticky top-[70px] z-60 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+      <div className="sticky top-[70px] z-10 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             type="button"
@@ -1286,7 +1287,7 @@ const CreateQuotationPage = () => {
           disabled={isSaving}
           onClick={async () => {
             if (!selectedCustomer) {
-              toast.error("Please select a customer");
+              toast.error("Please select a Party");
               return;
             }
 
@@ -1747,7 +1748,7 @@ const CreateQuotationPage = () => {
                 value={formData.quotationDate}
                 onChange={handleChange}
                 min={today}
-                className="w-full"
+                className="h-8 text-sm"
                 disabled={formData.status === 'closed'}
               />
             </div>
@@ -2271,113 +2272,82 @@ const CreateQuotationPage = () => {
 
 
       </div>
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50/50">
+
+      {/* Items/Services Table - Professional Dashboard Style */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        {/* Table Header */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
           <div className="flex justify-between items-center">
-            <h3 className="text-base font-semibold text-gray-800">
-              Items/Services
-            </h3>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2 h-9 px-4 border-dashed hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                onClick={() => setShowAddItemModal(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Add Item
-              </Button>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Items/Services
+              </h3>
             </div>
+            <Button
+              size="sm"
+              className="gap-2 h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+              onClick={() => setShowAddItemModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
           </div>
         </div>
+
+        {/* Table Container */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-16">
-                  NO
+          <table className="min-w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
+                  No.
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  ITEMS/SERVICES
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[250px]">
+                  Item/Service Details
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
                   HSN/SAC
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-28">
-                  QTY
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                  Quantity
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-36">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
                   PRICE/ITEM (₹)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-28">
-                  DISCOUNT
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                  Discount
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-20">
-                  TAX
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                  Tax
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-32">
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
                   AMOUNT (₹)
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider w-20">
-                  <svg
-                    className="h-5 w-5 mx-auto text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                    />
-                  </svg>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-16">
+                  Action
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="bg-white divide-y divide-gray-200">
               {quotationItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="text-center space-y-3">
-                        <div className="flex justify-center items-center gap-3">
-                          <button
-                            onClick={() => setShowAddItemModal(true)}
-                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Add Item
-                          </button>
-                        </div>
-                        <div className="mt-8 pt-4 border-t border-gray-200 flex justify-end">
-                          <div className="flex items-center gap-16">
-                            <span className="text-sm text-gray-600">
-                              SUBTOTAL
-                            </span>
-                            <span className="text-sm font-medium">₹ 0</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 h-9 px-4"
-                            >
-                              <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                                />
-                              </svg>
-                              Scan Barcode
-                            </Button>
-                          </div>
-                        </div>
+                  <td colSpan={9} className="px-4 py-20">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div className="text-center">
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">No items added yet</h4>
+                        <p className="text-xs text-gray-500 mb-4">Get started by adding your first item to the quotation</p>
+                        <button
+                          onClick={() => setShowAddItemModal(true)}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Your First Item
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -2386,42 +2356,69 @@ const CreateQuotationPage = () => {
                 quotationItems.map((item, index) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-gray-50/50 transition-colors"
+                    className="hover:bg-gray-50/70 transition-colors group"
                   >
-                    <td className="px-4 py-4 text-sm text-gray-700">
+                    {/* Serial Number */}
+                    <td className="px-3 py-2 text-sm font-medium text-gray-600 border-r border-gray-200">
                       {index + 1}
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-sm text-gray-900">
-                        {item.item_name}
-                      </div>
-                      {/* <div className="text-xs text-gray-500 mt-0.5">
-                          {item.item_code}
-                        </div> */}
-                      <div className="text-gray-400 hover:text-gray-600">
-                        <textarea
-                          value={item.description || ""}
-                          onChange={(e) => {
-                            setQuotationItems(
-                              quotationItems.map((quotationItem) => {
-                                if (quotationItem.id === item.id) {
-                                  return { ...quotationItem, description: e.target.value };
-                                }
-                                return quotationItem;
-                              })
-                            );
-                          }}
-                          placeholder="item description..."
-                          className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          rows={3}
-                        />
+
+                    {/* Item Details */}
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-900 truncate max-w-[250px]" title={item.item_name}>
+                          {item.item_name}
+                        </div>
+                        <div className="relative">
+                          <textarea
+                            value={item.description || ""}
+                            onChange={(e) => {
+                              const text = e.target.value;
+                              const charCount = text.length;
+
+                              if (charCount <= 50) {
+                                setQuotationItems(
+                                  quotationItems.map((quotationItem) => {
+                                    if (quotationItem.id === item.id) {
+                                      return { ...quotationItem, description: text, descriptionError: "" };
+                                    }
+                                    return quotationItem;
+                                  })
+                                );
+                              } else {
+                                setQuotationItems(
+                                  quotationItems.map((quotationItem) => {
+                                    if (quotationItem.id === item.id) {
+                                      return { ...quotationItem, descriptionError: "Maximum limit 50 characters reached" };
+                                    }
+                                    return quotationItem;
+                                  })
+                                );
+                              }
+                            }}
+                            placeholder="Add item description..."
+                            className="w-full px-2 py-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-transparent focus:bg-white transition-colors"
+                            rows={1}
+                          />
+                          {item.descriptionError && (
+                            <div className="absolute -bottom-3 left-0 text-xs text-red-600 bg-white z-10">
+                              {item.descriptionError}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-700">
-                      {item.hsn_sac || "-"}
+
+                    {/* HSN/SAC */}
+                    <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-200">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs">
+                        {item.hsn_sac || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="relative flex focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent border border-gray-300 rounded-md">
+
+                    {/* Quantity */}
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200">
                         <input
                           type="number"
                           min="1"
@@ -2432,15 +2429,18 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                          className="w-16 px-2 py-1.5 text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 rounded-l-md focus:outline-none"
+                          className="w-full px-2 py-1.5 text-sm text-center text-gray-900 border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
-                        <span className="px-3 py-1.5 bg-gray-100 text-sm text-gray-700 rounded-r-md border-l border-gray-300">
+                        <span className="px-2 py-1.5 bg-gray-100 text-xs font-semibold text-gray-600 border-l border-gray-300">
                           {getMeasuringUnit(item.measuring_unit_id)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+
+                    {/* Price */}
+                    <td className="px-3 py-2 border-r border-gray-200">
                       <div className="relative">
+                        <span className="absolute left-2.5 top-1.5 text-xs font-medium text-gray-500">₹</span>
                         <input
                           type="number"
                           min="0"
@@ -2451,135 +2451,106 @@ const CreateQuotationPage = () => {
                             }
                           }}
                           onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value))}
-                          className="w-24 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
-                        <span className="absolute left-2 top-1.5 text-xs text-gray-500">₹</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col gap-1 items-start relative">
-
-                        {/* Discount % input */}
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={item.discount ?? 0}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
-                              }
-                            }}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleUpdateDiscount(
-                                item.id,
-                                value === "" ? 0 : Math.min(100, parseFloat(value))
-                              );
-                            }}
-                            className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center
-                                      [appearance:textfield]
-                                      [&::-webkit-outer-spin-button]:appearance-none
-                                      [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="absolute right-2 top-1.5 text-xs text-gray-500">%</span>
-                        </div>
-
-                        {/* Calculated Discount Amount */}
-                        {item.discount > 0 && (
-                          <span className="text-xs text-red-600">
-                            ₹ -{(
-                              (item.quantity * item.price_per_item * item.discount) / 100
-                            ).toFixed(2)}
-                          </span>
-                        )}
                       </div>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col gap-1 items-start">
-
-                        {/* GST % select */}
-                        <select
-                          value={item.tax}
-                          onChange={(e) =>
-                            handleUpdateTax(
+                    {/* Discount */}
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.discount ?? 0}
+                          onKeyDown={(e) => {
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleUpdateDiscount(
                               item.id,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">None</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-
-                        {/* Calculated GST amount */}
-                        {item.tax > 0 && (
-                          <span className="text-xs text-gray-600">
-                            ₹{" "}
-                            {(
-                              (item.quantity *
-                                item.price_per_item *
-                                (1 - item.discount / 100) *
-                                item.tax) /
-                              100
-                            ).toFixed(2)}
-                          </span>
-                        )}
+                              value === "" ? 0 : Math.min(100, parseFloat(value))
+                            );
+                          }}
+                          className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="absolute left-2 top-1.5 text-xs font-semibold text-gray-500">%</span>
+                      </div>
+                      <div className="text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5">
+                        {item.discount > 0 ? `-₹${(item.quantity * item.price_per_item * item.discount / 100).toFixed(2)}` : ''}
                       </div>
                     </td>
 
-
-                    <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                      ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {/* Tax */}
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <select
+                        value={item.tax}
+                        onChange={(e) =>
+                          handleUpdateTax(
+                            item.id,
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200"
+                      >
+                        <option value="">None</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
+                      <div className="text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5">
+                        {item.tax > 0 ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}` : ''}
+                      </div>
                     </td>
-                    <td className="px-4 py-4 text-center">
+
+                    {/* Amount */}
+                    <td className="px-3 py-2 text-right border-r border-gray-200">
+                      <div className="text-sm text-gray-900">
+                        ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </td>
+
+                    {/* Delete Action */}
+                    <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                        className="inline-flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                         title="Remove item"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
+            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+              <tr>
+                <td colSpan={4} className="px-4 py-4 border-r border-gray-200"></td>
+                <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
+                  Subtotal
+                </td>
+                <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
+                  {calculateDiscount() > 0 && `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                </td>
+                <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
+                  {calculateTax() > 0 && `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                </td>
+                <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
+                  ₹{calculateTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </td>
+                <td className="px-4 py-4"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-        {quotationItems.length > 0 && (
-          <div className="border-t bg-gray-50">
-            <div className="grid grid-cols-[2fr_0.3fr_0.3fr_0.3fr] px-6 py-3 text-sm font-semibold text-gray-900">
 
-              {/* Label */}
-              <div className="text-left py-2">
-                SUBTOTAL
-              </div>
 
-              {/* Discount */}
-              <div className="text-right py-2">
-                ₹ {calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </div>
-
-              {/* Tax */}
-              <div className="text-center py-2">
-                ₹ {calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </div>
-
-              {/* Total */}
-              <div className="text-left py-2">
-                ₹ {calculateTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </div>
-
-            </div>
-          </div>
-        )}
 
         {/* Add this section right after the Items/Services table closes and before the closing of the main grid div */}
 
