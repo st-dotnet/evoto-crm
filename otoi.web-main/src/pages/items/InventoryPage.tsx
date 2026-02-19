@@ -103,14 +103,14 @@ const Toolbar = ({
           }
           return acc;
         }, []);
-        
+
         // Sort items alphabetically by item_name
         const sortedItems = uniqueItems.sort((a: any, b: any) => {
           const nameA = a?.item_name?.toLowerCase() ?? '';
           const nameB = b?.item_name?.toLowerCase() ?? '';
           return nameA.localeCompare(nameB);
         });
-        
+
         setItems(sortedItems);
       } catch (error) {
         console.error("Failed to fetch all items dropdown", error);
@@ -126,7 +126,7 @@ const Toolbar = ({
     setSearchInput(value);
     setOpen(true); // Keep dropdown open while typing
   };
-  
+
   const filteredItems = useMemo(() => {
     if (!searchInput) return items;
     return items.filter((item) =>
@@ -414,7 +414,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       setLoading(false);
     }
   };
- 
+
 
   // Column filter component
   const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
@@ -723,14 +723,14 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           item={
             selectedItem
               ? {
-                  ...selectedItem,
-                
-                  purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
-                  item_type_id: (selectedItem as any).item_type_id ?? 0,
-                  category_id: (selectedItem as any).category_id ?? 0,
-                  measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-                  gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-                }
+                ...selectedItem,
+
+                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                item_type_id: (selectedItem as any).item_type_id ?? 0,
+                category_id: (selectedItem as any).category_id ?? 0,
+                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+              }
               : null
           }
         />
