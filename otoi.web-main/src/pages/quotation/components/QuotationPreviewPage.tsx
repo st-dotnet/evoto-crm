@@ -177,6 +177,9 @@ const QuotationPreviewPage: React.FC = () => {
     const totalTax = items.reduce((sum, item) => sum + ((item.price_per_item * item.quantity * (1 - item.discount / 100)) * item.tax) / 100, 0);
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
+    const taxableAmount = subtotal - totalDiscount;
+    const effectiveTaxRate = taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
+
     return {
       subtotal,
       totalDiscount,
@@ -184,7 +187,8 @@ const QuotationPreviewPage: React.FC = () => {
       totalAmount,
       totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
       totalCGST: totalTax / 2,
-      totalSGST: totalTax / 2
+      totalSGST: totalTax / 2,
+      primaryTax: effectiveTaxRate
     };
   };
 
@@ -590,49 +594,12 @@ const QuotationPreviewPage: React.FC = () => {
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintPDF}
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="gap-2"
-            >
-              <Share className="h-4 w-4" />
-              Share
-            </Button>
-            {!isAlreadySaved && (
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                onClick={handleSaveQuotation}
-                disabled={isSaving}
-              >
-                <FileText className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Quotation"}
-              </Button>
-            )}
-            <Button
               className={`${linkedInvoiceId ? "bg-green-600 hover:bg-green-700" : "bg-indigo-600 hover:bg-indigo-700"} text-white gap-2`}
               onClick={handleConvertToInvoice}
               disabled={isConverting}
             >
               <Receipt className="h-4 w-4" />
-              {isConverting ? "Converting..." : linkedInvoiceId ? "View Invoice" : "Convert to Invoice"}
+              {isConverting ? "Converting..." : linkedInvoiceId ? "Convert to Invoice" : "View Invoice"}
             </Button>
           </div>
         </div>
@@ -644,16 +611,16 @@ const QuotationPreviewPage: React.FC = () => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-8">
+                <div className="mt-12">
                   <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
                   {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
                   {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
                   {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
                 </div>
-                <div className="flex flex-col items-end -mt-4">
+                <div className="flex flex-col items-end -mt-8">
                   <img
-                    src={toAbsoluteUrl('/media/app/Evoto_wordpress_logo.png')}
-                    className="h-28 w-auto object-contain"
+                    src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
+                    className="h-40 w-auto object-contain"
                     alt="Evoto Technologies"
                   />
                 </div>
@@ -824,11 +791,11 @@ const QuotationPreviewPage: React.FC = () => {
               <span className="text-sm font-bold text-black">{formatCurrency(totals.subtotal - totals.totalDiscount)}</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-xs font-normal text-black uppercase">CGST (9%)</span>
+              <span className="text-xs font-normal text-black uppercase">CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
               <span className="text-sm font-bold text-black">{formatCurrency(totals.totalCGST)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-black">
-              <span className="text-xs font-normal text-black uppercase  ">SGST (9%)</span>
+              <span className="text-xs font-normal text-black uppercase  ">SGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
               <span className="text-sm font-bold text-black">{formatCurrency(totals.totalSGST)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b-2 border-black">

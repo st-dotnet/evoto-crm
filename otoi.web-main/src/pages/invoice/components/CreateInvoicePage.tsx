@@ -168,6 +168,11 @@ const CreateInvoicePage = () => {
     const isEditMode = !!id;
     const today = new Date().toISOString().split("T")[0];
 
+    console.log('CreateInvoicePage - Edit Mode Debug:');
+    console.log('- URL id:', id);
+    console.log('- isEditMode:', isEditMode);
+    console.log('- Current path:', location.pathname);
+
     // Form state
     const [isLoading, setIsLoading] = useState(false);
     const [isAddressLoading, setIsAddressLoading] = useState(false);
@@ -478,9 +483,11 @@ const CreateInvoicePage = () => {
     };
 
     const handleFetchInvoice = async (invoiceId: string) => {
+        console.log('handleFetchInvoice called with ID:', invoiceId);
         setIsLoading(true);
         try {
             const response = await getInvoiceById(invoiceId);
+            console.log('getInvoiceById response:', response);
             if (response.success && response.data) {
                 const data = response.data;
                 const invoiceDate = data.invoice_date ? data.invoice_date.split('T')[0] : today;

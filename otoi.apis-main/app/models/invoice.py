@@ -29,16 +29,15 @@ class Invoice(BaseMixin, db.Model):
     total_amount = Column(Numeric(12, 2), nullable=False)
     amount_paid = Column(Numeric(12, 2), default=0)
     balance_due = Column(Numeric(12, 2), default=0)
+    payment_discount = Column(Numeric(12, 2), default = 0)
     
     # Other charges grouped in JSON
     # Expected: { subtotal, tax_total, discount_total, additional_charges_total, round_off }
     charges = Column(JSON, default={})
-
-    # Status (paid, unpaid, partial, overdue, void)
-    status = Column(String(20), default="draft", nullable=False)
     
     # Payment status (unpaid, partial, paid)
     payment_status = Column(String(20), default="unpaid", nullable=False)
+
 
     # Extra details (JSON blob)
     # Expected: { notes, terms_and_conditions, payment_terms }

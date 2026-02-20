@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { createPaymentFromInvoice } from '../../payment-in/services/payment-in.service';
 
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
@@ -131,6 +132,22 @@ export const createInvoice = async (invoiceData: InvoiceData): Promise<ApiRespon
             },
             withCredentials: false
         });
+
+        // If invoice status is 'paid' and there's an amount paid, create a payment entry
+        if (invoiceData.status === 'paid' && invoiceData.amount_paid && invoiceData.amount_paid > 0) {
+            const invoiceWithCustomer = {
+                ...invoiceData,
+                uuid: response.data?.uuid || response.data?.id,
+                selectedCustomer: invoiceData.selectedCustomer
+            };
+            
+            const paymentResult = await createPaymentFromInvoice(invoiceWithCustomer);
+            if (paymentResult.success) {
+                console.log('Payment entry created successfully:', paymentResult.data);
+            } else {
+                console.error('Failed to create payment entry:', paymentResult.error);
+            }
+        }
 
         return {
             success: true,
@@ -345,6 +362,23 @@ export const updateInvoice = async (id: string, invoiceData: Partial<InvoiceData
             },
             withCredentials: false
         });
+
+        // If invoice status is being set to 'paid', create a payment entry
+        if (invoiceData.status === 'paid' && invoiceData.amount_paid && invoiceData.amount_paid > 0) {
+            const invoiceWithCustomer = {
+                ...invoiceData,
+                uuid: id,
+                // Get customer info from the response or use the provided data
+                selectedCustomer: response.data?.customer || invoiceData.selectedCustomer
+            };
+            
+            const paymentResult = await createPaymentFromInvoice(invoiceWithCustomer);
+            if (paymentResult.success) {
+                console.log('Payment entry created successfully:', paymentResult.data);
+            } else {
+                console.error('Failed to create payment entry:', paymentResult.error);
+            }
+        }
 
         return {
             success: true,
@@ -574,7 +608,7 @@ export const createInvoiceFromQuotation = async (quotationId: string): Promise<A
     }
 };
 
-export const recordPayment = async (invoiceId: string, amount: number, paymentMethod?: string, reference?: string): Promise<ApiResponse> => {
+export const recordPayment = async (invoiceId: string, amount: number, paymentMethod?: string, reference?: string, discount?: number): Promise<ApiResponse> => {
     const token = getAuthToken();
     if (!token) {
         return {
@@ -589,6 +623,7 @@ export const recordPayment = async (invoiceId: string, amount: number, paymentMe
             amount,
             payment_method: paymentMethod,
             reference,
+            discount,
         }, {
             headers: {
                 'Authorization': `Bearer ${token}`,

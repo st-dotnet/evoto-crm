@@ -36,7 +36,6 @@ interface Invoice {
     amount: number;
     amount_paid: number;
     balance_due: number;
-    status: string;
     payment_status: string;
 }
 
@@ -63,7 +62,6 @@ const InvoicePage = () => {
                     amount: item.total_amount || 0,
                     amount_paid: item.amount_paid || 0,
                     balance_due: item.balance_due || 0,
-                    status: item.status || 'draft',
                     payment_status: item.payment_status || 'unpaid',
                 }));
                 setInvoices(transformedInvoices);
@@ -241,53 +239,8 @@ const InvoicePage = () => {
                 cellClassName: "text-right",
             },
         },
-        // {
-        //     accessorKey: "balance_due",
-        //     header: ({ column }) => (
-        //         <DataGridColumnHeader
-        //             title="Balance"
-        //             column={column}
-        //             className="justify-end"
-        //         />
-        //     ),
-        //     cell: (info) => {
-        //         const balance = info.getValue() as number;
-        //         return (
-        //             <div className={`text-sm font-medium text-right ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-        //                 ₹{balance?.toLocaleString('en-IN') || '0'}
-        //             </div>
-        //         );
-        //     },
-        //     meta: {
-        //         headerClassName: "min-w-[100px] justify-end",
-        //         cellClassName: "text-right",
-        //     },
-        // },
-        // {
-        //     accessorKey: "payment_status",
-        //     header: ({ column }) => (
-        //         <DataGridColumnHeader
-        //             title="Payment"
-        //             column={column}
-        //             className="justify-center"
-        //         />
-        //     ),
-        //     cell: (info) => {
-        //         const status = info.getValue() as string;
-        //         return (
-        //             <div className="flex items-center justify-center">
-        //                 <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(status)}`}>
-        //                     {status.charAt(0).toUpperCase() + status.slice(1)}
-        //                 </span>
-        //             </div>
-        //         );
-        //     },
-        //     meta: {
-        //         headerClassName: "min-w-[100px]",
-        //     },
-        // },
         {
-            accessorKey: "status",
+            accessorKey: "payment_status",
             header: ({ column }) => (
                 <DataGridColumnHeader
                     title="Status"
@@ -299,21 +252,19 @@ const InvoicePage = () => {
                 const status = info.getValue() as string;
                 return (
                     <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(status)}`}>
+                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(status)}`}>
                             {status.charAt(0).toUpperCase() + status.slice(1)}
                         </span>
                     </div>
                 );
             },
             meta: {
-                headerClassName: "min-w-[90px]",
+                headerClassName: "min-w-[100px]",
             },
         },
         {
-            id: "actions",
-            header: ({ column }) => (
-                <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
-            ),
+            accessorKey: "actions",
+            header: "Actions",
             enableSorting: false,
             meta: {
                 headerClassName: "w-28",
@@ -360,8 +311,6 @@ const InvoicePage = () => {
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
                                 </DropdownMenuItem>
-
-
 
                                 <DropdownMenuItem
                                     onSelect={(e) => {
@@ -479,6 +428,14 @@ const InvoicePage = () => {
                         rowSelection
                         getRowId={(row) => row.id.toString()}
                         pagination={{ size: 10 }}
+                        onRowClick={(row) => {
+                            navigate(`/invoices/${row.original.id}`);
+                        }}
+                        layout={{
+                            classes: {
+                                table: "cursor-pointer [&_tr:hover]:bg-gray-50"
+                            }
+                        }}
                     />
                 </div>
             </div>

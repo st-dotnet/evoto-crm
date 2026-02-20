@@ -95,6 +95,8 @@ const QuotationPreviewPage = lazy(() => import('@/pages/quotation/components/Quo
 const InvoicePage = lazy(() => import('@/pages/invoice/components/InvoicePage').then(module => ({ default: module.default })));
 const InvoiceDetailsPage = lazy(() => import('@/pages/invoice/components/InvoiceDetailsPage').then(module => ({ default: module.default })));
 const CreateInvoicePage = lazy(() => import('@/pages/invoice/components/CreateInvoicePage').then(module => ({ default: module.default })));
+const PaymentInPage = lazy(() => import('@/pages/payment-in/components/PaymentInPage').then(module => ({ default: module.PaymentInPage })));
+const CreatePaymentIn = lazy(() => import('@/pages/payment-in/components/CreatePaymentIn').then(module => ({ default: module.CreatePaymentIn })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
 const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
 const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));
@@ -287,6 +289,16 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/quotes/:id" element={<QuotationPreviewPage />} />
           <Route path="/quotes/:id/edit" element={<CreateQuotationPage />} />
           <Route path="/quotes/preview" element={<QuotationPreviewPage />} />
+          <Route path="/payment-in" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PaymentInPage />
+            </Suspense>
+          } />
+          <Route path="/payment-in/create" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePaymentIn />
+            </Suspense>
+          } />
 
           {/* Invoice Routes */}
           <Route path="/invoices/list" element={

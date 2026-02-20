@@ -88,6 +88,8 @@ def create_invoice():
                 type: number
               amount_paid:
                 type: number
+              payment_discount:
+                type: number
               status:
                 type: string
               subtotal:
@@ -167,7 +169,8 @@ def create_invoice():
         # Calculate balance due
         total_amount = float(data.get("total_amount", 0))
         amount_paid = float(data.get("amount_paid", 0))
-        balance_due = total_amount - amount_paid
+        payment_discount = float(data.get("payment_discount", 0))
+        balance_due = total_amount - amount_paid - payment_discount
         
         invoice = Invoice(
             invoice_number=invoice_number,
@@ -179,8 +182,8 @@ def create_invoice():
             total_amount=total_amount,
             amount_paid=amount_paid,
             balance_due=balance_due,
+            payment_discount=payment_discount,
             charges=charges,
-            status=data.get("status", "draft"),
             payment_status="paid" if balance_due <= 0 else ("partial" if amount_paid > 0 else "unpaid"),
             additional_notes=additional_notes,
         )
@@ -244,7 +247,7 @@ def get_invoices():
                 "total_amount": float(inv.total_amount) if inv.total_amount else 0,
                 "amount_paid": float(inv.amount_paid) if inv.amount_paid else 0,
                 "balance_due": float(inv.balance_due) if inv.balance_due else 0,
-                "status": inv.status,
+                "payment_discount": float(inv.payment_discount) if inv.payment_discount else 0,
                 "payment_status": inv.payment_status,
                 "charges": inv.charges,
                 "created_at": inv.created_at.isoformat() if inv.created_at else None,
@@ -317,8 +320,8 @@ def get_invoice(invoice_id):
         "total_amount": float(invoice.total_amount) if invoice.total_amount else 0,
         "amount_paid": float(invoice.amount_paid) if invoice.amount_paid else 0,
         "balance_due": float(invoice.balance_due) if invoice.balance_due else 0,
+        "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0,
         "charges": invoice.charges or {},
-        "status": invoice.status,
         "payment_status": invoice.payment_status,
         "additional_notes": invoice.additional_notes or {},
         "items": items_data,
@@ -358,6 +361,8 @@ def update_invoice(invoice_id):
               total_amount:
                 type: number
               amount_paid:
+                type: number
+              payment_discount:
                 type: number
               status:
                 type: string
@@ -433,14 +438,20 @@ def update_invoice(invoice_id):
             invoice.invoice_date = data["invoice_date"]
         if "due_date" in data:
             invoice.due_date = data["due_date"]
-        if "status" in data:
-            invoice.status = data["status"]
+        if "payment_status" in data:
+            invoice.payment_status = data["payment_status"]
         
         # Handle payment update
         amount_paid_updated = False
+        payment_discount_updated = False
         if "amount_paid" in data:
             invoice.amount_paid = float(data["amount_paid"])
             amount_paid_updated = True
+        
+        # Handle payment discount update
+        if "payment_discount" in data:
+            invoice.payment_discount = float(data["payment_discount"])
+            payment_discount_updated = True
         
         # Update charges JSON
         charges = invoice.charges or {}
@@ -487,10 +498,11 @@ def update_invoice(invoice_id):
             invoice.total_amount = _calculate_total_amount(invoice.charges or {})
             total_amount_updated = True
 
-        if total_amount_updated or amount_paid_updated:
+        if total_amount_updated or amount_paid_updated or payment_discount_updated:
             total_amount_value = float(invoice.total_amount or 0)
             amount_paid_value = float(invoice.amount_paid or 0)
-            invoice.balance_due = total_amount_value - amount_paid_value
+            payment_discount_value = float(invoice.payment_discount or 0)
+            invoice.balance_due = total_amount_value - amount_paid_value - payment_discount_value
             if invoice.balance_due <= 0:
                 invoice.payment_status = "paid"
             elif amount_paid_value > 0:
@@ -577,7 +589,6 @@ def create_invoice_from_quotation(quotation_id):
             amount_paid=0,
             balance_due=quotation.total_amount,
             charges=quotation.charges,
-            status="sent",
             payment_status="unpaid",
             additional_notes=quotation.additional_notes,
         )
@@ -638,6 +649,12 @@ def record_payment(invoice_id):
             properties:
               amount:
                 type: number
+              payment_discount:
+                type: number
+                description: Payment discount amount (alternative parameter name: discount)
+              discount:
+                type: number
+                description: Payment discount amount (alternative parameter name: payment_discount)
               payment_method:
                 type: string
               reference:
@@ -653,17 +670,25 @@ def record_payment(invoice_id):
     
     try:
         payment_amount = float(data.get("amount", 0))
+        # Accept both 'discount' and 'payment_discount' for frontend compatibility
+        payment_discount = float(data.get("payment_discount") or data.get("discount", 0))
         
         if payment_amount <= 0:
             return jsonify({"error": "Payment amount must be greater than 0"}), 400
         
+        # Update payment discount if provided (cumulative)
+        if payment_discount > 0:
+            invoice.payment_discount = float(invoice.payment_discount or 0) + payment_discount
+        
         invoice.amount_paid = float(invoice.amount_paid or 0) + payment_amount
-        invoice.balance_due = float(invoice.total_amount) - invoice.amount_paid
+        # Calculate balance due considering both amount paid and total payment discount
+        calculated_balance = float(invoice.total_amount) - invoice.amount_paid - (float(invoice.payment_discount) or 0)
+        # Cap balance at 0 to prevent negative values
+        invoice.balance_due = max(0, calculated_balance)
         
         # Update payment status
         if invoice.balance_due <= 0:
             invoice.payment_status = "paid"
-            invoice.status = "paid"
         else:
             invoice.payment_status = "partial"
         
@@ -673,7 +698,8 @@ def record_payment(invoice_id):
             "message": "Payment recorded successfully",
             "amount_paid": float(invoice.amount_paid),
             "balance_due": float(invoice.balance_due),
-            "payment_status": invoice.payment_status
+            "payment_status": invoice.payment_status,
+            "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0
         }), 200
         
     except Exception as e:

@@ -55,7 +55,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
       },
       {
         title: "Payment In",
-        path: "/sales/payment-ins"
+        path: "/payment-in"
       },
       {
         title: "Credit Note",
