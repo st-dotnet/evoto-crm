@@ -21,6 +21,7 @@ export interface UserModel {
   isActive?: boolean;
   state?: string;
   country?: string;
+  isUT?: boolean;
   pic?: string;
   language?: TLanguageCode;
   auth?: AuthModel;

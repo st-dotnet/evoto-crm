@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useAuthContext } from '../../useAuthContext';
+import { Country, State } from "country-state-city";
 import { toAbsoluteUrl } from '@/utils';
 import { Alert, KeenIcon } from '@/components';
 import { useLayout } from '@/providers';
@@ -15,11 +16,14 @@ const initialValues = {
   mobileNo: '',
   password: '',
   changepassword: '',
-  acceptTerms: false
+  acceptTerms: false,
+  state: '',
+  country: ''
 };
 
 const signupSchema = Yup.object().shape({
   firstName: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 characters')
     .max(50, 'Maximum 50 characters')
     .required('First Name is required'),
@@ -38,15 +42,19 @@ const signupSchema = Yup.object().shape({
     .max(10, 'Maximum 10 symbols')
     .required('Mobile Number is required'),
   password: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
     .required('Password is required'),
   changepassword: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
     .required('Password confirmation is required')
     .oneOf([Yup.ref('password')], "Password and Confirm Password didn't match"),
-  acceptTerms: Yup.bool().required('You must accept the terms and conditions')
+  acceptTerms: Yup.bool().required('You must accept the terms and conditions'),
+  state: Yup.string().required('State is required'),
+  country: Yup.string().required('Country is required')
 });
 
 const Signup = () => {
@@ -68,7 +76,7 @@ const Signup = () => {
           throw new Error('JWTProvider is required for this form.');
         }
         // Call the register function and handle navigation based on user role
-        const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
+        const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword, values.state, values.country);
         const userRole = (response as any)?.user?.role;
 
         if (userRole === 'User') {
@@ -227,6 +235,83 @@ const Signup = () => {
             {formik.touched.mobileNo && formik.errors.mobileNo && (
               <span role="alert" className="text-danger text-xs mt-1">
                 {formik.errors.mobileNo}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Country */}
+          <div className="flex flex-col gap-1">
+            <label className="form-label text-gray-900">
+              Country<span style={{ color: "red" }}>*</span>
+            </label>
+            <label className="input">
+            <select
+              {...formik.getFieldProps("country")}
+              onChange={(e) => {
+                formik.setFieldValue("country", e.target.value);
+                formik.setFieldValue("state", ""); // Reset state when country changes
+              }}
+              className={clsx(
+                "form-control bg-transparent",
+                {
+                  "is-invalid": formik.touched.country && formik.errors.country,
+                },
+                {
+                  "is-valid": formik.touched.country && !formik.errors.country,
+                }
+              )}
+            >
+              <option value="">--Select Country--</option>
+              {Country.getAllCountries().map((country) => (
+                <option key={country.isoCode} value={country.isoCode}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+            </label>
+            {formik.touched.country && formik.errors.country && (
+              <span role="alert" className="text-danger text-xs mt-1">
+                {formik.errors.country}
+              </span>
+            )}
+          </div>
+
+          {/* State */}
+          <div className="flex flex-col gap-1">
+            <label className="form-label text-gray-900">
+              State<span style={{ color: "red" }}>*</span>
+            </label>
+            <label className="input">
+            <select
+              {...formik.getFieldProps("state")}
+              disabled={!formik.values.country}
+              className={clsx(
+                "form-control bg-transparent",
+                {
+                  "is-invalid": formik.touched.state && formik.errors.state,
+                },
+                {
+                  "is-valid": formik.touched.state && !formik.errors.state,
+                },
+                {
+                  "bg-gray-100": !formik.values.country,
+                }
+              )}
+            >
+              <option value="">--Select State--</option>
+              {formik.values.country &&
+                State.getStatesOfCountry(formik.values.country).map((state) => (
+                  <option key={state.isoCode} value={state.isoCode}>
+                    {state.name}
+                  </option>
+                ))}
+            </select>
+            </label>
+            {formik.touched.state && formik.errors.state && (
+              <span role="alert" className="text-danger text-xs mt-1">
+                {formik.errors.state}
               </span>
             )}
           </div>

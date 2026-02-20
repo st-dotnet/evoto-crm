@@ -474,8 +474,14 @@ def create_user():
         role_name = data.get("role")
         password = data.get("password")
 
+        state = data.get("state")
+        country = data.get("country")
+
         if not username or not email:
             return jsonify({"error": "Username and email are required"}), 400
+            
+        if not state or not country:
+            return jsonify({"error": "State and country are required"}), 400
             
         if not password:
              return jsonify({"error": "Password is required"}), 400
@@ -495,8 +501,8 @@ def create_user():
             mobileNo=mobile,
             role_id=role.id,
             isActive=data.get("isActive", True),
-            state=data.get("state"),
-            country=data.get("country")
+            state=state,
+            country=country
         )
         user.set_password(password)
         
@@ -697,9 +703,13 @@ def update_user(user_uuid):
             user.isActive = data["isActive"]
 
         if "state" in data:
+            if not data["state"]:
+                return jsonify({"error": "State is required"}), 400
             user.state = data["state"]
 
         if "country" in data:
+            if not data["country"]:
+                return jsonify({"error": "Country is required"}), 400
             user.country = data["country"]
 
         user.update_ut_status()

@@ -87,8 +87,14 @@ def signup():
     username = (data.get("username") or (email.split("@")[0] if email else "")).strip()
     # Always default to 'User' role; ignore any incoming role input
 
+    state = (data.get("state") or "").strip()
+    country = (data.get("country") or "").strip()
+
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400
+
+    if not state or not country:
+        return jsonify({"error": "state and country are required"}), 400
 
     if password != password_confirmation:
         return jsonify({"error": "password and password_confirmation do not match"}), 400
@@ -107,8 +113,9 @@ def signup():
         db.session.flush()
 
     # Create user
-    user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role)
+    user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role, state=state, country=country)
     user.set_password(password)
+    user.update_ut_status()
 
     # Persist and set audit fields
     db.session.add(user)

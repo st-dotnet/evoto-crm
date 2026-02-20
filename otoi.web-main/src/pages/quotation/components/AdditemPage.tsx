@@ -340,9 +340,13 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
                               >
                                 <span className="text-gray-600 text-sm leading-none">−</span>
                               </button>
-                              <span className="w-8 text-center text-sm font-medium">
-                                {itemQuantities[item.item_id] || 1}
-                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={itemQuantities[item.item_id] || 1}
+                                onChange={(e) => updateItemQuantity(item.item_id, parseInt(e.target.value) || 0)}
+                                className="w-12 text-center text-sm border border-blue-300 rounded  font-medium focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-transparent"
+                              />
                               <button
                                 onClick={() => incrementQuantity(item.item_id)}
                                 className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
@@ -362,6 +366,7 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
                               variant="outline"
                               onClick={() => toggleItemSelection(item.item_id)}
                               className="min-w-[60px] h-8"
+                              disabled={item.opening_stock === 0}
                             >
                               <Plus className="h-3 w-3 mr-1" />
                               Add

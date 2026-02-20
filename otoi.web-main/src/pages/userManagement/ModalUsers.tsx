@@ -116,8 +116,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           .oneOf([Yup.ref("password"), undefined], "Passwords must match")
           .required("Confirm Password is required"),
       isActive: Yup.boolean(),
-      state: Yup.string().nullable(),
-      country: Yup.string().nullable(),
+      state: Yup.string().required("State is required"),
+      country: Yup.string().required("Country is required"),
     });
   }, [user]);
 
@@ -372,7 +372,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 {/* Country */}
                 <div className="flex flex-col gap-1.5">
                   <label className="block text-sm font-medium text-gray-700">
-                    Country
+                    Country<span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     {...formik.getFieldProps("country")}
@@ -404,7 +404,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 {/* State */}
                 <div className="flex flex-col gap-1.5">
                   <label className="block text-sm font-medium text-gray-700">
-                    State
+                    State<span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     {...formik.getFieldProps("state")}

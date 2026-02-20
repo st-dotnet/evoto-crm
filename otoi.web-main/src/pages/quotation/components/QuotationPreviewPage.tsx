@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Printer, Share, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
+import { useAuthContext } from "@/auth/useAuthContext";
 // import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 
 interface QuotationItem {
@@ -51,6 +52,7 @@ interface QuotationData {
 const QuotationPreviewPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuthContext();
   const { id } = useParams(); // Get ID from URL
   const [isSaving, setIsSaving] = useState(false);
   const [showBusinessAddressBanner, setShowBusinessAddressBanner] = useState(true);
@@ -707,7 +709,7 @@ const QuotationPreviewPage: React.FC = () => {
               <span>{formatCurrency(totals.totalTax / 2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">SGST @9%</span>
+              <span className="text-gray-600">{currentUser?.isUT ? 'UTGST' : 'SGST'} @9%</span>
               <span>{formatCurrency(totals.totalTax / 2)}</span>
             </div>
             <div className="flex justify-between font-bold text-lg pt-2 border-t">
