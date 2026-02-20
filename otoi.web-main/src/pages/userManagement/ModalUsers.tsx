@@ -14,6 +14,7 @@ import { Alert } from "@/components";
 import axios from "axios";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { toast } from "sonner";
+import { Country, State } from "country-state-city";
 
 // Props for the modal
 interface IModalUserProps {
@@ -38,6 +39,8 @@ interface User {
   isActive?: boolean;
   password?: string;
   confirmPassword?: string;
+  state?: string;
+  country?: string;
 }
 
 // Initial values for form
@@ -50,6 +53,8 @@ const initialValues: User = {
   isActive: true, // Default to active
   password: "",
   confirmPassword: "",
+  state: "",
+  country: "",
 };
 
 const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
@@ -111,6 +116,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           .oneOf([Yup.ref("password"), undefined], "Passwords must match")
           .required("Confirm Password is required"),
       isActive: Yup.boolean(),
+      state: Yup.string().nullable(),
+      country: Yup.string().nullable(),
     });
   }, [user]);
 
@@ -132,6 +139,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           role: values.role,
           isActive: values.isActive,
           password: values.password,
+          state: values.state,
+          country: values.country,
         };
 
         const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
@@ -196,6 +205,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
           isActive: user.isActive !== undefined ? user.isActive : true,
           password: "",
           confirmPassword: "",
+          state: user.state || "",
+          country: user.country || "",
         },
       });
     }
@@ -354,6 +365,69 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                   {formik.touched.mobile && formik.errors.mobile && (
                     <span role="alert" className="text-xs text-red-500">
                       {formik.errors.mobile}
+                    </span>
+                  )}
+                </div>
+
+                {/* Country */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Country
+                  </label>
+                  <select
+                    {...formik.getFieldProps("country")}
+                    onChange={(e) => {
+                      formik.setFieldValue("country", e.target.value);
+                      formik.setFieldValue("state", ""); // Reset state when country changes
+                    }}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ": formik.touched.country && formik.errors.country,
+                      }
+                    )}
+                  >
+                    <option value="">--Select Country--</option>
+                    {Country.getAllCountries().map((country) => (
+                      <option key={country.isoCode} value={country.isoCode}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formik.touched.country && formik.errors.country && (
+                    <span role="alert" className="text-xs text-red-500">
+                      {formik.errors.country}
+                    </span>
+                  )}
+                </div>
+
+                {/* State */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700">
+                    State
+                  </label>
+                  <select
+                    {...formik.getFieldProps("state")}
+                    disabled={!formik.values.country}
+                    className={clsx(
+                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      {
+                        "border-red-500 ": formik.touched.state && formik.errors.state,
+                        "bg-gray-100": !formik.values.country,
+                      }
+                    )}
+                  >
+                    <option value="">--Select State--</option>
+                    {formik.values.country &&
+                      State.getStatesOfCountry(formik.values.country).map((state) => (
+                        <option key={state.isoCode} value={state.isoCode}>
+                          {state.name}
+                        </option>
+                      ))}
+                  </select>
+                  {formik.touched.state && formik.errors.state && (
+                    <span role="alert" className="text-xs text-red-500">
+                      {formik.errors.state}
                     </span>
                   )}
                 </div>

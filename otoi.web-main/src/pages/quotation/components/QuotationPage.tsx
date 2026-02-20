@@ -480,7 +480,7 @@ const QuotationPage = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="mt-6 flex justify-end gap-3">
+          <DialogFooter className="flex justify-end gap-3">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}

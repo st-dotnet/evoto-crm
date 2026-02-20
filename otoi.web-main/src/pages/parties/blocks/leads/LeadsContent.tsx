@@ -627,11 +627,12 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
           </DialogHeader>
 
-          <DialogFooter className="mt-3 flex justify-end gap-3">
+          <DialogFooter className="flex gap-3">
 
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              className="px-14"
             >
               Cancel
             </Button>
@@ -639,7 +640,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
             <Button
               variant="destructive"
               onClick={() => deleteLead(selectedLead?.uuid || "")}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 px-14"
             >
               Delete
             </Button>

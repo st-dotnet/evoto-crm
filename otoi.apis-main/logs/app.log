@@ -91,3 +91,5 @@
 2026-02-11 15:36:01,293 [INFO] in person: Syncing updated lead 51bfb771-6fe0-485e-a03f-b2463a95536b with status 4
 2026-02-11 15:36:45,966 [INFO] in person: Syncing lead 9f495061-6c4e-43fd-84ca-f49d30fe38b9 with status 4
 2026-02-11 15:36:45,996 [INFO] in person: Created/Updated customer a9dafcf5-8dd7-4ee0-83e8-e9001510393b for lead 9f495061-6c4e-43fd-84ca-f49d30fe38b9
+2026-02-17 20:21:51,044 [INFO] in run: Application startup complete
+2026-02-17 20:22:04,187 [INFO] in run: Application startup complete

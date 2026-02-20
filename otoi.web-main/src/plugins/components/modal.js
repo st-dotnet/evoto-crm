@@ -32,7 +32,7 @@ export default plugin(({ addComponents, theme }) => {
       'display': 'flex',
       'align-items': 'center',
       'justify-content': 'space-between',
-      'border-bottom': '1px solid var(--tw-gray-200)',
+      // 'border-bottom': '1px solid var(--tw-gray-200)',
       'padding-inline-start': theme('spacing')['5'],
       'padding-inline-end': theme('spacing')['5'],
       'padding-block-start': theme('spacing')['2.5'],

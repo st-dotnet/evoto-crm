@@ -374,9 +374,9 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                             Are you sure you want to delete invoice <strong>{selectedEntry?.invoice_number}</strong>?
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="mt-3 flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={() => deleteEntry(selectedEntry?.uuid || "")}>Delete</Button>
+                    <DialogFooter className="flex gap-3">
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="px-14">Cancel</Button>
+                        <Button variant="destructive" onClick={() => deleteEntry(selectedEntry?.uuid || "")} className="bg-red-600 hover:bg-red-700 px-14">Delete</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

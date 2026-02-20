@@ -104,21 +104,21 @@ export const MENU_SIDEBAR: TMenuConfig = [
     icon: "purchase",
     path: "/accounting/purchase-entry"
   },
-  {
-    title: "Payable",
-    icon: "tag",
-    path: "/accounting/payables"
-  },
-  {
-    title: "Receivables",
-    icon: "cheque",
-    path: "/accounting/receivables"
-  },
-  {
-    title: "Expense",
-    icon: "wallet",
-    path: "/accounting/expense"
-  },
+  // {
+  //   title: "Payable",
+  //   icon: "tag",
+  //   path: "/accounting/payables"
+  // },
+  // {
+  //   title: "Receivables",
+  //   icon: "cheque",
+  //   path: "/accounting/receivables"
+  // },
+  // {
+  //   title: "Expense",
+  //   icon: "wallet",
+  //   path: "/accounting/expense"
+  // },
   {
     heading: "User"
   },

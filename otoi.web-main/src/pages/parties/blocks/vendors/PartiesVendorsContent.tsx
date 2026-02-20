@@ -634,11 +634,12 @@ const PartiesVendorsContent = ({
 
           </DialogHeader>
 
-          <DialogFooter className="mt-3 flex justify-end gap-3">
+          <DialogFooter className="flex gap-3">
 
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              className="px-14"
             >
               Cancel
             </Button>
@@ -646,7 +647,7 @@ const PartiesVendorsContent = ({
             <Button
               variant="destructive"
               onClick={() => deleteVendors(selectedVendors?.uuid || "")}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 px-14"
             >
               Delete
             </Button>

@@ -136,19 +136,19 @@ def get_leads():
             query = query.filter(Lead.mobile.ilike(f"%{request.args['mobile']}%"))
 
         # Exact filtering for duplicate checks (OR logic)
-        # exact_filters = []
-        # if "exact_mobile" in request.args:
-        #     exact_filters.append(Lead.mobile == request.args["exact_mobile"])
-        # if "exact_gst" in request.args:
-        #     exact_filters.append(func.upper(Lead.gst) == request.args["exact_gst"].upper())
-        # if "exact_email" in request.args:
-        #     exact_filters.append(func.upper(Lead.email) == request.args["exact_email"].upper())
+        exact_filters = []
+        if "exact_mobile" in request.args:
+            exact_filters.append(Lead.mobile == request.args["exact_mobile"])
+        if "exact_gst" in request.args:
+            exact_filters.append(func.upper(Lead.gst) == request.args["exact_gst"].upper())
+        if "exact_email" in request.args:
+            exact_filters.append(func.upper(Lead.email) == request.args["exact_email"].upper())
         
-        # if exact_filters:
-        #     query = query.filter(or_(*exact_filters))
+        if exact_filters:
+            query = query.filter(or_(*exact_filters))
 
-        # if "exclude_uuid" in request.args:
-        #     query = query.filter(Lead.uuid != request.args["exclude_uuid"])
+        if "exclude_uuid" in request.args:
+            query = query.filter(Lead.uuid != request.args["exclude_uuid"])
 
         # Sorting
         sort = request.args.get("sort", "uuid")
@@ -542,27 +542,16 @@ def update_lead(lead_id):
                 if existing:
                     return jsonify({"error": "A lead with this mobile already exists"}), 400
 
-        # Consolidate updates
-        lead.first_name = data.get("first_name", lead.first_name)
-        lead.last_name = data.get("last_name", lead.last_name)
-        # Special handling for mobile and email to allow null/empty
-        if "mobile" in data:
-            lead.mobile = (data.get("mobile") or "").strip() or None
-        if "email" in data:
-            lead.email = (data.get("email") or "").strip() or None
-        lead.gst = data.get("gst", lead.gst)
-        lead.status = data.get("status", lead.status)
-        lead.reason = data.get("reason", lead.reason)
-        lead.referenced_by = data.get("referenced_by", lead.referenced_by)
-        # Automatically mark as deleted if status is set to "Lose" (5)
-        if str(lead.status).strip().lower() in ["lose", "5"]:
-            lead.is_deleted = True
-            # Also find and delete linked customer if exists
-            customer = Customer.query.filter_by(lead_id=lead.uuid).first()
-            if customer:
-                customer.is_deleted = True
-                set_updated_fields(customer)
-        data = request.get_json() or {}
+
+        # # Automatically mark as deleted if status is set to "Lose" (5)
+        # if str(lead.status).strip().lower() in ["lose", "5"]:
+        #     lead.is_deleted = True
+        #     # Also find and delete linked customer if exists
+        #     customer = Customer.query.filter_by(lead_id=lead.uuid).first()
+        #     if customer:
+        #         customer.is_deleted = True
+        #         set_updated_fields(customer)
+        # data = request.get_json() or {}
 
         # ---- BASIC VALIDATION ----
         first_name = data.get("first_name")
@@ -580,15 +569,28 @@ def update_lead(lead_id):
         # Update Lead basic fields
         lead.first_name = data.get("first_name", lead.first_name)
         lead.last_name = data.get("last_name", lead.last_name)
-        lead.mobile = data.get("mobile", lead.mobile)
-        lead.email = data.get("email", lead.email)
+        
+        if "mobile" in data:
+             lead.mobile = (data.get("mobile") or "").strip() or None
+        
+        if "email" in data:
+             lead.email = (data.get("email") or "").strip() or None
+
         lead.gst = data.get("gst", lead.gst)
         lead.status = data.get("status", lead.status)
-
         lead.reason = data.get("reason", lead.reason)
         lead.referenced_by = data.get("referenced_by", lead.referenced_by)
 
         status = str(lead.status).strip()
+
+        # Automatically mark as deleted if status is set to "Lose" (5)
+        if status.lower() in ["lose", "5"]:
+            lead.is_deleted = True
+            # Also find and delete linked customer if exists
+            customer = Customer.query.filter_by(lead_id=lead.uuid).first()
+            if customer:
+                customer.is_deleted = True
+                set_updated_fields(customer)
 
         # Handle Address if status is Win (4)
         if status.lower() in ["win", "4"]:

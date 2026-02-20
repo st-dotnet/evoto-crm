@@ -28,6 +28,8 @@ class User(BaseMixin, db.Model):
     password_hash = Column(String(), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
     isActive = Column(db.Boolean, default=True, nullable=False)
+    state = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
     # Relationships
     role = relationship("Role", back_populates="users")
     businesses = relationship("Business", secondary=user_business, back_populates="users")

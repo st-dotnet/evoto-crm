@@ -134,7 +134,9 @@ def signup():
             "username": user.username,
             "email": user.email,
             "role": user.role.name if user.role else None,
-            "business_id": business_id
+            "business_id": business_id,
+            "state": user.state,
+            "country": user.country
         }
     }), 201
 
@@ -232,7 +234,9 @@ def login():
                 "username": user.username,
                 "email": user.email,
                 "role": user.role.name,
-                "business_id": business_id
+                "business_id": business_id,
+                "state": user.state,
+                "country": user.country
             }
         }), 200
         

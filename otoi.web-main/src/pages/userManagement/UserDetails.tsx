@@ -412,6 +412,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { SpinnerDotted } from 'spinners-react';
 import { User } from "./user-models";
+import { Country, State } from "country-state-city";
 
 export const UserDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -501,22 +502,22 @@ export const UserDetails = () => {
             <span className="text-gray-900 font-medium">{fullName}</span>
           </nav>
         </div>
-       {isAdmin && (
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate(`/user/${id}/edit`)}
-            className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm transition-all"
-          >
-            <KeenIcon icon="pencil" className="text-sm" /> Edit User
-          </button>
-          <button
-            onClick={() => setShowDeleteDialog(true)}
-            className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all"
-          >
-            <KeenIcon icon="trash" className="text-sm" /> Delete
-          </button>
-        </div>
-       )}
+        {isAdmin && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate(`/user/${id}/edit`)}
+              className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm transition-all"
+            >
+              <KeenIcon icon="pencil" className="text-sm" /> Edit User
+            </button>
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all"
+            >
+              <KeenIcon icon="trash" className="text-sm" /> Delete
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -559,10 +560,12 @@ export const UserDetails = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                 <DataField label="Full Name" value={fullName} />
                 <DataField label="Username" value={user.username} />
-                <DataField label="Email Address" value={user.email} />
-                <DataField label="Phone Number" value={user.mobile} />
-                <DataField label="Designation" value={user.role} />
+                {/* <DataField label="Email" value={user.email} /> */}
+                {/* <DataField label="Phone Number" value={user.mobile} /> */}
+                {/* <DataField label="Role" value={user.role} /> */}
                 <DataField label="Account Status" value={user.isActive ? "Active" : "Inactive"} status={user.isActive ? "success" : "danger"} />
+                <DataField label="Country" value={user.country ? Country.getCountryByCode(user.country)?.name : user.country} />
+                <DataField label="State" value={user.state && user.country ? State.getStateByCodeAndCountry(user.state, user.country)?.name : user.state} />
                 <DataField label="Last Updated" value={user.updated_at} />
                 <DataField label="Account ID" value={`#${user.id?.toString().slice(0, 8)}...`} />
               </div>
@@ -613,16 +616,16 @@ export const UserDetails = () => {
             <p className="text-gray-500 text-center text-sm mb-8">
               Are you sure you want to delete <span className="font-bold text-gray-800">{fullName}</span>? This process cannot be undone.
             </p>
-            <div className="flex gap-3">
+            <div className="flex justify-center gap-3">
               <button
                 onClick={() => setShowDeleteDialog(false)}
-                className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 py-2 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteUser(user.id)}
-                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
               >
                 Confirm
               </button>

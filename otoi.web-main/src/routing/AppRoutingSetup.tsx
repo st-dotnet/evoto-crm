@@ -96,6 +96,7 @@ import { UserEdit } from '@/pages/userManagement/UserEdit';
 import { PartiesUsersPage } from '@/pages/userManagement/PartiesUsers';
 import { PartiesPurchaseEntry } from '@/pages/Accounting/PartiesPurchaseEntry';
 import { PartiesCustomersPage } from '@/pages/parties/blocks/customers/PartiesCustomers';
+import PartiesRoles from '@/pages/userManagement/roles/PartiesRoles';
 
 
 const AppRoutingSetup = (): ReactElement => {
@@ -112,6 +113,7 @@ const AppRoutingSetup = (): ReactElement => {
             <Route path="/lead/:uuid" element={<LeadDetails />} />
             <Route path="/customer/:uuid" element={<CustomerDetails />} />
             <Route path="/user-management/users" element={<PartiesUsersPage />} />
+            <Route path="/user-management/roles" element={<PartiesRoles />} />
             <Route path="/user/:id" element={<UserDetails />} />
             <Route path="/items/inventory" element={<InventoryPage />} />
             <Route path="/items/inventory/:itemId" element={<ItemDetailsPage />} />
@@ -224,6 +226,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/auth/welcome-message" element={<AuthenticationWelcomeMessagePage />} />
           <Route path="/parties/leads" element={<LeadsPage />} />
           <Route path="/user-management/users" element={<PartiesUsersPage />} />
+          <Route path="/user-management/roles" element={<PartiesRoles />} />
           <Route path="/parties/customers" element={<PartiesCustomersPage />} />
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />

@@ -1961,7 +1961,7 @@ const CreateQuotationPage = () => {
                 page?
               </p>
             </div>
-            <DialogFooter className="mt-6 flex justify-end space-x-3">
+            <DialogFooter className="flex justify-end space-x-3">
               <Button
                 type="button"
                 variant="outline"

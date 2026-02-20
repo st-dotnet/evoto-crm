@@ -29,6 +29,8 @@ def profile():
         "email": user.email,
         "role": user.role.name,
         "isActive": user.isActive,
+        "state": user.state,
+        "country": user.country,
         "businesses": businesses
     })
 
@@ -176,6 +178,8 @@ def get_all_users():
                     User.email.ilike(f"%{query_value}%"),
                     User.firstName.ilike(f"%{query_value}%"),
                     User.lastName.ilike(f"%{query_value}%"),
+                    User.state.ilike(f"%{query_value}%"),
+                    User.country.ilike(f"%{query_value}%"),
                     func.concat(User.firstName, " ", User.lastName).ilike(f"%{query_value}%")
                 ]
                 # Add mobile number search if the field exists
@@ -233,7 +237,9 @@ def get_all_users():
                 "created_at": user.created_at.isoformat() if hasattr(user, 'created_at') and user.created_at else None,
                 "updated_at": user.updated_at.isoformat() if hasattr(user, 'updated_at') and user.updated_at else None,
                 "created_by": str(user.created_by) if hasattr(user, 'created_by') and user.created_by else None,
-                "updated_by": str(user.updated_by) if hasattr(user, 'updated_by') and user.updated_by else None
+                "updated_by": str(user.updated_by) if hasattr(user, 'updated_by') and user.updated_by else None,
+                "state": user.state,
+                "country": user.country
             })
 
         return jsonify({
@@ -342,7 +348,9 @@ def get_user_by_id(user_uuid):
         "businesses": businesses,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
-        "created_by": user.created_by
+        "created_by": user.created_by,
+        "state": user.state,
+        "country": user.country
     })
 
 # --- Create User (Admin only) ---
@@ -483,7 +491,9 @@ def create_user():
             email=email,
             mobileNo=mobile,
             role_id=role.id,
-            isActive=data.get("isActive", True)
+            isActive=data.get("isActive", True),
+            state=data.get("state"),
+            country=data.get("country")
         )
         user.set_password(password)
         
@@ -682,6 +692,13 @@ def update_user(user_uuid):
         if "isActive" in data:
             user.isActive = data["isActive"]
 
+        if "state" in data:
+            user.state = data["state"]
+
+        if "country" in data:
+            user.country = data["country"]
+
+
         set_updated_fields(user)
         db.session.commit()
         
@@ -698,7 +715,9 @@ def update_user(user_uuid):
                 "mobile": user.mobileNo if hasattr(user, 'mobileNo') else None,
                 "role": user.role.name if user.role else None,
                 "isActive": user.isActive,
-                "businesses": businesses
+                "businesses": businesses,
+                "state": user.state,
+                "country": user.country
             }
         }), 200
 
