@@ -31,6 +31,7 @@ def profile():
         "isActive": user.isActive,
         "state": user.state,
         "country": user.country,
+        "isUT": user.isUT,
         "businesses": businesses
     })
 
@@ -239,7 +240,8 @@ def get_all_users():
                 "created_by": str(user.created_by) if hasattr(user, 'created_by') and user.created_by else None,
                 "updated_by": str(user.updated_by) if hasattr(user, 'updated_by') and user.updated_by else None,
                 "state": user.state,
-                "country": user.country
+                "country": user.country,
+                "isUT": user.isUT
             })
 
         return jsonify({
@@ -350,7 +352,8 @@ def get_user_by_id(user_uuid):
         "updated_at": user.updated_at,
         "created_by": user.created_by,
         "state": user.state,
-        "country": user.country
+        "country": user.country,
+        "isUT": user.isUT
     })
 
 # --- Create User (Admin only) ---
@@ -499,6 +502,7 @@ def create_user():
         
         set_created_fields(user)
         set_business(user)
+        user.update_ut_status()
         db.session.add(user)
         db.session.commit()
 
@@ -698,7 +702,7 @@ def update_user(user_uuid):
         if "country" in data:
             user.country = data["country"]
 
-
+        user.update_ut_status()
         set_updated_fields(user)
         db.session.commit()
         
@@ -717,7 +721,8 @@ def update_user(user_uuid):
                 "isActive": user.isActive,
                 "businesses": businesses,
                 "state": user.state,
-                "country": user.country
+                "country": user.country,
+                "isUT": user.isUT
             }
         }), 200
 

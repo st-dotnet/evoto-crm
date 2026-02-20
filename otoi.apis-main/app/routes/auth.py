@@ -136,7 +136,8 @@ def signup():
             "role": user.role.name if user.role else None,
             "business_id": business_id,
             "state": user.state,
-            "country": user.country
+            "country": user.country,
+            "isUT": user.isUT
         }
     }), 201
 
@@ -225,6 +226,10 @@ def login():
         
         g.user_id = user.uuid
         g.business_id = business_id
+
+        # Update UT status on login
+        user.update_ut_status()
+        db.session.commit()
         
         return jsonify({
             "access_token": token,
@@ -236,7 +241,8 @@ def login():
                 "role": user.role.name,
                 "business_id": business_id,
                 "state": user.state,
-                "country": user.country
+                "country": user.country,
+                "isUT": user.isUT
             }
         }), 200
         

@@ -30,6 +30,7 @@ class User(BaseMixin, db.Model):
     isActive = Column(db.Boolean, default=True, nullable=False)
     state = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True)
+    isUT = Column(db.Boolean, default=False, nullable=False)
     # Relationships
     role = relationship("Role", back_populates="users")
     businesses = relationship("Business", secondary=user_business, back_populates="users")
@@ -39,6 +40,34 @@ class User(BaseMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def update_ut_status(self):
+        from app.models.location import UnionTerritory
+        if not self.state:
+            self.isUT = False
+            return
+
+        # Mapping of ISO codes to their full names as stored in union_territories table
+        ut_mapping = {
+            "AN": "Andaman and Nicobar Islands",
+            "CH": "Chandigarh",
+            "DH": "Dadra and Nagar Haveli and Daman and Diu",
+            "DL": "Delhi",
+            "JK": "Jammu and Kashmir",
+            "LA": "Ladakh",
+            "LD": "Lakshadweep",
+            "PY": "Puducherry"
+        }
+
+        # Clean the input state
+        clean_state = self.state.strip()
+        
+        # Check if the input is an ISO code we recognize
+        search_name = ut_mapping.get(clean_state.upper(), clean_state)
+
+        # Case-insensitive check against territory_name
+        ut = UnionTerritory.query.filter(UnionTerritory.territory_name.ilike(search_name)).first()
+        self.isUT = ut is not None
 
     def __repr__(self):
         return f"<User(username={self.username}, email={self.email})>"
