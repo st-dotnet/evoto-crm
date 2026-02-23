@@ -19,6 +19,9 @@ export interface UserModel {
   phone?: string;
   role?: string;
   isActive?: boolean;
+  state?: string;
+  country?: string;
+  isUT?: boolean;
   pic?: string;
   language?: TLanguageCode;
   auth?: AuthModel;

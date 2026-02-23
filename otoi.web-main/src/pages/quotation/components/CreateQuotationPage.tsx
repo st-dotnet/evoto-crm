@@ -40,6 +40,7 @@ import CreateItemModal from "../../items/CreateItemModal";
 import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
+import { useAuthContext } from "@/auth/useAuthContext";
 
 interface Party {
   id: string;
@@ -186,6 +187,7 @@ const CreateQuotationPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
+  const { currentUser } = useAuthContext();
   const isEditMode = !!id;
   const isDuplicateMode = location.state?.isDuplicate;
   const today = new Date().toISOString().split("T")[0];
@@ -1994,7 +1996,7 @@ const CreateQuotationPage = () => {
                 page?
               </p>
             </div>
-            <DialogFooter className="mt-6 flex justify-end space-x-3">
+            <DialogFooter className="flex justify-end space-x-3">
               <Button
                 type="button"
                 variant="outline"
@@ -2721,7 +2723,7 @@ const CreateQuotationPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">SGST@{tax / 2}</span>
+                  <span className="text-gray-700">{currentUser?.isUT ? 'UTGST' : 'SGST'}@{tax / 2}</span>
                   <span className="font-medium">
                     ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>

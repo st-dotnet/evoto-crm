@@ -144,7 +144,8 @@ const saveCustomerSchema = Yup.object().shape({
     .trim()
     .nullable()
     .min(15, "GST must be 15 characters")
-    .max(15, "GST must be 15 characters"),
+    .max(15, "GST must be 15 characters")
+    .required("GST is required"),
 
   pin: Yup.string()
     .nullable()
@@ -1041,7 +1042,7 @@ const ModalCustomer = ({
               {/* GST */}
               <div className="flex flex-col gap-1.5">
                 <label className="block text-sm font-medium text-gray-700">
-                  GST
+                  GST<span style={{ color: "red" }}>*</span>
                 </label>
                 <input {...formik.getFieldProps("gst")} className="input"
                   onInput={(e) => {
@@ -1080,7 +1081,7 @@ const ModalCustomer = ({
                       <div className="flex flex-col gap-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Billing Address 1{" "}
-                          <span style={{ color: "red" }}>*</span>
+                          {/* <span style={{ color: "red" }}>*</span> */}
                         </label>
                         <input
                           {...formik.getFieldProps("address1")}

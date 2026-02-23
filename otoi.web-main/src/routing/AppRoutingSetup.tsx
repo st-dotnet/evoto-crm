@@ -276,6 +276,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/auth/welcome-message" element={<AuthenticationWelcomeMessagePage />} />
           <Route path="/parties/leads" element={<LeadsPage />} />
           <Route path="/user-management/users" element={<PartiesUsersPage />} />
+          <Route path="/user-management/roles" element={<PartiesRoles />} />
           <Route path="/parties/customers" element={<PartiesCustomersPage />} />
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />

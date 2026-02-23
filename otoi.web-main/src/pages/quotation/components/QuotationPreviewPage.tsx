@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Printer, Share, FileText, Receipt } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
+import { useAuthContext } from "@/auth/useAuthContext";
 import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -801,6 +802,9 @@ const QuotationPreviewPage: React.FC = () => {
             <div className="flex justify-between items-center py-2 border-b-2 border-black">
               <span className="text-sm font-bold text-black">GRAND TOTAL</span>
               <span className="text-xl font-bold text-black">{formatCurrency(totals.totalAmount)}</span>
+            <div className="flex justify-between">
+              <span className="text-gray-600">{currentUser?.isUT ? 'UTGST' : 'SGST'} @9%</span>
+              <span>{formatCurrency(totals.totalTax / 2)}</span>
             </div>
             <div className="pt-2 text-right">
               <p className="text-xs text-black leading-tight">

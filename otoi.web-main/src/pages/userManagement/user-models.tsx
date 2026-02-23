@@ -39,6 +39,8 @@ export type User = {
   last_name?: string;
   role: string;
   isActive: boolean;
+  state?: string;
+  country?: string;
   created_at?: string;
   created_by?: string;
   updated_at?: string;

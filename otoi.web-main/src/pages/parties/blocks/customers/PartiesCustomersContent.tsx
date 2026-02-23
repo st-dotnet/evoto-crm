@@ -650,15 +650,16 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             <DialogTitle className="text-lg font-semibold">Delete Customer</DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete <strong>{selectedPerson?.first_name} {selectedPerson?.last_name}</strong> this customer?
+              Are you sure you want to delete <strong>{selectedPerson?.first_name} {selectedPerson?.last_name}</strong> customer?
             </DialogDescription>
 
           </DialogHeader>
 
-          <DialogFooter className="mt-6 flex justify-end gap-3">
+          <DialogFooter className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              className="px-14"
             >
               Cancel
             </Button>
@@ -666,7 +667,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             <Button
               variant="destructive"
               onClick={deleteCustomer}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 px-14"
             >
               Delete
             </Button>

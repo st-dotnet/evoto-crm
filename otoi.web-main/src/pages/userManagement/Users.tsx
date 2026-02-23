@@ -45,6 +45,8 @@ interface User {
   mobile: string;
   role: string;
   isActive?: boolean;
+  state?: string;
+  country?: string;
   created_at?: string,
   created_by?: string,
   updated_at?: string,
@@ -513,14 +515,14 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
               Are you sure you want to delete <strong>{selectedUser?.first_name} {selectedUser?.last_name}</strong> ({selectedUser?.email})?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-3 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+          <DialogFooter className="flex gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="px-14">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => deleteUser(selectedUser?.id || "")}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 px-14"
             >
               Delete
             </Button>

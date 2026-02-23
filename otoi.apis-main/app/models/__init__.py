@@ -10,6 +10,7 @@ from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 from .purchase import PurchaseEntry
 from .quotation import Quotation, QuotationItem
 from .invoice import Invoice, InvoiceItem
+from .location import Country, UnionTerritory
 
 __all__ = [ "User", "Role", "Address", 
            "Lead", "LeadAddress", 
@@ -18,4 +19,4 @@ __all__ = [ "User", "Role", "Address",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business", "user_business",
            "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry",
-           "Quotation", "QuotationItem","Invoice", "InvoiceItem"]
+           "Quotation", "QuotationItem","Invoice", "InvoiceItem", "Country", "UnionTerritory"]

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useAuthContext } from '../../useAuthContext';
+import { Country, State } from "country-state-city";
 import { toAbsoluteUrl } from '@/utils';
 import { Alert, KeenIcon } from '@/components';
 import { useLayout } from '@/providers';
@@ -15,11 +16,14 @@ const initialValues = {
   mobileNo: '',
   password: '',
   changepassword: '',
-  acceptTerms: false
+  acceptTerms: false,
+  state: '',
+  country: ''
 };
 
 const signupSchema = Yup.object().shape({
   firstName: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 characters')
     .max(50, 'Maximum 50 characters')
     .required('First Name is required'),
@@ -38,15 +42,19 @@ const signupSchema = Yup.object().shape({
     .max(10, 'Maximum 10 symbols')
     .required('Mobile Number is required'),
   password: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
     .required('Password is required'),
   changepassword: Yup.string()
+    .trim()
     .min(3, 'Minimum 3 symbols')
     .max(50, 'Maximum 50 symbols')
     .required('Password confirmation is required')
     .oneOf([Yup.ref('password')], "Password and Confirm Password didn't match"),
-  acceptTerms: Yup.bool().required('You must accept the terms and conditions')
+  acceptTerms: Yup.bool().required('You must accept the terms and conditions'),
+  state: Yup.string().required('State is required'),
+  country: Yup.string().required('Country is required')
 });
 
 const Signup = () => {
@@ -56,7 +64,6 @@ const Signup = () => {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { currentLayout } = useLayout();
 
   const formik = useFormik({
@@ -69,9 +76,9 @@ const Signup = () => {
           throw new Error('JWTProvider is required for this form.');
         }
         // Call the register function and handle navigation based on user role
-        const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword);
+        const response = await register(values.firstName, values.lastName, values.email, values.mobileNo, values.password, values.changepassword, values.state, values.country);
         const userRole = (response as any)?.user?.role;
-        
+
         if (userRole === 'User') {
           navigate('/account/home/user-profile', { replace: true });
         } else {
@@ -85,16 +92,6 @@ const Signup = () => {
       }
     }
   });
-
-  const togglePassword = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setShowPassword(!showPassword);
-  };
-
-  const toggleConfirmPassword = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setShowConfirmPassword(!showConfirmPassword);
-  };
 
   return (
     <div className="card max-w-[700px] w-full">
@@ -111,7 +108,7 @@ const Signup = () => {
               to={currentLayout?.name === 'auth-branded' ? '/auth/login' : '/auth/classic/login'}
               className="text-2sm link"
             >
-              Sign In
+              Sign in
             </Link>
           </div>
         </div>
@@ -136,8 +133,6 @@ const Signup = () => {
           </a>
         </div> */}
         <div className="flex items-center gap-2">
-          <span className="border-t border-gray-200 w-full"></span>
-          <span className="text-2xs text-gray-500 font-medium uppercase">Or</span>
           <span className="border-t border-gray-200 w-full"></span>
         </div>
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
@@ -223,11 +218,100 @@ const Signup = () => {
                   { 'is-invalid': formik.touched.mobileNo && formik.errors.mobileNo },
                   { 'is-valid': formik.touched.mobileNo && !formik.errors.mobileNo }
                 )}
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  if (input.value.length > 10) {
+                    input.value = input.value.slice(0, 10);
+                  }
+                }}
+                onChange={(e) => {
+                  let value = e.target.value.replace(/[^0-9-]/g, '');
+                  value = value.replace(/--+/g, '-');
+                  e.target.value = value;
+                  formik.setFieldValue('mobileNo', value);
+                }}
               />
             </label>
             {formik.touched.mobileNo && formik.errors.mobileNo && (
               <span role="alert" className="text-danger text-xs mt-1">
                 {formik.errors.mobileNo}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Country */}
+          <div className="flex flex-col gap-1">
+            <label className="form-label text-gray-900">
+              Country<span style={{ color: "red" }}>*</span>
+            </label>
+            <label className="input">
+            <select
+              {...formik.getFieldProps("country")}
+              onChange={(e) => {
+                formik.setFieldValue("country", e.target.value);
+                formik.setFieldValue("state", ""); // Reset state when country changes
+              }}
+              className={clsx(
+                "form-control bg-transparent",
+                {
+                  "is-invalid": formik.touched.country && formik.errors.country,
+                },
+                {
+                  "is-valid": formik.touched.country && !formik.errors.country,
+                }
+              )}
+            >
+              <option value="">--Select Country--</option>
+              {Country.getAllCountries().map((country) => (
+                <option key={country.isoCode} value={country.isoCode}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+            </label>
+            {formik.touched.country && formik.errors.country && (
+              <span role="alert" className="text-danger text-xs mt-1">
+                {formik.errors.country}
+              </span>
+            )}
+          </div>
+
+          {/* State */}
+          <div className="flex flex-col gap-1">
+            <label className="form-label text-gray-900">
+              State<span style={{ color: "red" }}>*</span>
+            </label>
+            <label className="input">
+            <select
+              {...formik.getFieldProps("state")}
+              disabled={!formik.values.country}
+              className={clsx(
+                "form-control bg-transparent",
+                {
+                  "is-invalid": formik.touched.state && formik.errors.state,
+                },
+                {
+                  "is-valid": formik.touched.state && !formik.errors.state,
+                },
+                {
+                  "bg-gray-100": !formik.values.country,
+                }
+              )}
+            >
+              <option value="">--Select State--</option>
+              {formik.values.country &&
+                State.getStatesOfCountry(formik.values.country).map((state) => (
+                  <option key={state.isoCode} value={state.isoCode}>
+                    {state.name}
+                  </option>
+                ))}
+            </select>
+            </label>
+            {formik.touched.state && formik.errors.state && (
+              <span role="alert" className="text-danger text-xs mt-1">
+                {formik.errors.state}
               </span>
             )}
           </div>
@@ -250,7 +334,13 @@ const Signup = () => {
                   { 'is-valid': formik.touched.password && !formik.errors.password }
                 )}
               />
-              <button className="btn btn-icon" onClick={togglePassword}>
+              <button
+                className="btn btn-icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPassword(!showPassword);
+                }}
+              >
                 <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showPassword })} />
                 <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showPassword })} />
               </button>
@@ -267,7 +357,7 @@ const Signup = () => {
             </label>
             <label className="input">
               <input
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Re-enter Password"
                 autoComplete="off"
                 {...formik.getFieldProps('changepassword')}
@@ -277,9 +367,15 @@ const Signup = () => {
                   { 'is-valid': formik.touched.changepassword && !formik.errors.changepassword }
                 )}
               />
-              <button className="btn btn-icon" onClick={toggleConfirmPassword}>
-                <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showConfirmPassword })} />
-                <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showConfirmPassword })} />
+              <button
+                className="btn btn-icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPassword(!showPassword);
+                }}
+              >
+                <KeenIcon icon="eye" className={clsx('text-gray-500', { hidden: showPassword })} />
+                <KeenIcon icon="eye-slash" className={clsx('text-gray-500', { hidden: !showPassword })} />
               </button>
             </label>
             {formik.touched.changepassword && formik.errors.changepassword && (
@@ -314,7 +410,7 @@ const Signup = () => {
           className="btn btn-primary flex justify-center grow"
           disabled={loading || formik.isSubmitting}
         >
-          {loading ? 'Please wait...' : 'Sign UP'}
+          {loading ? 'Please wait...' : 'Sign up'}
         </button>
       </form>
     </div>

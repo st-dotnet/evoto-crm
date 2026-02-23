@@ -38,6 +38,8 @@ interface AuthContextProps {
     mobileNo: string,
     password: string,
     password_confirmation: string,
+    state: string,
+    country: string
   ) => Promise<void>;
   requestPasswordResetLink: (email: string) => Promise<void>;
   changePassword: (
@@ -104,6 +106,8 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
     mobileNo: string,
     password: string,
     password_confirmation: string,
+    state: string,
+    country: string
   ) => {
     try {
       const { data: auth } = await axios.post(REGISTER_URL, {
@@ -112,7 +116,9 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
         email,
         mobileNo,
         password,
-        password_confirmation
+        password_confirmation,
+        state,
+        country
       });
       saveAuth(auth);
       const { data: user } = await getUser();
