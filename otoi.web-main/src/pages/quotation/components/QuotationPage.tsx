@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { DataGrid, DataGridColumnHeader, DataGridRowSelect, DataGridRowSelectAll } from "@/components";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X, Receipt } from "lucide-react";
+import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { getQuotations, deleteQuotation, getQuotationById, createQuotation, fetchQuotationItems, getAllCustomersDropdown, getQuotationNumbersDropdown } from "../services/quotation.services";
-import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
@@ -70,7 +69,7 @@ const QuotationPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed' | 'converted'>('open');
   const [activeTab, setActiveTab] = useState<'quotations' | 'items'>('quotations');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -187,7 +186,7 @@ const QuotationPage = () => {
         search: searchTerm,
         party_name: searchType === 'party_name' ? searchTerm : '',
         quotation_number: searchType === 'quotation_number' ? searchTerm : '',
-        status: selectedStatus === 'all' ? '' : selectedStatus,
+        status: selectedStatus === 'all' ? 'open,closed,converted' : selectedStatus, // Include all statuses including converted
         page: params.pageIndex + 1,
         per_page: params.pageSize,
         sort: 'valid_till', // Always sort by due date to show urgent items first
@@ -434,6 +433,7 @@ const QuotationPage = () => {
           <div className="flex items-center justify-center">
             <span className={`px-2 py-1 text-xs rounded-full ${status === 'open' ? 'bg-green-100 text-green-800' :
                 status === 'closed' ? 'bg-red-100 text-red-800' :
+                status === 'converted' ? 'bg-purple-100 text-purple-800' :
                   'bg-gray-100 text-gray-800'
               }`}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -523,22 +523,6 @@ const QuotationPage = () => {
           setIsOpen(false);
         };
 
-        const handleConvertToInvoice = async (id: string) => {
-          setIsOpen(false);
-          try {
-            const response = await createInvoiceFromQuotation(id);
-            if (response.success && response.data) {
-              const invoiceId = response.data.uuid || response.data.id;
-              toast.success('Quotation converted to invoice successfully!');
-              navigate(`/invoices/${invoiceId}`);
-            } else {
-              toast.error(response.error || 'Failed to convert quotation to invoice');
-            }
-          } catch (error) {
-            toast.error('Failed to convert quotation to invoice');
-          }
-        };
-
         return (
           <div
             className="flex justify-center"
@@ -579,6 +563,7 @@ const QuotationPage = () => {
                   <Eye className="mr-2 h-4 w-4" />
                   View Details
                 </DropdownMenuItem>
+                
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
@@ -588,16 +573,6 @@ const QuotationPage = () => {
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleConvertToInvoice(row.original.id);
-                  }}
-                >
-                  <Receipt className="mr-2 h-4 w-4 text-indigo-500" />
-                  <span className="text-indigo-600">Convert to Invoice</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -648,6 +623,7 @@ const QuotationPage = () => {
                     {selectedStatus === 'open' && 'Open Quotation'}
                     {selectedStatus === 'all' && 'All Quotation'}
                     {selectedStatus === 'closed' && 'Closed Quotation'}
+                    {selectedStatus === 'converted' && 'Converted Quotation'}
                   </span>
                   <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                 </Button>
@@ -685,6 +661,17 @@ const QuotationPage = () => {
                   <Circle className="h-4 w-4 text-red-500" />
                   <span>Closed Quotation</span>
                   {selectedStatus === 'closed' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedStatus('converted');
+                    setRefreshKey(prev => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <CircleCheck className="h-4 w-4 text-purple-500" />
+                  <span>Converted Quotation</span>
+                  {selectedStatus === 'converted' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

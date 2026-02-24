@@ -84,6 +84,7 @@ const DataGridTable = <TData,>() => {
                     'align-middle [&:has([role=checkbox])]:pe-0',
                     cell.column.columnDef.meta?.cellClassName
                   )}
+                  onClick={cell.column.columnDef.meta?.disableRowClick ? (e) => e.stopPropagation() : undefined}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

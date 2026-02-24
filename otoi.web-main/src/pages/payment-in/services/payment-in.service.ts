@@ -38,7 +38,6 @@ export const createPaymentIn = async (paymentData: PaymentInData): Promise<ApiRe
     try {
         // Since payment-in endpoint doesn't exist, just return success for now
         // In real implementation, this would POST to /api/payment-in
-        console.log('Payment data to be created:', paymentData);
         
         return {
             success: true,
@@ -83,10 +82,7 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
             withCredentials: false
         });
 
-        console.log('Invoice API response:', response);
-        console.log('Response data:', response.data);
-        console.log('Response data type:', typeof response.data);
-        console.log('Is array?', Array.isArray(response.data));
+ 
 
         // Check if response.data is an array, if not try to extract the array
         let invoicesData = response.data;
@@ -94,10 +90,8 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
             // The actual array is nested under response.data.data
             if (response.data?.data && Array.isArray(response.data.data)) {
                 invoicesData = response.data.data;
-                console.log('Extracted invoices from response.data.data:', invoicesData);
             } else if (response.data?.invoices && Array.isArray(response.data.invoices)) {
                 invoicesData = response.data.invoices;
-                console.log('Extracted invoices from response.data.invoices:', invoicesData);
             } else {
                 console.error('Response data is not in expected format:', response.data);
                 return {
@@ -123,7 +117,6 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
             return isPaid;
         }) || [];
 
-        console.log('Paid invoices found:', paidInvoices);
 
         // Transform invoice data to payment format
         const paymentData = paidInvoices.map((invoice: any) => ({
@@ -139,7 +132,6 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
             invoice_number: invoice.invoice_number || invoice.invoiceNo
         }));
 
-        console.log('Transformed payment data:', paymentData);
 
         return {
             success: true,

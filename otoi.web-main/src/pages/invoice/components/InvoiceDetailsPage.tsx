@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, FileText, Clock } from "lucide-react";
+import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -20,8 +20,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
-    DialogBody
+    DialogFooter
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +42,7 @@ import { CalendarIcon, Info } from "lucide-react";
 import { recordPayment } from "../services/invoice.services";
 import { createPaymentIn, generatePaymentNumber } from "../../payment-in/services/payment-in.service";
 import { cn } from "@/lib/utils";
+import { getCustomerById } from "@/pages/parties/services/customer.service";
 
 interface InvoiceItem {
     uuid: string;
@@ -129,9 +129,30 @@ const InvoiceDetailsPage: React.FC = () => {
         setIsLoading(true);
         try {
             const response = await getInvoiceById(id!);
-            console.log('Fetched invoice data:', response.data);
             if (response.success && response.data) {
-                setInvoiceData(response.data);
+                const data = response.data;
+                setInvoiceData(data);
+
+                // Fetch customer details separately to get address information
+                if (data.customer_id || data.customer?.uuid) {
+                    const custId = data.customer_id || data.customer?.uuid;
+                    try {
+                        const customerRes = await getCustomerById(custId);
+                        if (customerRes.success && customerRes.data) {
+                            setInvoiceData(prev => prev ? ({
+                                ...prev,
+                                customer: {
+                                    ...prev.customer,
+                                    ...customerRes.data,
+                                    billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
+                                    shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
+                                }
+                            }) : null);
+                        }
+                    } catch (custError) {
+                        console.error("Error fetching customer details for invoice:", custError);
+                    }
+                }
             } else {
                 toast.error(response.error || "Failed to load invoice");
                 navigate("/invoices");
@@ -263,13 +284,6 @@ const InvoiceDetailsPage: React.FC = () => {
 
         setIsSavingPayment(true);
         try {
-            console.log('Payment form data:', {
-                amount: paymentForm.amountReceived,
-                mode: paymentForm.mode,
-                notes: paymentForm.notes,
-                discount: paymentForm.discount
-            });
-            
             const response = await recordPayment(
                 id,
                 paymentForm.amountReceived,
@@ -279,7 +293,6 @@ const InvoiceDetailsPage: React.FC = () => {
             );
 
             if (response.success) {
-                console.log('Payment recorded successfully, response:', response.data);
                 // Update balance from response
                 if (response.data?.balance_due !== undefined) {
                     setUpdatedBalance(response.data.balance_due);
@@ -300,9 +313,9 @@ const InvoiceDetailsPage: React.FC = () => {
         }
     };
 
-    const handleEdit = () => {
-        navigate(`/invoices/${id}/edit`);
-    };
+    // const handleEdit = () => {
+    //     navigate(`/invoices/${id}/edit`);
+    // };
 
     const formatCurrency = (amount: number) => {
         return `₹ ${amount.toFixed(2)}`;
@@ -419,16 +432,17 @@ const InvoiceDetailsPage: React.FC = () => {
         if (line1) elements.push(<>
             <span className="font-semibold">{prefix}:</span> {line1}
         </>);
-        if (line2) elements.push(<>
-            <span className="font-semibold">Line 2:</span> {line2}
-        </>);
+        // if (line2) elements.push(<>
+        //     <span className="font-semibold">Line 2:</span> {line2}
+        // </>);
 
         const parts = [];
         if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
         if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
+        if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
         const pin = address.pin || address.postal_code || address.zip;
         if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
-        if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+
 
         if (parts.length > 0) {
             const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
@@ -458,8 +472,8 @@ const InvoiceDetailsPage: React.FC = () => {
                 address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
                 city: customer[`${prefix}city`] || customer.city,
                 state: customer[`${prefix}state`] || customer.state,
+                country: customer[`${prefix}country`] || customer.country,
                 pin: customer[`${prefix}pin`] || customer.pin,
-                country: customer[`${prefix}country`] || customer.country
             };
         }
 
@@ -552,7 +566,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
                         <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
                         <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
-                        <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
+                        {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
                         <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
                         {invoiceData.balance_due > 0 && (
                             <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
@@ -588,6 +602,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     })()}
                 </div>
 
+                {/* Invoice Details */}
                 <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
                     {/* Labels Row */}
                     <div className="px-4 py-1 border-b border-black bg-gray-100">
@@ -620,6 +635,12 @@ const InvoiceDetailsPage: React.FC = () => {
                                 {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
                             </p>
                             <div className="space-y-1">
+                                <p className="font-medium">
+                                    {/* {invoiceData.customer ?
+                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
+                                        'No customer selected'
+                                    } */}
+                                </p>
                                 {invoiceData.customer?.company_name && (
                                     <p className="text-gray-600">{invoiceData.customer.company_name}</p>
                                 )}
@@ -631,6 +652,11 @@ const InvoiceDetailsPage: React.FC = () => {
                                 {invoiceData.customer?.mobile && (
                                     <p className="text-black">
                                         <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                                    </p>
+                                )}
+                                {invoiceData.customer?.gst && (
+                                    <p className="text-black">
+                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
                                     </p>
                                 )}
                                 {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
@@ -646,6 +672,12 @@ const InvoiceDetailsPage: React.FC = () => {
                                 {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
                             </p>
                             <div className="space-y-1">
+                                <p className="font-medium">
+                                    {/* {invoiceData.customer ?
+                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
+                                        'No customer selected'
+                                    } */}
+                                </p>
                                 {invoiceData.customer?.company_name && (
                                     <p className="text-gray-600">{invoiceData.customer.company_name}</p>
                                 )}
@@ -657,6 +689,11 @@ const InvoiceDetailsPage: React.FC = () => {
                                 {invoiceData.customer?.mobile && (
                                     <p className="text-black">
                                         <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                                    </p>
+                                )}
+                                {invoiceData.customer?.gst && (
+                                    <p className="text-black">
+                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
                                     </p>
                                 )}
                                 {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
@@ -726,332 +763,392 @@ const InvoiceDetailsPage: React.FC = () => {
                         </tfoot>
                     </table>
                 </div>
+                {/* ===== Bottom Section (Two Column Layout) ===== */}
+                <div className="mt-16 grid grid-cols-2 gap-16">
 
-                <div className="flex justify-end mt-4">
-                    <div className="w-1/2 space-y-0">
-                        <div className="flex justify-between items-center py-2">
-                            <span className="text-xs font-normal text-black uppercase">Taxable Amount</span>
-                            <span className="text-sm font-bold text-black">{formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                            <span className="text-xs font-normal text-black uppercase">CGST ({Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100}%)</span>
-                            <span className="text-sm font-bold text-black">{formatCurrency(invoiceData.tax_total / 2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-black">
-                            <span className="text-xs font-normal text-black uppercase  ">SGST ({Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100}%)</span>
-                            <span className="text-sm font-bold text-black">{formatCurrency(invoiceData.tax_total / 2)}</span>
-                        </div>
-                        {invoiceData.additional_charges_total > 0 && (
-                            <div className="flex justify-between items-center py-2">
-                                <span className="text-xs font-normal text-black uppercase">Additional Charges</span>
-                                <span className="text-sm font-bold text-black">{formatCurrency(invoiceData.additional_charges_total)}</span>
+                    {/* ================= LEFT SIDE ================= */}
+                    <div className="space-y-10">
+
+                        {/* Notes */}
+                        {invoiceData.notes && (
+                            <div>
+                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                                    Notes
+                                </h4>
+                                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
+                                    {invoiceData.notes}
+                                </p>
                             </div>
                         )}
-                        <div className="flex justify-between items-center py-3">
-                            <span className="text-sm font-bold text-black uppercase tracking-wider">Grand Total</span>
-                            <span className="text-xl font-bold text-black">{formatCurrency(invoiceData.total_amount)}</span>
-                        </div>
-                        <div className="pt-2 text-right">
-                            <p className="text-[10px] text-gray-500 uppercase font-medium">Amount in Words</p>
-                            <p className="text-xs font-bold text-black">{formatNumberInWords(invoiceData.total_amount)}</p>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Notes & Terms */}
-                <div className="mt-12 grid grid-cols-2 gap-12">
-                    {invoiceData.notes && (
-                        <div>
-                            <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">Notes</h4>
-                            <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">{invoiceData.notes}</p>
-                        </div>
-                    )}
-                    {invoiceData.terms_and_conditions && (
-                        <div>
-                            <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">Terms & Conditions</h4>
-                            <div className="text-[10px] text-black space-y-1">
-                                {invoiceData.terms_and_conditions.split('\n').map((term, i) => (
-                                    <p key={i} className="leading-tight">• {term}</p>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer Signature Area */}
-                <div className="mt-20 flex justify-between items-end">
-                    <div className="text-[10px] text-gray-500">
-                        <p>This is a computer generated invoice.</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="w-48 border-b border-black mb-2"></div>
-                        <p className="text-xs font-bold text-black uppercase">Authorized Signatory</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Payment History Sidebar */}
-            <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
-                <SheetContent side="right" className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200">
-                    <SheetHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between">
-                        <SheetTitle className="text-xl font-bold text-gray-800">Payment History - Invoice #{invoiceData.invoice_number}</SheetTitle>
-                    </SheetHeader>
-
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {/* Summary Section */}
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-500 font-medium">Invoice Amount</span>
-                                <span className="text-gray-900 font-bold">{formatCurrency(invoiceData.total_amount)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
-                                <span className="text-gray-500 font-medium tracking-tight">Initial Amount Received</span>
-                                <span className="text-gray-900 font-bold">{formatCurrency(0)}</span>
-                            </div>
-                        </div>
-
-                        {/* Payments List */}
-                        <div className="space-y-4">
-                            {invoiceData.amount_paid > 0 ? (
-                                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <h4 className="text-sm font-bold text-blue-600">Payment in #{invoiceData.invoice_number}</h4>
-                                        <span className="text-sm font-bold text-gray-900">{formatCurrency(invoiceData.amount_paid)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                                        <span>{new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</span>
-                                        <span className="capitalize">Cash</span>
-                                    </div>
+                        {/* Terms */}
+                        {invoiceData.terms_and_conditions && (
+                            <div>
+                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                                    Terms & Conditions
+                                </h4>
+                                <div className="text-[10px] text-black space-y-1">
+                                    {invoiceData.terms_and_conditions
+                                        .split('\n')
+                                        .filter(t => t.trim() !== '')
+                                        .map((term, i) => (
+                                            <p key={i} className="leading-tight">
+                                                • {term}
+                                            </p>
+                                        ))}
                                 </div>
-                            ) : (
-                                <div className="py-12 text-center">
-                                    <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                                        <CreditCard className="h-6 w-6 text-gray-400" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ================= RIGHT SIDE ================= */}
+                    <div>
+
+                        {/* ===== Tax Summary ===== */}
+                        <div className="space-y-0">
+
+                            <div className="flex justify-between items-center py-2">
+                                <span className="text-xs font-normal text-black uppercase">
+                                    Taxable Amount
+                                </span>
+                                <span className="text-sm font-bold text-black">
+                                    {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
+                                </span>
+                            </div>
+
+                            {invoiceData.tax_total > 0 && (
+                                <>
+                                    <div className="flex justify-between items-center py-2">
+                                        <span className="text-xs font-normal text-black uppercase">
+                                            CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
+                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                                                : 0}%)
+                                        </span>
+                                        <span className="text-sm font-bold text-black">
+                                            {formatCurrency(invoiceData.tax_total / 2)}
+                                        </span>
                                     </div>
-                                    <p className="text-sm text-gray-500 font-medium">No payments recorded yet</p>
+
+                                    <div className="flex justify-between items-center py-2 border-b border-black">
+                                        <span className="text-xs font-normal text-black uppercase">
+                                            {currentUser?.isUT ? 'UTGST' : 'SGST'}
+                                            ({invoiceData.subtotal - invoiceData.discount_total > 0
+                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                                                : 0}%)
+                                        </span>
+                                        <span className="text-sm font-bold text-black">
+                                            {formatCurrency(invoiceData.tax_total / 2)}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+
+                            {invoiceData.additional_charges_total > 0 && (
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-xs font-normal text-black uppercase">
+                                        Additional Charges
+                                    </span>
+                                    <span className="text-sm font-bold text-black">
+                                        {formatCurrency(invoiceData.additional_charges_total)}
+                                    </span>
                                 </div>
                             )}
+
+                            <div className="flex justify-between items-center py-3 border-b-2 border-black">
+                                <span className="text-sm font-bold text-black uppercase tracking-wider">
+                                    Grand Total
+                                </span>
+                                <span className="text-xl font-bold text-black">
+                                    {formatCurrency(invoiceData.total_amount)}
+                                </span>
+                            </div>
+
+                            <div className="pt-2 text-right">
+                                <p className="text-[10px] text-gray-500 uppercase font-medium">
+                                    Amount in Words
+                                </p>
+                                <p className="text-xs font-bold text-black">
+                                    {formatNumberInWords(invoiceData.total_amount)}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* ===== Signature ===== */}
+                        <div className="mt-20 flex justify-end">
+                            <div className="text-center">
+                                <div className="w-48 border-b border-black mb-2"></div>
+                                <p className="text-xs font-bold text-black uppercase">
+                                    Authorized Signatory
+                                </p>
+                            </div>
+                        </div>
+
                     </div>
 
-                    {/* Sidebar Footer */}
-                    <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center text-sm font-medium">
-                                <span className="text-gray-600">Total Amount Received</span>
-                                <span className="text-gray-900 font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm font-bold">
-                                <span className="text-gray-600">Balance Amount</span>
-                                <span className="text-red-600">{formatCurrency(invoiceData.balance_due)}</span>
-                            </div>
-                        </div>
+                </div>
 
-                        {invoiceData.balance_due > 0 && (
-                            <Button
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
-                                onClick={handleActualRecordPayment}
-                            >
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Record Payment In
-                            </Button>
-                        )}
-                    </div>
-                </SheetContent>
-            </Sheet>
+                {/* Payment History Sidebar */}
+                <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
+                    <SheetContent side="right" className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200">
+                        <SheetHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <SheetTitle className="text-xl font-bold text-gray-800">Payment History - Invoice #{invoiceData.invoice_number}</SheetTitle>
+                        </SheetHeader>
 
-            {/* Record Payment Modal */}
-            <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
-                <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-                    <DialogHeader className="px-6 py-4 border-b border-gray-200">
-                        <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                            <CreditCard className="h-5 w-5 text-gray-600" />
-                            Record Payment For Invoice #{invoiceData.invoice_number}
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    <DialogBody className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {/* Form Section */}
-                            <div className="md:col-span-2 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-1">
-                                        <label className="text-sm font-medium text-gray-700">
-                                            Amount Received <span className="text-red-500">*</span>
-                                        </label>
-                                    </div>
-                                        <Input
-                                            type="number"
-                                            value={paymentForm.amountReceived === null || paymentForm.amountReceived === 0 ? '' : paymentForm.amountReceived}
-                                            onChange={(e) => {
-                                                const amount = parseFloat(e.target.value) || 0;
-                                                const maxAmount = invoiceData?.balance_due || 0;
-                                                const cappedAmount = Math.min(amount, maxAmount);
-                                                setPaymentForm({ ...paymentForm, amountReceived: cappedAmount });
-                                                validateAmountReceived(cappedAmount);
-                                            }}
-                                            className={`h-10 ${amountError ? 'border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                                            placeholder="0.00"
-                                            step="0.01"
-                                        />
-                                        {amountError && (
-                                            <p className="text-xs text-red-600 font-medium">{amountError}</p>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-1">
-                                            <label className="text-sm font-medium text-gray-700">Payment Discount</label>
-                                            <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            value={paymentForm.discount === null || paymentForm.discount === 0 ? '' : paymentForm.discount}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, discount: parseFloat(e.target.value) || 0 })}
-                                            className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                                            placeholder="0.00"
-                                            step="0.01"
-                                        />
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* Summary Section */}
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500 font-medium">Invoice Amount</span>
+                                    <span className="text-gray-900 font-bold">{formatCurrency(invoiceData.total_amount)}</span>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Payment Date</label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant={"outline"}
-                                                    className={cn(
-                                                        "w-full h-10 justify-start text-left font-normal border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-100",
-                                                        !paymentForm.date && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                                                    {paymentForm.date ? format(paymentForm.date, "dd MMM yyyy") : <span className="text-gray-500">Select date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={paymentForm.date}
-                                                    onSelect={(date) => date && setPaymentForm({ ...paymentForm, date })}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Payment Mode</label>
-                                        <Select
-                                            value={paymentForm.mode}
-                                            onValueChange={(value) => setPaymentForm({ ...paymentForm, mode: value })}
-                                        >
-                                            <SelectTrigger className="h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
-                                                <SelectValue placeholder="Select mode" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="cash">Cash</SelectItem>
-                                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                                                <SelectItem value="upi">UPI</SelectItem>
-                                                <SelectItem value="cheque">Cheque</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Notes</label>
-                                    <Textarea
-                                        placeholder="Add any remarks or payment notes..."
-                                        className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
-                                        value={paymentForm.notes}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                                    />
+                                <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                                    <span className="text-gray-500 font-medium tracking-tight">Initial Amount Received</span>
+                                    <span className="text-gray-900 font-bold">{formatCurrency(0)}</span>
                                 </div>
                             </div>
 
-                            {/* Info & Calculation Section */}
-                            <div className="md:col-span-2 space-y-4">
-                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-800 mb-3">Invoice #{invoiceData.invoice_number}</h4>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Customer Name</span>
-                                            <span className="text-gray-900 font-medium">{invoiceData.customer?.first_name} {invoiceData.customer?.last_name}</span>
+                            {/* Payments List */}
+                            <div className="space-y-4">
+                                {invoiceData.amount_paid > 0 ? (
+                                    <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h4 className="text-sm font-bold text-blue-600">Payment in #{invoiceData.invoice_number}</h4>
+                                            <span className="text-sm font-bold text-gray-900">{formatCurrency(invoiceData.amount_paid)}</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Total Amount</span>
-                                            <span className="text-gray-900 font-medium">{formatCurrency(invoiceData.total_amount)}</span>
+                                        <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                                            <span>{new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</span>
+                                            <span className="capitalize">Cash</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Due Date</span>
-                                            <span className="text-gray-900 font-medium">{new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-800 mb-3">Payment Calculation</h4>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-red-600 font-medium">Pending Amount</span>
-                                            <span className="text-red-600 font-semibold">{formatCurrency(invoiceData.balance_due)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-600">Amount Received</span>
-                                            <span className="text-gray-900 font-medium">{formatCurrency(paymentForm.amountReceived)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-600">Discount</span>
-                                            <span className="text-gray-900 font-medium">-{formatCurrency(paymentForm.discount)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                                            <span className="text-sm font-semibold text-gray-800">New Balance</span>
-                                            <span className="text-base font-bold text-blue-600">
-                                                {formatCurrency(Math.max(0, invoiceData.balance_due - paymentForm.amountReceived - paymentForm.discount))}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </DialogBody>
-
-                    <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                            <span className="font-medium">Note:</span> Fields marked with <span className="text-red-500">*</span> are required
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsRecordPaymentOpen(false)}
-                                className="bg-white border-gray-300 font-medium"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                                onClick={handleSavePayment}
-                                disabled={isSavingPayment || paymentForm.amountReceived <= 0 || amountError !== ""}
-                            >
-                                {isSavingPayment ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                        Saving...
                                     </div>
                                 ) : (
-                                    <>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Record Payment
-                                    </>
+                                    <div className="py-12 text-center">
+                                        <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                                            <CreditCard className="h-6 w-6 text-gray-400" />
+                                        </div>
+                                        <p className="text-sm text-gray-500 font-medium">No payments recorded yet</p>
+                                    </div>
                                 )}
-                            </Button>
+                            </div>
                         </div>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+
+                        {/* Sidebar Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm font-medium">
+                                    <span className="text-gray-600">Total Amount Received</span>
+                                    <span className="text-gray-900 font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm font-bold">
+                                    <span className="text-gray-600">Balance Amount</span>
+                                    <span className="text-red-600">{formatCurrency(invoiceData.balance_due)}</span>
+                                </div>
+                            </div>
+
+                            {invoiceData.balance_due > 0 && (
+                                <Button
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
+                                    onClick={handleActualRecordPayment}
+                                >
+                                    <CreditCard className="mr-2 h-4 w-4" />
+                                    Record Payment In
+                                </Button>
+                            )}
+                        </div>
+                    </SheetContent>
+                </Sheet>
+
+                <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
+                    <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
+                        <DialogHeader className="px-6 py-4 border-b border-gray-200">
+                            <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <CreditCard className="h-5 w-5 text-gray-600" />
+                                Record Payment For Invoice #{invoiceData.invoice_number}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {/* Form Section */}
+                                <div className="md:col-span-2 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-1">
+                                                <label className="text-sm font-medium text-gray-700">
+                                                    Amount Received <span className="text-red-500">*</span>
+                                                </label>
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                value={paymentForm.amountReceived === null || paymentForm.amountReceived === 0 ? '' : paymentForm.amountReceived}
+                                                onChange={(e) => {
+                                                    const amount = parseFloat(e.target.value) || 0;
+                                                    const maxAmount = invoiceData?.balance_due || 0;
+                                                    const cappedAmount = Math.min(amount, maxAmount);
+                                                    setPaymentForm({ ...paymentForm, amountReceived: cappedAmount });
+                                                    validateAmountReceived(cappedAmount);
+                                                }}
+                                                className={`h-10 ${amountError ? 'border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                                                placeholder="0.00"
+                                                step="0.01"
+                                            />
+                                            {amountError && (
+                                                <p className="text-xs text-red-600 font-medium">{amountError}</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-1">
+                                                <label className="text-sm font-medium text-gray-700">Payment Discount</label>
+                                                <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                value={paymentForm.discount === null || paymentForm.discount === 0 ? '' : paymentForm.discount}
+                                                onChange={(e) => setPaymentForm({ ...paymentForm, discount: parseFloat(e.target.value) || 0 })}
+                                                className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                                                placeholder="0.00"
+                                                step="0.01"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-700">Payment Date</label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full h-10 justify-start text-left font-normal border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-100",
+                                                            !paymentForm.date && "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
+                                                        {paymentForm.date ? format(paymentForm.date, "dd MMM yyyy") : <span className="text-gray-500">Select date</span>}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={paymentForm.date}
+                                                        onSelect={(date) => date && setPaymentForm({ ...paymentForm, date })}
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-700">Payment Mode</label>
+                                            <Select
+                                                value={paymentForm.mode}
+                                                onValueChange={(value) => setPaymentForm({ ...paymentForm, mode: value })}
+                                            >
+                                                <SelectTrigger className="h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
+                                                    <SelectValue placeholder="Select mode" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="cash">Cash</SelectItem>
+                                                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                                    <SelectItem value="upi">UPI</SelectItem>
+                                                    <SelectItem value="cheque">Cheque</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-700">Notes</label>
+                                        <Textarea
+                                            placeholder="Add any remarks or payment notes..."
+                                            className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
+                                            value={paymentForm.notes}
+                                            onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Info & Calculation Section */}
+                                <div className="md:col-span-2 space-y-4">
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Invoice #{invoiceData.invoice_number}</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Customer Name</span>
+                                                <span className="text-gray-900 font-medium">{invoiceData.customer?.first_name} {invoiceData.customer?.last_name}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Total Amount</span>
+                                                <span className="text-gray-900 font-medium">{formatCurrency(invoiceData.total_amount)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Due Date</span>
+                                                <span className="text-gray-900 font-medium">{new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Payment Calculation</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-red-600 font-medium">Pending Amount</span>
+                                                <span className="text-red-600 font-semibold">{formatCurrency(invoiceData.balance_due)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-gray-600">Amount Received</span>
+                                                <span className="text-gray-900 font-medium">{formatCurrency(paymentForm.amountReceived)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-gray-600">Discount</span>
+                                                <span className="text-gray-900 font-medium">-{formatCurrency(paymentForm.discount)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                                <span className="text-sm font-semibold text-gray-800">New Balance</span>
+                                                <span className="text-base font-bold text-blue-600">
+                                                    {formatCurrency(Math.max(0, invoiceData.balance_due - paymentForm.amountReceived - paymentForm.discount))}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                            <div className="text-sm text-gray-500">
+                                <span className="font-medium">Note:</span> Fields marked with <span className="text-red-500">*</span> are required
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsRecordPaymentOpen(false)}
+                                    className="bg-white border-gray-300 font-medium"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                                    onClick={handleSavePayment}
+                                    disabled={isSavingPayment || paymentForm.amountReceived <= 0 || amountError !== ""}
+                                >
+                                    {isSavingPayment ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                            Saving...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Record Payment
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>  
     );
 };
 

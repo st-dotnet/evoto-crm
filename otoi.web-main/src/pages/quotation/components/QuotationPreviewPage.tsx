@@ -9,7 +9,7 @@ import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/inv
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
-import { useAuthContext } from "@/auth";
+// import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 
 interface QuotationItem {
@@ -229,35 +229,19 @@ const QuotationPreviewPage: React.FC = () => {
   };
 
   const handleConvertToInvoice = async () => {
-    // If already converted, navigate to the existing invoice
-    if (linkedInvoiceId) {
-      navigate(`/invoices/${linkedInvoiceId}`);
-      return;
-    }
-
-    const quotationId = id || locationState?.quotationId;
+    const quotationId = id || location.state?.quotationId;
     if (!quotationId) {
       toast.error("Please save the quotation first before converting to invoice.");
       return;
     }
-
-    setIsConverting(true);
-    try {
-      const response = await createInvoiceFromQuotation(quotationId);
-      if (response.success && response.data) {
-        const invoiceId = response.data.uuid || response.data.id;
-        toast.success("Quotation successfully converted to invoice!");
-        setLinkedInvoiceId(invoiceId);
-        navigate(`/invoices/${invoiceId}`);
-      } else {
-        toast.error(response.error || "Failed to convert quotation to invoice");
+    // Navigate to CreateInvoicePage with quotation data
+    navigate('/invoices/new-invoice', {
+      state: {
+        quotationId: quotationId,
+        quotationData: quotationData,
+        fromQuotation: true
       }
-    } catch (error) {
-      console.error("Error converting to invoice:", error);
-      toast.error("Failed to convert quotation to invoice");
-    } finally {
-      setIsConverting(false);
-    }
+    });
   };
 
   const handleDownloadPDF = async () => {
@@ -464,23 +448,24 @@ const QuotationPreviewPage: React.FC = () => {
     if (typeof address === "string") return [address];
     const elements: React.ReactNode[] = [];
     const line1 = address.address1 || address.address_line1 || address.line1 || address.street1;
-    const line2 = address.address2 || address.address_line2 || address.line2 || address.street2;
+    // const line2 = address.address2 || address.address_line2 || address.line2 || address.street2;
 
     const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
 
     if (line1) elements.push(<>
       <span className="font-semibold">{prefix}:</span> {line1}
     </>);
-    if (line2) elements.push(<>
-      <span className="font-semibold">Line 2:</span> {line2}
-    </>);
+    // if (line2) elements.push(<>
+    //   <span className="font-semibold">Line 2:</span> {line2}
+    // </>);
 
     const parts = [];
     if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
     if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
+    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
     const pin = address.pin || address.postal_code || address.zip;
     if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
-    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+
 
     if (parts.length > 0) {
       const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
@@ -511,8 +496,8 @@ const QuotationPreviewPage: React.FC = () => {
         address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
         city: customer[`${prefix}city`] || customer.city,
         state: customer[`${prefix}state`] || customer.state,
+        country: customer[`${prefix}country`] || customer.country,
         pin: customer[`${prefix}pin`] || customer.pin,
-        country: customer[`${prefix}country`] || customer.country
       };
 
       // Check if we actually found any address data
@@ -594,14 +579,18 @@ const QuotationPreviewPage: React.FC = () => {
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
-            <Button
-              className={`${linkedInvoiceId ? "bg-green-600 hover:bg-green-700" : "bg-indigo-600 hover:bg-indigo-700"} text-white gap-2`}
-              onClick={handleConvertToInvoice}
-              disabled={isConverting}
-            >
-              <Receipt className="h-4 w-4" />
-              {isConverting ? "Converting..." : linkedInvoiceId ? "Convert to Invoice" : "View Invoice"}
-            </Button>
+
+            {/* Show Convert to Invoice - temporarily always visible for debugging */}
+            {(!linkedInvoiceId || quotationData.status === 'open') && (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                onClick={handleConvertToInvoice}
+                disabled={isConverting}
+              >
+                <Receipt className="h-4 w-4" />
+                {isConverting ? "Converting..." : "Convert to Invoice"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -663,17 +652,17 @@ const QuotationPreviewPage: React.FC = () => {
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
-                  {quotationData.selectedCustomer ?
+                  {/* {quotationData.selectedCustomer ?
                     `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
                     'No customer selected'
-                  }
+                  } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
                   <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
                 )}
-                {quotationData.selectedCustomer && (
+                {/* {quotationData.selectedCustomer && (
                   <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-                )}
+                )} */}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
                     <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
@@ -682,6 +671,11 @@ const QuotationPreviewPage: React.FC = () => {
                 {quotationData.selectedCustomer?.mobile && (
                   <p className="text-black">
                     <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                  </p>
+                )}
+                {quotationData.selectedCustomer?.gst && (
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
                   </p>
                 )}
                 {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "billing"), "billing").map((element, i) => (
@@ -698,25 +692,27 @@ const QuotationPreviewPage: React.FC = () => {
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
-                  {quotationData.selectedCustomer ?
+                  {/* {quotationData.selectedCustomer ?
                     `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
                     'No customer selected'
-                  }
+                  } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
                   <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
-                )}
-                {quotationData.selectedCustomer && (
-                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
                 )}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
                     <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
                   </p>
                 )}
-                {quotationData.selectedCustomer?.mobile && (
+                {quotationData.selectedCustomer && (
                   <p className="text-black">
                     <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                  </p>
+                )}
+                {quotationData.selectedCustomer?.gst && (
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
                   </p>
                 )}
                 {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "shipping"), "shipping").map((element, i) => (
@@ -785,42 +781,113 @@ const QuotationPreviewPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex justify-end mt-4">
-          <div className="w-1/2 space-y-0">
-            <div className="flex justify-between items-center py-2">
-              <span className="text-xs font-normal text-black uppercase">Taxable Amount</span>
-              <span className="text-sm font-bold text-black">{formatCurrency(totals.subtotal - totals.totalDiscount)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-xs font-normal text-black uppercase">CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
-              <span className="text-sm font-bold text-black">{formatCurrency(totals.totalCGST)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-black">
-              <span className="text-xs font-normal text-black uppercase  ">SGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
-              <span className="text-sm font-bold text-black">{formatCurrency(totals.totalSGST)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b-2 border-black">
-              <span className="text-sm font-bold text-black">GRAND TOTAL</span>
-              <span className="text-xl font-bold text-black">{formatCurrency(totals.totalAmount)}</span>
-            <div className="flex justify-between">
-              <span className="text-gray-600">{currentUser?.isUT ? 'UTGST' : 'SGST'} @9%</span>
-              <span>{formatCurrency(totals.totalTax / 2)}</span>
-            </div>
-            <div className="pt-2 text-right">
-              <p className="text-xs text-black leading-tight">
-                <span className="font-bold uppercase text-[12px]">In words:</span> {formatNumberInWords(totals.totalAmount)}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* ===== Bottom Section (Two Column Layout) ===== */}
+        <div className="mt-16 grid grid-cols-2 gap-16">
 
-        <div className="mt-12 border-t border-black pt-8">
-          {quotationData.notes && <div className="mb-8"><h3 className="font-semibold text-xs uppercase mb-2 text-primary">NOTES</h3><p className="text-sm text-black leading-relaxed">{quotationData.notes}</p></div>}
-          {quotationData.terms && <div className="mt-8"><h3 className="font-semibold text-xs uppercase mb-2 text-primary">TERMS AND CONDITIONS</h3><div className="text-sm text-black leading-relaxed">{quotationData.terms.split("\n").map((t, i) => <p key={i} className="mb-1 flex gap-2"><span>•</span> <span>{t}</span></p>)}</div></div>}
+          {/* ================= LEFT SIDE ================= */}
+          <div className="space-y-10">
+
+            {/* Notes */}
+            {quotationData.notes && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                  Notes
+                </h4>
+                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
+                  {quotationData.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Terms */}
+            {quotationData.terms && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                  Terms & Conditions
+                </h4>
+                <div className="text-[10px] text-black space-y-1">
+                  {quotationData.terms
+                    .split('\n')
+                    .filter(t => t.trim() !== '')
+                    .map((term, i) => (
+                      <p key={i} className="leading-tight">
+                        • {term}
+                      </p>
+                    ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* ================= RIGHT SIDE ================= */}
+          <div>
+
+            {/* ===== Tax Summary ===== */}
+            <div className="space-y-0">
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  Taxable Amount
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.subtotal - totals.totalDiscount)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.totalCGST)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-black">
+                <span className="text-xs font-normal text-black uppercase">
+                  {currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.totalTax / 2)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b-2 border-black">
+                <span className="text-sm font-bold text-black">
+                  GRAND TOTAL
+                </span>
+                <span className="text-xl font-bold text-black">
+                  {formatCurrency(totals.totalAmount)}
+                </span>
+              </div>
+
+              <div className="pt-2 text-right">
+                <p className="text-xs text-black leading-tight">
+                  <span className="font-bold uppercase text-[12px]">
+                    In words:
+                  </span>{' '}
+                  {formatNumberInWords(totals.totalAmount)}
+                </p>
+              </div>
+
+            </div>
+
+            {/* ===== Signature ===== */}
+            <div className="mt-20 flex justify-end">
+              <div className="text-center">
+                <div className="w-48 border-b border-black mb-2"></div>
+                <p className="text-xs font-bold text-black uppercase">
+                  Authorized Signatory
+                </p>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>
   );
 };
-
 export default QuotationPreviewPage;

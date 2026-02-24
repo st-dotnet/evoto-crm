@@ -1048,9 +1048,6 @@ const CreateQuotationPage = () => {
       };
     });
     setQuotationItems([...quotationItems, ...newItems]);
-    if (newItems.length > 0) {
-      setTax(newItems[0].tax);
-    }
     toast.success(`${items.length} item(s) added to quotation`);
   };
 
@@ -1232,8 +1229,11 @@ const CreateQuotationPage = () => {
         //   }
         // }
 
-        if (navigateAfterSave) {
-          navigate("/quotes/list");
+        if (navigateAfterSave && id) {
+          // Navigate to the QuotationPreviewPage after a successful edit
+          navigate(`/quotes/${id}`);
+        } else if (navigateAfterSave && !isEditMode) {
+          // Navigate to preview for new quotations (handled in the button click handler)
         }
 
         return response.data;
@@ -1302,6 +1302,7 @@ const CreateQuotationPage = () => {
             }
 
             if (isEditMode) {
+              // Save and navigate to preview page for edit mode
               await handleSaveQuotation(true);
               return;
             }
@@ -1333,7 +1334,7 @@ const CreateQuotationPage = () => {
             if (!savedQuotation) return;
 
             // Navigate to preview AFTER save
-            navigate("/quotes/preview", {
+            navigate(`/quotes/${savedQuotation.uuid || savedQuotation.id}`, {
               state: {
                 quotationData,
                 quotationId: savedQuotation.uuid || savedQuotation.id,
@@ -2304,28 +2305,28 @@ const CreateQuotationPage = () => {
           <table className="min-w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
                   No.
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[250px]">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[250px]">
                   Item/Service Details
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
                   HSN/SAC
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
                   Quantity
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
                   PRICE/ITEM (₹)
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
                   Discount
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
                   Tax
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
                   AMOUNT (₹)
                 </th>
                 <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-16">
@@ -2364,13 +2365,13 @@ const CreateQuotationPage = () => {
                     className="hover:bg-gray-50/70 transition-colors group"
                   >
                     {/* Serial Number */}
-                    <td className="px-3 py-2 text-sm font-medium text-gray-600 border-r border-gray-200 text-center">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-600 border-r border-gray-200">
                       {index + 1}
                     </td>
 
                     {/* Item Details */}
                     <td className="px-3 py-2 border-r border-gray-200">
-                      <div className="space-y-1" style={{marginTop: '0.7rem'}}>
+                      <div className="space-y-1">
                         <div className="text-sm text-gray-900 truncate max-w-[250px]" title={item.item_name}>
                           {item.item_name}
                         </div>
@@ -2415,15 +2416,15 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* HSN/SAC */}
-                    <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-200 text-center">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs" style={{marginTop: '-0.2rem'}}>
+                    <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-200">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs">
                         {item.hsn_sac || "N/A"}
                       </span>
                     </td>
 
                     {/* Quantity */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200" style={{marginTop: '0.7rem'}}>
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200">
                         <input
                           type="number"
                           min="1"
@@ -2443,9 +2444,9 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Price */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="relative" style={{marginTop: '0.7rem'}}>
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">₹</span>
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1.5 text-xs font-medium text-gray-500">₹</span>
                         <input
                           type="number"
                           min="0"
@@ -2462,64 +2463,60 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Discount */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex flex-col items-start" style={{marginTop: '0.7rem'}}>
-                        <div className="relative w-full">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={item.discount ?? 0}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
-                              }
-                            }}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleUpdateDiscount(
-                                item.id,
-                                value === "" ? 0 : Math.min(100, parseFloat(value))
-                              );
-                            }}
-                            className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">%</span>
-                        </div>
-                        <div className="min-h-3 text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5 w-full">
-                          {item.discount > 0 ? `-₹${(item.quantity * item.price_per_item * item.discount / 100).toFixed(2)}` : ''}
-                        </div>
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.discount ?? 0}
+                          onKeyDown={(e) => {
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleUpdateDiscount(
+                              item.id,
+                              value === "" ? 0 : Math.min(100, parseFloat(value))
+                            );
+                          }}
+                          className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="absolute left-2 top-1.5 text-xs font-semibold text-gray-500">%</span>
+                      </div>
+                      <div className="text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5">
+                        {item.discount > 0 ? `-₹${(item.quantity * item.price_per_item * item.discount / 100).toFixed(2)}` : ''}
                       </div>
                     </td>
 
                     {/* Tax */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex flex-col items-start" style={{marginTop: '0.7rem'}}>
-                        <select
-                          value={item.tax}
-                          onChange={(e) =>
-                            handleUpdateTax(
-                              item.id,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200"
-                        >
-                          <option value="">None</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-                        <div className="min-h-3 text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5 w-full">
-                          {item.tax > 0 ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}` : ''}
-                        </div>
+                    <td className="px-3 py-2 border-r border-gray-200">
+                      <select
+                        value={item.tax}
+                        onChange={(e) =>
+                          handleUpdateTax(
+                            item.id,
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200"
+                      >
+                        <option value="">None</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
+                      <div className="text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5">
+                        {item.tax > 0 ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}` : ''}
                       </div>
                     </td>
 
                     {/* Amount */}
-                    <td className="px-3 py-2 text-center border-r border-gray-200">
-                      <div className="text-sm text-gray-900" style={{marginTop: '-0.2rem'}}>
+                    <td className="px-3 py-2 text-right border-r border-gray-200">
+                      <div className="text-sm text-gray-900">
                         ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </td>
@@ -2725,14 +2722,14 @@ const CreateQuotationPage = () => {
                 <div className="flex justify-between items-center text-sm py-2">
                   <span className="text-gray-700">{currentUser?.isUT ? 'UTGST' : 'SGST'}@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹ {(((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
                   <span className="text-gray-700">CGST@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹ {(((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 {!showDiscountField ? (

@@ -205,18 +205,18 @@ export const getQuotations = async (params?: {
 
   try {
     const queryParams = new URLSearchParams();
-    
+
     // Add search parameters
     if (params?.search) queryParams.append('search', params.search);
     if (params?.party_name) queryParams.append('party_name', params.party_name);
     if (params?.quotation_number) queryParams.append('quotation_number', params.quotation_number);
     // Always include status parameter, even if empty
     queryParams.append('status', params?.status || '');
-    
+
     // Add pagination parameters
     queryParams.append('page', String(params?.page || 1));
     queryParams.append('per_page', String(params?.per_page || 5));
-    
+
     // Add sorting parameters
     if (params?.sort) queryParams.append('sort', params.sort);
     if (params?.order) queryParams.append('order', params.order || 'desc');
@@ -589,34 +589,34 @@ export const fetchQuotationItems = async (params: {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
     const queryParams = new URLSearchParams();
-    
+
     // Add pagination
     if (params.page) queryParams.append('page', String(params.page));
     if (params.items_per_page) queryParams.append('items_per_page', String(params.items_per_page));
-    
+
     // Add filters
     if (params.query) queryParams.append('query', params.query);
     if (params.quotation_id) queryParams.append('quotation_id', params.quotation_id);
     if (params.item_id) queryParams.append('item_id', params.item_id);
-    
+
     // Add sorting
     if (params.sort) queryParams.append('sort', params.sort);
     if (params.order) queryParams.append('order', params.order);
-    
+
     // For dropdowns
     if (params.dropdown) queryParams.append('dropdown', 'true');
-    
+
     const response = await fetch(`${API_URL}/quotation-items?${queryParams}`, {
       headers
     });
-    
+
     const data = await response.json();
     return data;
   } catch (error: any) {

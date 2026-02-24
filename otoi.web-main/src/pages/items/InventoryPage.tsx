@@ -379,7 +379,6 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   // Edit an item
   const handleEdit = async (item: InventoryItem) => {
-    // console.log("Edit clicked for item:", item.id); // Debug log
 
     try {
       setLoading(true);

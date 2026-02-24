@@ -166,13 +166,8 @@ const CreateInvoicePage = () => {
     const { id } = useParams();
     const location = useLocation();
     const isEditMode = !!id;
+    const isFromQuotation = location.state?.fromQuotation;
     const today = new Date().toISOString().split("T")[0];
-
-    console.log('CreateInvoicePage - Edit Mode Debug:');
-    console.log('- URL id:', id);
-    console.log('- isEditMode:', isEditMode);
-    console.log('- Current path:', location.pathname);
-
     // Form state
     const [isLoading, setIsLoading] = useState(false);
     const [isAddressLoading, setIsAddressLoading] = useState(false);
@@ -247,7 +242,7 @@ const CreateInvoicePage = () => {
     const [showDiscountField, setShowDiscountField] = useState(false);
     const [autoRoundOff, setAutoRoundOff] = useState(false);
     const [roundOffAmount, setRoundOffAmount] = useState(0);
-    const [tax, setTax] = useState(0);
+    const [tax, setTax] = useState(18);
 
     // Add these calculation helper functions before the return statement:
 
@@ -483,11 +478,10 @@ const CreateInvoicePage = () => {
     };
 
     const handleFetchInvoice = async (invoiceId: string) => {
-        console.log('handleFetchInvoice called with ID:', invoiceId);
         setIsLoading(true);
         try {
             const response = await getInvoiceById(invoiceId);
-            console.log('getInvoiceById response:', response);
+
             if (response.success && response.data) {
                 const data = response.data;
                 const invoiceDate = data.invoice_date ? data.invoice_date.split('T')[0] : today;
@@ -497,7 +491,8 @@ const CreateInvoicePage = () => {
                     invoiceNo: data.invoice_number,
                     invoiceDate,
                     dueDate,
-                    status: data.status || "draft",
+                    // Backend returns 'payment_status', not 'status'
+                    status: data.payment_status || data.status || "draft",
                 });
 
                 // Ensure paid amount is set
@@ -561,10 +556,72 @@ const CreateInvoicePage = () => {
     };
 
     useEffect(() => {
-        if (isEditMode && id) {
+      
+
+        if (isEditMode && id && !isFromQuotation) {
             handleFetchInvoice(id);
+        } else {
         }
-    }, [id, isEditMode]);
+    }, [id, isEditMode, isFromQuotation]);
+
+    // Handle quotation data from navigation state
+    useEffect(() => {
+        const quotationState = location.state as any;
+
+        // If coming from quotation, prioritize quotation data over edit mode
+        if (quotationState?.fromQuotation && quotationState?.quotationData) {
+
+            // Pre-fill form with quotation data
+            const qData = quotationState.quotationData;
+
+            // Set customer
+            if (qData.selectedCustomer) {
+                setSelectedCustomer(qData.selectedCustomer);
+                setAutoSelectCustomerUUID(qData.selectedCustomer.uuid);
+            }
+
+            // Set invoice items from quotation items
+            if (qData.quotationItems && qData.quotationItems.length > 0) {
+                const transformedItems = qData.quotationItems.map((item: any) => ({
+                    id: item.id,
+                    item_id: item.item_id,
+                    item_name: item.item_name,
+                    hsn_sac: item.hsn_sac || '',
+                    quantity: item.quantity,
+                    price_per_item: item.price_per_item,
+                    discount: item.discount,
+                    tax: item.tax,
+                    amount: item.amount,
+                    measuring_unit_id: item.measuring_unit_id || 1,
+                    description: item.description || null,
+                }));
+                setInvoiceItems(transformedItems);
+            }
+
+            // Set dates (use current date for invoice, keep quotation validity for due date)
+            setFormData(prev => ({
+                ...prev,
+                invoiceDate: today,
+                dueDate: qData.validityDate || today,
+                invoiceNo: '', // Will be auto-generated
+                status: 'draft'
+            }));
+
+            // Set notes and terms if they exist
+            if (qData.notes) {
+                setNotes(qData.notes);
+            }
+            if (qData.terms) {
+                setTermsAndConditions(qData.terms);
+            }
+
+            toast.success('Invoice pre-filled from quotation data');
+        } else if (isEditMode && id && !isFromQuotation) {
+            // Only fetch invoice data if not coming from quotation
+            handleFetchInvoice(id);
+        } else {
+        }
+    }, [location.state, today, isEditMode, id, isFromQuotation]);
 
     const handleAddAddress = async (newAddress: ShippingAddress) => {
         if (!selectedCustomer?.uuid) {
@@ -797,7 +854,7 @@ const CreateInvoicePage = () => {
         const newItems: InvoiceItem[] = items.map((item, index) => {
             const quantity = item.quantity || 1;
             const discount = 0;
-            const tax = item.gst_tax_rate || 0;
+            const tax = item.gst_tax_rate || 18;
             const amount = Math.round(
                 (quantity * item.sales_price * (1 - discount / 100) * (1 + tax / 100)) * 100
             ) / 100;
@@ -967,7 +1024,24 @@ const CreateInvoicePage = () => {
 
             if (response.success) {
                 toast.success(isEditMode ? "Invoice updated successfully!" : "Invoice saved successfully!");
-                const invoiceId = id || response.data?.uuid || response.data?.id;
+                const invoiceId = id || response.data?.invoice_uuid || response.data?.uuid || response.data?.id;
+
+                // Mark quotation as converted if this invoice was created from a quotation
+                const quotationState = location.state as any;
+                if (quotationState?.fromQuotation && quotationState?.quotationId && !isEditMode) {
+                    try {
+                        // Import quotation service to update quotation status
+                        const { updateQuotation } = await import("../../quotation/services/quotation.services");
+                        await updateQuotation(quotationState.quotationId, {
+                            status: 'converted'
+                        });
+                        toast.success("Quotation marked as converted");
+                    } catch (error) {
+                        console.error("Failed to mark quotation as converted:", error);
+                        // Don't show error to user as invoice was saved successfully
+                    }
+                }
+
                 if (invoiceId) {
                     navigate(`/invoices/${invoiceId}`);
                 } else {
@@ -985,6 +1059,67 @@ const CreateInvoicePage = () => {
             setIsSaving(false);
         }
     };
+
+    const getCustomerAddress = (customer: any, type: "billing" | "shipping") => {
+        if (!customer) return null;
+        let address =
+            type === "shipping"
+                ? customer.shipping_address || customer.shippingAddress || customer.shipping_addresses
+                : customer.billing_address || customer.billingAddress;
+
+        if (Array.isArray(address)) {
+            address = address.find((addr) => addr?.is_default) || address[0];
+        }
+
+        // Fallback if no specific address object exists
+        if (!address) {
+            const prefix = type === "shipping" ? "shipping_" : "";
+            address = {
+                address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
+                address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
+                city: customer[`${prefix}city`] || customer.city,
+                state: customer[`${prefix}state`] || customer.state,
+                pin: customer[`${prefix}pin`] || customer.pin,
+                country: customer[`${prefix}country`] || customer.country
+            };
+        }
+
+        return address;
+    };
+
+    const formatAddressLines = (address: any, type: "billing" | "shipping") => {
+        if (!address) return [];
+        if (typeof address === "string") return [address];
+        const elements: React.ReactNode[] = [];
+        const line1 = address.address1 || address.address_line1 || address.line1 || address.street1;
+        const line2 = address.address2 || address.address_line2 || address.line2 || address.street2;
+
+        const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
+
+        if (line1) elements.push(<>
+            <span className="font-semibold">{prefix}:</span> {line1}
+        </>);
+        if (line2) elements.push(<>
+            <span className="font-semibold">Line 2:</span> {line2}
+        </>);
+
+        const parts = [];
+        if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
+        if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
+        const pin = address.pin || address.postal_code || address.zip;
+        if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
+        if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+
+        if (parts.length > 0) {
+            const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
+                if (idx === 0) return [curr];
+                return [...acc, ", ", curr];
+            }, []);
+            elements.push(<>{joinedParts}</>);
+        }
+        return elements;
+    };
+
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen space-y-6 relative">
@@ -1009,7 +1144,7 @@ const CreateInvoicePage = () => {
                 </div>
             )}
             {/* Header */}
-            <div className="sticky top-[70px] z-60 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+            <div className="sticky top-[70px] z-10 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3 overflow-hidden">
                     <Button
                         type="button"
@@ -1020,7 +1155,7 @@ const CreateInvoicePage = () => {
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h1 className="text-2xl font-bold text-gray-800">
-                        {isEditMode ? "Edit Sales Invoice" : "Create Sales Invoice"}
+                        {isEditMode ? "Edit Invoice" : "Create Invoice"}
                     </h1>
                 </div>
                 <Button
@@ -1029,7 +1164,7 @@ const CreateInvoicePage = () => {
                     disabled={isSaving}
                     onClick={async () => {
                         if (!selectedCustomer) {
-                            toast.error("Please select a customer");
+                            toast.error("Please select a Party");
                             return;
                         }
 
@@ -1038,13 +1173,41 @@ const CreateInvoicePage = () => {
                             return;
                         }
 
-                        await handleSaveInvoice();
+                        if (isEditMode) {
+                            await handleSaveInvoice();
+                            return;
+                        }
+
+                        // Prepare invoice data
+
+                        const invoiceData = {
+                            ...formData,
+                            selectedCustomer,
+                            invoiceItems: invoiceItems.map(item => ({
+                                id: item.id,
+                                item_id: item.item_id,
+                                item_name: item.item_name,
+                                description: item.description,
+                                quantity: item.quantity,
+                                price_per_item: item.price_per_item,
+                                discount: item.discount,
+                                tax: item.tax,
+                                amount: item.amount,
+                                measuring_unit_id: item.measuring_unit_id
+                            })),
+                            notes,
+                            terms: termsAndConditions,
+                        };
+
+                        // Save invoice
+                        const savedInvoice = await handleSaveInvoice();
                     }}
                 >
                     <Save className="h-4 w-4" />
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving ? "Saving..." : "Save Invoice"}
                 </Button>
             </div>
+
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 pb-4">
                 <div className="lg:col-span-4 bg-white border rounded-xl p-5 shadow-sm space-y-5">
@@ -1075,7 +1238,21 @@ const CreateInvoicePage = () => {
                                                             {selectedCustomer.mobile}
                                                         </p>
                                                     )}
-                                                    {/* More code for address... */}
+                                                    {selectedCustomer.email && (
+                                                        <p className="text-gray-600">
+                                                            <span className="font-medium">Email:</span>{" "}
+                                                            {selectedCustomer.email}
+                                                        </p>
+                                                    )}
+                                                    {selectedCustomer.gst && (
+                                                        <p className="text-gray-600">
+                                                            <span className="font-medium">GST:</span>{" "}
+                                                            {selectedCustomer.gst}
+                                                        </p>
+                                                    )}
+                                                    {formatAddressLines(getCustomerAddress(selectedCustomer, "billing"), "billing").map((line, index) => (
+                                                        <p key={index} className="text-gray-600">{line}</p>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>
@@ -1108,22 +1285,44 @@ const CreateInvoicePage = () => {
                             <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
                             {selectedCustomer ? (
                                 <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
-                                    {/* Shipping address logic similar to Quotation */}
-                                    {/* Simplified for brevity in this rewrite, assuming logic carried over */}
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <h4 className="font-medium text-gray-900">
                                                 {selectedCustomer.first_name} {selectedCustomer.last_name}
                                             </h4>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                {selectedAddress ? (
-                                                    <>
-                                                        {selectedAddress.address1}, {selectedAddress.city}
-                                                    </>
-                                                ) : (
-                                                    "Same as billing address"
+                                            <div className="mt-2 text-sm text-gray-700 space-y-1">
+                                                {selectedCustomer.company_name && (
+                                                    <p className="font-medium">
+                                                        {selectedCustomer.company_name}
+                                                    </p>
                                                 )}
-                                            </p>
+                                                {selectedCustomer.contact_person && (
+                                                    <p>{selectedCustomer.contact_person}</p>
+                                                )}
+                                                <div className="mt-2 space-y-1">
+                                                    {selectedCustomer.mobile && (
+                                                        <p className="text-gray-600">
+                                                            <span className="font-medium">Phone:</span>{" "}
+                                                            {selectedCustomer.mobile}
+                                                        </p>
+                                                    )}
+                                                    {selectedCustomer.email && (
+                                                        <p className="text-gray-600">
+                                                            <span className="font-medium">Email:</span>{" "}
+                                                            {selectedCustomer.email}
+                                                        </p>
+                                                    )}
+                                                    {selectedCustomer.gst && (
+                                                        <p className="text-gray-600">
+                                                            <span className="font-medium">GST:</span>{" "}
+                                                            {selectedCustomer.gst}
+                                                        </p>
+                                                    )}
+                                                    {formatAddressLines(getCustomerAddress(selectedCustomer, "shipping"), "shipping").map((line, index) => (
+                                                        <p key={index} className="text-gray-600">{line}</p>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <Button
@@ -1775,10 +1974,11 @@ const CreateInvoicePage = () => {
                                 </div>
 
                                 <div className="flex gap-2 mb-3">
-                                    <div className="relative flex-1">
+                                    <div className="relative w-40 ml-auto">
                                         <span className="absolute left-3 top-2 text-gray-500">₹</span>
                                         <input
                                             type="number"
+                                            min="0"
                                             value={amountReceived}
                                             onKeyDown={(e) => {
                                                 if (["-", "+", "e", "E"].includes(e.key)) {
@@ -1786,10 +1986,10 @@ const CreateInvoicePage = () => {
                                                 }
                                             }}
                                             onChange={e => {
-                                                setAmountReceived(Number(e.target.value));
-                                                if (Number(e.target.value) !== Math.round(calculateFinalTotal())) setIsFullyPaid(false);
+                                                setAmountReceived(parseFloat(e.target.value));
+                                                if (parseFloat(e.target.value) !== Math.round(calculateFinalTotal())) setIsFullyPaid(false);
                                             }}
-                                            className="w-full pl-7 pr-3 py-2 border rounded-md text-sm"
+                                            className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
                                         />
                                     </div>
                                     <select
@@ -1818,20 +2018,17 @@ const CreateInvoicePage = () => {
                                         ₹ {(calculateFinalTotal() - amountReceived).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </span>
                                 </div>
-                            </div>
-                        )}
-
-                        <div className="bg-white border rounded-lg p-5">
-                            <div className="p-2 flex flex-col items-end">
-                                <p className="text-sm text-gray-600 text-right mb-2">Authorized signatory for <b>Evoto Technologies</b> <span className="font-semibold"></span></p>
-                                <div className="w-56 h-20 border-2 border-dashed border-blue-400 rounded-md flex items-center justify-center">
-                                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-2">
-                                        <Plus className="h-4 w-4" />
-                                        Add Signature
-                                    </button>
+                                <div className="p-2 flex flex-col items-end">
+                                    <p className="text-sm text-gray-600 text-right mb-2">Authorized signatory for <b>Evoto Technologies</b> <span className="font-semibold"></span></p>
+                                    <div className="w-56 h-20 border-2 border-dashed border-blue-400 rounded-md flex items-center justify-center">
+                                        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            Add Signature
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 

@@ -86,7 +86,9 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
+// import PartiesRoles from '@/pages/userManagement/roles/PartiesRoles';
 // Lazy loaded other pages
+const PartiesRoles = lazy(() => import('@/pages/userManagement/roles/PartiesRoles').then(module => ({ default: module.default })));
 const InventoryPage = lazy(() => import('@/pages/items/InventoryPage').then(module => ({ default: module.default })));
 const ItemDetailsPage = lazy(() => import('@/pages/items/ItemDetails').then(module => ({ default: module.default })));
 const QuotationPage = lazy(() => import('@/pages/quotation/components/QuotationPage').then(module => ({ default: module.default })));
@@ -312,9 +314,9 @@ const AppRoutingSetup = (): ReactElement => {
               <InvoicePage />
             </Suspense>
           } />
-          <Route path="/invoices/:id" element={
+          <Route path="/invoices/:id/edit" element={
             <Suspense fallback={<LoadingFallback />}>
-              <InvoiceDetailsPage />
+              <CreateInvoicePage />
             </Suspense>
           } />
           <Route path="/invoices/new-invoice" element={
@@ -322,9 +324,9 @@ const AppRoutingSetup = (): ReactElement => {
               <CreateInvoicePage />
             </Suspense>
           } />
-          <Route path="/invoices/:id/edit" element={
+          <Route path="/invoices/:id" element={
             <Suspense fallback={<LoadingFallback />}>
-              <CreateInvoicePage />
+              <InvoiceDetailsPage />
             </Suspense>
           } />
 

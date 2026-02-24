@@ -479,14 +479,19 @@ def update_invoice(invoice_id):
             invoice.charges = charges
         
         # Update additional_notes JSON
-        if any(key in data for key in ["notes", "terms_and_conditions", "payment_terms"]):
+        # Accept flat keys (notes, terms_and_conditions, payment_terms) OR nested additional_notes object
+        nested = data.get("additional_notes", {}) or {}
+        if any(key in data for key in ["notes", "terms_and_conditions", "payment_terms"]) or nested:
             additional_notes = invoice.additional_notes or {}
-            if "notes" in data:
-                additional_notes["notes"] = data["notes"]
-            if "terms_and_conditions" in data:
-                additional_notes["terms_and_conditions"] = data["terms_and_conditions"]
-            if "payment_terms" in data:
-                additional_notes["payment_terms"] = data["payment_terms"]
+            notes_val = data.get("notes", nested.get("notes"))
+            terms_val = data.get("terms_and_conditions", nested.get("terms_and_conditions"))
+            payment_terms_val = data.get("payment_terms", nested.get("payment_terms"))
+            if notes_val is not None:
+                additional_notes["notes"] = notes_val
+            if terms_val is not None:
+                additional_notes["terms_and_conditions"] = terms_val
+            if payment_terms_val is not None:
+                additional_notes["payment_terms"] = payment_terms_val
             invoice.additional_notes = additional_notes
 
         # Recalculate total/balance if needed
@@ -682,7 +687,7 @@ def record_payment(invoice_id):
         
         invoice.amount_paid = float(invoice.amount_paid or 0) + payment_amount
         # Calculate balance due considering both amount paid and total payment discount
-        calculated_balance = float(invoice.total_amount) - invoice.amount_paid - (float(invoice.payment_discount) or 0)
+        calculated_balance = float(invoice.total_amount)- invoice.amount_paid - (float(invoice.payment_discount) or 0)
         # Cap balance at 0 to prevent negative values
         invoice.balance_due = max(0, calculated_balance)
         

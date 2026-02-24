@@ -18,16 +18,11 @@ export const PaymentInPage = () => {
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching payments...');
       const response = await getPaymentInList();
-      console.log('Payment response:', response);
       
       if (response.success) {
-        console.log('Payment data received:', response.data);
-        console.log('Number of payments:', response.data?.length || 0);
         setPayments(response.data || []);
       } else {
-        console.log('Payment fetch failed:', response.error);
         setPayments([]);
       }
     } catch (error) {

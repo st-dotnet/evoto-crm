@@ -2,6 +2,7 @@ from datetime import datetime, date
 from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 from sqlalchemy import or_, func, desc, asc, and_
+from sqlalchemy.orm.attributes import flag_modified
 from app.extensions import db
 from app.models.quotation import Quotation, QuotationItem
 from app.models.customer import Customer
@@ -650,18 +651,22 @@ def update_quotation(quotation_id):
             ),
             "round_off": data.get("round_off", quotation.charges.get("round_off", 0)),
         }
+        flag_modified(quotation, "charges")
 
         # -----------------------------
         # Update additional_notes JSON
+        # Build a fresh dict to ensure SQLAlchemy detects the JSONB change
         # -----------------------------
-        additional_notes = quotation.additional_notes or {}
-        additional_notes["notes"] = data.get("notes", additional_notes.get("notes", ""))
-        additional_notes["terms_and_conditions"] = data.get(
-            "terms_and_conditions",
-            additional_notes.get("terms_and_conditions", ""),
-        )
-        additional_notes["version"] = additional_notes.get("version", 0) + 1
-        quotation.additional_notes = additional_notes
+        existing_notes = quotation.additional_notes or {}
+        quotation.additional_notes = {
+            "notes": data.get("notes", existing_notes.get("notes", "")),
+            "terms_and_conditions": data.get(
+                "terms_and_conditions",
+                existing_notes.get("terms_and_conditions", ""),
+            ),
+            "version": existing_notes.get("version", 0) + 1,
+        }
+        flag_modified(quotation, "additional_notes")
 
         # -----------------------------
         # Update quotation items
