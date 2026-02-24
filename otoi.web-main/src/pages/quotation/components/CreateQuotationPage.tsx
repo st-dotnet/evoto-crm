@@ -1333,10 +1333,17 @@ const CreateQuotationPage = () => {
 
             if (!savedQuotation) return;
 
+            const updatedQuotationData = {
+              ...quotationData,
+              quotationNo: savedQuotation.quotation_number || quotationData.quotationNo,
+              uuid: savedQuotation.uuid || savedQuotation.id,
+              id: savedQuotation.uuid || savedQuotation.id,
+            };
+
             // Navigate to preview AFTER save
             navigate(`/quotes/${savedQuotation.uuid || savedQuotation.id}`, {
               state: {
-                quotationData,
+                quotationData: updatedQuotationData,
                 quotationId: savedQuotation.uuid || savedQuotation.id,
               },
             });

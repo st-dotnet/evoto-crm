@@ -633,7 +633,7 @@ const QuotationPreviewPage: React.FC = () => {
 
           {/* Values Row */}
           <div className="px-4 py-1">
-            <p className="text-[14px] font-normal text-black">{quotationData.quotationNo || "1"}</p>
+            <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
           </div>
           <div className="px-4 py-1 border-x border-black text-center">
             <p className="text-[14px] font-normal text-black">{new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}</p>
