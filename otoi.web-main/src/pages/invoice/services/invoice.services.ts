@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { createPaymentFromInvoice } from '../../payment-in/services/payment-in.service';
 
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
@@ -132,6 +133,21 @@ export const createInvoice = async (invoiceData: InvoiceData): Promise<ApiRespon
             withCredentials: false
         });
 
+        // If invoice status is 'paid' and there's an amount paid, create a payment entry
+        if (invoiceData.status === 'paid' && invoiceData.amount_paid && invoiceData.amount_paid > 0) {
+            const invoiceWithCustomer = {
+                ...invoiceData,
+                uuid: response.data?.uuid || response.data?.id,
+                selectedCustomer: invoiceData.selectedCustomer
+            };
+
+            const paymentResult = await createPaymentFromInvoice(invoiceWithCustomer);
+            if (paymentResult.success) {             
+            } else {
+                console.error('Failed to create payment entry:', paymentResult.error);
+            }
+        }
+
         return {
             success: true,
             data: response.data,
@@ -228,6 +244,8 @@ export const getInvoiceById = async (id: string): Promise<ApiResponse> => {
         const data = response.data;
         const transformedData = {
             ...data,
+            // Normalise payment_status → status so consumers don't need to know the backend field name
+            status: data.payment_status || data.status || 'draft',
             subtotal: data.charges?.subtotal || 0,
             tax_total: data.charges?.tax_total || 0,
             discount_total: data.charges?.discount_total || 0,
@@ -238,10 +256,10 @@ export const getInvoiceById = async (id: string): Promise<ApiResponse> => {
             payment_terms: data.additional_notes?.payment_terms || '',
             items: data.items?.map((item: any) => ({
                 ...item,
-                discount_percentage: item.discount?.discount_percentage || 0,
-                discount_amount: item.discount?.discount_amount || 0,
-                tax_percentage: item.tax?.tax_percentage || 0,
-                tax_amount: item.tax?.tax_amount || 0,
+                discount_percentage: item.discount?.discount_percentage ?? item.discount_percentage ?? 0,
+                discount_amount: item.discount?.discount_amount ?? item.discount_amount ?? 0,
+                tax_percentage: item.tax?.tax_percentage ?? item.tax_percentage ?? 0,
+                tax_amount: item.tax?.tax_amount ?? item.tax_amount ?? 0,
             })) || [],
         };
 
@@ -287,7 +305,8 @@ export const updateInvoice = async (id: string, invoiceData: Partial<InvoiceData
     if (invoiceData.invoiceDate) payload.invoice_date = invoiceData.invoiceDate;
     if (invoiceData.dueDate) payload.due_date = invoiceData.dueDate;
     if (invoiceData.total_amount !== undefined) payload.total_amount = invoiceData.total_amount;
-    if (invoiceData.status) payload.status = invoiceData.status;
+    // Backend update_invoice checks for 'payment_status', not 'status'
+    if (invoiceData.status) payload.payment_status = invoiceData.status;
 
     if (
         invoiceData.subtotal !== undefined ||
@@ -306,6 +325,11 @@ export const updateInvoice = async (id: string, invoiceData: Partial<InvoiceData
     }
 
     if (invoiceData.notes !== undefined || invoiceData.terms !== undefined || invoiceData.payment_terms !== undefined) {
+        // Send flat keys — the backend checks for these at the top level in update_invoice
+        if (invoiceData.notes !== undefined) payload.notes = invoiceData.notes;
+        if (invoiceData.terms !== undefined) payload.terms_and_conditions = invoiceData.terms;
+        if (invoiceData.payment_terms !== undefined) payload.payment_terms = invoiceData.payment_terms;
+        // Also send nested object for completeness
         payload.additional_notes = {
             notes: invoiceData.notes ?? "",
             terms_and_conditions: invoiceData.terms ?? "",
@@ -345,6 +369,23 @@ export const updateInvoice = async (id: string, invoiceData: Partial<InvoiceData
             },
             withCredentials: false
         });
+
+        // If invoice status is being set to 'paid', create a payment entry
+        if (invoiceData.status === 'paid' && invoiceData.amount_paid && invoiceData.amount_paid > 0) {
+            const invoiceWithCustomer = {
+                ...invoiceData,
+                uuid: id,
+                // Get customer info from the response or use the provided data
+                selectedCustomer: response.data?.customer || invoiceData.selectedCustomer
+            };
+
+            const paymentResult = await createPaymentFromInvoice(invoiceWithCustomer);
+            if (paymentResult.success) {
+                console.log('Payment entry created successfully:', paymentResult.data);
+            } else {
+                console.error('Failed to create payment entry:', paymentResult.error);
+            }
+        }
 
         return {
             success: true,
@@ -574,7 +615,7 @@ export const createInvoiceFromQuotation = async (quotationId: string): Promise<A
     }
 };
 
-export const recordPayment = async (invoiceId: string, amount: number, paymentMethod?: string, reference?: string): Promise<ApiResponse> => {
+export const recordPayment = async (invoiceId: string, amount: number, paymentMethod?: string, reference?: string, discount?: number): Promise<ApiResponse> => {
     const token = getAuthToken();
     if (!token) {
         return {
@@ -589,6 +630,7 @@ export const recordPayment = async (invoiceId: string, amount: number, paymentMe
             amount,
             payment_method: paymentMethod,
             reference,
+            discount,
         }, {
             headers: {
                 'Authorization': `Bearer ${token}`,

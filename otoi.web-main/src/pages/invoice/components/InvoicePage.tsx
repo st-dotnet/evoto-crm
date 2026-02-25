@@ -14,7 +14,8 @@ import {
     Eye,
     Trash2,
     CreditCard,
-    FileText
+    FileText,
+    AlertCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +27,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { getInvoices, deleteInvoice } from "../services/invoice.services";
 import { toast } from "sonner";
+import { Dialog,DialogContent, DialogFooter, DialogHeader,DialogDescription,DialogTitle } from "@/components/ui/dialog";
 
 interface Invoice {
     id: string;
@@ -36,7 +38,6 @@ interface Invoice {
     amount: number;
     amount_paid: number;
     balance_due: number;
-    status: string;
     payment_status: string;
 }
 
@@ -45,6 +46,9 @@ const InvoicePage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
     const navigate = useNavigate();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Fetch invoices from database
     const fetchInvoices = async () => {
@@ -63,7 +67,6 @@ const InvoicePage = () => {
                     amount: item.total_amount || 0,
                     amount_paid: item.amount_paid || 0,
                     balance_due: item.balance_due || 0,
-                    status: item.status || 'draft',
                     payment_status: item.payment_status || 'unpaid',
                 }));
                 setInvoices(transformedInvoices);
@@ -88,17 +91,38 @@ const InvoicePage = () => {
         return invoices.filter(inv => inv.payment_status === selectedStatus);
     }, [invoices, selectedStatus]);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
+    // const handleDelete = async (id: string) => {
+    //     if (!confirm('Are you sure you want to delete this invoice?')) return;
 
-        const response = await deleteInvoice(id);
+    //     const response = await deleteInvoice(id);
+    //     if (response.success) {
+    //         toast.success('Invoice deleted successfully');
+    //         fetchInvoices();
+    //     } else {
+    //         toast.error(response.error || 'Failed to delete invoice');
+    //     }
+    // };
+    
+    const handleDeleteConfirm = async () => {
+        if (!invoiceToDelete) return;
+        setIsDeleting(true);    
+        const response = await deleteInvoice(invoiceToDelete);
         if (response.success) {
             toast.success('Invoice deleted successfully');
             fetchInvoices();
         } else {
             toast.error(response.error || 'Failed to delete invoice');
         }
+        setIsDeleting(false);
+        setShowDeleteDialog(false);
+        setInvoiceToDelete(null);
     };
+
+     const handleDeleteClick = (id: string) => {
+          setInvoiceToDelete(id);
+          setShowDeleteDialog(true);
+        //   setIsOpen(false);
+        };
 
     const getPaymentStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
@@ -168,7 +192,7 @@ const InvoicePage = () => {
             accessorKey: "invoice_number",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Invoice #"
+                    title="Invoice Number"
                     column={column}
                     className="justify-start"
                 />
@@ -186,7 +210,7 @@ const InvoicePage = () => {
             accessorKey: "party_name",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Customer"
+                    title="Party Name"
                     column={column}
                     className="justify-start"
                 />
@@ -204,7 +228,7 @@ const InvoicePage = () => {
             accessorKey: "due_date",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Due Date"
+                    title="Due In"
                     column={column}
                     className="justify-start"
                 />
@@ -242,32 +266,10 @@ const InvoicePage = () => {
             },
         },
         {
-            accessorKey: "balance_due",
-            header: ({ column }) => (
-                <DataGridColumnHeader
-                    title="Balance"
-                    column={column}
-                    className="justify-end"
-                />
-            ),
-            cell: (info) => {
-                const balance = info.getValue() as number;
-                return (
-                    <div className={`text-sm font-medium text-right ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        ₹{balance?.toLocaleString('en-IN') || '0'}
-                    </div>
-                );
-            },
-            meta: {
-                headerClassName: "min-w-[100px] justify-end",
-                cellClassName: "text-right",
-            },
-        },
-        {
             accessorKey: "payment_status",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Payment"
+                    title="Status"
                     column={column}
                     className="justify-center"
                 />
@@ -287,33 +289,8 @@ const InvoicePage = () => {
             },
         },
         {
-            accessorKey: "status",
-            header: ({ column }) => (
-                <DataGridColumnHeader
-                    title="Status"
-                    column={column}
-                    className="justify-center"
-                />
-            ),
-            cell: (info) => {
-                const status = info.getValue() as string;
-                return (
-                    <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(status)}`}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
-                    </div>
-                );
-            },
-            meta: {
-                headerClassName: "min-w-[90px]",
-            },
-        },
-        {
-            id: "actions",
-            header: ({ column }) => (
-                <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
-            ),
+            accessorKey: "actions",
+            header: "Actions",
             enableSorting: false,
             meta: {
                 headerClassName: "w-28",
@@ -322,6 +299,10 @@ const InvoicePage = () => {
             },
             cell: ({ row }) => {
                 const [isOpen, setIsOpen] = useState(false);
+                const handleEdit = (id: string) => {
+                    navigate(`/invoices/${id}/edit`);
+                    setIsOpen(false);
+                };
 
                 return (
                     <div className="flex justify-center">
@@ -353,7 +334,7 @@ const InvoicePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/invoices/${row.original.id}/edit`);
+                                        handleEdit(row.original.id);
                                         setIsOpen(false);
                                     }}
                                 >
@@ -365,19 +346,7 @@ const InvoicePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/invoices/${row.original.id}/payment`);
-                                        setIsOpen(false);
-                                    }}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Record Payment
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDelete(row.original.id);
+                                        handleDeleteClick(row.original.id);
                                         setIsOpen(false);
                                     }}
                                 >
@@ -460,7 +429,7 @@ const InvoicePage = () => {
                     <Button
                         size="sm"
                         className="h-8 gap-1"
-                        onClick={() => navigate('/invoices/new')}
+                        onClick={() => navigate('/invoices/new-invoice')}
                     >
                         <Plus className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -481,6 +450,57 @@ const InvoicePage = () => {
                         />
                     </div>
                 </div>
+                 <Dialog
+                        open={showDeleteDialog}
+                        onOpenChange={(open) => {
+                          setShowDeleteDialog(open);
+                          if (!open) {
+                            setInvoiceToDelete(null);
+                          }
+                        }}
+                      >
+                        <DialogContent className="sm:max-w-[420px] p-6">
+                          <DialogHeader className="flex flex-col items-center text-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                              <AlertCircle className="h-6 w-6 text-red-600" />
+                            </div>
+                
+                            <DialogTitle className="text-lg font-semibold">
+                              Delete invoice
+                            </DialogTitle>
+                
+                            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                              Are you sure you want to delete this invoice?
+                            </DialogDescription>
+                          </DialogHeader>
+                
+                          <DialogFooter className="flex justify-end gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowDeleteDialog(false)}
+                              disabled={isDeleting}
+                            >
+                              Cancel
+                            </Button>
+                
+                            <Button
+                              variant="destructive"
+                              onClick={handleDeleteConfirm}
+                              className="bg-red-600 hover:bg-red-700"
+                              disabled={isDeleting || !invoiceToDelete}
+                            >
+                              {isDeleting ? (
+                                <span className="flex items-center">
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Deleting...
+                                </span>
+                              ) : (
+                                'Delete'
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                 <div className="overflow-auto">
                     <DataGrid
                         key="invoice-grid"
@@ -489,10 +509,19 @@ const InvoicePage = () => {
                         rowSelection
                         getRowId={(row) => row.id.toString()}
                         pagination={{ size: 10 }}
+                        onRowClick={(row) => {
+                            navigate(`/invoices/${row.original.id}`);
+                        }}
+                        layout={{
+                            classes: {
+                                table: "cursor-pointer [&_tr:hover]:bg-gray-50"
+                            }
+                        }}
                     />
                 </div>
             </div>
         </div>
+        
     );
 };
 

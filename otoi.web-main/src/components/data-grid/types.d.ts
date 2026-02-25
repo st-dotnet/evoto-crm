@@ -7,5 +7,6 @@ declare module '@tanstack/react-table' {
     headerTitle?: string;
     headerClassName?: string;
     cellClassName?: string;
+    disableRowClick?: boolean;
   }
 }

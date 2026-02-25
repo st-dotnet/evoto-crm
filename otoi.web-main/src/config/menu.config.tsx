@@ -42,30 +42,20 @@ export const MENU_SIDEBAR: TMenuConfig = [
     ]
   },
   {
-    title: "Quotes",
-    icon: "document",
-    children: [
-      {
-        title: "Quotes",
-        path: "/quotes/list"
-      },
-      {
-        title: "Godown",
-        path: "/quotes/create"
-      }
-    ]
-  },
-  {
     title: "Sales",
     icon: "chart",
     children: [
+      {
+        title: "Quotation/Estimates",
+        path: "/quotes/list"
+      },
       {
         title: "Invoices",
         path: "/invoices/list"
       },
       {
         title: "Payment In",
-        path: "/sales/payment-ins"
+        path: "/payment-in"
       },
       {
         title: "Credit Note",

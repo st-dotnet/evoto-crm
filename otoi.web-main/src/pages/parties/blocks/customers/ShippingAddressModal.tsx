@@ -241,27 +241,32 @@ const ShippingAddressModal = ({
                   Address Type <span className="text-red-500">*</span>
                 </label>
                 <div className="inline-flex rounded-md shadow-sm" role="group">
-                  {["home", "work", "other"].map((type) => (
+                  {["home", "work", "other"].map((type) => {
+                    const isSelected = formik.values.address_type === type;
+                    return (
                     <label
                       key={type}
                       className={`relative flex items-center justify-center px-4 py-2 text-sm font-medium border cursor-pointer transition-all duration-200
-                                                ${
-                                                  formik.values.address_type ===
-                                                  type
-                                                    ? "bg-blue-600 text-white border-blue-600 z-10"
-                                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-                                                }
-                                                ${type === "home" ? "rounded-l-md" : ""}
-                                                ${type === "other" ? "rounded-r-md" : ""}
-                                                ${type !== "home" ? "-ml-px" : ""}
-                                            `}
+                        ${isSelected 
+                          ? "bg-blue-600 text-white border-blue-600 z-10" 
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                        }
+                        ${type === "home" ? "rounded-l-md" : ""}
+                        ${type === "other" ? "rounded-r-md" : ""}
+                        ${type !== "home" ? "-ml-px" : ""}
+                      `}
+                      onClick={() => {
+                        formik.setFieldValue("address_type", type);
+                      }}
                     >
                       <input
                         type="radio"
                         name="address_type"
                         value={type}
-                        checked={formik.values.address_type === type}
-                        onChange={formik.handleChange}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          formik.setFieldValue("address_type", type);
+                        }}
                         className="sr-only"
                       />
                       {type === "home" ? (
@@ -295,7 +300,8 @@ const ShippingAddressModal = ({
                         {type === "other" ? "Others" : type}
                       </span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
                 {formik.touched.address_type && formik.errors.address_type && (
                   <span

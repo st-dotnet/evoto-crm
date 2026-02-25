@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, FileText } from "lucide-react";
+import { ArrowLeft, Download, Printer, Share, FileText, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
 import { useAuthContext } from "@/auth/useAuthContext";
-// import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
+import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { SpinnerDotted } from "spinners-react";
+// import { useAuthContext } from "@/auth";
+import { toAbsoluteUrl } from "@/utils/Assets";
 
 interface QuotationItem {
   id: string;
@@ -47,31 +52,37 @@ interface QuotationData {
   quotationItems: QuotationItem[];
   notes?: string;
   terms?: string;
+  business?: any;
 }
 
 const QuotationPreviewPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
   const { currentUser } = useAuthContext();
-  const { id } = useParams(); // Get ID from URL
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [showBusinessAddressBanner, setShowBusinessAddressBanner] = useState(true);
   const [fetchedData, setFetchedData] = useState<QuotationData | null>(null);
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
+  const quotationRef = useRef<HTMLDivElement>(null);
 
-  // Determine source of data: location state or fetched data
   const quotationData: QuotationData = fetchedData || location.state?.quotationData || {
     quotationNo: "", quotationDate: "", validFor: 0, validityDate: "", status: "", selectedCustomer: null, quotationItems: []
   };
 
-  // Fetch data if ID exists and no state
   useEffect(() => {
     if (id && !location.state?.quotationData) {
       const fetchData = async () => {
+        setIsLoading(true);
         try {
+          console.log("=== Fetching quotation with ID:", id);
           const response = await getQuotationById(id);
+          console.log("=== API Response:", response);
           if (response.success && response.data) {
             const data = response.data;
-            
+
             // Fetch customer details separately to get address information
             const token = (() => {
               try {
@@ -90,14 +101,14 @@ const QuotationPreviewPage: React.FC = () => {
                 'Content-Type': 'application/json'
               }
             });
-            
+
             const customerDetails = await customerResponse.json();
-            
+
             // Transform API data to QuotationData format
             const transformedData: QuotationData = {
               quotationNo: data.quotation_number,
               quotationDate: data.quotation_date,
-              validFor: 0, // calc
+              validFor: 0,
               validityDate: data.valid_till,
               status: data.status,
               selectedCustomer: {
@@ -108,15 +119,15 @@ const QuotationPreviewPage: React.FC = () => {
               },
               quotationItems: data.items.map((item: any) => {
                 // Handle nested discount object
-                const discount = typeof item.discount?.discount_percentage === 'object' 
-                  ? item.discount.discount_percentage.discount_percentage 
+                const discount = typeof item.discount?.discount_percentage === 'object'
+                  ? item.discount.discount_percentage.discount_percentage
                   : item.discount?.discount_percentage || 0;
-                
+
                 // Handle nested tax object
                 const tax = typeof item.tax?.tax_percentage === 'object'
                   ? item.tax.tax_percentage.tax_percentage
                   : item.tax?.tax_percentage || 0;
-                
+
                 return {
                   id: item.uuid,
                   item_id: item.item_id || item.uuid,
@@ -131,18 +142,32 @@ const QuotationPreviewPage: React.FC = () => {
                 };
               }),
               notes: data.notes,
-              terms: data.terms_and_conditions
+              terms: data.terms_and_conditions,
+              business: data.business // Include business info from DB
             };
+            console.log("=== Final transformed data with business:", transformedData);
             setFetchedData(transformedData);
-          } else {
-            toast.error("Failed to load quotation");
           }
-        } catch (error) {
-          console.error("Error fetching quotation:", error);
-          toast.error("Failed to load quotation");
+        } finally {
+          setIsLoading(false);
         }
       };
       fetchData();
+    }
+
+    // Check if a linked invoice already exists for this quotation
+    if (id) {
+      const checkLinkedInvoice = async () => {
+        try {
+          const invoiceRes = await getInvoiceByQuotationId(id);
+          if (invoiceRes.success && invoiceRes.data?.uuid) {
+            setLinkedInvoiceId(invoiceRes.data.uuid);
+          }
+        } catch {
+          // ignore — no linked invoice
+        }
+      };
+      checkLinkedInvoice();
     }
   }, [id, location.state]);
 
@@ -153,20 +178,8 @@ const QuotationPreviewPage: React.FC = () => {
     const totalTax = items.reduce((sum, item) => sum + ((item.price_per_item * item.quantity * (1 - item.discount / 100)) * item.tax) / 100, 0);
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
-    // Calculate CGST and SGST based on actual item tax rates
-    const totalCGST = items.reduce((sum, item) => {
-      const taxableAmount = (item.price_per_item * item.quantity * (1 - item.discount / 100));
-      const itemTaxAmount = taxableAmount * (item.tax / 100);
-      // Assuming CGST is half of item tax (common in India)
-      return sum + (itemTaxAmount / 2);
-    }, 0);
-
-    const totalSGST = items.reduce((sum, item) => {
-      const taxableAmount = (item.price_per_item * item.quantity * (1 - item.discount / 100));
-      const itemTaxAmount = taxableAmount * (item.tax / 100);
-      // Assuming SGST is half of item tax (common in India)
-      return sum + (itemTaxAmount / 2);
-    }, 0);
+    const taxableAmount = subtotal - totalDiscount;
+    const effectiveTaxRate = taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
 
     return {
       subtotal,
@@ -174,29 +187,25 @@ const QuotationPreviewPage: React.FC = () => {
       totalTax,
       totalAmount,
       totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
-      totalCGST,
-      totalSGST
+      totalCGST: totalTax / 2,
+      totalSGST: totalTax / 2,
+      primaryTax: effectiveTaxRate
     };
   };
 
-  // Check if quotation is already saved
-  const locationState = location.state as { quotationData?: any; quotationId?: string };
-  const isAlreadySaved = !!locationState?.quotationId;
-
   const totals = calculateTotals();
+  const locationState = location.state as { quotationData?: any; quotationId?: string };
+  const isAlreadySaved = !!locationState?.quotationId || !!id;
+
+  // const totals = calculateTotals();
 
   const handleSaveQuotation = async () => {
+    if (isAlreadySaved) {
+      navigate("/quotes/list");
+      return;
+    }
     setIsSaving(true);
     try {
-      // Check if quotation is already saved (has quotationId)
-      const locationState = location.state as { quotationData?: any; quotationId?: string };
-      if (locationState?.quotationId) {
-        toast.success("Quotation already saved!");
-        navigate("/quotes/list");
-        return;
-      }
-
-      // Prepare data for API using the service
       const submissionData = {
         ...quotationData,
         total_amount: totals.totalAmount,
@@ -205,39 +214,126 @@ const QuotationPreviewPage: React.FC = () => {
         total_tax: totals.totalTax,
         created_at: new Date().toISOString(),
       };
-
-      // Save quotation via service
       const response = await createQuotation(submissionData);
-
       if (response.success) {
         toast.success("Quotation saved successfully!");
-
-        // Navigate to quotation list page
         navigate("/quotes/list");
       } else {
         toast.error(response.error || "Failed to save quotation");
       }
     } catch (error) {
-      console.error("Error saving quotation:", error);
       toast.error("Failed to save quotation");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDownloadPDF = () => {
-    // TODO: Implement PDF download functionality
-    toast.info("PDF download feature coming soon");
+  const handleConvertToInvoice = async () => {
+    const quotationId = id || location.state?.quotationId;
+    if (!quotationId) {
+      toast.error("Please save the quotation first before converting to invoice.");
+      return;
+    }
+    // Navigate to CreateInvoicePage with quotation data
+    navigate('/invoices/new-invoice', {
+      state: {
+        quotationId: quotationId,
+        quotationData: quotationData,
+        fromQuotation: true
+      }
+    });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!quotationRef.current) return;
+    const downloadToast = toast.loading("Generating PDF...");
+    try {
+      // Ensure the element is fully captured even if it's long
+      const element = quotationRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc: { getElementById: (arg0: string) => any; }) => {
+          // You can modify the cloned element here if needed for PDF-only styles
+          const clonedElement = clonedDoc.getElementById('quotation-print-area');
+          if (clonedElement) {
+            clonedElement.style.height = 'auto';
+            clonedElement.style.overflow = 'visible';
+          }
+        }
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add the first page
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Keep adding pages until we've captured the full height
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`Quotation-${quotationData.quotationNo || "Draft"}.pdf`);
+      toast.success("PDF downloaded successfully", { id: downloadToast });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF", { id: downloadToast });
+    }
   };
 
   const handlePrintPDF = () => {
-    // TODO: Implement print functionality
+    const originalTitle = document.title;
+    document.title = " ";
     window.print();
+    document.title = originalTitle;
   };
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    toast.info("Share feature coming soon");
+  const handleShare = async () => {
+    if (!quotationRef.current) return;
+    const shareToast = toast.loading("Preparing for share...");
+    try {
+      const canvas = await html2canvas(quotationRef.current, { scale: 2 });
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to generate blob"));
+      }, "image/png"));
+      const file = new File([blob], `Quotation-${quotationData.quotationNo}.png`, { type: "image/png" });
+
+      if (navigator.share) {
+        await navigator.share({
+          files: [file],
+          title: `Quotation ${quotationData.quotationNo}`,
+          text: `Check out our quotation: ${quotationData.quotationNo}`
+        });
+        toast.success("Shared successfully", { id: shareToast });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Quotation-${quotationData.quotationNo}.png`;
+        a.click();
+        toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+      }
+    } catch (error) {
+      toast.error("Failed to share", { id: shareToast });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -245,10 +341,7 @@ const QuotationPreviewPage: React.FC = () => {
   };
 
   const formatNumberInWords = (num: number) => {
-    if (!Number.isFinite(num)) {
-      return "Zero Rupees";
-    }
-
+    if (!Number.isFinite(num)) return "Zero Rupees";
     const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
     const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
     const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
@@ -277,97 +370,111 @@ const QuotationPreviewPage: React.FC = () => {
       const parts: string[] = [];
 
       const crore = Math.floor(remainder / 10000000);
-      if (crore) {
-        parts.push(`${threeDigits(crore)} Crore`);
-        remainder %= 10000000;
-      }
-
+      if (crore) { parts.push(`${threeDigits(crore)} Crore`); remainder %= 10000000; }
       const lakh = Math.floor(remainder / 100000);
-      if (lakh) {
-        parts.push(`${threeDigits(lakh)} Lakh`);  
-        remainder %= 100000;
-      }
-
+      if (lakh) { parts.push(`${threeDigits(lakh)} Lakh`); remainder %= 100000; }
       const thousand = Math.floor(remainder / 1000);
-      if (thousand) {
-        parts.push(`${threeDigits(thousand)} Thousand`);
-        remainder %= 1000;
-      }
-
+      if (thousand) { parts.push(`${threeDigits(thousand)} Thousand`); remainder %= 1000; }
       const rest = remainder;
-      if (rest) {
-        parts.push(threeDigits(rest));
-      }
-
+      if (rest) parts.push(threeDigits(rest));
       return parts.join(" ");
     };
 
     const totalPaise = Math.round(Math.abs(num) * 100);
-    if (totalPaise === 0) {
-      return "Zero Rupees";
-    }
-
+    if (totalPaise === 0) return "Zero Rupees";
     const rupees = Math.floor(totalPaise / 100);
     const paise = totalPaise % 100;
-
     let result = `${toIndianWords(rupees)} Rupees`;
-    if (paise) {
-      result += ` and ${toIndianWords(paise)} Paise`;
-    }
+    if (paise) result += ` and ${toIndianWords(paise)} Paise`;
     return result;
   };
 
   const getAuthBusinessInfo = () => {
+    // 1. Try to get business info from the fetched quotation itself if it exists (Data from DB)
+    const fetchedBusiness = fetchedData?.business || (fetchedData as any)?.business;
+    if (fetchedBusiness) {
+      return {
+        name: fetchedBusiness.company_name || fetchedBusiness.name || fetchedBusiness.company || "Evoto Technologies",
+        email: fetchedBusiness.email || currentUser?.email,
+        phone: fetchedBusiness.phone_number || fetchedBusiness.phone || fetchedBusiness.mobile || currentUser?.phone,
+        address: fetchedBusiness.address || fetchedBusiness.billing_address || null
+      };
+    }
+
+    // 2. Try to get from localStorage directly
     try {
       const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
-      if (!authData) return null;
-      const parsedAuth = JSON.parse(authData);
-      const business =
-        parsedAuth.business ||
-        parsedAuth.business_profile ||
-        parsedAuth.business_details ||
-        parsedAuth.company ||
-        parsedAuth.company_profile ||
-        parsedAuth.businessInfo ||
-        null;
-      const user = parsedAuth.user || parsedAuth.profile || parsedAuth.data?.user || null;
+      if (authData) {
+        const parsedAuth = JSON.parse(authData);
+        const user = parsedAuth.user;
+        const business = parsedAuth.business || parsedAuth.business_profile || (user?.businesses && user.businesses[0]);
 
+        if (business) {
+          return {
+            name: business.company_name || business.name || business.company || "Evoto Technologies",
+            email: business.email || currentUser?.email,
+            address: business.address || null,
+            phone: business.phone_number || business.phone || business.mobile || currentUser?.phone || "N/A",
+          };
+        }
+      }
+    } catch (e) { /* silent catch */ }
+
+    // 3. Fallback to currentUser from context (User Profile)
+    if (!currentUser) return null;
+
+    // Check if currentUser has business info in businesses array
+    const userBusiness = (currentUser as any).businesses?.[0];
+    if (userBusiness) {
       return {
-        name:
-          business?.company_name ||
-          business?.business_name ||
-          business?.name ||
-          user?.companyName ||
-          user?.company_name ||
-          user?.company ||
-          "XYZ",
-        mobile: business?.mobile || business?.phone || business?.contact_number || user?.phone || user?.mobile,
-        email: business?.email || user?.email,
-        gstin: business?.gstin || business?.gst || business?.gst_number,
-        pan: business?.pan || business?.pan_number,
-        website: business?.website || business?.web || business?.url,
-        address: business?.address || business?.billing_address || business?.registered_address || null,
-        rawBusiness: business
+        name: userBusiness.name || userBusiness.company_name || "Evoto Technologies",
+        email: currentUser.email,
+        address: (currentUser as any).address || null,
+        phone: userBusiness.phone_number || userBusiness.phone || userBusiness.mobile || (currentUser as any).phone || (currentUser as any).mobile
       };
-    } catch (error) {
-      return null;
     }
+
+    // Final fallback to company fields on user object or hardcoded default
+    return {
+      name: (currentUser as any).company_name || currentUser.companyName || (currentUser as any).business_name || "Evoto Technologies",
+      email: currentUser.email,
+      address: (currentUser as any).address || null,
+      phone: (currentUser as any).phone || (currentUser as any).mobile || "N/A",
+    };
   };
 
-  const formatAddressLines = (address: any): string[] => {
+  const formatAddressLines = (address: any, type: "billing" | "shipping") => {
     if (!address) return [];
     if (typeof address === "string") return [address];
-    const lines: string[] = [];
+    const elements: React.ReactNode[] = [];
     const line1 = address.address1 || address.address_line1 || address.line1 || address.street1;
-    const line2 = address.address2 || address.address_line2 || address.line2 || address.street2;
-    if (line1) lines.push(line1);
-    if (line2) lines.push(line2);
-    const cityStatePin = [address.city, address.state, address.pin || address.postal_code || address.zip]
-      .filter(Boolean)
-      .join(", ");
-    if (cityStatePin) lines.push(cityStatePin);
-    if (address.country) lines.push(address.country);
-    return lines;
+    // const line2 = address.address2 || address.address_line2 || address.line2 || address.street2;
+
+    const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
+
+    if (line1) elements.push(<>
+      <span className="font-semibold">{prefix}:</span> {line1}
+    </>);
+    // if (line2) elements.push(<>
+    //   <span className="font-semibold">Line 2:</span> {line2}
+    // </>);
+
+    const parts = [];
+    if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
+    if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
+    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+    const pin = address.pin || address.postal_code || address.zip;
+    if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
+
+
+    if (parts.length > 0) {
+      const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
+        if (idx === 0) return [curr];
+        return [...acc, ", ", curr];
+      }, []);
+      elements.push(<>{joinedParts}</>);
+    }
+    return elements;
   };
 
   const getCustomerAddress = (customer: any, type: "billing" | "shipping") => {
@@ -381,350 +488,406 @@ const QuotationPreviewPage: React.FC = () => {
       address = address.find((addr) => addr?.is_default) || address[0];
     }
 
+    // Fallback if no specific address object exists
     if (!address) {
       const prefix = type === "shipping" ? "shipping_" : "";
-      address = {
+      const addressData = {
         address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
         address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
         city: customer[`${prefix}city`] || customer.city,
         state: customer[`${prefix}state`] || customer.state,
+        country: customer[`${prefix}country`] || customer.country,
         pin: customer[`${prefix}pin`] || customer.pin,
-        country: customer[`${prefix}country`] || customer.country
       };
+
+      // Check if we actually found any address data
+      if (Object.values(addressData).some(val => !!val)) {
+        address = addressData;
+      }
     }
 
     return address;
   };
 
   const getMeasuringUnit = (unitId?: number) => {
-    const units: { [key: number]: string } = {
-      1: "PCS",
-      2: "KG",
-      3: "LTR",
-      4: "MTR"
-    };
+    const units: { [key: number]: string } = { 1: "PCS", 2: "KG", 3: "LTR", 4: "MTR" };
     return units[unitId || 1] || "PCS";
   };
 
-  
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 pb-20 relative">
+      {isLoading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
+          <div className="flex flex-col items-center gap-4">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
+            <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Fetching Quotation Details...</p>
+          </div>
+        </div>
+      )}
+      <style>
+        {`
+          @media print {
+            /* Hide all layout elements */
+            .sidebar, .header, .footer, .topbar, .no-print, [data-kt-app-sidebar-enabled="true"] .app-sidebar, [data-kt-app-header-enabled="true"] .app-header {
+              display: none !important;
+            }
+            
+            /* Reset body background and margins */
+            body {
+              background-color: white !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            /* Container adjustments */
+            .min-h-screen {
+              min-height: auto !important;
+              background: none !important;
+              padding: 0 !important;
+            }
+
+            /* Main content width and positioning */
+            #quotation-print-area {
+              margin: 0 !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              max-width: 100% !important;
+              width: 100% !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+            }
+
+            /* Ensure text colors are black */
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+        `}
+      </style>
+      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/quotes/list")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/quotes/list")}><ArrowLeft className="h-4 w-4" /></Button>
             <div>
-              <h1 className="text-xl font-semibold">
-                Quotation/Estimate #{quotationData.quotationNo || "1"}
-              </h1>
-              <p className="text-sm text-gray-500">Preview</p>
+              <h1 className="text-xl font-semibold text-black">Quotation #{quotationData.quotationNo || "1"}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintPDF}
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="gap-2"
-            >
-              <Share className="h-4 w-4" />
-              Share
-            </Button>
-            <Button
-              className={`${isAlreadySaved ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"} text-white gap-2`}
-              onClick={handleSaveQuotation}
-              disabled={isSaving}
-            >
-              <FileText className="h-4 w-4" />
-              {isSaving ? "Processing..." : isAlreadySaved ? "View Quotations List" : "Convert to Invoice"}
-            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
+
+            {/* Show Convert to Invoice - temporarily always visible for debugging */}
+            {(!linkedInvoiceId || quotationData.status === 'open') && (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                onClick={handleConvertToInvoice}
+                disabled={isConverting}
+              >
+                <Receipt className="h-4 w-4" />
+                {isConverting ? "Converting..." : "Convert to Invoice"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Business Address Banner */}
-      {/* {showBusinessAddressBanner && (
-        <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-blue-900">Add Business Address</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Add your business address to showcase your business identity on all the invoices
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
-              >
-                Add Business Address
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowBusinessAddressBanner(false)}
-                className="text-blue-600 hover:text-blue-800"
-              >
-                ×
-              </Button>
-            </div>
-          </div>
-        </div>
-      )} */}
-
-      {/* Invoice Content */}
-      <div className="max-w-4xl mx-auto p-6 bg-white">
-        {/* Company Info */}
-        <div className="mb-8">
+      <div id="quotation-print-area" ref={quotationRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
+        <div className="mb-8 flex justify-between items-start">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
-            const addressLines = formatAddressLines(businessInfo?.address);
             return (
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-gray-900">{businessInfo?.name || "XYZ"}</h2>
-                {businessInfo?.rawBusiness?.contact_person && (
-                  <p className="text-gray-600">Contact: {businessInfo.rawBusiness.contact_person}</p>
-                )}
-                {addressLines.map((line, index) => (
-                  <p key={index} className="text-gray-600">{line}</p>
-                ))}
-                {businessInfo?.gstin && <p className="text-gray-600">GSTIN: {businessInfo.gstin}</p>}
-                {businessInfo?.pan && <p className="text-gray-600">PAN: {businessInfo.pan}</p>}
-                {businessInfo?.mobile && <p className="text-gray-600">Mobile: {businessInfo.mobile}</p>}
-                {businessInfo?.email && <p className="text-gray-600">Email: {businessInfo.email}</p>}
-                {businessInfo?.website && <p className="text-gray-600">Website: {businessInfo.website}</p>}
-              </div>
+              <>
+                <div className="mt-12">
+                  <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
+                  {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
+                  {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
+                  {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
+                </div>
+                <div className="flex flex-col items-end -mt-8">
+                  <img
+                    src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
+                    className="h-40 w-auto object-contain"
+                    alt="Evoto Technologies"
+                  />
+                </div>
+              </>
             );
           })()}
         </div>
 
-        {/* Quotation Details */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div>
-            <p className="text-sm text-gray-500">Quotation No.</p>
-            <p className="font-semibold">{quotationData.quotationNo || "1"}</p>
+        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
+          {/* Labels Row */}
+          <div className="px-4 py-1 border-b border-black bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Quotation No.</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Quotation Date</p>
-            <p className="font-semibold">
-              {new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}
-            </p>
+          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Quotation Date</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Expiry Date</p>
-            <p className="font-semibold">
-              {new Date(quotationData.validityDate).toLocaleDateString('en-IN')}
-            </p>
+          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Expiry Date</p>
+          </div>
+
+          {/* Values Row */}
+          <div className="px-4 py-1">
+            <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
+          </div>
+          <div className="px-4 py-1 border-x border-black text-center">
+            <p className="text-[14px] font-normal text-black">{new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}</p>
+          </div>
+          <div className="px-4 py-1 text-right">
+            <p className="text-[14px] font-normal text-black">{new Date(quotationData.validityDate).toLocaleDateString('en-IN')}</p>
           </div>
         </div>
 
-        {/* Bill To / Ship To */}
-        <div className="mb-8">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">BILL TO</h3>
+        <div className="grid grid-cols-2 gap-12 mb-12">
+          <div>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
+            <div className="space-y-1 text-black text-sm">
+              <p className="font-semibold text-lg mb-2">
+                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
+              </p>
               <div className="space-y-1">
                 <p className="font-medium">
-                  {quotationData.selectedCustomer ? 
-                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 
+                  {/* {quotationData.selectedCustomer ?
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
                     'No customer selected'
-                  }
+                  } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
                   <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
                 )}
-                {quotationData.selectedCustomer && (
+                {/* {quotationData.selectedCustomer && (
                   <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-                )}
+                )} */}
                 {quotationData.selectedCustomer?.email && (
-                  <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
+                  <p className="text-black">
+                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
+                  </p>
+                )}
+                {quotationData.selectedCustomer?.mobile && (
+                  <p className="text-black">
+                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                  </p>
                 )}
                 {quotationData.selectedCustomer?.gst && (
-                  <p className="text-gray-600">GST: {quotationData.selectedCustomer.gst}</p>
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
+                  </p>
                 )}
-                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "billing")).map((line, index) => (
-                  <p key={index} className="text-gray-600">{line}</p>
+                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "billing"), "billing").map((element, i) => (
+                  <p key={i} className="text-black">{element}</p>
                 ))}
               </div>
             </div>
-            <div className="col-span-2">
-              <h3 className="font-semibold text-gray-900 mb-2">SHIP TO</h3>
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
+            <div className="text-black text-sm">
+              <p className="font-semibold text-lg mb-2">
+                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
+              </p>
               <div className="space-y-1">
                 <p className="font-medium">
-                  {quotationData.selectedCustomer ? 
-                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 
+                  {/* {quotationData.selectedCustomer ?
+                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
                     'No customer selected'
-                  }
+                  } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
                   <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
                 )}
-                {quotationData.selectedCustomer && (
-                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-                )}
                 {quotationData.selectedCustomer?.email && (
-                  <p className="text-gray-600">Email: {quotationData.selectedCustomer.email}</p>
+                  <p className="text-black">
+                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
+                  </p>
+                )}
+                {quotationData.selectedCustomer && (
+                  <p className="text-black">
+                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                  </p>
                 )}
                 {quotationData.selectedCustomer?.gst && (
-                  <p className="text-gray-600">GST: {quotationData.selectedCustomer.gst}</p>
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
+                  </p>
                 )}
-                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer as any, "shipping")).map((line, index) => (
-                  <p key={index} className="text-gray-600">{line}</p>
+                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "shipping"), "shipping").map((element, i) => (
+                  <p key={i} className="text-black">{element}</p>
                 ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Items Table */}
-        <div className="mb-8">
-          <h3 className="font-semibold text-gray-900 mb-4">ITEMS</h3>
-          <table className="w-full border-collapse border border-gray-300">
+        <div className="mb-4">
+          <table className="w-full border border-black">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">Item Description</th>
-                <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-sm">QTY</th>
-                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">RATE</th>
-                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">DISC.</th>
-                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">TAX</th>
-                <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">AMOUNT</th>
+              <tr className="border-b-2 border-black bg-gray-100">
+                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
+                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
               </tr>
             </thead>
-            <tbody>
-              {quotationData.quotationItems?.map((item) => (
-                <tr key={item.id} className="border-b hover:bg-gray-50">
-                  <td className="border border-gray-300 px-3 py-2">
-                    <div>
-                      <p className="font-medium text-sm">{item.item_name}</p>
-                      {item.description && (
-                        <p className="text-xs text-gray-500">{item.description}</p>
-                      )}
+            <tbody className="divide-y divide-black">
+              {quotationData.quotationItems?.map((item, index) => (
+                <tr key={item.id}>
+                  <td className="px-3 py-2 align-top border-r border-black">
+                    <div className="flex items-start gap-1">
+                      <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-black leading-snug">{item.item_name}</p>
+                        {item.description && (
+                          <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
                     </div>
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">
-                    {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}
+                  <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(item.price_per_item)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">
-                    <div>
-                      ₹ -{((item.price_per_item * item.quantity * item.discount) / 100).toFixed(2)}
-                      {item.discount > 0 && (
-                        <div className="text-xs text-gray-500">
-                          ({item.discount.toFixed(0)}%)
-                        </div>
-                      )}
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.price_per_item)}</td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</span>
+                      {item.discount > 0 && <span className="text-[10px]">({item.discount}%)</span>}
                     </div>
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-right text-sm">
-                    <div>
-                      {formatCurrency(
-                        (item.price_per_item *
-                          item.quantity *
-                          (1 - item.discount / 100) *
-                          item.tax) /
-                        100
-                      )}
-                      {item.tax > 0 && (
-                        <div className="text-xs text-gray-500">
-                          ({item.tax.toFixed(0)}%)
-                        </div>
-                      )}
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>{formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}</span>
+                      {item.tax > 0 && <span className="text-[10px]">({item.tax}%)</span>}
                     </div>
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-sm">{formatCurrency(item.amount)}</td>
+                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.amount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-50 font-semibold">
-                <td colSpan={2} className="border border-gray-300 px-3 py-2 text-right text-sm">SUBTOTAL</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-sm">-</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-sm">₹ -{totals.totalDiscount.toFixed(2)}</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(totals.totalTax)}</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-sm">{formatCurrency(totals.totalAmount)}</td>
+              <tr className="border-t-2 border-black bg-gray-50 font-bold">
+                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(totals.totalAmount)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
-        {/* Notes Section */}
-        {quotationData.notes && (
-          <div className="mb-8">
-            <h3 className="font-semibold text-gray-900 mb-2">NOTES</h3>
-            <p className="text-gray-600">{quotationData.notes}</p>
-          </div>
-        )}
+        {/* ===== Bottom Section (Two Column Layout) ===== */}
+        <div className="mt-16 grid grid-cols-2 gap-16">
 
-        {/* Terms Section */}
-        {quotationData.terms && (
-          <div className="mb-8">
-            <h3 className="font-semibold text-gray-900 mb-2">TERMS AND CONDITIONS</h3>
-            <div className="text-gray-600">
-              {quotationData.terms.split('\n').map((term, index) => (
-                <p key={index} className="mb-1">• {term}</p>
-              ))}
-            </div>
-          </div>
-        )}
+          {/* ================= LEFT SIDE ================= */}
+          <div className="space-y-10">
 
-        {/* Summary Section */}
-        <div className="border-t pt-6">
-          <div className="space-y-2">
-            {/* <div className="flex justify-between">
-              <span className="text-gray-600">Packing charge</span>
-              <span>₹ 0.00</span>
-            </div> */}
-            <div className="flex justify-between">
-              <span className="text-gray-600">Taxable Amount</span>
-              <span>{formatCurrency(totals.subtotal - totals.totalDiscount)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">CGST @9%</span>
-              <span>{formatCurrency(totals.totalTax / 2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">{currentUser?.isUT ? 'UTGST' : 'SGST'} @9%</span>
-              <span>{formatCurrency(totals.totalTax / 2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg pt-2 border-t">
-              <span>Total Amount</span>
-              <span>{formatCurrency(totals.totalAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600 pt-2">
-              <span>Total Amount (in words)</span>
-              <span>{formatNumberInWords(totals.totalAmount)}</span>
-            </div>
+            {/* Notes */}
+            {quotationData.notes && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                  Notes
+                </h4>
+                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
+                  {quotationData.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Terms */}
+            {quotationData.terms && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                  Terms & Conditions
+                </h4>
+                <div className="text-[10px] text-black space-y-1">
+                  {quotationData.terms
+                    .split('\n')
+                    .filter(t => t.trim() !== '')
+                    .map((term, i) => (
+                      <p key={i} className="leading-tight">
+                        • {term}
+                      </p>
+                    ))}
+                </div>
+              </div>
+            )}
+
           </div>
+
+          {/* ================= RIGHT SIDE ================= */}
+          <div>
+
+            {/* ===== Tax Summary ===== */}
+            <div className="space-y-0">
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  Taxable Amount
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.subtotal - totals.totalDiscount)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.totalCGST)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-black">
+                <span className="text-xs font-normal text-black uppercase">
+                  {currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.totalTax / 2)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b-2 border-black">
+                <span className="text-sm font-bold text-black">
+                  GRAND TOTAL
+                </span>
+                <span className="text-xl font-bold text-black">
+                  {formatCurrency(totals.totalAmount)}
+                </span>
+              </div>
+
+              <div className="pt-2 text-right">
+                <p className="text-xs text-black leading-tight">
+                  <span className="font-bold uppercase text-[12px]">
+                    In words:
+                  </span>{' '}
+                  {formatNumberInWords(totals.totalAmount)}
+                </p>
+              </div>
+
+            </div>
+
+            {/* ===== Signature ===== */}
+            <div className="mt-20 flex justify-end">
+              <div className="text-center">
+                <div className="w-48 border-b border-black mb-2"></div>
+                <p className="text-xs font-bold text-black uppercase">
+                  Authorized Signatory
+                </p>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>
   );
 };
-
 export default QuotationPreviewPage;

@@ -71,7 +71,11 @@ const ResetPasswordCheckEmail = () => {
 
         <div className="flex justify-center mb-5">
           <Link
-            to={currentLayout?.name === 'auth-branded' ? '/auth/login' : '/auth/classic/login'}
+            to={
+              currentLayout?.name === 'auth-branded'
+                ? '/auth/reset-password/changed'
+                : '/auth/classic/reset-password/changed'
+            }
             className="btn btn-primary flex justify-center"
           >
             Skip for now

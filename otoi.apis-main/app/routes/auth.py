@@ -257,8 +257,6 @@ def login():
         # Log the error for debugging
         return jsonify({"error": "An error occurred during login. Please try again."}), 500
 
-    return jsonify({"error": "Invalid credentials"}), 401
-
 @auth_blueprint.route("/check-email", methods=["POST"])
 def check_email():
     """

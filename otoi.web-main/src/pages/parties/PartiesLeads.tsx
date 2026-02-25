@@ -81,7 +81,32 @@ const LeadsPage = () => {
         formData
       )
       .then((response) => {
-        toast.success(response.data.message);
+        const { message, details } = response.data;
+        const { imported, skipped_no_contact, skipped_internal_duplicates, skipped_database_duplicates } = details;
+        
+        // Calculate total skipped records
+        const totalSkipped = skipped_no_contact + skipped_internal_duplicates + skipped_database_duplicates;
+        
+        // Create a single comprehensive toast message
+        let toastMessage = `${imported} records imported successfully`;
+        
+        if (totalSkipped > 0) {
+          let skipReasons = [];
+          if (skipped_no_contact > 0) skipReasons.push(`${skipped_no_contact} missing contact info`);
+          if (skipped_internal_duplicates > 0) skipReasons.push(`${skipped_internal_duplicates} internal duplicates`);
+          if (skipped_database_duplicates > 0) skipReasons.push(`${skipped_database_duplicates} existing duplicates`);
+          
+          toastMessage += `. ${totalSkipped} records were skipped: ${skipReasons.join(', ')}.`;
+          
+          toast.warning(toastMessage, {
+            duration: 8000,
+          });
+        } else {
+          toast.success(toastMessage, {
+            duration: 4000,
+          });
+        }
+        
         setRefreshKey((prevKey) => prevKey + 1);
         event.target.value = "";
       })

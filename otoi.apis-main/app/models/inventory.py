@@ -76,13 +76,13 @@ class Item(BaseMixin, db.Model):
     category_id = Column(db.UUID(as_uuid=True), ForeignKey("item_categories.uuid", ondelete="CASCADE"), nullable=False)
     measuring_unit_id = Column(Integer, ForeignKey("measuring_units.id", ondelete="CASCADE"), nullable=False)
 
-    item_name = Column(String(255), nullable=False, unique=True)
+    item_name = Column(String(255), nullable=False) 
     sales_price = Column(Float, nullable=False)
     gst_tax_rate = Column(Float, nullable=False)
     opening_stock = Column(Float, nullable=True)
 
     purchase_price = Column(Float, nullable=True)
-    item_code = Column(String(100), nullable=True, unique=True)
+    item_code = Column(String(100), nullable=True)
     hsn_code = Column(String(50), nullable=True)
     description = Column(Text, nullable=True)
 

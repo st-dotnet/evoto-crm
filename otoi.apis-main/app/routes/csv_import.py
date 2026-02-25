@@ -90,9 +90,17 @@ def import_leads():
 
         # Map status
         def map_status(val):
-            if not val: return None
-            norm = val.lower().replace(" ", "").replace("-", "")
-            return STATUS_MAPPING.get(norm)
+            import numpy as np
+            # Handle None, NaN, and empty values
+            if val is None or (isinstance(val, float) and np.isnan(val)) or not val or str(val).strip() == "":
+                return 1  # Default to 'new' status
+            
+            # Convert to string and normalize
+            norm = str(val).strip().lower().replace(" ", "").replace("-", "")
+            mapped_status = STATUS_MAPPING.get(norm)
+            
+            # Always return a valid integer
+            return int(mapped_status) if mapped_status is not None else 1
 
         df["status"] = df["status_raw"].apply(map_status)
 
@@ -117,10 +125,8 @@ def import_leads():
             # 1. Required Fields
             if not row["first_name"] or not row["last_name"]:
                 continue # Skip unnamed leads or handle error? Let's skip safely.
-            
-            if row["status"] is None:
-                skipped_status += 1
-                continue
+                
+            # Status is now always valid (integer), no need to check for None
                 
             # 2. Contact Method (Mobile or Email)
             m = row["mobile"]
@@ -196,7 +202,6 @@ def import_leads():
             "details": {
                 "total_rows": initial_count,
                 "imported": len(records_to_import),
-                "skipped_invalid_status": skipped_status,
                 "skipped_no_contact": skipped_contact,
                 "skipped_internal_duplicates": skipped_internal_dup,
                 "skipped_database_duplicates": skipped_db_dup
@@ -272,9 +277,17 @@ def import_customers():
 
         # Map status
         def map_status(val):
-            if not val: return None
-            norm = val.lower().replace(" ", "").replace("-", "")
-            return STATUS_MAPPING.get(norm)
+            import numpy as np
+            # Handle None, NaN, and empty values
+            if val is None or (isinstance(val, float) and np.isnan(val)) or not val or str(val).strip() == "":
+                return 1  # Default to 'new' status
+            
+            # Convert to string and normalize
+            norm = str(val).strip().lower().replace(" ", "").replace("-", "")
+            mapped_status = STATUS_MAPPING.get(norm)
+            
+            # Always return a valid integer
+            return int(mapped_status) if mapped_status is not None else 1
 
         df["status"] = df["status_raw"].apply(map_status)
 
@@ -370,7 +383,6 @@ def import_customers():
             "details": {
                 "total_rows": initial_count,
                 "imported": len(records_to_import),
-                "skipped_invalid_status": skipped_status,
                 "skipped_no_contact": skipped_contact,
                 "skipped_internal_duplicates": skipped_internal_dup,
                 "skipped_database_duplicates": skipped_db_dup

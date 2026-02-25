@@ -9,6 +9,7 @@ from .associations import user_business
 from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 from .purchase import PurchaseEntry
 from .quotation import Quotation, QuotationItem
+from .invoice import Invoice, InvoiceItem
 from .location import Country, UnionTerritory
 
 __all__ = [ "User", "Role", "Address", 
@@ -18,4 +19,4 @@ __all__ = [ "User", "Role", "Address",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business", "user_business",
            "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry",
-           "Quotation", "QuotationItem", "Country", "UnionTerritory"]
+           "Quotation", "QuotationItem","Invoice", "InvoiceItem", "Country", "UnionTerritory"]

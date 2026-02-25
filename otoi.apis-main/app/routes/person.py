@@ -252,39 +252,88 @@ def get_test():
 @lead_blueprint.route("/download-template", methods=["GET"])
 def download_person_template():
     try:
-        # Static lists
         statuses = ["New", "In-progress", "Quote Given", "Win", "Lose"]
 
-        # Create workbook
         wb = Workbook()
         ws = wb.active
         ws.title = "Leads"
 
-        # Add columns
         columns = [
-            "first_name", "last_name", "mobile", "email", "gst","status", "reason",
-            "address1", "address2", "city", "state", "country", "pin"
+            "first_name",     # A
+            "last_name",      # B
+            "mobile",         # C
+            "email",          # D
+            "gst",            # E
+            "status",         # F
+            "reason",         # G
+            "address1",       # H
+            "address2",       # I
+            "city",           # J
+            "state",          # K
+            "country",        # L
+            "pin",            # M
         ]
         ws.append(columns)
 
-        # --- Hidden sheet for dropdown sources ---
+        # ---- Hidden sheet for dropdown ----
         ws_hidden = wb.create_sheet("DropdownData")
         for i, value in enumerate(statuses, start=1):
-            ws_hidden[f"B{i}"] = value
-
-        # Hide the sheet
+            ws_hidden[f"A{i}"] = value
         ws_hidden.sheet_state = "hidden"
 
-        # --- Data Validation (Status, col F) ---
+        # ---- Status dropdown (F column) ----
         dv_status = DataValidation(
             type="list",
-            formula1="=DropdownData!$B$1:$B$5",  # 5 values in column B
-            allow_blank=False
+            formula1="=DropdownData!$A$1:$A$5",
+            allow_blank=False,
+            showErrorMessage=True,
+            error="Select a valid status"
         )
         ws.add_data_validation(dv_status)
         dv_status.add("F2:F1000")
 
-        # Save to memory
+        # ---- Mobile validation (C column) ----
+        dv_mobile = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(C2),AND(ISNUMBER(C2),LEN(C2)=10))',
+            showErrorMessage=True,
+            error="Mobile must be exactly 10 digits"
+        )
+        ws.add_data_validation(dv_mobile)
+        dv_mobile.add("C2:C1000")
+
+        # ---- Email validation (D column) ----
+        dv_email = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(D2),AND(ISNUMBER(SEARCH("@",D2)),ISNUMBER(SEARCH(".",D2))))',
+            showErrorMessage=True,
+            error="Enter a valid email (example@domain.com)"
+        )
+        ws.add_data_validation(dv_email)
+        dv_email.add("D2:D1000")
+
+        # ---- GST validation (E column) ----
+        dv_gst = DataValidation(
+            type="custom",
+            formula1='=OR(ISBLANK(E2),LEN(E2)=15)',
+            showErrorMessage=True,
+            error="GST must be exactly 15 characters"
+        )
+        ws.add_data_validation(dv_gst)
+        dv_gst.add("E2:E1000")
+
+        # status validation (F column) ----  
+        # dv_status = DataValidation(
+        #     type="list",
+        #     formula1="=DropdownData!$A$1:$A$5",
+        #     allow_blank=False,
+        #     showErrorMessage=True,
+        #     error="Select a valid status"
+        # )
+        # ws.add_data_validation(dv_status)
+        # dv_status.add("F2:F1000")
+
+        # ---- Save file ----
         output = BytesIO()
         wb.save(output)
         output.seek(0)
@@ -292,7 +341,7 @@ def download_person_template():
         return send_file(
             output,
             as_attachment=True,
-            download_name="person_template.xlsx",
+            download_name="lead_template.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
@@ -300,6 +349,7 @@ def download_person_template():
         import traceback
         print(traceback.format_exc())
         return {"error": str(e)}, 500
+
     
 
 @lead_blueprint.route("/", methods=["POST"])
