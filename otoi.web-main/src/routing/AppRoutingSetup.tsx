@@ -84,7 +84,9 @@ import {
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
 import { CustomerDetails } from '@/pages/parties/blocks/customers/CustomerDetails';
+import { CustomerEdit } from '@/pages/parties/blocks/customers/CustomerEdit';
 import { LeadDetails } from '@/pages/parties/blocks/leads/LeadDetails';
+import { LeadEdit } from '@/pages/parties/blocks/leads/LeadEdit';
 import { PartiesVendorsPage } from '@/pages/parties/blocks/vendors/PartiesVendors';
 import InventoryPage from '@/pages/items/InventoryPage';
 import ItemDetailsPage from '@/pages/items/ItemDetails';
@@ -111,7 +113,9 @@ const AppRoutingSetup = (): ReactElement => {
             <Route path="/parties/customers" element={<PartiesCustomersPage />} />
             <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
             <Route path="/lead/:uuid" element={<LeadDetails />} />
+            <Route path="/lead/:uuid/edit" element={<LeadEdit />} />
             <Route path="/customer/:uuid" element={<CustomerDetails />} />
+            <Route path="/customer/:uuid/edit" element={<CustomerEdit />} />
             <Route path="/user-management/users" element={<PartiesUsersPage />} />
             <Route path="/user-management/roles" element={<PartiesRoles />} />
             <Route path="/user/:id" element={<UserDetails />} />
@@ -230,7 +234,9 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/parties/customers" element={<PartiesCustomersPage />} />
           <Route path="/parties/vendors" element={<PartiesVendorsPage />} />
           <Route path="/lead/:uuid" element={<LeadDetails />} />
+          <Route path="/lead/:uuid/edit" element={<LeadEdit />} />
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
+          <Route path="/customer/:uuid/edit" element={<CustomerEdit />} />
           <Route path="/user/:id" element={<UserDetails />} />
           <Route path="/user/:id/edit" element={<UserEdit />} />
           <Route path="/items/inventory" element={<InventoryPage />} />

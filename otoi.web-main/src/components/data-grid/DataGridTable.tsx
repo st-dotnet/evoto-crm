@@ -50,7 +50,7 @@ const DataGridTable = <TData,>() => {
                 className={cn(
                   headCellSpacing,
                   cellBorder && 'border-e',
-                  'h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pe-0',
+                  'h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]',
                   header.column.columnDef.meta?.headerClassName
                 )}
               >
@@ -81,7 +81,7 @@ const DataGridTable = <TData,>() => {
                   className={cn(
                     bodyCellSpacing,
                     cellBorder && 'border-e',
-                    'align-middle [&:has([role=checkbox])]:pe-0',
+                    'align-middle [&:has([role=checkbox])]',
                     cell.column.columnDef.meta?.cellClassName
                   )}
                 >

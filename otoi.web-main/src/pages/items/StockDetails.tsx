@@ -155,7 +155,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
   return (
     <div className="border rounded-lg p-4">
       {isBarcodeModalOpen && <BarcodeModal />}
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Item Code */}
         <div className="space-y-1">
@@ -165,14 +165,14 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             <input
               type="text"
               placeholder="ex: DECOX50P"
-              className={`flex-1 min-w-0 p-2 border rounded ${formik.touched.item_code && formik.errors.item_code ? "border-red-500" : ""}`}
+              className={`flex-1 min-w-0 p-2 border rounded text-sm ${formik.touched.item_code && formik.errors.item_code ? "border-red-500" : ""}`}
               {...formik.getFieldProps("item_code")}
             />
 
             <button
               type="button"
               onClick={() => handleGetBarcode()}
-              className="px-3 text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
+              className="px-3 py-2 text-xs md:text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
             >
               Get Barcode
             </button>
@@ -189,12 +189,12 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             <input
               type="text"
               placeholder="ex: 4010"
-              className="flex-1 min-w-0 p-2 border rounded"
+              className="flex-1 min-w-0 p-2 border rounded text-sm"
               {...formik.getFieldProps("hsn_code")}
             />
             <button
               type="button"
-              className="px-3 text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
+              className="px-3 py-2 text-xs md:text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
             >
               Find HSN code
             </button>
@@ -204,9 +204,9 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
         {/* Measuring Unit */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Measuring Unit</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <select
-              className="flex-1 p-2 border rounded"
+              className="flex-1 p-2 border rounded text-sm"
               {...formik.getFieldProps("measuring_unit")}
             >
               <option value="PCS">Pieces (PCS)</option>
@@ -217,7 +217,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             <button
               type="button"
               onClick={() => setShowAlternativeUnit(!showAlternativeUnit)}
-              className="px-3 border rounded text-blue-600 hover:bg-gray-50 whitespace-nowrap"
+              className="px-3 py-2 text-xs border rounded text-blue-600 hover:bg-gray-50 whitespace-nowrap"
             >
               {showAlternativeUnit ? "- Remove Alternative Unit" : "+ Add Alternative Unit"}
             </button>
@@ -230,7 +230,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             <div className="space-y-1">
               <label className="text-sm font-medium">Secondary Unit</label>
               <select
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-sm"
                 {...formik.getFieldProps("secondary_unit")}
               >
                 <option value="PCS">PCS</option>
@@ -245,11 +245,11 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
                 <input
                   type="number"
                   placeholder="1 PCS ="
-                  className="flex-1 min-w-0 p-2 border rounded"
+                  className="flex-1 min-w-0 p-2 border rounded text-sm"
                   {...formik.getFieldProps("conversion_rate")}
                 />
                 <select
-                  className="w-24 p-2 border rounded bg-gray-100 cursor-not-allowed appearance-none"
+                  className="w-24 p-2 border rounded bg-gray-100 cursor-not-allowed appearance-none text-sm"
                   {...formik.getFieldProps("conversion_unit")}
                   disabled
                 >
@@ -257,8 +257,6 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
                   <option value="BOX">BOX</option>
                   <option value="PACK">PACK</option>
                 </select>
-
-
               </div>
             </div>
           </>
@@ -284,7 +282,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
         <div className="space-y-1">
           <label className="text-sm font-medium">As of Date</label>
           {isEditing ? (
-            <div className="w-full p-2 border rounded bg-gray-50">
+            <div className="w-full p-2 border rounded bg-gray-50 text-sm">
               {new Date(formik.values.as_of_date || new Date()).toLocaleDateString('en-US', {
                 day: 'numeric',
                 month: 'long',
@@ -294,7 +292,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
           ) : (
             <input
               type="date"
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded text-sm"
               value={formik.values.as_of_date || new Date().toISOString().split('T')[0]}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -303,26 +301,27 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
           )}
         </div>
 
-        {/* Low Stock Warning */}
-        <div className="space-y-2">
+        {/* Low Stock Warning - Full width on small screens, part of grid on larger */}
+        <div className="space-y-2 sm:col-span-2">
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
               name="low_stock_warning"
+              id="low_stock_warning"
               checked={formik.values.low_stock_warning}
               onChange={(e) =>
                 formik.setFieldValue("low_stock_warning", e.target.checked)
               }
-              className="h-4 w-4"
+              className="h-4 w-4 cursor-pointer"
             />
 
-            <label htmlFor="low_stock_warning" className="text-sm">
+            <label htmlFor="low_stock_warning" className="text-sm cursor-pointer">
               Enable low stock quantity warning
             </label>
           </div>
 
           {formik.values.low_stock_warning && (
-            <div className="ml-6 space-y-4">
+            <div className="ml-6 space-y-4 max-w-md">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Low Stock Quantity</label>
                 <div className="flex items-center gap-2">
@@ -346,9 +345,9 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
           )}
         </div>
 
-        {/* Description Box */}
-        <div className="space-y-1">
-          <label className="text-sm block">
+        {/* Description - Full width */}
+        <div className="space-y-1 sm:col-span-2">
+          <label className="text-sm block font-medium">
             Description
           </label>
           <textarea

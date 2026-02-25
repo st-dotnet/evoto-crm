@@ -49,7 +49,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
       `${currentUser?.first_name?.[0] ?? ''}`
     ).toUpperCase() || 'U';
     return (
-      <div className="flex items-center justify-between px-5 py-1.5 gap-1.5">
+      <div className="flex items-center overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] justify-between px-5 py-1.5 gap-1.5">
         <div className="flex items-center gap-2">
           <div className="size-9 rounded-full border-2 border-success bg-gray-200 text-gray-700 flex items-center justify-center">
             <span className="text-xs font-semibold">{initials}</span>
