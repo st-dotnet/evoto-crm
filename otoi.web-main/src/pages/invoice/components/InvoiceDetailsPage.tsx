@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -168,41 +168,52 @@ const InvoiceDetailsPage: React.FC = () => {
 
     const handleDownloadPDF = async () => {
         if (!invoiceRef.current) return;
+
         const downloadToast = toast.loading("Generating PDF...");
+
         try {
             const element = invoiceRef.current;
+
+            window.scrollTo(0, 0);
+
             const canvas = await html2canvas(element, {
-                scale: 2,
+                scale: 3, // Higher quality
                 useCORS: true,
-                logging: false,
                 backgroundColor: "#ffffff",
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight,
             });
 
             const imgData = canvas.toDataURL("image/png");
+
             const pdf = new jsPDF("p", "mm", "a4");
 
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pdfWidth;
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            const margin = 10; // Professional margin
+            const usableWidth = pageWidth - margin * 2;
+
+            const imgWidth = usableWidth;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             let heightLeft = imgHeight;
-            let position = 0;
+            let position = margin;
 
-            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
+            // First Page
+            pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
 
+            // Extra Pages (Only if needed)
             while (heightLeft > 0) {
-                position = heightLeft - imgHeight;
+                position = heightLeft - imgHeight + margin;
                 pdf.addPage();
-                pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-                heightLeft -= pdfHeight;
+                pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
             }
 
             pdf.save(`Invoice-${invoiceData?.invoice_number || "Draft"}.pdf`);
+
             toast.success("PDF downloaded successfully", { id: downloadToast });
+
         } catch (error) {
             console.error("PDF generation error:", error);
             toast.error("Failed to generate PDF", { id: downloadToast });
@@ -312,10 +323,6 @@ const InvoiceDetailsPage: React.FC = () => {
             setIsSavingPayment(false);
         }
     };
-
-    // const handleEdit = () => {
-    //     navigate(`/invoices/${id}/edit`);
-    // };
 
     const formatCurrency = (amount: number) => {
         return `₹ ${amount.toFixed(2)}`;
@@ -578,308 +585,217 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
 
             {/* Main Invoice Preview Area */}
-            <div id="invoice-print-area" ref={invoiceRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
-                <div className="mb-8 flex justify-between items-start">
+            <div
+                id="invoice-print-area"
+                ref={invoiceRef}
+                style={{ width: '794px', boxSizing: 'border-box' }}
+                className="mx-auto mt-8 bg-white font-sans"
+            >
+                {/* ── Company Header ── */}
+                <div className="flex justify-between items-start px-12 pt-10 pb-6">
                     {(() => {
                         const businessInfo = getAuthBusinessInfo();
                         return (
-                            <>
-                                <div className="mt-12">
-                                    <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
-                                    {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-                                    {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                                    {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
-                                </div>
-                                <div className="flex flex-col items-end -mt-8">
-                                    <img
-                                        src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
-                                        className="h-40 w-auto object-contain"
-                                        alt="Evoto Technologies"
-                                    />
-                                </div>
-                            </>
+                            <div>
+                                <p className="text-xl font-bold text-black">{businessInfo?.name || 'Evoto Technologies'}</p>
+                                {businessInfo?.email && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.email}</p>}
+                                {businessInfo?.phone && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.phone}</p>}
+                                {businessInfo?.address && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.address}</p>}
+                            </div>
                         );
                     })()}
+                    <img
+                        src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
+                        className="h-16 w-auto object-contain"
+                        alt="Logo"
+                    />
                 </div>
 
-                {/* Invoice Details */}
-                <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-                    {/* Labels Row */}
-                    <div className="px-4 py-1 border-b border-black bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
-                    </div>
-                    <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
-                    </div>
-                    <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
-                    </div>
+                <div className="px-12 pb-12">
 
-                    {/* Values Row */}
-                    <div className="px-4 py-1">
-                        <p className="text-[14px] font-normal text-black">{invoiceData.invoice_number}</p>
-                    </div>
-                    <div className="px-4 py-1 border-x border-black text-center">
-                        <p className="text-[14px] font-normal text-black">{new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</p>
-                    </div>
-                    <div className="px-4 py-1 text-right">
-                        <p className="text-[14px] font-normal text-black">{new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-12 mb-12">
-                    <div>
-                        <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
-                        <div className="space-y-1 text-black text-sm">
-                            <p className="font-semibold text-lg mb-2">
-                                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
-                            </p>
-                            <div className="space-y-1">
-                                <p className="font-medium">
-                                    {/* {invoiceData.customer ?
-                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
-                                        'No customer selected'
-                                    } */}
-                                </p>
-                                {invoiceData.customer?.company_name && (
-                                    <p className="text-gray-600">{invoiceData.customer.company_name}</p>
-                                )}
-                                {invoiceData.customer?.email && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Email:</span> {invoiceData.customer.email}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.mobile && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.gst && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
-                                    </p>
-                                )}
-                                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
-                                    <p key={i} className="text-black">{element}</p>
-                                ))}
-                            </div>
+                    {/* ── Invoice Meta: No / Date / Due Date ── */}
+                    <div className="grid grid-cols-3 border border-black mb-7">
+                        <div className="px-3 py-1 border-r border-b border-black bg-gray-100">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-black">Invoice No.</span>
+                        </div>
+                        <div className="px-3 py-1 border-r border-b border-black bg-gray-100 text-center">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-black">Invoice Date</span>
+                        </div>
+                        <div className="px-3 py-1 border-b border-black bg-gray-100 text-right">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-black">Due Date</span>
+                        </div>
+                        <div className="px-3 py-2 border-r border-black">
+                            <span className="text-[13px] text-black">{invoiceData.invoice_number}</span>
+                        </div>
+                        <div className="px-3 py-2 border-r border-black text-center">
+                            <span className="text-[13px] text-black">{new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <div className="px-3 py-2 text-right">
+                            <span className="text-[13px] text-black">{new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</span>
                         </div>
                     </div>
-                    <div>
-                        <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
-                        <div className="text-black text-sm">
-                            <p className="font-semibold text-lg mb-2">
-                                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+
+                    {/* ── Bill To / Ship To ── */}
+                    <div className="grid grid-cols-2 gap-6 mb-7">
+                        {/* Bill To */}
+                        <div>
+                            <p className="text-[11px] font-bold uppercase text-black mb-0.5">BILL TO</p>
+                            <div className="w-12 border-b border-black mb-2"></div>
+                            <p className="text-sm font-bold text-black mb-1">
+                                {invoiceData.customer ? `${invoiceData.customer.first_name || ''} ${invoiceData.customer.last_name || ''}`.trim() : 'N/A'}
                             </p>
-                            <div className="space-y-1">
-                                <p className="font-medium">
-                                    {/* {invoiceData.customer ?
-                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
-                                        'No customer selected'
-                                    } */}
-                                </p>
-                                {invoiceData.customer?.company_name && (
-                                    <p className="text-gray-600">{invoiceData.customer.company_name}</p>
-                                )}
-                                {invoiceData.customer?.email && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Email:</span> {invoiceData.customer.email}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.mobile && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.gst && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
-                                    </p>
-                                )}
-                                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
-                                    <p key={i} className="text-black">{element}</p>
-                                ))}
-                            </div>
+                            {invoiceData.customer?.company_name && <p className="text-[11px] text-gray-500 mb-0.5">{invoiceData.customer.company_name}</p>}
+                            {invoiceData.customer?.email && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Email:</span> {invoiceData.customer.email}</p>}
+                            {invoiceData.customer?.mobile && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}</p>}
+                            {invoiceData.customer?.gst && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">GST:</span> {invoiceData.customer.gst}</p>}
+                            {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, 'billing'), 'billing').map((el, i) => (
+                                <p key={i} className="text-[11px] text-black mb-0.5">{el}</p>
+                            ))}
+                        </div>
+                        {/* Ship To */}
+                        <div className="border-l border-gray-200 pl-6">
+                            <p className="text-[11px] font-bold uppercase text-black mb-0.5">SHIP TO</p>
+                            <div className="w-12 border-b border-black mb-2"></div>
+                            <p className="text-sm font-bold text-black mb-1">
+                                {invoiceData.customer ? `${invoiceData.customer.first_name || ''} ${invoiceData.customer.last_name || ''}`.trim() : 'N/A'}
+                            </p>
+                            {invoiceData.customer?.company_name && <p className="text-[11px] text-gray-500 mb-0.5">{invoiceData.customer.company_name}</p>}
+                            {invoiceData.customer?.email && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Email:</span> {invoiceData.customer.email}</p>}
+                            {invoiceData.customer?.mobile && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}</p>}
+                            {invoiceData.customer?.gst && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">GST:</span> {invoiceData.customer.gst}</p>}
+                            {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, 'shipping'), 'shipping').map((el, i) => (
+                                <p key={i} className="text-[11px] text-black mb-0.5">{el}</p>
+                            ))}
                         </div>
                     </div>
-                </div>
 
-                <div className="mb-4">
-                    <table className="w-full border border-black">
+                    {/* ── Items Table ── */}
+                    <table className="w-full border-collapse border border-black mb-8">
                         <thead>
-                            <tr className="border-b-2 border-black bg-gray-100">
-                                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
-                                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+                            <tr className="bg-gray-100 border-b-2 border-black">
+                                <th className="px-2.5 py-1.5 text-left text-[9px] font-bold uppercase tracking-wider text-black border-r border-black w-[38%]">Item Description</th>
+                                <th className="px-2.5 py-1.5 text-center text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Qty</th>
+                                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black whitespace-nowrap">Price / Item</th>
+                                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Disc.</th>
+                                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Tax</th>
+                                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black">Total</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-black">
+                        <tbody>
                             {invoiceData.items?.map((item, index) => (
-                                <tr key={item.uuid}>
-                                    <td className="px-3 py-2 align-top border-r border-black">
+                                <tr key={item.uuid} className="border-b border-gray-300">
+                                    <td className="px-2.5 py-2 text-xs text-black border-r border-gray-300 align-top">
                                         <div className="flex items-start gap-1">
-                                            <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-sm text-black leading-snug">{item.product_name}</p>
-                                                {item.description && (
-                                                    <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
-                                                )}
+                                            <span className="font-medium text-xs text-black min-w-[18px]">{index + 1}.</span>
+                                            <div>
+                                                <p className="font-medium text-xs text-black leading-snug">{item.product_name}</p>
+                                                {item.description && <p className="text-[10px] text-gray-500 mt-0.5">{item.description}</p>}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                                    <td className="px-2.5 py-2 text-center text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                                        {item.quantity} <span className="text-[9px]">{getMeasuringUnit(item.measuring_unit_id)}</span>
                                     </td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        <div className="flex flex-col items-end">
-                                            <span>-{formatCurrency(item.discount_amount)}</span>
-                                            {item.discount_percentage > 0 && <span className="text-[10px]">({item.discount_percentage}%)</span>}
-                                        </div>
+                                    <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
+                                    <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                                        <p className="m-0">-{formatCurrency(item.discount_amount)}</p>
+                                        {item.discount_percentage > 0 && <p className="text-[9px] m-0">({item.discount_percentage}%)</p>}
                                     </td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        <div className="flex flex-col items-end">
-                                            <span>{formatCurrency(item.tax_amount)}</span>
-                                            {item.tax_percentage > 0 && <span className="text-[10px]">({item.tax_percentage}%)</span>}
-                                        </div>
+                                    <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                                        <p className="m-0">{formatCurrency(item.tax_amount)}</p>
+                                        {item.tax_percentage > 0 && <p className="text-[9px] m-0">({item.tax_percentage}%)</p>}
                                     </td>
-                                    <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
+                                    <td className="px-2.5 py-2 text-right text-xs text-black align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot>
                             <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                                <td colSpan={2} className="px-2.5 py-2 text-right text-[9px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+                                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">
                                     {formatCurrency(invoiceData.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0))}
                                 </td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(invoiceData.discount_total)}</td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(invoiceData.tax_total)}</td>
-                                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
+                                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">-{formatCurrency(invoiceData.discount_total)}</td>
+                                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">{formatCurrency(invoiceData.tax_total)}</td>
+                                <td className="px-2.5 py-2 text-right text-xs font-bold text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-                {/* ===== Bottom Section (Two Column Layout) ===== */}
-                <div className="mt-16 grid grid-cols-2 gap-16">
 
-                    {/* ================= LEFT SIDE ================= */}
-                    <div className="space-y-10">
+                    {/* ── Bottom: Notes/Terms + Totals ── */}
+                    <div className="grid grid-cols-2 gap-8">
 
-                        {/* Notes */}
-                        {invoiceData.notes && (
-                            <div>
-                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
-                                    Notes
-                                </h4>
-                                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
-                                    {invoiceData.notes}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Terms */}
-                        {invoiceData.terms_and_conditions && (
-                            <div>
-                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
-                                    Terms & Conditions
-                                </h4>
-                                <div className="text-[10px] text-black space-y-1">
-                                    {invoiceData.terms_and_conditions
-                                        .split('\n')
-                                        .filter(t => t.trim() !== '')
-                                        .map((term, i) => (
-                                            <p key={i} className="leading-tight">
-                                                • {term}
-                                            </p>
+                        {/* LEFT – Notes & Terms */}
+                        <div className="space-y-4">
+                            {invoiceData.notes && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-black mb-0.5">NOTES</p>
+                                    <div className="w-10 border-b border-black mb-1.5"></div>
+                                    <p className="text-[11px] text-black leading-relaxed whitespace-pre-wrap">{invoiceData.notes}</p>
+                                </div>
+                            )}
+                            {invoiceData.terms_and_conditions && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-black mb-0.5">TERMS &amp; CONDITIONS</p>
+                                    <div className="w-32 border-b border-black mb-1.5"></div>
+                                    <div className="text-[10px] text-black space-y-0.5 leading-relaxed">
+                                        {invoiceData.terms_and_conditions.split('\n').filter(t => t.trim()).map((term, i) => (
+                                            <p key={i}>• {term}</p>
                                         ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ================= RIGHT SIDE ================= */}
-                    <div>
-
-                        {/* ===== Tax Summary ===== */}
-                        <div className="space-y-0">
-
-                            <div className="flex justify-between items-center py-2">
-                                <span className="text-xs font-normal text-black uppercase">
-                                    Taxable Amount
-                                </span>
-                                <span className="text-sm font-bold text-black">
-                                    {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
-                                </span>
-                            </div>
-
-                            {invoiceData.tax_total > 0 && (
-                                <>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-xs font-normal text-black uppercase">
-                                            CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
-                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                                                : 0}%)
-                                        </span>
-                                        <span className="text-sm font-bold text-black">
-                                            {formatCurrency(invoiceData.tax_total / 2)}
-                                        </span>
                                     </div>
-
-                                    <div className="flex justify-between items-center py-2 border-b border-black">
-                                        <span className="text-xs font-normal text-black uppercase">
-                                            {currentUser?.isUT ? 'UTGST' : 'SGST'}
-                                            ({invoiceData.subtotal - invoiceData.discount_total > 0
-                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                                                : 0}%)
-                                        </span>
-                                        <span className="text-sm font-bold text-black">
-                                            {formatCurrency(invoiceData.tax_total / 2)}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
-
-                            {invoiceData.additional_charges_total > 0 && (
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-xs font-normal text-black uppercase">
-                                        Additional Charges
-                                    </span>
-                                    <span className="text-sm font-bold text-black">
-                                        {formatCurrency(invoiceData.additional_charges_total)}
-                                    </span>
                                 </div>
                             )}
-
-                            <div className="flex justify-between items-center py-3 border-b-2 border-black">
-                                <span className="text-sm font-bold text-black uppercase tracking-wider">
-                                    Grand Total
-                                </span>
-                                <span className="text-xl font-bold text-black">
-                                    {formatCurrency(invoiceData.total_amount)}
-                                </span>
-                            </div>
-
-                            <div className="pt-2 text-right">
-                                <p className="text-[10px] text-gray-500 uppercase font-medium">
-                                    Amount in Words
-                                </p>
-                                <p className="text-xs font-bold text-black">
-                                    {formatNumberInWords(invoiceData.total_amount)}
-                                </p>
-                            </div>
                         </div>
 
-                        {/* ===== Signature ===== */}
-                        <div className="mt-20 flex justify-end">
-                            <div className="text-center">
-                                <div className="w-48 border-b border-black mb-2"></div>
-                                <p className="text-xs font-bold text-black uppercase">
-                                    Authorized Signatory
-                                </p>
+                        {/* RIGHT – Tax Summary + Grand Total + Signatory */}
+                        <div>
+                            <div className="space-y-0">
+                                <div className="flex justify-between items-center py-1.5">
+                                    <span className="text-[10px] uppercase text-black">Taxable Amount</span>
+                                    <span className="text-xs font-bold text-black">{formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}</span>
+                                </div>
+                                {invoiceData.tax_total > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-center py-1.5">
+                                            <span className="text-[10px] uppercase text-black">
+                                                CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
+                                                    ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                                                    : 0}%)
+                                            </span>
+                                            <span className="text-xs font-bold text-black">{formatCurrency(invoiceData.tax_total / 2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1.5 border-b border-black">
+                                            <span className="text-[10px] uppercase text-black">
+                                                {currentUser?.isUT ? 'UTGST' : 'SGST'} ({invoiceData.subtotal - invoiceData.discount_total > 0
+                                                    ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                                                    : 0}%)
+                                            </span>
+                                            <span className="text-xs font-bold text-black">{formatCurrency(invoiceData.tax_total / 2)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {invoiceData.additional_charges_total > 0 && (
+                                    <div className="flex justify-between items-center py-1.5">
+                                        <span className="text-[10px] uppercase text-black">Additional Charges</span>
+                                        <span className="text-xs font-bold text-black">{formatCurrency(invoiceData.additional_charges_total)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center py-2.5 border-t border-black border-b-2 border-double">
+                                    <span className="text-sm font-bold uppercase tracking-wider text-black">Grand Total</span>
+                                    <span className="text-xl font-bold text-black">{formatCurrency(invoiceData.total_amount)}</span>
+                                </div>
+                                <div className="pt-1.5 text-right">
+                                    <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">Amount in Words</p>
+                                    <p className="text-[11px] font-bold text-black leading-snug">{formatNumberInWords(invoiceData.total_amount)}</p>
+                                </div>
+                            </div>
+
+                            {/* Authorized Signatory */}
+                            <div className="mt-16 flex justify-end">
+                                <div className="text-center">
+                                    <div className="w-36 border-b border-black mb-1.5"></div>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-black">Authorized Signatory</p>
+                                </div>
                             </div>
                         </div>
 
@@ -1148,7 +1064,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     </DialogContent>
                 </Dialog>
             </div>
-        </div>  
+        </div>
     );
 };
 

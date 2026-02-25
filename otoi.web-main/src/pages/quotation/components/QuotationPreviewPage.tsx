@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, FileText, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -248,23 +248,18 @@ const QuotationPreviewPage: React.FC = () => {
     if (!quotationRef.current) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
-      // Ensure the element is fully captured even if it's long
       const element = quotationRef.current;
+
+      // Scroll to top so element renders from the start
+      window.scrollTo(0, 0);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        onclone: (clonedDoc: { getElementById: (arg0: string) => any; }) => {
-          // You can modify the cloned element here if needed for PDF-only styles
-          const clonedElement = clonedDoc.getElementById('quotation-print-area');
-          if (clonedElement) {
-            clonedElement.style.height = 'auto';
-            clonedElement.style.overflow = 'visible';
-          }
-        }
+        removeContainer: true,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -278,11 +273,9 @@ const QuotationPreviewPage: React.FC = () => {
       let heightLeft = imgHeight;
       let position = 0;
 
-      // Add the first page
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
 
-      // Keep adding pages until we've captured the full height
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -595,291 +588,204 @@ const QuotationPreviewPage: React.FC = () => {
         </div>
       </div>
 
-      <div id="quotation-print-area" ref={quotationRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
-        <div className="mb-8 flex justify-between items-start">
+      {/* ── Quotation Print Area ── */}
+      <div
+        id="quotation-print-area"
+        ref={quotationRef}
+        style={{ width: '794px', boxSizing: 'border-box' }}
+        className="mx-auto mt-8 bg-white font-sans"
+      >
+        {/* ── Company Header ── */}
+        <div className="flex justify-between items-start px-12 pt-10 pb-6">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
-              <>
-                <div className="mt-12">
-                  <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
-                  {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-                  {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                  {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
-                </div>
-                <div className="flex flex-col items-end -mt-8">
-                  <img
-                    src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
-                    className="h-40 w-auto object-contain"
-                    alt="Evoto Technologies"
-                  />
-                </div>
-              </>
+              <div>
+                <p className="text-xl font-bold text-black">{businessInfo?.name || 'Evoto Technologies'}</p>
+                {businessInfo?.email && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.email}</p>}
+                {businessInfo?.phone && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.phone}</p>}
+                {businessInfo?.address && <p className="text-[11px] text-gray-500 mt-0.5">{businessInfo.address}</p>}
+              </div>
             );
           })()}
+          <img
+            src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
+            className="h-16 w-auto object-contain"
+            alt="Logo"
+          />
         </div>
 
-        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-          {/* Labels Row */}
-          <div className="px-4 py-1 border-b border-black bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Quotation No.</p>
-          </div>
-          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Quotation Date</p>
-          </div>
-          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Expiry Date</p>
-          </div>
+        <div className="px-12 pb-12">
 
-          {/* Values Row */}
-          <div className="px-4 py-1">
-            <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
-          </div>
-          <div className="px-4 py-1 border-x border-black text-center">
-            <p className="text-[14px] font-normal text-black">{new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}</p>
-          </div>
-          <div className="px-4 py-1 text-right">
-            <p className="text-[14px] font-normal text-black">{new Date(quotationData.validityDate).toLocaleDateString('en-IN')}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-12 mb-12">
-          <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
-            <div className="space-y-1 text-black text-sm">
-              <p className="font-semibold text-lg mb-2">
-                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
-              </p>
-              <div className="space-y-1">
-                <p className="font-medium">
-                  {/* {quotationData.selectedCustomer ?
-                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
-                    'No customer selected'
-                  } */}
-                </p>
-                {quotationData.selectedCustomer?.company_name && (
-                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
-                )}
-                {/* {quotationData.selectedCustomer && (
-                  <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
-                )} */}
-                {quotationData.selectedCustomer?.email && (
-                  <p className="text-black">
-                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
-                  </p>
-                )}
-                {quotationData.selectedCustomer?.mobile && (
-                  <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
-                  </p>
-                )}
-                {quotationData.selectedCustomer?.gst && (
-                  <p className="text-black">
-                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
-                  </p>
-                )}
-                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "billing"), "billing").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
-              </div>
+          {/* ── Quotation Meta: No / Date / Expiry ── */}
+          <div className="grid grid-cols-3 border border-black mb-7">
+            <div className="px-3 py-1 border-r border-b border-black bg-gray-100">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-black">Quotation No.</span>
+            </div>
+            <div className="px-3 py-1 border-r border-b border-black bg-gray-100 text-center">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-black">Quotation Date</span>
+            </div>
+            <div className="px-3 py-1 border-b border-black bg-gray-100 text-right">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-black">Expiry Date</span>
+            </div>
+            <div className="px-3 py-2 border-r border-black">
+              <span className="text-[13px] text-black">{quotationData.quotationNo}</span>
+            </div>
+            <div className="px-3 py-2 border-r border-black text-center">
+              <span className="text-[13px] text-black">{new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}</span>
+            </div>
+            <div className="px-3 py-2 text-right">
+              <span className="text-[13px] text-black">{new Date(quotationData.validityDate).toLocaleDateString('en-IN')}</span>
             </div>
           </div>
-          <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
-            <div className="text-black text-sm">
-              <p className="font-semibold text-lg mb-2">
-                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
+
+          {/* ── Bill To / Ship To ── */}
+          <div className="grid grid-cols-2 gap-6 mb-7">
+            {/* Bill To */}
+            <div>
+              <p className="text-[11px] font-bold uppercase text-black mb-0.5">BILL TO</p>
+              <div className="w-12 border-b border-black mb-2"></div>
+              <p className="text-sm font-bold text-black mb-1">
+                {quotationData.selectedCustomer
+                  ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}`
+                  : 'N/A'}
               </p>
-              <div className="space-y-1">
-                <p className="font-medium">
-                  {/* {quotationData.selectedCustomer ?
-                    `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` :
-                    'No customer selected'
-                  } */}
-                </p>
-                {quotationData.selectedCustomer?.company_name && (
-                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
-                )}
-                {quotationData.selectedCustomer?.email && (
-                  <p className="text-black">
-                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
-                  </p>
-                )}
-                {quotationData.selectedCustomer && (
-                  <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
-                  </p>
-                )}
-                {quotationData.selectedCustomer?.gst && (
-                  <p className="text-black">
-                    <span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}
-                  </p>
-                )}
-                {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, "shipping"), "shipping").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
-              </div>
+              {quotationData.selectedCustomer?.company_name && <p className="text-[11px] text-gray-500 mb-0.5">{quotationData.selectedCustomer.company_name}</p>}
+              {quotationData.selectedCustomer?.email && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}</p>}
+              {quotationData.selectedCustomer?.mobile && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}</p>}
+              {quotationData.selectedCustomer?.gst && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}</p>}
+              {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, 'billing'), 'billing').map((el, i) => (
+                <p key={i} className="text-[11px] text-black mb-0.5">{el}</p>
+              ))}
+            </div>
+            {/* Ship To */}
+            <div className="border-l border-gray-200 pl-6">
+              <p className="text-[11px] font-bold uppercase text-black mb-0.5">SHIP TO</p>
+              <div className="w-12 border-b border-black mb-2"></div>
+              <p className="text-sm font-bold text-black mb-1">
+                {quotationData.selectedCustomer
+                  ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}`
+                  : 'N/A'}
+              </p>
+              {quotationData.selectedCustomer?.company_name && <p className="text-[11px] text-gray-500 mb-0.5">{quotationData.selectedCustomer.company_name}</p>}
+              {quotationData.selectedCustomer?.email && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}</p>}
+              {quotationData.selectedCustomer?.mobile && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}</p>}
+              {quotationData.selectedCustomer?.gst && <p className="text-[11px] text-black mb-0.5"><span className="font-semibold">GST:</span> {quotationData.selectedCustomer.gst}</p>}
+              {quotationData.selectedCustomer && formatAddressLines(getCustomerAddress(quotationData.selectedCustomer, 'shipping'), 'shipping').map((el, i) => (
+                <p key={i} className="text-[11px] text-black mb-0.5">{el}</p>
+              ))}
             </div>
           </div>
-        </div>
 
-        <div className="mb-4">
-          <table className="w-full border border-black">
+          {/* ── Items Table ── */}
+          <table className="w-full border-collapse border border-black mb-8">
             <thead>
-              <tr className="border-b-2 border-black bg-gray-100">
-                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
-                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+              <tr className="bg-gray-100 border-b-2 border-black">
+                <th className="px-2.5 py-1.5 text-left text-[9px] font-bold uppercase tracking-wider text-black border-r border-black w-[38%]">Item Description</th>
+                <th className="px-2.5 py-1.5 text-center text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Qty</th>
+                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black whitespace-nowrap">Price / Item</th>
+                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Disc.</th>
+                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black border-r border-black">Tax</th>
+                <th className="px-2.5 py-1.5 text-right text-[9px] font-bold uppercase tracking-wider text-black">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black">
+            <tbody>
               {quotationData.quotationItems?.map((item, index) => (
-                <tr key={item.id}>
-                  <td className="px-3 py-2 align-top border-r border-black">
+                <tr key={item.id} className="border-b border-gray-300">
+                  <td className="px-2.5 py-2 text-xs text-black border-r border-gray-300 align-top">
                     <div className="flex items-start gap-1">
-                      <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-black leading-snug">{item.item_name}</p>
-                        {item.description && (
-                          <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
-                        )}
+                      <span className="font-medium text-xs text-black min-w-[18px]">{index + 1}.</span>
+                      <div>
+                        <p className="font-medium text-xs text-black leading-snug">{item.item_name}</p>
+                        {item.description && <p className="text-[10px] text-gray-500 mt-0.5">{item.description}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                  <td className="px-2.5 py-2 text-center text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                    {item.quantity} <span className="text-[9px]">{getMeasuringUnit(item.measuring_unit_id)}</span>
                   </td>
-                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.price_per_item)}</td>
-                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</span>
-                      {item.discount > 0 && <span className="text-[10px]">({item.discount}%)</span>}
-                    </div>
+                  <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">{formatCurrency(item.price_per_item)}</td>
+                  <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                    <p className="m-0">-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</p>
+                    {item.discount > 0 && <p className="text-[9px] m-0">({item.discount}%)</p>}
                   </td>
-                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>{formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}</span>
-                      {item.tax > 0 && <span className="text-[10px]">({item.tax}%)</span>}
-                    </div>
+                  <td className="px-2.5 py-2 text-right text-xs text-black border-r border-gray-300 align-top whitespace-nowrap">
+                    <p className="m-0">{formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}</p>
+                    {item.tax > 0 && <p className="text-[9px] m-0">({item.tax}%)</p>}
                   </td>
-                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                  <td className="px-2.5 py-2 text-right text-xs text-black align-top whitespace-nowrap">{formatCurrency(item.amount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(totals.totalAmount)}</td>
+                <td colSpan={2} className="px-2.5 py-2 text-right text-[9px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
+                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
+                <td className="px-2.5 py-2 text-right text-xs font-bold text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
+                <td className="px-2.5 py-2 text-right text-xs font-bold text-black whitespace-nowrap">{formatCurrency(totals.totalAmount)}</td>
               </tr>
             </tfoot>
           </table>
-        </div>
 
-        {/* ===== Bottom Section (Two Column Layout) ===== */}
-        <div className="mt-16 grid grid-cols-2 gap-16">
+          {/* ── Bottom: Notes/Terms + Totals ── */}
+          <div className="grid grid-cols-2 gap-8">
 
-          {/* ================= LEFT SIDE ================= */}
-          <div className="space-y-10">
-
-            {/* Notes */}
-            {quotationData.notes && (
-              <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
-                  Notes
-                </h4>
-                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
-                  {quotationData.notes}
-                </p>
-              </div>
-            )}
-
-            {/* Terms */}
-            {quotationData.terms && (
-              <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
-                  Terms & Conditions
-                </h4>
-                <div className="text-[10px] text-black space-y-1">
-                  {quotationData.terms
-                    .split('\n')
-                    .filter(t => t.trim() !== '')
-                    .map((term, i) => (
-                      <p key={i} className="leading-tight">
-                        • {term}
-                      </p>
-                    ))}
+            {/* LEFT – Notes & Terms */}
+            <div className="space-y-4">
+              {quotationData.notes && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-black mb-0.5">NOTES</p>
+                  <div className="w-10 border-b border-black mb-1.5"></div>
+                  <p className="text-[11px] text-black leading-relaxed whitespace-pre-wrap">{quotationData.notes}</p>
                 </div>
-              </div>
-            )}
-
-          </div>
-
-          {/* ================= RIGHT SIDE ================= */}
-          <div>
-
-            {/* ===== Tax Summary ===== */}
-            <div className="space-y-0">
-
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal text-black uppercase">
-                  Taxable Amount
-                </span>
-                <span className="text-sm font-bold text-black">
-                  {formatCurrency(totals.subtotal - totals.totalDiscount)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal text-black uppercase">
-                  CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
-                </span>
-                <span className="text-sm font-bold text-black">
-                  {formatCurrency(totals.totalCGST)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2 border-b border-black">
-                <span className="text-xs font-normal text-black uppercase">
-                  {currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
-                </span>
-                <span className="text-sm font-bold text-black">
-                  {formatCurrency(totals.totalTax / 2)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2 border-b-2 border-black">
-                <span className="text-sm font-bold text-black">
-                  GRAND TOTAL
-                </span>
-                <span className="text-xl font-bold text-black">
-                  {formatCurrency(totals.totalAmount)}
-                </span>
-              </div>
-
-              <div className="pt-2 text-right">
-                <p className="text-xs text-black leading-tight">
-                  <span className="font-bold uppercase text-[12px]">
-                    In words:
-                  </span>{' '}
-                  {formatNumberInWords(totals.totalAmount)}
-                </p>
-              </div>
-
+              )}
+              {quotationData.terms && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-black mb-0.5">TERMS &amp; CONDITIONS</p>
+                  <div className="w-32 border-b border-black mb-1.5"></div>
+                  <div className="text-[10px] text-black space-y-0.5 leading-relaxed">
+                    {quotationData.terms.split('\n').filter(t => t.trim()).map((term, i) => (
+                      <p key={i}>• {term}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* ===== Signature ===== */}
-            <div className="mt-20 flex justify-end">
-              <div className="text-center">
-                <div className="w-48 border-b border-black mb-2"></div>
-                <p className="text-xs font-bold text-black uppercase">
-                  Authorized Signatory
-                </p>
+            {/* RIGHT – Tax Summary + Grand Total + Signatory */}
+            <div>
+              <div className="space-y-0">
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-[10px] uppercase text-black">Taxable Amount</span>
+                  <span className="text-xs font-bold text-black">{formatCurrency(totals.subtotal - totals.totalDiscount)}</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-[10px] uppercase text-black">CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
+                  <span className="text-xs font-bold text-black">{formatCurrency(totals.totalCGST)}</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-black">
+                  <span className="text-[10px] uppercase text-black">
+                    {currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
+                  </span>
+                  <span className="text-xs font-bold text-black">{formatCurrency(totals.totalTax / 2)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b-2 border-black">
+                  <span className="text-sm font-bold uppercase tracking-wider text-black">Grand Total</span>
+                  <span className="text-xl font-bold text-black">{formatCurrency(totals.totalAmount)}</span>
+                </div>
+                <div className="pt-1.5 text-right">
+                  <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">Amount in Words</p>
+                  <p className="text-[11px] font-bold text-black leading-snug">{formatNumberInWords(totals.totalAmount)}</p>
+                </div>
+              </div>
+
+              {/* Authorized Signatory */}
+              <div className="mt-16 flex justify-end">
+                <div className="text-center">
+                  <div className="w-36 border-b border-black mb-1.5"></div>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-black">Authorized Signatory</p>
+                </div>
               </div>
             </div>
 
