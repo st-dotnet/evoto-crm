@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl';
 import { useAuthContext } from '@/auth';
 import { useLanguage } from '@/i18n';
 import { DropdownUserLanguages } from './DropdownUserLanguages';
+import { useResponsive } from '@/hooks';
 import { useSettings } from '@/providers/SettingsProvider';
 import { DefaultTooltip, KeenIcon } from '@/components';
 import {
@@ -24,6 +25,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
   const { settings, storeSettings } = useSettings();
   const { logout, currentUser } = useAuthContext();
   const { isRTL } = useLanguage();
+  const isDesktop = useResponsive('up', 'lg');
 
   const handleThemeMode = (event: ChangeEvent<HTMLInputElement>) => {
     const newThemeMode = event.target.checked ? 'dark' : 'light';
@@ -102,8 +104,8 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
             </MenuLink>
           </MenuItem>
           <MenuItem
-            toggle="dropdown"
-            trigger="hover"
+            toggle={isDesktop ? 'dropdown' : 'accordion'}
+            trigger={isDesktop ? 'hover' : 'click'}
             dropdownProps={{
               placement: isRTL() ? 'left-start' : 'right-start',
               modifiers: [

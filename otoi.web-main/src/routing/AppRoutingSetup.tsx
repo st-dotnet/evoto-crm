@@ -74,6 +74,8 @@ const NetworkVisitorsPage = lazy(() => import('@/pages/network').then(module => 
 const LeadsPage = lazy(() => import('@/pages/parties/PartiesLeads').then(module => ({ default: module.LeadsPage })));
 const CustomerDetails = lazy(() => import('@/pages/parties/blocks/customers/CustomerDetails').then(module => ({ default: module.CustomerDetails })));
 const LeadDetails = lazy(() => import('@/pages/parties/blocks/leads/LeadDetails').then(module => ({ default: module.LeadDetails })));
+const LeadEdit = lazy(() => import('@/pages/parties/blocks/leads/LeadEdit').then(module => ({ default: module.LeadEdit })));
+const CustomerEdit = lazy(() => import('@/pages/parties/blocks/customers/CustomerEdit').then(module => ({ default: module.CustomerEdit })));
 const PartiesVendorsPage = lazy(() => import('@/pages/parties/blocks/vendors/PartiesVendors').then(module => ({ default: module.PartiesVendorsPage })));
 const PartiesCustomersPage = lazy(() => import('@/pages/parties/blocks/customers/PartiesCustomers').then(module => ({ default: module.PartiesCustomersPage })));
 import { AuthPage } from '@/auth';

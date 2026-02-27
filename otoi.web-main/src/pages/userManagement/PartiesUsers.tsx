@@ -7,6 +7,7 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
 } from "@/partials/toolbar";
+import { KeenIcon } from "@/components";
 import { useLayout } from "@/providers";
 import axios from "axios";
 import { toast } from "sonner";
@@ -14,7 +15,6 @@ import { SpinnerDotted } from 'spinners-react';
 import { UsersContent } from "./Users";
 import { User } from "./user-models";
 import { ModalUser } from "./ModalUsers";
-import { KeenIcon } from "@/components";
 import { useAuthContext } from "@/auth";
 
 export interface IUserModalContentProps {
@@ -119,13 +119,12 @@ const PartiesUsersPage = () => {
             <ToolbarActions>
               {/* Add User Button */}
               {isAdmin && (
-                <a
-                  className="btn btn-sm btn-primary"
+                <button
+                  className="btn btn-sm btn-primary w-full md:w-auto"
                   onClick={(e) => openUserModal(e)}
-                  href="#"
                 >
                   <KeenIcon icon="plus" /> Add User
-                </a>
+                </button>
               )}
             </ToolbarActions>
           </Toolbar>

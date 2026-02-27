@@ -3,6 +3,7 @@ import { KeenIcon } from '@/components';
 import { MenuItem, MenuLink, MenuTitle, MenuIcon, MenuBadge, MenuSub } from '@/components/menu';
 import clsx from 'clsx';
 import { I18N_LANGUAGES, TLanguage, useLanguage } from '@/i18n';
+import { useResponsive } from '@/hooks';
 
 interface IDropdownUserLanguagesProps {
   menuItemRef: any;
@@ -11,6 +12,7 @@ interface IDropdownUserLanguagesProps {
 const DropdownUserLanguages = ({ menuItemRef }: IDropdownUserLanguagesProps) => {
   const { currentLanguage, changeLanguage } = useLanguage();
   const { isRTL } = useLanguage();
+  const isDesktop = useResponsive('up', 'lg');
 
   const handleLanguage = (lang: TLanguage) => {
     changeLanguage(lang);
@@ -46,8 +48,8 @@ const DropdownUserLanguages = ({ menuItemRef }: IDropdownUserLanguagesProps) => 
 
   return (
     <MenuItem
-      toggle="dropdown"
-      trigger="hover"
+      toggle={isDesktop ? 'dropdown' : 'accordion'}
+      trigger={isDesktop ? 'hover' : 'click'}
       dropdownProps={{
         placement: isRTL() ? 'left-start' : 'right-start',
         modifiers: [

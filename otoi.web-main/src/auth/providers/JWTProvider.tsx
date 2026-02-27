@@ -126,7 +126,7 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       return auth;
     } catch (error) {
       saveAuth(undefined);
-      throw new Error(`Error ${error}`);
+      throw error;
     }
   };
 

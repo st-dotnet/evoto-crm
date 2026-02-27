@@ -62,22 +62,22 @@ const shippingAddressSchema = Yup.object().shape({
 
 const getDefaultAddressType = (existingAddresses: ShippingAddress[]): "home" | "work" | "other" => {
   const existingTypes = existingAddresses.map(addr => addr.address_type);
-  
+
   // If both home and work exist, default to other
   if (existingTypes.includes("home") && existingTypes.includes("work")) {
     return "other";
   }
-  
+
   // If home exists but work doesn't, default to work
   if (existingTypes.includes("home") && !existingTypes.includes("work")) {
     return "work";
   }
-  
+
   // If work exists but home doesn't, default to home
   if (existingTypes.includes("work") && !existingTypes.includes("home")) {
     return "home";
   }
-  
+
   // If neither exists, default to home
   return "home";
 };
@@ -182,7 +182,7 @@ const ShippingAddressModal = ({
     if (open && address) {
       formik.setValues(address);
     } else if (open && !address) {
-      formik.resetForm({ 
+      formik.resetForm({
         values: {
           ...initialAddressValues,
           address_type: getDefaultAddressType(existingAddresses)
@@ -195,9 +195,9 @@ const ShippingAddressModal = ({
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {/* <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-50"> */}
-        <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-50 max-h-[90vh] flex flex-col">
-          <DialogHeader className="bg-gray-50 p-6 border-b">
-            <DialogTitle className="text-lg font-semibold text-gray-800">
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[600px] p-0 rounded-lg shadow-lg z-50 max-h-[90vh] flex flex-col">
+          <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b">
+            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
               {title ||
                 (address ? "Edit Shipping Address" : "Add Shipping Address")}
             </DialogTitle>
@@ -206,11 +206,11 @@ const ShippingAddressModal = ({
               className="right-2 top-1 rounded-sm opacity-70"
             />
           </DialogHeader>
-          <DialogBody className="p-6 flex-1 overflow-y-auto">
+          <DialogBody className="p-3 sm:p-6 flex-1 overflow-y-auto">
             <form
               noValidate
               onSubmit={formik.handleSubmit}
-              className="space-y-4"
+              className="space-y-3 sm:space-y-4"
             >
               {formik.status && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-3">
@@ -237,69 +237,69 @@ const ShippingAddressModal = ({
 
               {/* Address Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                   Address Type <span className="text-red-500">*</span>
                 </label>
                 <div className="inline-flex rounded-md shadow-sm" role="group">
                   {["home", "work", "other"].map((type) => {
                     const isSelected = formik.values.address_type === type;
                     return (
-                    <label
-                      key={type}
-                      className={`relative flex items-center justify-center px-4 py-2 text-sm font-medium border cursor-pointer transition-all duration-200
-                        ${isSelected 
-                          ? "bg-blue-600 text-white border-blue-600 z-10" 
-                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-                        }
+                      <label
+                        key={type}
+                        className={`relative flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border cursor-pointer transition-all duration-200
+                        ${isSelected
+                            ? "bg-blue-600 text-white border-blue-600 z-10"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                          }
                         ${type === "home" ? "rounded-l-md" : ""}
                         ${type === "other" ? "rounded-r-md" : ""}
                         ${type !== "home" ? "-ml-px" : ""}
                       `}
-                      onClick={() => {
-                        formik.setFieldValue("address_type", type);
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="address_type"
-                        value={type}
-                        checked={isSelected}
-                        onChange={(e) => {
+                        onClick={() => {
                           formik.setFieldValue("address_type", type);
                         }}
-                        className="sr-only"
-                      />
-                      {type === "home" ? (
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                        </svg>
-                      ) : type === "work" ? (
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
-                        </svg>
-                      ) : (
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M12 2l-5.5 9h11z" />
-                          <circle cx="17.5" cy="17.5" r="4.5" />
-                          <path d="M3 13.5h8v8H3z" />
-                        </svg>
-                      )}
-                      <span className="capitalize">
-                        {type === "other" ? "Others" : type}
-                      </span>
-                    </label>
+                      >
+                        <input
+                          type="radio"
+                          name="address_type"
+                          value={type}
+                          checked={isSelected}
+                          onChange={(e) => {
+                            formik.setFieldValue("address_type", type);
+                          }}
+                          className="sr-only"
+                        />
+                        {type === "home" ? (
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                          </svg>
+                        ) : type === "work" ? (
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 2l-5.5 9h11z" />
+                            <circle cx="17.5" cy="17.5" r="4.5" />
+                            <path d="M3 13.5h8v8H3z" />
+                          </svg>
+                        )}
+                        <span className="capitalize">
+                          {type === "other" ? "Others" : type}
+                        </span>
+                      </label>
                     );
                   })}
                 </div>
@@ -314,15 +314,15 @@ const ShippingAddressModal = ({
               </div>
 
               {/* Address Fields */}
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     {...formik.getFieldProps("address1")}
-                    className={clsx("input w-full", {
+                    className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
                       "border-red-500 focus:ring-red-500 focus:border-red-500":
                         formik.touched.address1 && formik.errors.address1,
                     })}
@@ -335,9 +335,9 @@ const ShippingAddressModal = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
                       Country <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -347,7 +347,7 @@ const ShippingAddressModal = ({
                         formik.setFieldValue("state", "");
                         formik.setFieldValue("city", "");
                       }}
-                      className={clsx("input w-full", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.country && formik.errors.country,
                       })}
@@ -367,7 +367,7 @@ const ShippingAddressModal = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
                       State <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -377,7 +377,7 @@ const ShippingAddressModal = ({
                         formik.setFieldValue("city", "");
                       }}
                       disabled={!formik.values.country}
-                      className={clsx("input w-full disabled:bg-gray-100", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm disabled:bg-gray-100", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.state && formik.errors.state,
                       })}
@@ -400,15 +400,15 @@ const ShippingAddressModal = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
                       City <span className="text-red-500">*</span>
                     </label>
                     <select
                       {...formik.getFieldProps("city")}
                       disabled={!formik.values.state}
-                      className={clsx("input w-full disabled:bg-gray-100", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm disabled:bg-gray-100", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.city && formik.errors.city,
                       })}
@@ -433,13 +433,13 @@ const ShippingAddressModal = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
                       Pin Code <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       {...formik.getFieldProps("pin")}
-                      className={clsx("input w-full", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.pin && formik.errors.pin,
                       })}
@@ -462,7 +462,7 @@ const ShippingAddressModal = ({
                   />
                   <label
                     htmlFor="is_default"
-                    className="text-sm font-medium text-gray-700"
+                    className="text-xs sm:text-sm font-medium text-gray-700"
                   >
                     Set as default shipping address
                   </label>
@@ -471,18 +471,18 @@ const ShippingAddressModal = ({
 
               {/* Form Actions */}
               {/* <div className="flex justify-end gap-2 pt-4 border-t"> */}
-              <div className="border-t bg-white px-6 py-4 flex justify-end gap-2 sticky bottom-0 z-10">
+              <div className="border-t bg-white p-3 sm:px-6 sm:py-4 flex justify-end gap-2 sticky bottom-0 z-10">
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
+                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading || formik.isSubmitting}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 disabled:opacity-50"
+                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2 disabled:opacity-50"
                 >
                   {loading ? "Saving..." : "Save"}
                 </button>

@@ -144,25 +144,11 @@ const Toolbar = ({
   }, [leads, searchInput]);
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
-        {/* <div className="flex grow md:grow-0">
-          <label className="input input-sm w-full md:w-48 lg:w-64">
-            <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
-              <KeenIcon icon="magnifier" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search leads"
-              value={searchInput}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-            />
-          </label>
-        </div> */}
-        <div className="flex grow md:grow-0">
+    <div className="card-header flex flex-col lg:flex-row lg:justify-between gap-5 border-b-0 px-5 py-4">
+      <div className="flex flex-col md:flex-row md:items-center gap-5 w-full lg:w-auto">
+        <div className="flex grow w-full md:w-64 lg:w-72">
           <Popover open={open} onOpenChange={setOpen}>
-            <div className="relative w-full md:w-64 lg:w-72">
+            <div className="relative w-full">
               <PopoverTrigger asChild>
                 <div className="relative">
                   <KeenIcon
@@ -174,7 +160,7 @@ const Toolbar = ({
                     value={searchInput}
                     onChange={handleInputChange}
                     onClick={() => setOpen(true)} // Added to ensure popover opens on click
-                    className="pl-9 pr-9 h-9 text-xs"
+                    className="pl-9 pr-9 h-9 text-xs w-full"
                   />
                   {searchInput && (
                     <X
@@ -226,8 +212,8 @@ const Toolbar = ({
           </Popover>
         </div>
         {/* Status Filter */}
-        <div className="flex items-center flex-wrap gap-2.5">
-          <label className="text-sm font-medium text-gray-700"> Status </label>
+        <div className="flex items-center gap-2.5">
+          <label className="text-sm font-medium text-gray-700 shrink-0"> Status </label>
           <Select
             defaultValue=""
             value={searchStatusType}
@@ -236,7 +222,7 @@ const Toolbar = ({
               setDefaultStatusType(value);
             }}
           >
-            <SelectTrigger className="w-32 lg:w-36" size="sm">
+            <SelectTrigger className="w-full md:w-32 lg:w-36" size="sm">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent className="w-36">
@@ -250,6 +236,87 @@ const Toolbar = ({
           </Select>
         </div>
       </div>
+    </div>
+  );
+};
+
+import { useDataGrid } from "@/components";
+
+const MobileView = ({
+  onEdit,
+  onDetails,
+  onDelete
+}: {
+  onEdit: (lead: Lead) => void;
+  onDetails: (uuid: string) => void;
+  onDelete: (lead: Lead) => void;
+}) => {
+  const { table, loading } = useDataGrid();
+  const rows = table.getRowModel().rows;
+
+  if (loading && rows.length === 0) return null;
+
+  return (
+    <div className="flex flex-col lg:hidden border-t border-gray-100">
+      {rows.map((row) => {
+        const lead = row.original as Lead;
+        return (
+          <div
+            key={lead.uuid}
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+          >
+            <div
+              className="flex flex-col cursor-pointer grow pr-4"
+              onClick={() => onDetails(lead.uuid)}
+            >
+              <span className="font-semibold text-gray-900 text-sm mb-0.5">{lead.first_name} {lead.last_name}</span>
+              <span className="text-xs text-gray-400 font-medium truncate max-w-[200px] sm:max-w-none">
+                {lead.email || "No email provided"}
+              </span>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                  <MoreVertical className="h-4.5 w-4.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={() => onEdit(lead)}
+                >
+                  <Edit className="mr-1 h-4 w-4 text-gray-500" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={() => onDetails(lead.uuid)}
+                >
+                  <Eye className="mr-1 h-4 w-4 text-gray-500" />
+                  Details
+                </DropdownMenuItem>
+                <div className="my-1 border-t border-gray-100"></div>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                  onClick={() => onDelete(lead)}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      })}
+      {rows.length === 0 && !loading && (
+        <div className="p-16 text-center">
+          <div className="flex flex-col items-center gap-2">
+            <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
+            <span className="text-gray-400 text-sm font-medium">No leads found matching your criteria.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -597,8 +664,29 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
             setDefaultStatusType={handleStatusTypeSearch}
           />
         }
-        layout={{ card: true }}
-      />
+        layout={{
+          card: true,
+          classes: {
+            container: 'hidden lg:block'
+          }
+        }}
+      >
+        <MobileView
+          onEdit={async (lead) => {
+            const leadData = await fetchLeadDetails(lead.uuid);
+            if (leadData) {
+              setLeadModalOpen(true);
+            }
+          }}
+          onDetails={(uuid) => navigate(`/lead/${uuid}`)}
+          onDelete={async (lead) => {
+            const leadData = await fetchLeadDetails(lead.uuid!);
+            if (leadData) {
+              setShowDeleteDialog(true);
+            }
+          }}
+        />
+      </DataGrid>
       <ModalLead
         open={leadModalOpen}
         onOpenChange={handleClose}
@@ -611,7 +699,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
       />
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[420px] p-6">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
           <DialogHeader className="flex flex-col items-center text-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <AlertCircle className="h-6 w-6 text-red-600" />
@@ -627,12 +715,12 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
           </DialogHeader>
 
-          <DialogFooter className="flex gap-3">
+          <DialogFooter className="flex flex-row gap-3 mt-2">
 
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-              className="px-14"
+              className="flex-1"
             >
               Cancel
             </Button>
@@ -640,7 +728,7 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
             <Button
               variant="destructive"
               onClick={() => deleteLead(selectedLead?.uuid || "")}
-              className="bg-red-600 hover:bg-red-700 px-14"
+              className="flex-1 bg-red-600 hover:bg-red-700"
             >
               Delete
             </Button>

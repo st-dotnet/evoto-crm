@@ -33,8 +33,7 @@ export const UserEdit = () => {
   const handleClose = (open: boolean) => {
     setModalOpen(open);
     if (!open) {
-      // Navigate back to users list after closing
-      navigate("/user-management/users");
+      navigate(`/user/${id}`);
     }
   };
 

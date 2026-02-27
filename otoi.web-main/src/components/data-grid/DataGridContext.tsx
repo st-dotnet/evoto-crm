@@ -178,7 +178,7 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
         reload: loadData
       }}
     >
-      <DataGridInner />
+      <DataGridInner>{props.children}</DataGridInner>
     </DataGridContext.Provider>
   );
 };

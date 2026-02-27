@@ -9,6 +9,7 @@ import {
   KeenIcon,
   DataGridRowSelectAll,
   DataGridRowSelect,
+  useDataGrid,
 } from "@/components";
 import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
@@ -129,8 +130,8 @@ const Toolbar = ({
   }, [searchableUsers, searchInput]);
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex grow md:grow-0">
+    <div className="card-header flex justify-between items-center flex-wrap gap-4 border-b-0 px-5 py-4">
+      <div className="flex grow w-full md:w-auto">
         <Popover open={open} onOpenChange={setOpen}>
           <div className="relative w-full md:w-64 lg:w-72">
             <PopoverTrigger asChild>
@@ -214,6 +215,86 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   const [fetchingUser, setFetchingUser] = useState(false);
 
   const navigate = useNavigate();
+
+  const MobileView = () => {
+    const { table, loading: gridLoading, props } = useDataGrid();
+    const rows = table.getRowModel().rows;
+    const { onEdit, onDelete, onDetails } = props as any;
+
+    if (gridLoading && rows.length === 0) return null;
+
+    return (
+      <div className="flex flex-col lg:hidden border-t border-gray-100">
+        {(rows || []).map((row: any) => {
+          const user = row.original as User;
+          return (
+            <div
+              key={user.id}
+              className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            >
+              <div
+                className="flex flex-col cursor-pointer grow pr-4"
+                onClick={() => navigate(`/user/${user.id}`)}
+              >
+                <span className="font-semibold text-gray-900 text-sm mb-0.5">
+                  {`${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-medium truncate max-w-[150px]">
+                    {user.email}
+                  </span>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}>
+                    {user.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                    <MoreVertical className="h-4.5 w-4.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                    onClick={() => onEdit(user)}
+                  >
+                    <Edit className="mr-1 h-4 w-4 text-gray-500" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                    onClick={() => onDetails(user.id)}
+                  >
+                    <Eye className="mr-1 h-4 w-4 text-gray-500" />
+                    Details
+                  </DropdownMenuItem>
+                  <div className="my-1 border-t border-gray-100"></div>
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                    onClick={() => onDelete(user)}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        })}
+        {rows.length === 0 && !gridLoading && (
+          <div className="p-16 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
+              <span className="text-gray-400 text-sm font-medium">No users found matching your criteria.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -497,15 +578,33 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
             }}
           />
         }
-        layout={{ card: true }}
-      />
+        layout={{
+          card: true,
+          classes: {
+            container: 'hidden lg:block'
+          }
+        }}
+        onEdit={(user: User) => {
+          setSelectedUser(user);
+          setLeadModalOpen(true);
+        }}
+        onDelete={(user: User) => {
+          setSelectedUser(user);
+          setShowDeleteDialog(true);
+        }}
+        onDetails={(id: string) => {
+          navigate(`/user/${id}`);
+        }}
+      >
+        <MobileView />
+      </DataGrid>
       <ModalUser
         open={leadModalOpen}
         onOpenChange={handleClose}
         user={selectedUser}
       />
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[420px] p-6">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
           <DialogHeader className="flex flex-col items-center text-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <AlertCircle className="h-6 w-6 text-red-600" />
@@ -515,14 +614,14 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
               Are you sure you want to delete <strong>{selectedUser?.first_name} {selectedUser?.last_name}</strong> ({selectedUser?.email})?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-3">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="px-14">
+          <DialogFooter className="flex flex-row gap-3 mt-2">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="flex-1">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => deleteUser(selectedUser?.id || "")}
-              className="bg-red-600 hover:bg-red-700 px-14"
+              className="flex-1 bg-red-600 hover:bg-red-700"
             >
               Delete
             </Button>

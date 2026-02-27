@@ -32,7 +32,7 @@ const HeaderTopbar = () => {
   ).toUpperCase() || 'U';
 
   return (
-    <div className="flex items-center gap-2 lg:gap-3.5">
+    <div className="flex items-center gap-1 sm:gap-2 lg:gap-3.5">
       <button
         onClick={handleOpen}
         className="btn btn-icon btn-icon-lg size-9 rounded-full hover:bg-primary-light hover:text-primary text-gray-500"
@@ -134,9 +134,9 @@ const HeaderTopbar = () => {
           }}
         >
           <MenuToggle className="btn btn-icon rounded-full">
-              <div className="w-full h-full rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">
-                <span className="text-sm font-semibold">{initials}</span>
-              </div>
+            <div className="w-full h-full rounded-full bg-gray-200 text-gray-700 flex items-center justify-center">
+              <span className="text-sm font-semibold">{initials}</span>
+            </div>
           </MenuToggle>
           {DropdownUser({ menuItemRef: itemUserRef })}
         </MenuItem>

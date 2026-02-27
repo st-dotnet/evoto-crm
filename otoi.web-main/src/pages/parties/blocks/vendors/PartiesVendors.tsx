@@ -11,6 +11,7 @@ import {
 
 import { useLayout } from "@/providers";
 import { PartiesVendorsContent } from "./PartiesVendorsContent";
+import { KeenIcon } from "@/components";
 // import { useNavigate } from "react-router-dom";
 // import { toast } from "sonner";
 // import axios from "axios";
@@ -65,12 +66,9 @@ const PartiesVendorsPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              {/* <a href="#" className="btn btn-sm btn-light">
-                Import CSV
-              </a> */}
-              <a className="btn btn-sm btn-primary" onClick={openPersonModal}>
-                Add Vendor
-              </a>
+              <button className="btn btn-sm btn-primary w-full md:w-auto" onClick={openPersonModal}>
+                <KeenIcon icon="plus" /> Add Vendor
+              </button>
             </ToolbarActions>
           </Toolbar>
         </Container>

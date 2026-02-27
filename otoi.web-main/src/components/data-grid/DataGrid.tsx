@@ -58,13 +58,14 @@ export interface TDataGridProps<TData extends object> {
   serverSide?: boolean;
   onFetchData?: (params: TDataGridRequestParams) => Promise<any>;
   onRowClick?: (row: import('@tanstack/react-table').Row<TData>) => void;
+  onEdit?: (data: TData) => void;
+  onDelete?: (data: TData) => void;
+  onDetails?: (id: string) => void;
   children?: ReactNode;
 }
 
 export const DataGrid = <TData extends object>(props: TDataGridProps<TData>) => {
   return (
-    <DataGridProvider {...props}>
-      <DataGridInner />
-    </DataGridProvider>
+    <DataGridProvider {...props} />
   );
 };

@@ -14,6 +14,7 @@ import {
   KeenIcon,
   DataGridRowSelectAll,
   DataGridRowSelect,
+  useDataGrid,
 } from "@/components";
 import {
   DropdownMenu,
@@ -123,8 +124,8 @@ const Toolbar = ({
   }, [customers, searchInput]);
 
   return (
-    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex grow md:grow-0">
+    <div className="card-header flex justify-between items-center flex-wrap gap-4 border-b-0 px-5 py-4">
+      <div className="flex grow w-full md:w-auto">
         <Popover open={open} onOpenChange={setOpen}>
           <div className="relative w-full md:w-64 lg:w-72">
             <PopoverTrigger asChild>
@@ -208,8 +209,92 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isEditing, setIsEditing] = useState(false);
-  const[customersData, setCustomersData] = useState<Customer[]>([]);
+  const [customersData, setCustomersData] = useState<Customer[]>([]);
 
+  const navigate = useNavigate();
+
+  const MobileView = () => {
+    const { table, loading: gridLoading, props } = useDataGrid();
+    const rows = table.getRowModel().rows;
+    const { onEdit, onDelete, onDetails } = props as any;
+
+    if (gridLoading && rows.length === 0) return null;
+
+    return (
+      <div className="flex flex-col lg:hidden border-t border-gray-100">
+        {(rows || []).map((row: any) => {
+          const customer = row.original as Customer;
+          return (
+            <div
+              key={customer.uuid}
+              className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            >
+              <div
+                className="flex flex-col cursor-pointer grow pr-4"
+                onClick={() => navigate(`/customer/${customer.id}`)}
+              >
+                <span className="font-semibold text-gray-900 text-sm mb-0.5">
+                  {customer.first_name} {customer.last_name}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-medium truncate max-w-[150px]">
+                    {customer.email || "No email"}
+                  </span>
+                  {customer.city && (
+                    <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
+                      • {customer.city}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                    <MoreVertical className="h-4.5 w-4.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                    onClick={() => {
+                      onEdit(customer);
+                    }}
+                  >
+                    <Edit className="mr-1 h-4 w-4 text-gray-500" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                    onClick={() => navigate(`/customer/${customer.id}`)}
+                  >
+                    <Eye className="mr-1 h-4 w-4 text-gray-500" />
+                    Details
+                  </DropdownMenuItem>
+                  <div className="my-1 border-t border-gray-100"></div>
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                    onClick={() => onDelete(customer)}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        })}
+        {rows.length === 0 && !gridLoading && (
+          <div className="p-16 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
+              <span className="text-gray-400 text-sm font-medium">No customers found matching your criteria.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
   // handle click for delete customer
   const handleDeleteClick = async (uuid: string) => {
     const details = await fetchCustomerDetails(uuid);
@@ -248,8 +333,6 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
       setCustomerToDelete(null);
     }
   };
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
@@ -612,8 +695,27 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             setDefaultStatusType={setPersonTypeQuery}
           />
         }
-        layout={{ card: true }}
-      />
+        layout={{
+          card: true,
+          classes: {
+            container: 'hidden lg:block'
+          }
+        }}
+        onEdit={async (customer: Customer) => {
+          const details = await fetchCustomerDetails(customer.uuid);
+          if (details) setPersonModalOpen(true);
+        }}
+        onDelete={(customer: Customer) => {
+          setCustomerToDelete(customer.uuid);
+          setSelectedPerson(customer);
+          setShowDeleteDialog(true);
+        }}
+        onDetails={(id: string) => {
+          navigate(`/customer/${id}`);
+        }}
+      >
+        <MobileView />
+      </DataGrid>
       {/* Modal for adding/editing customers */}
       <ModalCustomer
         open={personModalOpen}
@@ -641,7 +743,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
       <ActivityForm open={activityModalOpen} onOpenChange={() => setActivityModalOpen(false)} lead={selectedCustomerForActivity} />
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[420px] p-6">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
           <DialogHeader className="flex flex-col items-center text-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <AlertCircle className="h-6 w-6 text-red-600" />
@@ -655,11 +757,11 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
 
           </DialogHeader>
 
-          <DialogFooter className="flex gap-3">
+          <DialogFooter className="flex flex-row gap-3 mt-2">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-              className="px-14"
+              className="flex-1"
             >
               Cancel
             </Button>
@@ -667,7 +769,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             <Button
               variant="destructive"
               onClick={deleteCustomer}
-              className="bg-red-600 hover:bg-red-700 px-14"
+              className="flex-1 bg-red-600 hover:bg-red-700"
             >
               Delete
             </Button>
