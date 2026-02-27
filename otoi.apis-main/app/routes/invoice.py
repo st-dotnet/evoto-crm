@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_, func
 from app.extensions import db
 from app.models import Invoice, InvoiceItem, Quotation, Item
+from app.models.customer import Customer
 from app.utils.stamping import set_created_fields, set_updated_fields
 from datetime import datetime, timedelta
 
@@ -224,15 +226,83 @@ def create_invoice():
 @invoice_blueprint.route("/", methods=["GET"])
 def get_invoices():
     """
-    Get all invoices
+    Get all invoices with optional filtering
     ---
     tags:
       - Invoices
+    parameters:
+      - name: search
+        in: query
+        type: string
+        required: false
+        description: Search term for invoice number or customer name
+      - name: party_name
+        in: query
+        type: string
+        required: false
+        description: Filter by customer/party name
+      - name: invoice_number
+        in: query
+        type: string
+        required: false
+        description: Filter by invoice number
+      - name: payment_status
+        in: query
+        type: string
+        required: false
+        description: Filter by payment status
     responses:
       200:
         description: A list of invoices
     """
-    invoices = Invoice.query.order_by(Invoice.created_at.desc()).all()
+    query = Invoice.query
+    
+    # Get search parameters
+    search = request.args.get('search', '').strip()
+    party_name = request.args.get('party_name', '').strip()
+    invoice_number = request.args.get('invoice_number', '').strip()
+    payment_status = request.args.get('payment_status', '').strip()
+    
+    # Apply search filters with priority to search parameter
+    if search:
+        # If search parameter is provided, use it for both party name and invoice number
+        # Also handle multiple spaces by normalizing them
+        normalized_search = ' '.join(search.split())
+        query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).filter(
+            or_(
+                Invoice.invoice_number.ilike(f'%{search}%'),
+                Customer.first_name.ilike(f'%{search}%'),
+                Customer.last_name.ilike(f'%{search}%'),
+                func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{search}%'),
+                func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_search}%')
+            )
+        )
+    else:
+        # If no search parameter, check individual filters
+        if party_name:
+            # Handle multiple spaces by normalizing them
+            normalized_party_name = ' '.join(party_name.split())
+            query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).filter(
+                or_(
+                    Customer.first_name.ilike(f'%{party_name}%'),
+                    Customer.last_name.ilike(f'%{party_name}%'),
+                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{party_name}%'),
+                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_party_name}%')
+                )
+            )
+        
+        if invoice_number:
+            query = query.filter(Invoice.invoice_number.ilike(f'%{invoice_number}%'))
+        
+        # If no filters are applied, ensure we still have the customer join for consistent behavior
+        if not party_name and not invoice_number:
+            query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid)
+
+    # Apply payment_status filter if provided
+    if payment_status and payment_status != '':
+        query = query.filter(Invoice.payment_status == payment_status)
+    
+    invoices = query.order_by(Invoice.created_at.desc()).all()
     
     return jsonify({
         "data": [
@@ -676,9 +746,30 @@ def record_payment(invoice_id):
         if payment_amount <= 0:
             return jsonify({"error": "Payment amount must be greater than 0"}), 400
         
-        # Update payment discount if provided (cumulative)
-        if payment_discount > 0:
-            invoice.payment_discount = float(invoice.payment_discount or 0) + payment_discount
+        # Calculate maximum allowed payment to prevent overpayment
+        current_total_paid = float(invoice.amount_paid or 0)
+        current_discount = float(invoice.payment_discount or 0)
+        max_allowed_payment = float(invoice.total_amount) - current_total_paid - current_discount
+        
+        # Add small epsilon tolerance for floating-point precision
+        epsilon = 0.01  # 1 paisa tolerance
+        
+        # Check for overpayment with tolerance
+        if payment_amount > max_allowed_payment + epsilon:
+            return jsonify({
+                "error": "Overpayment not allowed",
+                "details": f"Maximum allowed payment is ₹{max_allowed_payment:.2f}, but you attempted to pay ₹{payment_amount:.2f}",
+                "max_allowed": max_allowed_payment,
+                "attempted_amount": payment_amount,
+                "current_amount_paid": current_total_paid,
+                "current_discount": current_discount,
+                "total_amount": float(invoice.total_amount)
+            }), 400
+        
+        # Update payment discount if provided (overwrite, not cumulative)
+        # If a discount is explicitly provided in input (even if 0), it replaces the existing discount
+        if "payment_discount" in data or "discount" in data:
+            invoice.payment_discount = payment_discount
         
         invoice.amount_paid = float(invoice.amount_paid or 0) + payment_amount
         # Calculate balance due considering both amount paid and total payment discount
@@ -686,13 +777,21 @@ def record_payment(invoice_id):
         # Cap balance at 0 to prevent negative values
         invoice.balance_due = max(0, calculated_balance)
         
-        # Update payment status
+        # Update payment status - ensure proper status setting
         if invoice.balance_due <= 0:
             invoice.payment_status = "paid"
-        else:
+        elif invoice.amount_paid > 0:
             invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
+        
+        # Force refresh the invoice object to ensure latest values
+        db.session.flush()  # Ensure changes are written to session
         
         db.session.commit()
+        
+        # Refresh the invoice to get the latest committed values
+        db.session.refresh(invoice)
         
         return jsonify({
             "message": "Payment recorded successfully",

@@ -1,5 +1,5 @@
-import axios, { AxiosError } from 'axios';
-import { ItemsApiResponse } from '../types/items';
+import axios, { AxiosError } from "axios";
+import { ItemsApiResponse } from "../types/items";
 
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
@@ -13,11 +13,16 @@ interface ApiResponse<T = any> {
 
 const getAuthToken = (): string | null => {
   try {
-    const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+    const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
     if (!authData) return null;
-    
+
     const parsedAuth = JSON.parse(authData);
-    return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+    return (
+      parsedAuth.token ||
+      parsedAuth.access_token ||
+      parsedAuth.accessToken ||
+      null
+    );
   } catch (error) {
     return null;
   }
@@ -29,9 +34,9 @@ export const getItemById = async (id: string) => {
 };
 
 export const getItems = async (
-  search = '',
+  search = "",
   page = 1,
-  limit = 10
+  limit = 10,
 ): Promise<ItemsApiResponse> => {
   const params = new URLSearchParams({
     search,
@@ -45,7 +50,7 @@ export const getItems = async (
   try {
     const response = await axios.get<ItemsApiResponse>(
       `${API_URL}/items/?${params.toString()}`,
-      { headers }
+      { headers },
     );
     return response.data;
   } catch (error: any) {
@@ -58,87 +63,97 @@ export const createItem = async (payload: any): Promise<ApiResponse> => {
   if (!token) {
     return {
       success: false,
-      error: 'Authentication required. Please log in again.',
-      status: 401
+      error: "Authentication required. Please log in again.",
+      status: 401,
     };
   }
 
   try {
     const response = await axios.post(`${API_URL}/items/`, payload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      withCredentials: true
+      withCredentials: true,
     });
 
     return {
       success: true,
       data: response.data,
-      status: response.status
+      status: response.status,
     };
   } catch (error: any) {
     // Let axios throw automatically on 400/500 - just extract error details
-    const errorMessage = error?.response?.data?.message || error.message || 'Failed to create item';
-    
+    const errorMessage =
+      error?.response?.data?.message ||
+      error.message ||
+      "Failed to create item";
+
     return {
       success: false,
       error: errorMessage,
-      status: error?.response?.status || 500
+      status: error?.response?.status || 500,
     };
   }
 };
 
-export const updateItem = async (id: string, payload: any): Promise<ApiResponse> => {
+export const updateItem = async (
+  id: string,
+  payload: any,
+): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return {
       success: false,
-      error: 'Authentication required. Please log in again.',
-      status: 401
+      error: "Authentication required. Please log in again.",
+      status: 401,
     };
   }
 
   // Clean up the payload by removing undefined or empty strings
-  const cleanPayload = Object.entries(payload).reduce((acc, [key, value]) => {
-    if (value !== undefined && value !== '') {
-      acc[key] = value;
-    } else {
-      acc[key] = null;
-    }
-    return acc;
-  }, {} as Record<string, any>);
+  const cleanPayload = Object.entries(payload).reduce(
+    (acc, [key, value]) => {
+      if (value !== undefined && value !== "") {
+        acc[key] = value;
+      } else {
+        acc[key] = null;
+      }
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
 
   try {
     const response = await axios.put(`${API_URL}/items/${id}`, cleanPayload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
       withCredentials: true,
-      timeout: 10000
+      timeout: 10000,
     });
 
     return {
       success: true,
       data: response.data,
-      status: response.status
+      status: response.status,
     };
   } catch (error: any) {
-    let errorMessage = 'Failed to update item';
-    
-    if (error.code === 'ERR_NETWORK') {
-      errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-    } 
+    let errorMessage = "Failed to update item";
+
+    if (error.code === "ERR_NETWORK") {
+      errorMessage =
+        "Unable to connect to the server. Please check your internet connection.";
+    }
     // Handle 400 Bad Request
     else if (error.response?.status === 400) {
       const responseData = error.response.data;
-      
+
       // Handle the error response format from the backend
       if (responseData.details?.item_code?.[0]) {
         errorMessage = responseData.details.item_code[0];
-      } 
+      }
       // Handle other validation errors
       else if (responseData.message) {
         errorMessage = responseData.message;
@@ -149,48 +164,194 @@ export const updateItem = async (id: string, payload: any): Promise<ApiResponse>
       }
     } else if (error.response) {
       if (error.response.status === 401) {
-        errorMessage = 'Session expired. Please log in again.';
+        errorMessage = "Session expired. Please log in again.";
       } else if (error.response.status === 404) {
-        errorMessage = 'Item not found.';
+        errorMessage = "Item not found.";
       } else if (error.response.data?.message) {
         errorMessage = error.response.data.message;
       }
     }
 
-    
     return {
       success: false,
       error: errorMessage,
-      status: error.response?.status || 500
+      status: error.response?.status || 500,
     };
   }
 };
 
-
 export const deleteItem = async (id: string) => {
   const token = getAuthToken();
   const response = await axios.delete(`${API_URL}/items/${id}`, {
-    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   return response.data;
-}
+};
 
 export const getItemCategories = async () => {
-  const response  = await axios.get(`${import.meta.env.VITE_APP_API_URL}/item-categories/`);
-  return response .data
-}
-
+  const response = await axios.get(
+    `${import.meta.env.VITE_APP_API_URL}/item-categories/`,
+  );
+  return response.data;
+};
 
 export const createItemCategory = async (name: string) => {
   const response = await axios.post(
     `${import.meta.env.VITE_APP_API_URL}/item-categories/`,
-    { name }, 
+    { name },
     {
       headers: {
         "Content-Type": "application/json",
       },
-    }
+    },
   );
 
   return response.data;
-}
+};
+
+// Barcode service functions
+export const getBarcodePreview = async (
+  itemCode: string,
+  itemName?: string,
+) => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      item_code: itemCode,
+    });
+
+    if (itemName) {
+      params.append("item_name", itemName);
+    }
+
+    const response = await axios.get(
+      `${API_URL}/barcode/preview?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      },
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error.message ||
+      "Failed to generate barcode preview";
+
+    return {
+      success: false,
+      error: errorMessage,
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const getItemBarcode = async (itemId: string) => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    const response = await axios.get(`${API_URL}/items/${itemId}/barcode`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error.message ||
+      "Failed to get item barcode";
+
+    return {
+      success: false,
+      error: errorMessage,
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const downloadBarcode = async (
+  itemCode: string,
+  itemName?: string,
+  itemId?: string,
+) => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    let url: string;
+
+    if (itemId) {
+      url = `${API_URL}/items/${itemId}/barcode?download=true`;
+    } else {
+      const params = new URLSearchParams({
+        item_code: itemCode,
+        download: "true",
+      });
+
+      if (itemName) {
+        params.append("item_name", itemName);
+      }
+
+      url = `${API_URL}/barcode/preview?${params.toString()}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error.message ||
+      "Failed to download barcode";
+
+    return {
+      success: false,
+      error: errorMessage,
+      status: error?.response?.status || 500,
+    };
+  }
+};

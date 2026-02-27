@@ -23,7 +23,7 @@ class Invoice(BaseMixin, db.Model):
 
     # Dates
     invoice_date = Column(Date, nullable=False)
-    due_date = Column(Date, nullable=False)
+    due_date = Column(Date, nullable=False) 
 
     # Financials - Keep key amounts top-level for querying
     total_amount = Column(Numeric(12, 2), nullable=False)

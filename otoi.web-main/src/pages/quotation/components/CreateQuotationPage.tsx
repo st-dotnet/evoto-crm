@@ -33,7 +33,12 @@ import {
 import { ModalCustomer } from "@/pages/parties/blocks/customers/ModalCustomer";
 import axios from "axios";
 import { toast } from "sonner";
-import { createQuotation, getQuotationById, updateQuotation, getNextQuotationNumber } from "../services/quotation.services";
+import {
+  createQuotation,
+  getQuotationById,
+  updateQuotation,
+  getNextQuotationNumber,
+} from "../services/quotation.services";
 // import { updateInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import AddItemPage from "./AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
@@ -142,7 +147,9 @@ const validateAddressType = (
   );
 
   if (duplicateAddress) {
-    throw new Error(`A ${address.address_type} address already exists. Please choose a different address type.`);
+    throw new Error(
+      `A ${address.address_type} address already exists. Please choose a different address type.`,
+    );
   }
 
   return true;
@@ -160,11 +167,7 @@ const formatAddress = (customer: any): string[] => {
   const parts = [];
   if (customer.address1) parts.push(customer.address1);
   if (customer.address2) parts.push(customer.address2);
-  const cityStatePostal = [
-    customer.city,
-    customer.state,
-    customer.pin,
-  ]
+  const cityStatePostal = [customer.city, customer.state, customer.pin]
     .filter(Boolean)
     .join(", ");
   if (cityStatePostal) parts.push(cityStatePostal);
@@ -179,7 +182,10 @@ const diffDays = (
   if (!start || !end) return 0;
   const s = new Date(start);
   const e = new Date(end);
-  return Math.max(Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)), 0);
+  return Math.max(
+    Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)),
+    0,
+  );
 };
 
 const CreateQuotationPage = () => {
@@ -194,22 +200,31 @@ const CreateQuotationPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAddressLoading, setIsAddressLoading] = useState(false);
   const [isPartiesLoading, setIsPartiesLoading] = useState(false);
-  const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<string | null>(null);
-  const [editingAddress, setEditingAddress] = useState<ShippingAddress | undefined>();
+  const [autoSelectCustomerUUID, setAutoSelectCustomerUUID] = useState<
+    string | null
+  >(null);
+  const [editingAddress, setEditingAddress] = useState<
+    ShippingAddress | undefined
+  >();
 
   // Action button state
-  const [activeDropdownUuid, setActiveDropdownUuid] = useState<string | null>(null);
-  const [addressToOperate, setAddressToOperate] = useState<ShippingAddress | null>(null);
+  const [activeDropdownUuid, setActiveDropdownUuid] = useState<string | null>(
+    null,
+  );
+  const [addressToOperate, setAddressToOperate] =
+    useState<ShippingAddress | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [buttonPosition, setButtonPosition] = useState<{ top: number; left: number } | null>(null);
+  const [buttonPosition, setButtonPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Formik for shipping address
   const shippingFormik = useFormik({
     initialValues: shippingAddressInitialValues,
     validationSchema: shippingAddressValidationSchema,
-    onSubmit: (values) => {
-    },
+    onSubmit: (values) => {},
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -237,7 +252,8 @@ const CreateQuotationPage = () => {
   );
   const [isShippingModalOpen, setIsShippingModalOpen] =
     useState<boolean>(false);
-  const [addAddressModalOpen, setAddAddressModalOpen] = useState<boolean>(false);
+  const [addAddressModalOpen, setAddAddressModalOpen] =
+    useState<boolean>(false);
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(
     [],
   );
@@ -248,11 +264,17 @@ const CreateQuotationPage = () => {
   const [showNotesField, setShowNotesField] = useState(false);
   const [termsAndConditions, setTermsAndConditions] = useState("");
   const [showTermsField, setShowTermsField] = useState(false);
-  const [additionalCharges, setAdditionalCharges] = useState<{ name: string; amount: number }[]>([]);
-  const [showAdditionalChargesField, setShowAdditionalChargesField] = useState(false);
+  const [additionalCharges, setAdditionalCharges] = useState<
+    { name: string; amount: number }[]
+  >([]);
+  const [showAdditionalChargesField, setShowAdditionalChargesField] =
+    useState(false);
   const [newChargeName, setNewChargeName] = useState("");
   const [newChargeAmount, setNewChargeAmount] = useState(0);
-  const [discount, setDiscount] = useState<{ type: "percentage" | "amount"; value: number }>({
+  const [discount, setDiscount] = useState<{
+    type: "percentage" | "amount";
+    value: number;
+  }>({
     type: "percentage",
     value: 0,
   });
@@ -267,14 +289,24 @@ const CreateQuotationPage = () => {
     const subtotal = calculateSubtotal();
     const discountAmount = calculateDiscount();
     const taxAmount = calculateTax();
-    const additionalChargesTotal = additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
+    const additionalChargesTotal = additionalCharges.reduce(
+      (sum, charge) => sum + charge.amount,
+      0,
+    );
 
     // Apply overall discount if set
-    const overallDiscountAmount = discount.type === "percentage"
-      ? (subtotal * discount.value) / 100
-      : discount.value;
+    const overallDiscountAmount =
+      discount.type === "percentage"
+        ? (subtotal * discount.value) / 100
+        : discount.value;
 
-    return subtotal - discountAmount - overallDiscountAmount + taxAmount + additionalChargesTotal;
+    return (
+      subtotal -
+      discountAmount -
+      overallDiscountAmount +
+      taxAmount +
+      additionalChargesTotal
+    );
   };
 
   const calculateFinalTotal = () => {
@@ -289,7 +321,10 @@ const CreateQuotationPage = () => {
 
   const handleAddAdditionalCharge = () => {
     if (newChargeName.trim() && newChargeAmount > 0) {
-      setAdditionalCharges([...additionalCharges, { name: newChargeName, amount: newChargeAmount }]);
+      setAdditionalCharges([
+        ...additionalCharges,
+        { name: newChargeName, amount: newChargeAmount },
+      ]);
       setNewChargeName("");
       setNewChargeAmount(0);
     }
@@ -321,7 +356,9 @@ const CreateQuotationPage = () => {
 
       // Handle auto-selection if needed
       if (autoSelectCustomerUUID) {
-        const newCustomer = partiesList.find((p: { uuid: string | null }) => p.uuid === autoSelectCustomerUUID);
+        const newCustomer = partiesList.find(
+          (p: { uuid: string | null }) => p.uuid === autoSelectCustomerUUID,
+        );
         if (newCustomer) {
           setSelectedParty(newCustomer);
           fetchCustomerData(newCustomer.uuid);
@@ -339,7 +376,10 @@ const CreateQuotationPage = () => {
     try {
       const response = await getNextQuotationNumber();
       if (response.success && response.data?.next_quotation_number) {
-        setFormData(prev => ({ ...prev, quotationNo: response.data.next_quotation_number }));
+        setFormData((prev) => ({
+          ...prev,
+          quotationNo: response.data.next_quotation_number,
+        }));
       }
     } catch (error) {
       console.error("Error fetching next quotation number:", error);
@@ -403,7 +443,9 @@ const CreateQuotationPage = () => {
       setFormData((prev) => ({
         ...prev,
         validFor: days,
-        validityDate: prev.quotationDate ? addDays(prev.quotationDate, days) : "",
+        validityDate: prev.quotationDate
+          ? addDays(prev.quotationDate, days)
+          : "",
       }));
       return;
     }
@@ -523,9 +565,15 @@ const CreateQuotationPage = () => {
       const response = await getQuotationById(quotationId);
       if (response.success && response.data) {
         const data = response.data;
-        const quotationDate = data.quotation_date ? data.quotation_date.split('T')[0] : today;
-        const validityDate = data.valid_till ? data.valid_till.split('T')[0] : "";
-        const validFor = validityDate ? diffDays(quotationDate, validityDate) : 0;
+        const quotationDate = data.quotation_date
+          ? data.quotation_date.split("T")[0]
+          : today;
+        const validityDate = data.valid_till
+          ? data.valid_till.split("T")[0]
+          : "";
+        const validFor = validityDate
+          ? diffDays(quotationDate, validityDate)
+          : 0;
 
         setFormData({
           quotationNo: data.quotation_number,
@@ -543,8 +591,12 @@ const CreateQuotationPage = () => {
           const mappedItems = data.items.map((item: any) => {
             // Handle nested discount object - check for deeply nested structure
             let discountValue = 0;
-            if (item.discount?.discount_percentage?.discount_percentage !== undefined) {
-              discountValue = item.discount.discount_percentage.discount_percentage;
+            if (
+              item.discount?.discount_percentage?.discount_percentage !==
+              undefined
+            ) {
+              discountValue =
+                item.discount.discount_percentage.discount_percentage;
             } else if (item.discount?.discount_percentage !== undefined) {
               discountValue = item.discount.discount_percentage;
             } else if (item.discount_percentage !== undefined) {
@@ -564,7 +616,11 @@ const CreateQuotationPage = () => {
             return {
               id: item.uuid || item.id,
               item_id: item.item_id,
-              item_name: item.product_name || item.item_name || item.description || "Item",
+              item_name:
+                item.product_name ||
+                item.item_name ||
+                item.description ||
+                "Item",
               description: item.description || item.item_description || "",
               quantity: Number(item.quantity) || 1,
               price_per_item: Number(item.unit_price) || 0,
@@ -586,16 +642,13 @@ const CreateQuotationPage = () => {
           // Set the discount if available in the data
           if (data.discount) {
             setDiscount({
-              type: data.discount_type === 'amount' ? 'amount' : 'percentage',
-              value: Number(data.discount) || 0
+              type: data.discount_type === "amount" ? "amount" : "percentage",
+              value: Number(data.discount) || 0,
             });
           }
         }
 
-        const resolvedNotes =
-          data.notes ||
-          data.additional_notes?.notes ||
-          "";
+        const resolvedNotes = data.notes || data.additional_notes?.notes || "";
         const resolvedTerms =
           data.terms_and_conditions ||
           data.additional_notes?.terms_and_conditions ||
@@ -607,12 +660,11 @@ const CreateQuotationPage = () => {
 
         if (data.quotation_date && data.valid_till) {
           const diff = diffDays(data.quotation_date, data.valid_till);
-          setFormData(prev => ({ ...prev, validFor: diff }));
+          setFormData((prev) => ({ ...prev, validFor: diff }));
         }
-
       } else {
         toast.error("Failed to load quotation details");
-        navigate('/quotes/list');
+        navigate("/quotes/list");
       }
     } catch (error) {
       toast.error("Failed to load quotation details");
@@ -631,7 +683,6 @@ const CreateQuotationPage = () => {
   useEffect(() => {
     if (isDuplicateMode && location.state?.quotationData) {
       const duplicateData = location.state.quotationData;
-
 
       // Set form data from duplicate
       setFormData({
@@ -654,19 +705,25 @@ const CreateQuotationPage = () => {
 
       // Set quotation items with proper mapping (same as edit mode)
       if (duplicateData.quotationItems) {
-
         const mappedItems = duplicateData.quotationItems.map((item: any) => {
           // Handle nested discount object - check for deeply nested structure (same as edit mode)
           let discountValue = 0;
-          if (item.discount?.discount_percentage?.discount_percentage !== undefined) {
-            discountValue = item.discount.discount_percentage.discount_percentage;
+          if (
+            item.discount?.discount_percentage?.discount_percentage !==
+            undefined
+          ) {
+            discountValue =
+              item.discount.discount_percentage.discount_percentage;
           } else if (item.discount?.discount_percentage !== undefined) {
             discountValue = item.discount.discount_percentage;
           } else if (item.discount_percentage !== undefined) {
             discountValue = item.discount_percentage;
           } else {
             // Handle direct discount values
-            discountValue = typeof item.discount === 'string' ? parseFloat(item.discount) : Number(item.discount) || 0;
+            discountValue =
+              typeof item.discount === "string"
+                ? parseFloat(item.discount)
+                : Number(item.discount) || 0;
           }
 
           // Handle nested tax object - check for deeply nested structure (same as edit mode)
@@ -679,19 +736,30 @@ const CreateQuotationPage = () => {
             taxValue = item.tax_percentage;
           } else {
             // Handle direct tax values
-            taxValue = typeof item.tax === 'string' ? parseFloat(item.tax) : Number(item.tax) || 0;
+            taxValue =
+              typeof item.tax === "string"
+                ? parseFloat(item.tax)
+                : Number(item.tax) || 0;
           }
 
           return {
             id: item.uuid || item.id || `dup-${Date.now()}-${Math.random()}`,
             item_id: item.item_id || item.uuid,
-            item_name: item.product_name || item.item_name || item.description || "Item",
+            item_name:
+              item.product_name || item.item_name || item.description || "Item",
             description: item.description || item.item_description || "",
             quantity: Number(item.quantity) || 1,
-            price_per_item: Number(item.unit_price) || Number(item.price_per_item) || 0,
+            price_per_item:
+              Number(item.unit_price) || Number(item.price_per_item) || 0,
             discount: Number(discountValue) || 0,
             tax: Number(taxValue) || 0,
-            amount: Number(item.total_price) || Number(item.amount) || (Number(item.quantity || 1) * Number(item.unit_price || item.price_per_item || 0) * (1 - Number(discountValue) / 100) * (1 + Number(taxValue) / 100)),
+            amount:
+              Number(item.total_price) ||
+              Number(item.amount) ||
+              Number(item.quantity || 1) *
+                Number(item.unit_price || item.price_per_item || 0) *
+                (1 - Number(discountValue) / 100) *
+                (1 + Number(taxValue) / 100),
             measuring_unit_id: Number(item.measuring_unit_id) || 1,
           };
         });
@@ -706,19 +774,26 @@ const CreateQuotationPage = () => {
 
         // Set the discount if available in the data (same as edit mode)
         if (duplicateData.discount || duplicateData.discount_value) {
-          const discountValue = Number(duplicateData.discount || duplicateData.discount_value) || 0;
-          const discountType = duplicateData.discount_type === 'amount' ? 'amount' : 'percentage';
+          const discountValue =
+            Number(duplicateData.discount || duplicateData.discount_value) || 0;
+          const discountType =
+            duplicateData.discount_type === "amount" ? "amount" : "percentage";
           setDiscount({
             type: discountType,
-            value: discountValue
+            value: discountValue,
           });
           setShowDiscountField(discountValue > 0); // Show discount field if there's a discount
         }
 
         // Set additional charges if available
-        if (duplicateData.additionalCharges && Array.isArray(duplicateData.additionalCharges)) {
+        if (
+          duplicateData.additionalCharges &&
+          Array.isArray(duplicateData.additionalCharges)
+        ) {
           setAdditionalCharges(duplicateData.additionalCharges);
-          setShowAdditionalChargesField(duplicateData.additionalCharges.length > 0);
+          setShowAdditionalChargesField(
+            duplicateData.additionalCharges.length > 0,
+          );
         }
 
         // Set round off if available
@@ -732,7 +807,8 @@ const CreateQuotationPage = () => {
 
       // Set notes and terms
       const resolvedNotes = duplicateData.notes || "";
-      const resolvedTerms = duplicateData.terms || duplicateData.termsAndConditions || "";
+      const resolvedTerms =
+        duplicateData.terms || duplicateData.termsAndConditions || "";
 
       if (resolvedNotes) {
         setNotes(resolvedNotes);
@@ -745,7 +821,7 @@ const CreateQuotationPage = () => {
 
       // Force a recalculation by triggering a state update
       setTimeout(() => {
-        setQuotationItems(prev => [...prev]);
+        setQuotationItems((prev) => [...prev]);
       }, 100);
     }
   }, [isDuplicateMode, location.state]);
@@ -765,8 +841,8 @@ const CreateQuotationPage = () => {
 
       if (isEditing) {
         // Update existing address
-        updatedAddresses = shippingAddresses.map(addr =>
-          addr.uuid === editingAddress.uuid ? newAddress : addr
+        updatedAddresses = shippingAddresses.map((addr) =>
+          addr.uuid === editingAddress.uuid ? newAddress : addr,
         );
       } else {
         // Validate address type before proceeding (only for new addresses)
@@ -778,7 +854,7 @@ const CreateQuotationPage = () => {
 
       // Prepare the payload with the updated shipping addresses
       const payload = {
-        shipping_addresses: updatedAddresses.map(addr => ({
+        shipping_addresses: updatedAddresses.map((addr) => ({
           uuid: addr.uuid,
           address1: addr.address1,
           address2: addr.address2 || null,
@@ -794,7 +870,7 @@ const CreateQuotationPage = () => {
       // Call the API to update the customer with the new/updated address
       const response = await axios.put(
         `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-        payload
+        payload,
       );
 
       // Update local state after successful API call
@@ -807,7 +883,6 @@ const CreateQuotationPage = () => {
       };
       setSelectedCustomer(updatedCustomer);
 
-
       // If this is the first address or set as default, select it
       if (updatedAddresses.length === 1 || newAddress.is_default) {
         setSelectedAddress(newAddress);
@@ -816,14 +891,17 @@ const CreateQuotationPage = () => {
         setSelectedAddress(newAddress);
       }
 
-      toast.success(isEditing ? "Address updated successfully." : "Address saved successfully.");
+      toast.success(
+        isEditing
+          ? "Address updated successfully."
+          : "Address saved successfully.",
+      );
 
       // Clear editing state
       setEditingAddress(undefined);
     } catch (error: any) {
       console.error("Error saving address:", error);
       let errorMessage = "Failed to save address. Please try again.";
-
 
       if (error.response?.data?.error) {
         const errorCode = error.response.data.error;
@@ -868,7 +946,9 @@ const CreateQuotationPage = () => {
   // Handle edit address
   const handleEditAddress = () => {
     if (activeDropdownUuid) {
-      const addressToEdit = shippingAddresses.find(addr => addr.uuid === activeDropdownUuid);
+      const addressToEdit = shippingAddresses.find(
+        (addr) => addr.uuid === activeDropdownUuid,
+      );
       if (addressToEdit) {
         setEditingAddress(addressToEdit);
         setAddAddressModalOpen(true);
@@ -895,7 +975,7 @@ const CreateQuotationPage = () => {
 
       // Prepare the payload
       const payload = {
-        shipping_addresses: updatedAddresses.map(addr => ({
+        shipping_addresses: updatedAddresses.map((addr) => ({
           uuid: addr.uuid,
           address1: addr.address1,
           address2: addr.address2 || null,
@@ -911,13 +991,15 @@ const CreateQuotationPage = () => {
       // Call the API to update the customer
       await axios.put(
         `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-        payload
+        payload,
       );
 
       // Update local state
       setShippingAddresses(updatedAddresses);
 
-      const defaultAddress = shippingAddresses.find(addr => addr.uuid === targetUuid);
+      const defaultAddress = shippingAddresses.find(
+        (addr) => addr.uuid === targetUuid,
+      );
       if (defaultAddress) {
         setSelectedAddress({ ...defaultAddress, is_default: true });
       }
@@ -933,7 +1015,9 @@ const CreateQuotationPage = () => {
   // Handle delete address
   const handleDeleteAddress = () => {
     if (activeDropdownUuid) {
-      const addressToDelete = shippingAddresses.find(addr => addr.uuid === activeDropdownUuid);
+      const addressToDelete = shippingAddresses.find(
+        (addr) => addr.uuid === activeDropdownUuid,
+      );
       if (addressToDelete) {
         setAddressToOperate(addressToDelete);
         setShowDeleteConfirm(true);
@@ -953,7 +1037,7 @@ const CreateQuotationPage = () => {
     try {
       // Remove the address from the list
       const updatedAddresses = shippingAddresses.filter(
-        (addr) => addr.uuid !== addressToOperate.uuid
+        (addr) => addr.uuid !== addressToOperate.uuid,
       );
 
       // If we removed the default address and there are remaining addresses, make the first one default
@@ -963,7 +1047,7 @@ const CreateQuotationPage = () => {
 
       // Prepare the payload
       const payload = {
-        shipping_addresses: updatedAddresses.map(addr => ({
+        shipping_addresses: updatedAddresses.map((addr) => ({
           uuid: addr.uuid,
           address1: addr.address1,
           address2: addr.address2 || null,
@@ -979,7 +1063,7 @@ const CreateQuotationPage = () => {
       // Call the API to update the customer
       await axios.put(
         `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-        payload
+        payload,
       );
 
       // Update local state
@@ -987,7 +1071,9 @@ const CreateQuotationPage = () => {
 
       // Set the new selected address
       if (updatedAddresses.length > 0) {
-        const defaultAddress = updatedAddresses.find((addr) => addr.is_default) || updatedAddresses[0];
+        const defaultAddress =
+          updatedAddresses.find((addr) => addr.is_default) ||
+          updatedAddresses[0];
         setSelectedAddress(defaultAddress);
       } else {
         setSelectedAddress(null);
@@ -1029,9 +1115,14 @@ const CreateQuotationPage = () => {
       const quantity = item.quantity || 1;
       const discount = 0;
       const tax = item.gst_tax_rate || 18;
-      const amount = Math.round(
-        (quantity * item.sales_price * (1 - discount / 100) * (1 + tax / 100)) * 100
-      ) / 100;
+      const amount =
+        Math.round(
+          quantity *
+            item.sales_price *
+            (1 - discount / 100) *
+            (1 + tax / 100) *
+            100,
+        ) / 100;
       return {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
@@ -1071,12 +1162,14 @@ const CreateQuotationPage = () => {
     setQuotationItems(
       quotationItems.map((item) => {
         if (item.id === itemId) {
-          const amount = Math.round(
-            (newQuantity *
-              item.price_per_item *
-              (1 - item.discount / 100) *
-              (1 + item.tax / 100)) * 100
-          ) / 100;
+          const amount =
+            Math.round(
+              newQuantity *
+                item.price_per_item *
+                (1 - item.discount / 100) *
+                (1 + item.tax / 100) *
+                100,
+            ) / 100;
           return { ...item, quantity: newQuantity, amount };
         }
         return item;
@@ -1088,12 +1181,14 @@ const CreateQuotationPage = () => {
     setQuotationItems(
       quotationItems.map((item) => {
         if (item.id === itemId) {
-          const amount = Math.round(
-            (item.quantity *
-              item.price_per_item *
-              (1 - newDiscount / 100) *
-              (1 + item.tax / 100)) * 100
-          ) / 100;
+          const amount =
+            Math.round(
+              item.quantity *
+                item.price_per_item *
+                (1 - newDiscount / 100) *
+                (1 + item.tax / 100) *
+                100,
+            ) / 100;
           return { ...item, discount: newDiscount, amount };
         }
         return item;
@@ -1107,11 +1202,9 @@ const CreateQuotationPage = () => {
         if (item.id === itemId) {
           const baseAmount = item.quantity * newPrice;
 
-          const discountedAmount =
-            baseAmount * (1 - item.discount / 100);
+          const discountedAmount = baseAmount * (1 - item.discount / 100);
 
-          const totalAmount =
-            discountedAmount * (1 + item.tax / 100);
+          const totalAmount = discountedAmount * (1 + item.tax / 100);
 
           const amount = Math.round(totalAmount * 100) / 100;
 
@@ -1122,22 +1215,23 @@ const CreateQuotationPage = () => {
           };
         }
         return item;
-      })
+      }),
     );
   };
-
 
   const handleUpdateTax = (itemId: string, newTax: number) => {
     setTax(newTax);
     setQuotationItems(
       quotationItems.map((item) => {
         if (item.id === itemId) {
-          const amount = Math.round(
-            (item.quantity *
-              item.price_per_item *
-              (1 - item.discount / 100) *
-              (1 + newTax / 100)) * 100
-          ) / 100;
+          const amount =
+            Math.round(
+              item.quantity *
+                item.price_per_item *
+                (1 - item.discount / 100) *
+                (1 + newTax / 100) *
+                100,
+            ) / 100;
           return { ...item, tax: newTax, amount };
         }
         return item;
@@ -1146,7 +1240,8 @@ const CreateQuotationPage = () => {
   };
   const calculateSubtotal = () => {
     return quotationItems.reduce((sum, item) => {
-      const amount = Math.round(item.quantity * item.price_per_item * 100) / 100;
+      const amount =
+        Math.round(item.quantity * item.price_per_item * 100) / 100;
       return sum + amount;
     }, 0);
   };
@@ -1155,12 +1250,11 @@ const CreateQuotationPage = () => {
     const total = quotationItems.reduce(
       (sum, item) =>
         sum + (item.quantity * item.price_per_item * item.discount) / 100,
-      0
+      0,
     );
 
     return Math.round(total * 100) / 100;
   };
-
 
   const calculateOverallDiscount = () => {
     const subtotal = calculateSubtotal();
@@ -1181,8 +1275,6 @@ const CreateQuotationPage = () => {
 
     return Math.round(totalTax * 100) / 100;
   };
-
-
 
   const calculateTotal = () => {
     return calculateSubtotal() - calculateDiscount() + calculateTax();
@@ -1211,7 +1303,18 @@ const CreateQuotationPage = () => {
       const totalAmount = calculateTotal();
 
       // Prepare submission data
-      const submissionData = { ...formData, selectedCustomer, quotationItems, notes, terms: termsAndConditions, subtotal, total_discount: totalDiscount, total_tax: totalTax, total_amount: totalAmount, created_at: new Date().toISOString(), };
+      const submissionData = {
+        ...formData,
+        selectedCustomer,
+        quotationItems,
+        notes,
+        terms: termsAndConditions,
+        subtotal,
+        total_discount: totalDiscount,
+        total_tax: totalTax,
+        total_amount: totalAmount,
+        created_at: new Date().toISOString(),
+      };
 
       let response;
       if (isEditMode && id) {
@@ -1221,7 +1324,19 @@ const CreateQuotationPage = () => {
       }
 
       if (response.success) {
-        toast.success(isEditMode ? "Quotation updated successfully!" : "Quotation saved successfully!");
+        toast.success(
+          isEditMode
+            ? "Quotation updated successfully!"
+            : "Quotation saved successfully!",
+        );
+
+        // Update form with backend-generated quotation number for all quotations
+        if (response.data?.quotation_number) {
+          setFormData((prev) => ({
+            ...prev,
+            quotationNo: response.data.quotation_number,
+          }));
+        }
 
         // if (isEditMode && id) {
         //   const invoiceResult = await updateInvoiceFromQuotation(id, submissionData);
@@ -1309,7 +1424,7 @@ const CreateQuotationPage = () => {
             const quotationData = {
               ...formData,
               selectedCustomer,
-              quotationItems: quotationItems.map(item => ({
+              quotationItems: quotationItems.map((item) => ({
                 id: item.id,
                 item_id: item.item_id,
                 item_name: item.item_name,
@@ -1319,7 +1434,7 @@ const CreateQuotationPage = () => {
                 discount: item.discount,
                 tax: item.tax,
                 amount: item.amount,
-                measuring_unit_id: item.measuring_unit_id
+                measuring_unit_id: item.measuring_unit_id,
               })),
               notes,
               terms: termsAndConditions,
@@ -1331,9 +1446,18 @@ const CreateQuotationPage = () => {
             if (!savedQuotation) return;
 
             // Navigate to preview AFTER save
+            // Merge original data with backend response to preserve all fields while updating quotation number
+            const updatedQuotationData = {
+              ...quotationData,
+              quotationNo:
+                savedQuotation.quotation_number || quotationData.quotationNo,
+              uuid: savedQuotation.uuid || savedQuotation.id,
+              id: savedQuotation.uuid || savedQuotation.id,
+            };
+
             navigate("/quotes/preview", {
               state: {
-                quotationData,
+                quotationData: updatedQuotationData,
                 quotationId: savedQuotation.uuid || savedQuotation.id,
               },
             });
@@ -1580,7 +1704,10 @@ const CreateQuotationPage = () => {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative group" style={{ position: 'static' }}>
+                        <div
+                          className="relative group"
+                          style={{ position: "static" }}
+                        >
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900">
@@ -1599,13 +1726,17 @@ const CreateQuotationPage = () => {
                                 <div className="mt-2 space-y-1">
                                   {selectedCustomer.mobile && (
                                     <p className="text-gray-600">
-                                      <span className="font-medium">Phone:</span>{" "}
+                                      <span className="font-medium">
+                                        Phone:
+                                      </span>{" "}
                                       {selectedCustomer.mobile}
                                     </p>
                                   )}
                                   {selectedCustomer.email && (
                                     <p className="text-gray-600">
-                                      <span className="font-medium">Email:</span>{" "}
+                                      <span className="font-medium">
+                                        Email:
+                                      </span>{" "}
                                       {selectedCustomer.email}
                                     </p>
                                   )}
@@ -1673,7 +1804,6 @@ const CreateQuotationPage = () => {
                                 </div>
                               </div>
                             </div>
-
                           </div>
                         </div>
                       )}
@@ -1740,7 +1870,7 @@ const CreateQuotationPage = () => {
                 onChange={handleChange}
                 className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="0"
-                disabled={formData.status === 'closed'}
+                disabled={formData.status === "closed"}
               />
             </div>
             <div className="space-y-1.5">
@@ -1752,7 +1882,7 @@ const CreateQuotationPage = () => {
                 onChange={handleChange}
                 min={today}
                 className="h-8 text-sm"
-                disabled={formData.status === 'closed'}
+                disabled={formData.status === "closed"}
               />
             </div>
             <div className="space-y-1.5">
@@ -1764,7 +1894,7 @@ const CreateQuotationPage = () => {
                 onChange={handleChange}
                 min={today}
                 className="h-8 text-sm"
-                disabled={formData.status === 'closed'}
+                disabled={formData.status === "closed"}
               />
             </div>
           </div>
@@ -1864,22 +1994,27 @@ const CreateQuotationPage = () => {
                         {filteredParties.map((party) => (
                           <li
                             key={party.id}
-                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id ? "bg-gray-100" : ""
-                              }`}
+                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                              selectedParty?.id === party.id
+                                ? "bg-gray-100"
+                                : ""
+                            }`}
                             onClick={() => handleSelectParty(party)}
                           >
                             <div className="flex items-center">
                               <div
-                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
-                                  ? "bg-green-100"
-                                  : "bg-gray-100"
-                                  }`}
+                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
+                                  selectedParty?.id === party.id
+                                    ? "bg-green-100"
+                                    : "bg-gray-100"
+                                }`}
                               >
                                 <span
-                                  className={`font-medium text-sm ${selectedParty?.id === party.id
-                                    ? "text-green-700"
-                                    : "text-gray-600"
-                                    }`}
+                                  className={`font-medium text-sm ${
+                                    selectedParty?.id === party.id
+                                      ? "text-green-700"
+                                      : "text-gray-600"
+                                  }`}
                                 >
                                   {party.name
                                     .split(" ")
@@ -1917,7 +2052,7 @@ const CreateQuotationPage = () => {
               </div>
 
               {/* Create New Button */}
-              {!isCreatingParty && (
+              {/* {!isCreatingParty && (
                 <Button
                   variant="outline"
                   className="w-full h-10 bg-white hover:bg-gray-50 border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-colors flex items-center justify-center"
@@ -1929,7 +2064,7 @@ const CreateQuotationPage = () => {
                   <UserPlus className="h-4 w-4 mr-2" />
                   Create New Party
                 </Button>
-              )}
+              )} */}
             </div>
           </DialogContent>
         </Dialog>
@@ -1956,7 +2091,7 @@ const CreateQuotationPage = () => {
                 customerData: newCustomer,
               };
 
-              setParties(prev => [party, ...prev]);
+              setParties((prev) => [party, ...prev]);
 
               setSelectedParty(party);
 
@@ -2016,7 +2151,10 @@ const CreateQuotationPage = () => {
         </Dialog>
 
         {/* Shipping Address Modal */}
-        <Dialog open={isShippingModalOpen} onOpenChange={setIsShippingModalOpen}>
+        <Dialog
+          open={isShippingModalOpen}
+          onOpenChange={setIsShippingModalOpen}
+        >
           <DialogContent className="sm:max-w-[500px] max-h-[70vh] overflow-hidden">
             <DialogHeader className="px-6 pt-6 pb-3 border-b border-gray-100">
               <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -2040,22 +2178,25 @@ const CreateQuotationPage = () => {
                   {shippingAddresses.length > 0 ? (
                     <div className="grid gap-3">
                       {shippingAddresses.map((address, index) => {
-                        const isSelected = selectedAddress?.uuid === address.uuid;
+                        const isSelected =
+                          selectedAddress?.uuid === address.uuid;
                         return (
                           <div
                             key={address.uuid || index}
-                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                              }`}
+                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
                             onClick={() => setSelectedAddress(address)}
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
-                                  ? "bg-blue-100"
-                                  : "bg-gray-100 group-hover:bg-gray-200"
-                                  }`}
+                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
+                                  isSelected
+                                    ? "bg-blue-100"
+                                    : "bg-gray-100 group-hover:bg-gray-200"
+                                }`}
                               >
                                 {address.address_type === "home" ? (
                                   <HomeIcon
@@ -2083,7 +2224,14 @@ const CreateQuotationPage = () => {
                                   </span>
 
                                   {/* Action Button */}
-                                  <div className="relative" ref={address.uuid === activeDropdownUuid ? dropdownRef : null}>
+                                  <div
+                                    className="relative"
+                                    ref={
+                                      address.uuid === activeDropdownUuid
+                                        ? dropdownRef
+                                        : null
+                                    }
+                                  >
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -2091,7 +2239,10 @@ const CreateQuotationPage = () => {
                                         const uuid = address.uuid;
 
                                         if (!uuid) {
-                                          console.error('Address UUID is missing:', address);
+                                          console.error(
+                                            "Address UUID is missing:",
+                                            address,
+                                          );
                                           return;
                                         }
 
@@ -2099,10 +2250,11 @@ const CreateQuotationPage = () => {
                                           setActiveDropdownUuid(null);
                                           setButtonPosition(null);
                                         } else {
-                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
                                           setButtonPosition({
                                             top: rect.top,
-                                            left: rect.right + 8
+                                            left: rect.right + 8,
                                           });
                                           setActiveDropdownUuid(uuid);
                                         }
@@ -2114,9 +2266,7 @@ const CreateQuotationPage = () => {
                                     </button>
 
                                     {activeDropdownUuid === address.uuid && (
-                                      <div
-                                        className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200"
-                                      >
+                                      <div className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200">
                                         <div className="py-1" role="menu">
                                           {!address.is_default && (
                                             <button
@@ -2162,18 +2312,34 @@ const CreateQuotationPage = () => {
                                 </div>
                                 <div className="space-y-1">
                                   <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">Address:</span> {[
-                                      address.address1,
-                                      address.address2
-                                    ]
+                                    <span className="font-medium text-gray-500">
+                                      Address:
+                                    </span>{" "}
+                                    {[address.address1, address.address2]
                                       .filter(Boolean)
-                                      .join(", ")},
-                                    <span className="font-medium text-gray-500"> State:</span> {address.state},
-                                    <span className="font-medium text-gray-500"> Country:</span> {address.country}
+                                      .join(", ")}
+                                    ,
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      State:
+                                    </span>{" "}
+                                    {address.state},
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      Country:
+                                    </span>{" "}
+                                    {address.country}
                                   </p>
                                   <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">City:</span> {address.city},
-                                    <span className="font-medium text-gray-500"> Pin:</span> {address.pin}
+                                    <span className="font-medium text-gray-500">
+                                      City:
+                                    </span>{" "}
+                                    {address.city},
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      Pin:
+                                    </span>{" "}
+                                    {address.pin}
                                   </p>
                                 </div>
                               </div>
@@ -2197,7 +2363,6 @@ const CreateQuotationPage = () => {
                   )}
                 </div>
               </div>
-
             </div>
 
             <DialogFooter className="px-6 py-3 border-t border-gray-100 bg-gray-50">
@@ -2216,7 +2381,7 @@ const CreateQuotationPage = () => {
                       try {
                         // Call the API to update the customer with the selected shipping address
                         const payload = {
-                          shipping_addresses: shippingAddresses.map(addr => ({
+                          shipping_addresses: shippingAddresses.map((addr) => ({
                             uuid: addr.uuid,
                             address1: addr.address1,
                             address2: addr.address2 || null,
@@ -2231,7 +2396,7 @@ const CreateQuotationPage = () => {
 
                         await axios.put(
                           `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-                          payload
+                          payload,
                         );
 
                         // Update the selected customer with the new shipping address
@@ -2249,10 +2414,12 @@ const CreateQuotationPage = () => {
                         setIsShippingModalOpen(false);
                         toast.success("Address changed successfully");
                       } catch (error: any) {
-                        let errorMessage = "Failed to save shipping address. Please try again.";
+                        let errorMessage =
+                          "Failed to save shipping address. Please try again.";
 
                         if (error.response?.data?.error) {
-                          errorMessage = error.response.data.error || errorMessage;
+                          errorMessage =
+                            error.response.data.error || errorMessage;
                         }
 
                         toast.error(errorMessage);
@@ -2272,8 +2439,6 @@ const CreateQuotationPage = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-
       </div>
 
       {/* Items/Services Table - Professional Dashboard Style */}
@@ -2337,13 +2502,27 @@ const CreateQuotationPage = () => {
                   <td colSpan={9} className="px-4 py-20">
                     <div className="flex flex-col items-center justify-center gap-4">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg
+                          className="w-8 h-8 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
                         </svg>
                       </div>
                       <div className="text-center">
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">No items added yet</h4>
-                        <p className="text-xs text-gray-500 mb-4">Get started by adding your first item to the quotation</p>
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">
+                          No items added yet
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-4">
+                          Get started by adding your first item to the quotation
+                        </p>
                         <button
                           onClick={() => setShowAddItemModal(true)}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
@@ -2368,8 +2547,14 @@ const CreateQuotationPage = () => {
 
                     {/* Item Details */}
                     <td className="px-3 py-2 border-r border-gray-200">
-                      <div className="space-y-1" style={{marginTop: '0.7rem'}}>
-                        <div className="text-sm text-gray-900 truncate max-w-[250px]" title={item.item_name}>
+                      <div
+                        className="space-y-1"
+                        style={{ marginTop: "0.7rem" }}
+                      >
+                        <div
+                          className="text-sm text-gray-900 truncate max-w-[250px]"
+                          title={item.item_name}
+                        >
                           {item.item_name}
                         </div>
                         <div className="relative">
@@ -2383,19 +2568,27 @@ const CreateQuotationPage = () => {
                                 setQuotationItems(
                                   quotationItems.map((quotationItem) => {
                                     if (quotationItem.id === item.id) {
-                                      return { ...quotationItem, description: text, descriptionError: "" };
+                                      return {
+                                        ...quotationItem,
+                                        description: text,
+                                        descriptionError: "",
+                                      };
                                     }
                                     return quotationItem;
-                                  })
+                                  }),
                                 );
                               } else {
                                 setQuotationItems(
                                   quotationItems.map((quotationItem) => {
                                     if (quotationItem.id === item.id) {
-                                      return { ...quotationItem, descriptionError: "Maximum limit 50 characters reached" };
+                                      return {
+                                        ...quotationItem,
+                                        descriptionError:
+                                          "Maximum limit 50 characters reached",
+                                      };
                                     }
                                     return quotationItem;
-                                  })
+                                  }),
                                 );
                               }
                             }}
@@ -2414,14 +2607,20 @@ const CreateQuotationPage = () => {
 
                     {/* HSN/SAC */}
                     <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-200 text-center">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs" style={{marginTop: '-0.2rem'}}>
+                      <span
+                        className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs"
+                        style={{ marginTop: "-0.2rem" }}
+                      >
                         {item.hsn_sac || "N/A"}
                       </span>
                     </td>
 
                     {/* Quantity */}
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200" style={{marginTop: '0.7rem'}}>
+                      <div
+                        className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200"
+                        style={{ marginTop: "0.7rem" }}
+                      >
                         <input
                           type="number"
                           min="1"
@@ -2431,7 +2630,12 @@ const CreateQuotationPage = () => {
                               e.preventDefault();
                             }
                           }}
-                          onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
+                          onChange={(e) =>
+                            handleUpdateQuantity(
+                              item.id,
+                              parseInt(e.target.value) || 1,
+                            )
+                          }
                           className="w-full px-2 py-1.5 text-sm text-center text-gray-900 border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <span className="px-2 py-1.5 bg-gray-100 text-xs font-semibold text-gray-600 border-l border-gray-300">
@@ -2442,8 +2646,10 @@ const CreateQuotationPage = () => {
 
                     {/* Price */}
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="relative" style={{marginTop: '0.7rem'}}>
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">₹</span>
+                      <div className="relative" style={{ marginTop: "0.7rem" }}>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                          ₹
+                        </span>
                         <input
                           type="number"
                           min="0"
@@ -2453,7 +2659,12 @@ const CreateQuotationPage = () => {
                               e.preventDefault();
                             }
                           }}
-                          onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value))}
+                          onChange={(e) =>
+                            handleUpdatePrice(
+                              item.id,
+                              parseFloat(e.target.value),
+                            )
+                          }
                           className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
@@ -2461,7 +2672,10 @@ const CreateQuotationPage = () => {
 
                     {/* Discount */}
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex flex-col items-start" style={{marginTop: '0.7rem'}}>
+                      <div
+                        className="flex flex-col items-start"
+                        style={{ marginTop: "0.7rem" }}
+                      >
                         <div className="relative w-full">
                           <input
                             type="number"
@@ -2477,28 +2691,37 @@ const CreateQuotationPage = () => {
                               const value = e.target.value;
                               handleUpdateDiscount(
                                 item.id,
-                                value === "" ? 0 : Math.min(100, parseFloat(value))
+                                value === ""
+                                  ? 0
+                                  : Math.min(100, parseFloat(value)),
                               );
                             }}
                             className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">%</span>
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                            %
+                          </span>
                         </div>
                         <div className="min-h-3 text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5 w-full">
-                          {item.discount > 0 ? `-₹${(item.quantity * item.price_per_item * item.discount / 100).toFixed(2)}` : ''}
+                          {item.discount > 0
+                            ? `-₹${((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}`
+                            : ""}
                         </div>
                       </div>
                     </td>
 
                     {/* Tax */}
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
-                      <div className="flex flex-col items-start" style={{marginTop: '0.7rem'}}>
+                      <div
+                        className="flex flex-col items-start"
+                        style={{ marginTop: "0.7rem" }}
+                      >
                         <select
                           value={item.tax}
                           onChange={(e) =>
                             handleUpdateTax(
                               item.id,
-                              parseFloat(e.target.value) || 0
+                              parseFloat(e.target.value) || 0,
                             )
                           }
                           className="w-full px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200"
@@ -2510,15 +2733,24 @@ const CreateQuotationPage = () => {
                           <option value="28">28%</option>
                         </select>
                         <div className="min-h-3 text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5 w-full">
-                          {item.tax > 0 ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}` : ''}
+                          {item.tax > 0
+                            ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}`
+                            : ""}
                         </div>
                       </div>
                     </td>
 
                     {/* Amount */}
                     <td className="px-3 py-2 text-center border-r border-gray-200">
-                      <div className="text-sm text-gray-900" style={{marginTop: '-0.2rem'}}>
-                        ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <div
+                        className="text-sm text-gray-900"
+                        style={{ marginTop: "-0.2rem" }}
+                      >
+                        ₹
+                        {item.amount.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </div>
                     </td>
 
@@ -2538,26 +2770,32 @@ const CreateQuotationPage = () => {
             </tbody>
             <tfoot className="bg-gray-50 border-t-2 border-gray-200">
               <tr>
-                <td colSpan={4} className="px-4 py-4 border-r border-gray-200"></td>
+                <td
+                  colSpan={4}
+                  className="px-4 py-4 border-r border-gray-200"
+                ></td>
                 <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
                   Subtotal
                 </td>
                 <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
-                  {calculateDiscount() > 0 && `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  {calculateDiscount() > 0 &&
+                    `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
                 <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
-                  {calculateTax() > 0 && `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  {calculateTax() > 0 &&
+                    `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
-                  ₹{calculateTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  ₹
+                  {calculateTotal().toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}
                 </td>
                 <td className="px-4 py-4"></td>
               </tr>
             </tfoot>
           </table>
         </div>
-
-
 
         {/* Add this section right after the Items/Services table closes and before the closing of the main grid div */}
 
@@ -2575,7 +2813,9 @@ const CreateQuotationPage = () => {
               ) : (
                 <div className="space-y-2 bg-white border rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-gray-700">Notes</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Notes
+                    </label>
                     <button
                       onClick={() => {
                         setShowNotesField(false);
@@ -2664,19 +2904,27 @@ const CreateQuotationPage = () => {
                           className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <div className="relative w-28">
-                          <span className="absolute left-3 top-2.5 text-sm text-gray-500">₹</span>
+                          <span className="absolute left-3 top-2.5 text-sm text-gray-500">
+                            ₹
+                          </span>
                           <input
                             type="number"
                             placeholder="0"
                             value={newChargeAmount || ""}
-                            onChange={(e) => setNewChargeAmount(parseFloat(e.target.value) || 0)}
+                            onChange={(e) =>
+                              setNewChargeAmount(
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
                             className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                           />
                         </div>
                         <Button
                           size="sm"
                           onClick={handleAddAdditionalCharge}
-                          disabled={!newChargeName.trim() || newChargeAmount <= 0}
+                          disabled={
+                            !newChargeName.trim() || newChargeAmount <= 0
+                          }
                           className="h-9"
                         >
                           Add
@@ -2698,7 +2946,10 @@ const CreateQuotationPage = () => {
                   )}
 
                   {additionalCharges.map((charge, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm py-1.5">
+                    <div
+                      key={index}
+                      className="flex justify-between items-center text-sm py-1.5"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-gray-700">{charge.name}</span>
                         <button
@@ -2708,29 +2959,45 @@ const CreateQuotationPage = () => {
                           <X className="h-3 w-3" />
                         </button>
                       </div>
-                      <span className="font-medium">₹ {charge.amount.toLocaleString("en-IN")}</span>
+                      <span className="font-medium">
+                        ₹ {charge.amount.toLocaleString("en-IN")}
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200">
-                  <span className="text-gray-700 font-medium">Taxable Amount</span>
+                  <span className="text-gray-700 font-medium">
+                    Taxable Amount
+                  </span>
                   <span className="font-semibold">
-                    ₹ {(calculateSubtotal() - calculateDiscount()).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{" "}
+                    {(calculateSubtotal() - calculateDiscount()).toLocaleString(
+                      "en-IN",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                    )}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
                   <span className="text-gray-700">SGST@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{" "}
+                    {(calculateTax() / 2).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
                   <span className="text-gray-700">CGST@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{" "}
+                    {(calculateTax() / 2).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
                 {!showDiscountField ? (
@@ -2748,7 +3015,10 @@ const CreateQuotationPage = () => {
                       <select
                         value={discount.type}
                         onChange={(e) =>
-                          setDiscount({ ...discount, type: e.target.value as "percentage" | "amount" })
+                          setDiscount({
+                            ...discount,
+                            type: e.target.value as "percentage" | "amount",
+                          })
                         }
                         className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
@@ -2759,7 +3029,10 @@ const CreateQuotationPage = () => {
                         type="number"
                         value={discount.value || ""}
                         onChange={(e) =>
-                          setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })
+                          setDiscount({
+                            ...discount,
+                            value: parseFloat(e.target.value) || 0,
+                          })
                         }
                         className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                       />
@@ -2774,7 +3047,11 @@ const CreateQuotationPage = () => {
                       </button>
                     </div>
                     <span className="text-sm font-medium text-red-600">
-                      - ₹ {calculateOverallDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      - ₹{" "}
+                      {calculateOverallDiscount().toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </span>
                   </div>
                 )}
@@ -2808,9 +3085,15 @@ const CreateQuotationPage = () => {
                 </div> */}
 
                 <div className="flex justify-between items-center pt-3 border-t-2 border-gray-300">
-                  <span className="text-base font-bold text-gray-800">Total Amount</span>
+                  <span className="text-base font-bold text-gray-800">
+                    Total Amount
+                  </span>
                   <span className="text-xl font-bold text-gray-900">
-                    ₹ {calculateFinalTotal().toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{" "}
+                    {calculateFinalTotal().toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
               </div>
@@ -2818,7 +3101,10 @@ const CreateQuotationPage = () => {
 
             <div className="bg-white border rounded-lg p-5">
               <div className="space-y-3">
-                <p className="text-sm text-gray-600 text-right">Authorized signatory for <span className="font-semibold">XYZ</span></p>
+                <p className="text-sm text-gray-600 text-right">
+                  Authorized signatory for{" "}
+                  <span className="font-semibold">XYZ</span>
+                </p>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center min-h-[120px]">
                   <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-2">
                     <Plus className="h-4 w-4" />
@@ -2854,7 +3140,9 @@ const CreateQuotationPage = () => {
         address={editingAddress}
         onSave={handleAddAddress}
         existingAddresses={shippingAddresses}
-        title={editingAddress ? "Edit Shipping Address" : "Add Shipping Address"}
+        title={
+          editingAddress ? "Edit Shipping Address" : "Add Shipping Address"
+        }
       />
 
       {/* Delete Confirmation Modal */}
@@ -2893,7 +3181,6 @@ const CreateQuotationPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };
