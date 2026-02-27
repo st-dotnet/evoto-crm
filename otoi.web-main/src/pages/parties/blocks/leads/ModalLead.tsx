@@ -281,10 +281,10 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         city: values.city,
         state: values.state,
         country: values.country,
-        address1: values.address1,
-        address2: values.address2,
+        address1: values.address1?.trim() || '',
+        address2: values.address2?.trim() || '',
         pin: values.pin,
-        reason: values.reason,
+        reason: values.reason?.trim() || null,
         bypass_duplicate: true, // Allow bypassing duplicate checks
       };
 

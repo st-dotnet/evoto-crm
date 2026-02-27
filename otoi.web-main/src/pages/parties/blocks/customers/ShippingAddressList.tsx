@@ -236,7 +236,7 @@ const AddressItem: React.FC<{
 
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
           {/* Header */}
           <div className="px-6 py-4 border-b bg-white">
             <DialogTitle className="text-base font-semibold text-gray-900">

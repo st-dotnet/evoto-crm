@@ -691,12 +691,12 @@ const ModalCustomer = ({
               addr.pin
           )
           .map((addr) => ({
-            address1: addr.address1,
-            address2: addr.address2 || null,
+            address1: addr.address1?.trim() || "",
+            address2: addr.address2?.trim() || '',
             city: addr.city,
             state: addr.state,
             country: addr.country,
-            pin: addr.pin,
+            pin: addr.pin?.trim() || "",
             address_type: addr.address_type || 'home',
             is_default: addr.is_default || false
           }));
@@ -706,12 +706,12 @@ const ModalCustomer = ({
           (values.shipping_address1 || values.shipping_city || values.shipping_state ||
             values.shipping_country || values.shipping_pin)) {
           const newAddress = {
-            address1: values.shipping_address1 || '',
-            address2: values.shipping_address2 || null,
+            address1: values.shipping_address1?.trim() || '',
+            address2: values.shipping_address2?.trim() || '',
             city: values.shipping_city || '',
             state: values.shipping_state || '',
             country: values.shipping_country || '',
-            pin: values.shipping_pin || '',
+            pin: values.shipping_pin?.trim() || '',
             address_type: 'home' as const,
             is_default: true
           };

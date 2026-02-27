@@ -38,6 +38,7 @@ const ModalPurchase = ({ open, onOpenChange, purchase_entry, onSuccess }: IModal
   const validationSchema = useMemo(() => {
     return Yup.object().shape({
       invoice_number: Yup.string()
+        .trim()
         .min(2, "Minimum 2 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Invoice number is required"),
@@ -62,11 +63,16 @@ const ModalPurchase = ({ open, onOpenChange, purchase_entry, onSuccess }: IModal
         const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
         const apiUrl = `${baseUrl}/purchase/`;
 
+        const postData = {
+          ...values,
+          invoice_number: values.invoice_number.trim(),
+        };
+
         if (purchase_entry?.uuid) {
-          await axios.put(`${apiUrl}${purchase_entry.uuid}`, values);
+          await axios.put(`${apiUrl}${purchase_entry.uuid}`, postData);
           toast.success("Purchase entry updated successfully");
         } else {
-          await axios.post(apiUrl, values);
+          await axios.post(apiUrl, postData);
           toast.success("Purchase entry created successfully");
         }
 

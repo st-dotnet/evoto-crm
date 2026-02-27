@@ -81,10 +81,12 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
   const saveUserSchema = useMemo(() => {
     return Yup.object().shape({
       first_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("First Name is required"),
       last_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .nullable(),
@@ -132,9 +134,9 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
 
       try {
         const postData = {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          email: values.email,
+          first_name: values.first_name?.trim(),
+          last_name: values.last_name?.trim() || null,
+          email: values.email?.trim(),
           mobile: values.mobile || null,
           role: values.role,
           isActive: values.isActive,

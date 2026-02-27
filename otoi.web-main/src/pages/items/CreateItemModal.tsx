@@ -79,13 +79,16 @@ const saveItemSchema = Yup.object().shape({
     item_type_id: Yup.number().required(),
 
     item_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Item name is required"),
 
     category_id: Yup.string().required("Category is required"),
 
-    item_code: Yup.string().required("Item code is required"),
+    item_code: Yup.string()
+        .trim()
+        .required("Item code is required"),
 
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
@@ -144,16 +147,16 @@ export default function CreateItemModal({
 
             try {
                 const postData: Partial<IItem> = {
-                    item_name: values.item_name,
+                    item_name: values.item_name?.trim(),
                     item_type_id: values.item_type_id,
                     category_id: values.category_id || null,  // Ensure we send null instead of empty string
                     sales_price: Number(values.sales_price),
                     gst_tax_rate: Number(values.gst_tax_rate),
                     measuring_unit_id: values.measuring_unit_id,
                     // Only include item_code if it has changed from the original value
-                    ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
-                    hsn_code: isService ? null : values.hsn_code || null,
-                    description: values.description || null,
+                    ...(values.item_code?.trim() !== item?.item_code?.trim() && { item_code: values.item_code?.trim() || null }),
+                    hsn_code: isService ? null : values.hsn_code?.trim() || null,
+                    description: values.description?.trim() || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
                     tax_type: values.tax_type || "with_tax",
 
@@ -194,7 +197,7 @@ export default function CreateItemModal({
                     }
                 }
             } catch (error: any) {
-                
+
                 // Get the error message from the error object
                 let errorMessage = error?.message ||
                     error?.response?.data?.message ||
