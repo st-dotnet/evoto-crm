@@ -30,10 +30,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   getPaymentInList,
   getPartyInvoices,
+  deletePaymentIn,
 } from "../services/payment-in.service";
 import { toast } from "sonner";
 import { SpinnerDotted } from "spinners-react";
@@ -47,6 +49,8 @@ export const PaymentInPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [paymentInvoices, setPaymentInvoices] = useState<any[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
 
   // Fetch payment records
   const fetchPayments = async () => {
@@ -66,20 +70,34 @@ export const PaymentInPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this payment?")) return;
+  const handleDelete = (id: string) => {
+    setPaymentToDelete(id);
+    setDeleteDialogOpen(true);
+  };
 
-    // TODO: Implement deletePaymentIn service function
-    // const response = await deletePaymentIn(id);
-    // if (response.success) {
-    //   toast.success("Payment deleted successfully");
-    //   fetchPayments();
-    // } else {
-    //   toast.error(response.error || "Failed to delete payment");
-    // }
+  const confirmDelete = async () => {
+    if (!paymentToDelete) return;
 
-    // For now, just show a toast that the service needs to be implemented
-    toast.error("Delete service not yet implemented");
+    try {
+      const response = await deletePaymentIn(paymentToDelete);
+      if (response.success) {
+        toast.success("Payment deleted successfully");
+        fetchPayments(); // Refresh the payments list
+      } else {
+        toast.error(response.error || "Failed to delete payment");
+      }
+    } catch (error: any) {
+      console.error("Error deleting payment:", error);
+      toast.error("An error occurred while deleting the payment");
+    } finally {
+      setPaymentToDelete(null);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setPaymentToDelete(null);
+    setDeleteDialogOpen(false);
   };
 
   useEffect(() => {
@@ -247,6 +265,12 @@ export const PaymentInPage = () => {
 
                 <DropdownMenuItem
                   onSelect={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDelete(row.original.id);
+                    setIsOpen(false);
+                  }}
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleDelete(row.original.id);
@@ -673,6 +697,21 @@ export const PaymentInPage = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <div className="z-[10000]">
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Payment"
+          message="Are you sure you want to delete this payment? This action will mark the payment as deleted in the system."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          variant="danger"
+        />
+      </div>
     </div>
   );
 };

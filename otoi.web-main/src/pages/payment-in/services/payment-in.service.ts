@@ -216,6 +216,63 @@ export const getPaymentById = async (id: string): Promise<ApiResponse> => {
   }
 };
 
+export const deletePaymentIn = async (id: string): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    // Soft delete by updating the is_deleted column
+    const response = await axios.put(
+      `${API_URL}/invoices/${id}/soft-delete`,
+      { is_deleted: true },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      }
+    );
+
+    if (response.data) {
+      return {
+        success: true,
+        data: response.data,
+        status: response.status,
+      };
+    } else {
+      return {
+        success: false,
+        error: "Failed to delete payment",
+        status: response.status,
+      };
+    }
+  } catch (error: any) {
+    console.error("Error deleting payment:", error);
+
+    let errorMessage = "Failed to delete payment";
+    if (error.response?.status === 401) {
+      errorMessage = "Session expired. Please log in again.";
+    } else if (error.response?.status === 404) {
+      errorMessage = "Payment not found";
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
 export const generatePaymentNumber = (): string => {
   const date = new Date();
   const year = date.getFullYear();

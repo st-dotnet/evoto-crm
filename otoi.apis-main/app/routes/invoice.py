@@ -1,10 +1,11 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
-from app.models import Invoice, InvoiceItem, Quotation, Item
-from app.models.customer import Customer
+from app.models import Invoice, InvoiceItem, Quotation, Item, Customer
 from app.utils.stamping import set_created_fields, set_updated_fields
+from app.utils.decorators import login_required
+import uuid
 from datetime import datetime, timedelta
 
 invoice_blueprint = Blueprint("invoice", __name__)
@@ -255,7 +256,7 @@ def get_invoices():
       200:
         description: A list of invoices
     """
-    query = Invoice.query
+    query = Invoice.query.filter(Invoice.is_deleted == False)
     
     # Get search parameters
     search = request.args.get('search', '').strip()
@@ -804,3 +805,62 @@ def record_payment(invoice_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
+
+
+@invoice_blueprint.route("/<uuid:invoice_id>/soft-delete", methods=["PUT"])
+@login_required
+def soft_delete_invoice(invoice_id):
+    """
+    Soft delete an invoice by setting is_deleted = true
+    ---
+    tags:
+      - Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: Invoice deleted successfully
+      404:
+        description: Invoice not found
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        # Check if invoice is already deleted
+        if invoice.is_deleted:
+            return jsonify({
+                "success": False,
+                "message": "Invoice is already deleted"
+            }), 400
+        
+        # Perform soft delete
+        invoice.is_deleted = True
+        set_updated_fields(invoice)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "invoice_uuid": str(invoice.uuid),
+                "invoice_number": invoice.invoice_number,
+                "is_deleted": True
+            },
+            "message": "Invoice deleted successfully"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": "An error occurred while deleting the invoice",
+            "details": str(e)
+        }), 500
