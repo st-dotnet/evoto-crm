@@ -302,6 +302,11 @@ const AppRoutingSetup = (): ReactElement => {
               <CreatePaymentIn />
             </Suspense>
           } />
+          <Route path="/payment-in/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePaymentIn />
+            </Suspense>
+          } />
 
           {/* Invoice Routes */}
           <Route path="/invoices/list" element={

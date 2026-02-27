@@ -1,19 +1,26 @@
 import { useState, useRef, useEffect } from "react";
 import { useFormik } from "formik";
+import {
+  getBarcodePreview,
+  getItemBarcode,
+  downloadBarcode,
+} from "./services/items.service";
 
 interface IStockDetailsProps {
   formik: any;
   isEditing?: boolean;
 }
 
-export default function StockDetails({ formik, isEditing = false }: IStockDetailsProps) {
+export default function StockDetails({
+  formik,
+  isEditing = false,
+}: IStockDetailsProps) {
   const [showAlternativeUnit, setShowAlternativeUnit] = useState(false);
   const [barcodeUrl, setBarcodeUrl] = useState<string | null>(null);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
   const [imgError, setImgError] = useState(false);
-
 
   const handleGetBarcode = async (download: boolean = false) => {
     const itemName = formik.values.item_name;
@@ -25,14 +32,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
       return;
     }
 
-
     if (!itemCode) return;
-
-    const baseUrl = import.meta.env.VITE_APP_API_URL;
-    const url = !formik.values.id
-      ? `${baseUrl}/barcode/preview?item_code=${encodeURIComponent(itemCode)}&item_name=${encodeURIComponent(itemName || "")}${download ? "&download=true" : ""}`
-      : `${baseUrl}/items/${formik.values.id}/barcode${download ? "?download=true" : ""}`;
-
 
     setIsLoadingBarcode(true);
     setBarcodeError(null);
@@ -40,20 +40,51 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
 
     try {
       if (download) {
-        // Directly trigger download
-        window.open(url, "_blank");
+        // Use authenticated download service
+        const response = await downloadBarcode(
+          itemCode,
+          itemName,
+          formik.values.id,
+        );
+
+        if (response.success && response.data) {
+          // Create download link
+          const blob = response.data;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `barcode-${itemCode}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } else {
+          throw new Error(response.error || "Failed to download barcode");
+        }
       } else {
-        // Fetch and display in modal
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Failed to fetch barcode");
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        setBarcodeUrl(blobUrl);
-        setIsBarcodeModalOpen(true);
+        // Use authenticated preview service
+        let response;
+
+        if (formik.values.id) {
+          response = await getItemBarcode(formik.values.id);
+        } else {
+          response = await getBarcodePreview(itemCode, itemName);
+        }
+
+        if (response.success && response.data) {
+          const blob = response.data;
+          const blobUrl = URL.createObjectURL(blob);
+          setBarcodeUrl(blobUrl);
+          setIsBarcodeModalOpen(true);
+        } else {
+          throw new Error(response.error || "Failed to fetch barcode");
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch barcode:", error);
-      setBarcodeError("Failed to load barcode. Please try again.");
+      setBarcodeError(
+        error.message || "Failed to load barcode. Please try again.",
+      );
     } finally {
       setIsLoadingBarcode(false);
     }
@@ -67,23 +98,23 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
     }
   }, [formik.values.secondary_unit]);
 
-
   const BarcodeModal = () => {
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
-        if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        if (
+          modalRef.current &&
+          !modalRef.current.contains(event.target as Node)
+        ) {
           setIsBarcodeModalOpen(false);
           setBarcodeError(null);
         }
       };
 
-
-
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener("mousedown", handleClickOutside);
       };
     }, []);
 
@@ -105,8 +136,12 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
 
           <div className="text-center">
             <div className="mb-4">
-              <h4 className="font-medium text-lg">{formik.values.item_name || 'Item Name'}</h4>
-              <p className="text-gray-600">{formik.values.item_code || 'Item Code'}</p>
+              <h4 className="font-medium text-lg">
+                {formik.values.item_name || "Item Name"}
+              </h4>
+              <p className="text-gray-600">
+                {formik.values.item_code || "Item Code"}
+              </p>
             </div>
 
             <div className="mb-6 min-h-[200px] flex items-center justify-center bg-gray-50 rounded border border-gray-200 p-4">
@@ -120,7 +155,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
                   alt="Item Barcode"
                   className="max-w-full h-auto"
                   onError={() => {
-                    console.error('Failed to load barcode image');
+                    console.error("Failed to load barcode image");
                     setImgError(true);
                   }}
                 />
@@ -138,12 +173,13 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
               <button
                 onClick={() => handleGetBarcode(true)}
                 disabled={isLoadingBarcode}
-                className={`px-4 py-2 rounded transition-colors ${isLoadingBarcode
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                className={`px-4 py-2 rounded transition-colors ${
+                  isLoadingBarcode
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
               >
-                {isLoadingBarcode ? 'Generating...' : 'Download Barcode'}
+                {isLoadingBarcode ? "Generating..." : "Download Barcode"}
               </button>
             </div>
           </div>
@@ -156,11 +192,14 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
     <div className="border rounded-lg p-4">
       {isBarcodeModalOpen && <BarcodeModal />}
       <div className="grid grid-cols-1 gap-4">
-
         {/* Item Code */}
         <div className="space-y-1">
-          <label className="text-sm font-medium">Item Code <span className="text-red-500">*</span></label>
-          {barcodeError && <div className="text-red-500 text-sm">{barcodeError}</div>}
+          <label className="text-sm font-medium">
+            Item Code <span className="text-red-500">*</span>
+          </label>
+          {barcodeError && (
+            <div className="text-red-500 text-sm">{barcodeError}</div>
+          )}
           <div className="flex gap-2">
             <input
               type="text"
@@ -178,7 +217,9 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             </button>
           </div>
           {formik.touched.item_code && formik.errors.item_code && (
-            <div className="text-red-500 text-xs">{formik.errors.item_code}</div>
+            <div className="text-red-500 text-xs">
+              {formik.errors.item_code}
+            </div>
           )}
         </div>
 
@@ -219,7 +260,9 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
               onClick={() => setShowAlternativeUnit(!showAlternativeUnit)}
               className="px-3 border rounded text-blue-600 hover:bg-gray-50 whitespace-nowrap"
             >
-              {showAlternativeUnit ? "- Remove Alternative Unit" : "+ Add Alternative Unit"}
+              {showAlternativeUnit
+                ? "- Remove Alternative Unit"
+                : "+ Add Alternative Unit"}
             </button>
           </div>
         </div>
@@ -257,8 +300,6 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
                   <option value="BOX">BOX</option>
                   <option value="PACK">PACK</option>
                 </select>
-
-
               </div>
             </div>
           </>
@@ -285,17 +326,22 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
           <label className="text-sm font-medium">As of Date</label>
           {isEditing ? (
             <div className="w-full p-2 border rounded bg-gray-50">
-              {new Date(formik.values.as_of_date || new Date()).toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
+              {new Date(
+                formik.values.as_of_date || new Date(),
+              ).toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
               })}
             </div>
           ) : (
             <input
               type="date"
               className="w-full p-2 border rounded"
-              value={formik.values.as_of_date || new Date().toISOString().split('T')[0]}
+              value={
+                formik.values.as_of_date ||
+                new Date().toISOString().split("T")[0]
+              }
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               name="as_of_date"
@@ -324,7 +370,9 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
           {formik.values.low_stock_warning && (
             <div className="ml-6 space-y-4">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Low Stock Quantity</label>
+                <label className="text-sm font-medium">
+                  Low Stock Quantity
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -348,9 +396,7 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
 
         {/* Description Box */}
         <div className="space-y-1">
-          <label className="text-sm block">
-            Description
-          </label>
+          <label className="text-sm block">Description</label>
           <textarea
             placeholder="Enter Description"
             className="w-full p-2 border rounded text-sm"
@@ -358,7 +404,6 @@ export default function StockDetails({ formik, isEditing = false }: IStockDetail
             {...formik.getFieldProps("description")}
           />
         </div>
-
       </div>
     </div>
   );

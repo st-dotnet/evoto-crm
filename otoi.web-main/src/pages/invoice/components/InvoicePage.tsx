@@ -25,7 +25,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
-import { getInvoices, deleteInvoice } from "../services/invoice.services";
+import { getInvoices, deleteInvoice } from "../services/invoice.service";
 import { toast } from "sonner";
 import { Dialog,DialogContent, DialogFooter, DialogHeader,DialogDescription,DialogTitle } from "@/components/ui/dialog";
 

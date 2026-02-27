@@ -1,36 +1,36 @@
-import { DataGridEmpty, TDataGridLayoutCellSpacing } from '.';
-import { flexRender, HeaderGroup, Row, Cell } from '@tanstack/react-table';
-import { useDataGrid } from '.';
-import { cn } from '@/lib/utils';
+import { DataGridEmpty, TDataGridLayoutCellSpacing } from ".";
+import { flexRender, HeaderGroup, Row, Cell } from "@tanstack/react-table";
+import { useDataGrid } from ".";
+import { cn } from "@/lib/utils";
 
 const DataGridTable = <TData,>() => {
   const { table, props } = useDataGrid();
   const headCellSpacingOptions: Record<TDataGridLayoutCellSpacing, string> = {
-    xs: 'px-2.5',
-    sm: 'px-3',
-    md: 'px-4',
-    lg: 'px-6'
+    xs: "px-2.5",
+    sm: "px-3",
+    md: "px-4",
+    lg: "px-6",
   };
   const bodyCellSpacingOptions: Record<TDataGridLayoutCellSpacing, string> = {
-    xs: 'p-2.5',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6'
+    xs: "p-2.5",
+    sm: "p-3",
+    md: "p-4",
+    lg: "p-6",
   };
 
   const headCellSpacing = props.layout?.cellSpacing
     ? headCellSpacingOptions[props.layout?.cellSpacing]
-    : headCellSpacingOptions['md'];
+    : headCellSpacingOptions["md"];
   const bodyCellSpacing = props.layout?.cellSpacing
     ? bodyCellSpacingOptions[props.layout?.cellSpacing]
-    : bodyCellSpacingOptions['md'];
+    : bodyCellSpacingOptions["md"];
   const cellBorder = props.layout?.cellBorder ?? false;
 
   return (
     <table
       className={cn(
-        'w-full align-middle text-left rtl:text-right caption-bottom text-sm',
-        props.layout?.classes?.table
+        "w-full align-middle text-left rtl:text-right caption-bottom text-sm",
+        props.layout?.classes?.table,
       )}
       data-table
     >
@@ -39,8 +39,8 @@ const DataGridTable = <TData,>() => {
           <tr
             key={headerGroup.id}
             className={cn(
-              'border-b bg-muted/30 data-[state=selected]:bg-muted',
-              cellBorder && '[&_>:last-child]:border-e-0'
+              "border-b bg-muted/30 data-[state=selected]:bg-muted",
+              cellBorder && "[&_>:last-child]:border-e-0",
             )}
           >
             {headerGroup.headers.map((header) => (
@@ -49,14 +49,17 @@ const DataGridTable = <TData,>() => {
                 colSpan={header.colSpan}
                 className={cn(
                   headCellSpacing,
-                  cellBorder && 'border-e',
-                  'h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pe-0',
-                  header.column.columnDef.meta?.headerClassName
+                  cellBorder && "border-e",
+                  "h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pe-0",
+                  header.column.columnDef.meta?.headerClassName,
                 )}
               >
                 {header.isPlaceholder
                   ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
               </th>
             ))}
           </tr>
@@ -67,11 +70,11 @@ const DataGridTable = <TData,>() => {
           table.getRowModel().rows.map((row: Row<TData>) => (
             <tr
               key={row.id}
-              data-state={row.getIsSelected() ? 'selected' : undefined}
+              data-state={row.getIsSelected() ? "selected" : undefined}
               className={cn(
-                'border-b hover:bg-muted/30 data-[state=selected]:bg-muted/50',
-                cellBorder && '[&_>:last-child]:border-e-0',
-                props.onRowClick && 'cursor-pointer'
+                "border-b hover:bg-muted/30 data-[state=selected]:bg-muted/50",
+                cellBorder && "[&_>:last-child]:border-e-0",
+                props.onRowClick && "cursor-pointer",
               )}
               onClick={() => props.onRowClick?.(row)}
             >
@@ -80,9 +83,9 @@ const DataGridTable = <TData,>() => {
                   key={cell.id}
                   className={cn(
                     bodyCellSpacing,
-                    cellBorder && 'border-e',
-                    'align-middle [&:has([role=checkbox])]:pe-0',
-                    cell.column.columnDef.meta?.cellClassName
+                    cellBorder && "border-e",
+                    "align-middle [&:has([role=checkbox])]:pe-0",
+                    cell.column.columnDef.meta?.cellClassName,
                   )}
                   onClick={cell.column.columnDef.meta?.disableRowClick ? (e) => e.stopPropagation() : undefined}
                 >

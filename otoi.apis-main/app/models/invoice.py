@@ -1,5 +1,5 @@
 from app.models.common import BaseMixin
-from sqlalchemy import Column, Integer, Numeric, ForeignKey, String, Text, Date, JSON
+from sqlalchemy import Column, Integer, Numeric, ForeignKey, String, Text, Date, JSON, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -23,7 +23,7 @@ class Invoice(BaseMixin, db.Model):
 
     # Dates
     invoice_date = Column(Date, nullable=False)
-    due_date = Column(Date, nullable=False)
+    due_date = Column(Date, nullable=False) 
 
     # Financials - Keep key amounts top-level for querying
     total_amount = Column(Numeric(12, 2), nullable=False)
@@ -37,6 +37,9 @@ class Invoice(BaseMixin, db.Model):
     
     # Payment status (unpaid, partial, paid)
     payment_status = Column(String(20), default="unpaid", nullable=False)
+    
+    # Soft delete column
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
 
     # Extra details (JSON blob)

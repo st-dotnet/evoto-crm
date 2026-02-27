@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, FileText, Receipt } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Printer,
+  Share,
+  FileText,
+  Receipt,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
@@ -63,14 +70,22 @@ const QuotationPreviewPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
-  const [showBusinessAddressBanner, setShowBusinessAddressBanner] = useState(true);
+  const [showBusinessAddressBanner, setShowBusinessAddressBanner] =
+    useState(true);
   const [fetchedData, setFetchedData] = useState<QuotationData | null>(null);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
   const quotationRef = useRef<HTMLDivElement>(null);
 
-  const quotationData: QuotationData = fetchedData || location.state?.quotationData || {
-    quotationNo: "", quotationDate: "", validFor: 0, validityDate: "", status: "", selectedCustomer: null, quotationItems: []
-  };
+  const quotationData: QuotationData = fetchedData ||
+    location.state?.quotationData || {
+      quotationNo: "",
+      quotationDate: "",
+      validFor: 0,
+      validityDate: "",
+      status: "",
+      selectedCustomer: null,
+      quotationItems: [],
+    };
 
   useEffect(() => {
     if (id && !location.state?.quotationData) {
@@ -86,21 +101,29 @@ const QuotationPreviewPage: React.FC = () => {
             // Fetch customer details separately to get address information
             const token = (() => {
               try {
-                const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+                const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
                 if (!authData) return null;
                 const parsedAuth = JSON.parse(authData);
-                return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+                return (
+                  parsedAuth.token ||
+                  parsedAuth.access_token ||
+                  parsedAuth.accessToken ||
+                  null
+                );
               } catch (error) {
                 return null;
               }
             })();
 
-            const customerResponse = await fetch(`${import.meta.env.VITE_APP_API_URL}/customers/${data.customer_id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            });
+            const customerResponse = await fetch(
+              `${import.meta.env.VITE_APP_API_URL}/customers/${data.customer_id}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              },
+            );
 
             const customerDetails = await customerResponse.json();
 
@@ -114,19 +137,25 @@ const QuotationPreviewPage: React.FC = () => {
               selectedCustomer: {
                 ...data.customer,
                 ...customerDetails,
-                billing_address: customerDetails.billing_address || data.customer?.billing_address,
-                shipping_address: customerDetails.shipping_address || data.customer?.shipping_address,
+                billing_address:
+                  customerDetails.billing_address ||
+                  data.customer?.billing_address,
+                shipping_address:
+                  customerDetails.shipping_address ||
+                  data.customer?.shipping_address,
               },
               quotationItems: data.items.map((item: any) => {
                 // Handle nested discount object
-                const discount = typeof item.discount?.discount_percentage === 'object'
-                  ? item.discount.discount_percentage.discount_percentage
-                  : item.discount?.discount_percentage || 0;
+                const discount =
+                  typeof item.discount?.discount_percentage === "object"
+                    ? item.discount.discount_percentage.discount_percentage
+                    : item.discount?.discount_percentage || 0;
 
                 // Handle nested tax object
-                const tax = typeof item.tax?.tax_percentage === 'object'
-                  ? item.tax.tax_percentage.tax_percentage
-                  : item.tax?.tax_percentage || 0;
+                const tax =
+                  typeof item.tax?.tax_percentage === "object"
+                    ? item.tax.tax_percentage.tax_percentage
+                    : item.tax?.tax_percentage || 0;
 
                 return {
                   id: item.uuid,
@@ -138,14 +167,17 @@ const QuotationPreviewPage: React.FC = () => {
                   discount: discount,
                   tax: tax,
                   amount: item.total_price || 0,
-                  measuring_unit_id: item.measuring_unit_id || 1
+                  measuring_unit_id: item.measuring_unit_id || 1,
                 };
               }),
               notes: data.notes,
               terms: data.terms_and_conditions,
-              business: data.business // Include business info from DB
+              business: data.business, // Include business info from DB
             };
-            console.log("=== Final transformed data with business:", transformedData);
+            console.log(
+              "=== Final transformed data with business:",
+              transformedData,
+            );
             setFetchedData(transformedData);
           }
         } finally {
@@ -173,13 +205,30 @@ const QuotationPreviewPage: React.FC = () => {
 
   const calculateTotals = () => {
     const items = quotationData.quotationItems || [];
-    const subtotal = items.reduce((sum, item) => sum + (item.price_per_item * item.quantity), 0);
-    const totalDiscount = items.reduce((sum, item) => sum + (item.price_per_item * item.quantity * item.discount) / 100, 0);
-    const totalTax = items.reduce((sum, item) => sum + ((item.price_per_item * item.quantity * (1 - item.discount / 100)) * item.tax) / 100, 0);
+    const subtotal = items.reduce(
+      (sum, item) => sum + item.price_per_item * item.quantity,
+      0,
+    );
+    const totalDiscount = items.reduce(
+      (sum, item) =>
+        sum + (item.price_per_item * item.quantity * item.discount) / 100,
+      0,
+    );
+    const totalTax = items.reduce(
+      (sum, item) =>
+        sum +
+        (item.price_per_item *
+          item.quantity *
+          (1 - item.discount / 100) *
+          item.tax) /
+          100,
+      0,
+    );
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
     const taxableAmount = subtotal - totalDiscount;
-    const effectiveTaxRate = taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
+    const effectiveTaxRate =
+      taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
 
     return {
       subtotal,
@@ -189,12 +238,15 @@ const QuotationPreviewPage: React.FC = () => {
       totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
       totalCGST: totalTax / 2,
       totalSGST: totalTax / 2,
-      primaryTax: effectiveTaxRate
+      primaryTax: effectiveTaxRate,
     };
   };
 
   const totals = calculateTotals();
-  const locationState = location.state as { quotationData?: any; quotationId?: string };
+  const locationState = location.state as {
+    quotationData?: any;
+    quotationId?: string;
+  };
   const isAlreadySaved = !!locationState?.quotationId || !!id;
 
   // const totals = calculateTotals();
@@ -231,7 +283,9 @@ const QuotationPreviewPage: React.FC = () => {
   const handleConvertToInvoice = async () => {
     const quotationId = id || location.state?.quotationId;
     if (!quotationId) {
-      toast.error("Please save the quotation first before converting to invoice.");
+      toast.error(
+        "Please save the quotation first before converting to invoice.",
+      );
       return;
     }
     // Navigate to CreateInvoicePage with quotation data
@@ -257,14 +311,16 @@ const QuotationPreviewPage: React.FC = () => {
         backgroundColor: "#ffffff",
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
-        onclone: (clonedDoc: { getElementById: (arg0: string) => any; }) => {
+        onclone: (clonedDoc: { getElementById: (arg0: string) => any }) => {
           // You can modify the cloned element here if needed for PDF-only styles
-          const clonedElement = clonedDoc.getElementById('quotation-print-area');
+          const clonedElement = clonedDoc.getElementById(
+            "quotation-print-area",
+          );
           if (clonedElement) {
-            clonedElement.style.height = 'auto';
-            clonedElement.style.overflow = 'visible';
+            clonedElement.style.height = "auto";
+            clonedElement.style.overflow = "visible";
           }
-        }
+        },
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -310,17 +366,23 @@ const QuotationPreviewPage: React.FC = () => {
     const shareToast = toast.loading("Preparing for share...");
     try {
       const canvas = await html2canvas(quotationRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error("Failed to generate blob"));
-      }, "image/png"));
-      const file = new File([blob], `Quotation-${quotationData.quotationNo}.png`, { type: "image/png" });
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error("Failed to generate blob"));
+        }, "image/png"),
+      );
+      const file = new File(
+        [blob],
+        `Quotation-${quotationData.quotationNo}.png`,
+        { type: "image/png" },
+      );
 
       if (navigator.share) {
         await navigator.share({
           files: [file],
           title: `Quotation ${quotationData.quotationNo}`,
-          text: `Check out our quotation: ${quotationData.quotationNo}`
+          text: `Check out our quotation: ${quotationData.quotationNo}`,
         });
         toast.success("Shared successfully", { id: shareToast });
       } else {
@@ -329,7 +391,9 @@ const QuotationPreviewPage: React.FC = () => {
         a.href = url;
         a.download = `Quotation-${quotationData.quotationNo}.png`;
         a.click();
-        toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+        toast.success("Image saved (Direct sharing not supported)", {
+          id: shareToast,
+        });
       }
     } catch (error) {
       toast.error("Failed to share", { id: shareToast });
@@ -342,9 +406,42 @@ const QuotationPreviewPage: React.FC = () => {
 
   const formatNumberInWords = (num: number) => {
     if (!Number.isFinite(num)) return "Zero Rupees";
-    const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
-    const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const units = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+    ];
+    const teens = [
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
 
     const twoDigits = (value: number) => {
       if (value === 0) return "";
@@ -370,11 +467,20 @@ const QuotationPreviewPage: React.FC = () => {
       const parts: string[] = [];
 
       const crore = Math.floor(remainder / 10000000);
-      if (crore) { parts.push(`${threeDigits(crore)} Crore`); remainder %= 10000000; }
+      if (crore) {
+        parts.push(`${threeDigits(crore)} Crore`);
+        remainder %= 10000000;
+      }
       const lakh = Math.floor(remainder / 100000);
-      if (lakh) { parts.push(`${threeDigits(lakh)} Lakh`); remainder %= 100000; }
+      if (lakh) {
+        parts.push(`${threeDigits(lakh)} Lakh`);
+        remainder %= 100000;
+      }
       const thousand = Math.floor(remainder / 1000);
-      if (thousand) { parts.push(`${threeDigits(thousand)} Thousand`); remainder %= 1000; }
+      if (thousand) {
+        parts.push(`${threeDigits(thousand)} Thousand`);
+        remainder %= 1000;
+      }
       const rest = remainder;
       if (rest) parts.push(threeDigits(rest));
       return parts.join(" ");
@@ -391,13 +497,23 @@ const QuotationPreviewPage: React.FC = () => {
 
   const getAuthBusinessInfo = () => {
     // 1. Try to get business info from the fetched quotation itself if it exists (Data from DB)
-    const fetchedBusiness = fetchedData?.business || (fetchedData as any)?.business;
+    const fetchedBusiness =
+      fetchedData?.business || (fetchedData as any)?.business;
     if (fetchedBusiness) {
       return {
-        name: fetchedBusiness.company_name || fetchedBusiness.name || fetchedBusiness.company || "Evoto Technologies",
+        name:
+          fetchedBusiness.company_name ||
+          fetchedBusiness.name ||
+          fetchedBusiness.company ||
+          "Evoto Technologies",
         email: fetchedBusiness.email || currentUser?.email,
-        phone: fetchedBusiness.phone_number || fetchedBusiness.phone || fetchedBusiness.mobile || currentUser?.phone,
-        address: fetchedBusiness.address || fetchedBusiness.billing_address || null
+        phone:
+          fetchedBusiness.phone_number ||
+          fetchedBusiness.phone ||
+          fetchedBusiness.mobile ||
+          currentUser?.phone,
+        address:
+          fetchedBusiness.address || fetchedBusiness.billing_address || null,
       };
     }
 
@@ -407,18 +523,32 @@ const QuotationPreviewPage: React.FC = () => {
       if (authData) {
         const parsedAuth = JSON.parse(authData);
         const user = parsedAuth.user;
-        const business = parsedAuth.business || parsedAuth.business_profile || (user?.businesses && user.businesses[0]);
+        const business =
+          parsedAuth.business ||
+          parsedAuth.business_profile ||
+          (user?.businesses && user.businesses[0]);
 
         if (business) {
           return {
-            name: business.company_name || business.name || business.company || "Evoto Technologies",
+            name:
+              business.company_name ||
+              business.name ||
+              business.company ||
+              "Evoto Technologies",
             email: business.email || currentUser?.email,
             address: business.address || null,
-            phone: business.phone_number || business.phone || business.mobile || currentUser?.phone || "N/A",
+            phone:
+              business.phone_number ||
+              business.phone ||
+              business.mobile ||
+              currentUser?.phone ||
+              "N/A",
           };
         }
       }
-    } catch (e) { /* silent catch */ }
+    } catch (e) {
+      /* silent catch */
+    }
 
     // 3. Fallback to currentUser from context (User Profile)
     if (!currentUser) return null;
@@ -427,16 +557,28 @@ const QuotationPreviewPage: React.FC = () => {
     const userBusiness = (currentUser as any).businesses?.[0];
     if (userBusiness) {
       return {
-        name: userBusiness.name || userBusiness.company_name || "Evoto Technologies",
+        name:
+          userBusiness.name ||
+          userBusiness.company_name ||
+          "Evoto Technologies",
         email: currentUser.email,
         address: (currentUser as any).address || null,
-        phone: userBusiness.phone_number || userBusiness.phone || userBusiness.mobile || (currentUser as any).phone || (currentUser as any).mobile
+        phone:
+          userBusiness.phone_number ||
+          userBusiness.phone ||
+          userBusiness.mobile ||
+          (currentUser as any).phone ||
+          (currentUser as any).mobile,
       };
     }
 
     // Final fallback to company fields on user object or hardcoded default
     return {
-      name: (currentUser as any).company_name || currentUser.companyName || (currentUser as any).business_name || "Evoto Technologies",
+      name:
+        (currentUser as any).company_name ||
+        currentUser.companyName ||
+        (currentUser as any).business_name ||
+        "Evoto Technologies",
       email: currentUser.email,
       address: (currentUser as any).address || null,
       phone: (currentUser as any).phone || (currentUser as any).mobile || "N/A",
@@ -481,7 +623,9 @@ const QuotationPreviewPage: React.FC = () => {
     if (!customer) return null;
     let address =
       type === "shipping"
-        ? customer.shipping_address || customer.shippingAddress || customer.shipping_addresses
+        ? customer.shipping_address ||
+          customer.shippingAddress ||
+          customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
@@ -492,8 +636,16 @@ const QuotationPreviewPage: React.FC = () => {
     if (!address) {
       const prefix = type === "shipping" ? "shipping_" : "";
       const addressData = {
-        address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
-        address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
+        address1:
+          customer[`${prefix}address1`] ||
+          customer[`${prefix}address_line1`] ||
+          customer.address1 ||
+          customer.address_line1,
+        address2:
+          customer[`${prefix}address2`] ||
+          customer[`${prefix}address_line2`] ||
+          customer.address2 ||
+          customer.address_line2,
         city: customer[`${prefix}city`] || customer.city,
         state: customer[`${prefix}state`] || customer.state,
         country: customer[`${prefix}country`] || customer.country,
@@ -501,7 +653,7 @@ const QuotationPreviewPage: React.FC = () => {
       };
 
       // Check if we actually found any address data
-      if (Object.values(addressData).some(val => !!val)) {
+      if (Object.values(addressData).some((val) => !!val)) {
         address = addressData;
       }
     }
@@ -510,18 +662,29 @@ const QuotationPreviewPage: React.FC = () => {
   };
 
   const getMeasuringUnit = (unitId?: number) => {
-    const units: { [key: number]: string } = { 1: "PCS", 2: "KG", 3: "LTR", 4: "MTR" };
+    const units: { [key: number]: string } = {
+      1: "PCS",
+      2: "KG",
+      3: "LTR",
+      4: "MTR",
+    };
     return units[unitId || 1] || "PCS";
   };
-
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative">
       {isLoading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
           <div className="flex flex-col items-center gap-4">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
-            <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Fetching Quotation Details...</p>
+            <SpinnerDotted
+              size={50}
+              thickness={100}
+              speed={100}
+              color="#1B84FF"
+            />
+            <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">
+              Fetching Quotation Details...
+            </p>
           </div>
         </div>
       )}
@@ -570,9 +733,17 @@ const QuotationPreviewPage: React.FC = () => {
       <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/quotes/list")}><ArrowLeft className="h-4 w-4" /></Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/quotes/list")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <div>
-              <h1 className="text-xl font-semibold text-black">Quotation #{quotationData.quotationNo || "1"}</h1>
+              <h1 className="text-xl font-semibold text-black">
+                Quotation #{quotationData.quotationNo || "1"}
+              </h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -595,21 +766,39 @@ const QuotationPreviewPage: React.FC = () => {
         </div>
       </div>
 
-      <div id="quotation-print-area" ref={quotationRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
+      <div
+        id="quotation-print-area"
+        ref={quotationRef}
+        className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm"
+      >
         <div className="mb-8 flex justify-between items-start">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
                 <div className="mt-12">
-                  <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
-                  {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-                  {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                  {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
+                  <h1 className="text-2xl font-semibold text-black leading-tight">
+                    {businessInfo?.name || "Evoto Technologies"}
+                  </h1>
+                  {businessInfo?.email && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.email}
+                    </p>
+                  )}
+                  {businessInfo?.phone && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.phone}
+                    </p>
+                  )}
+                  {businessInfo?.address && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.address}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col items-end -mt-8">
                   <img
-                    src={toAbsoluteUrl('/media/app/Evoto-Logo.png')}
+                    src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
                     className="h-40 w-auto object-contain"
                     alt="Evoto Technologies"
                   />
@@ -622,13 +811,19 @@ const QuotationPreviewPage: React.FC = () => {
         <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
           {/* Labels Row */}
           <div className="px-4 py-1 border-b border-black bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Quotation No.</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Quotation No.
+            </p>
           </div>
           <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Quotation Date</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Quotation Date
+            </p>
           </div>
           <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Expiry Date</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Expiry Date
+            </p>
           </div>
 
           {/* Values Row */}
@@ -636,19 +831,29 @@ const QuotationPreviewPage: React.FC = () => {
             <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
           </div>
           <div className="px-4 py-1 border-x border-black text-center">
-            <p className="text-[14px] font-normal text-black">{new Date(quotationData.quotationDate).toLocaleDateString('en-IN')}</p>
+            <p className="text-[14px] font-normal text-black">
+              {new Date(quotationData.quotationDate).toLocaleDateString(
+                "en-IN",
+              )}
+            </p>
           </div>
           <div className="px-4 py-1 text-right">
-            <p className="text-[14px] font-normal text-black">{new Date(quotationData.validityDate).toLocaleDateString('en-IN')}</p>
+            <p className="text-[14px] font-normal text-black">
+              {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-12 mb-12">
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+              BILL TO
+            </h3>
             <div className="space-y-1 text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
+                {quotationData.selectedCustomer
+                  ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}`
+                  : "N/A"}
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
@@ -658,19 +863,23 @@ const QuotationPreviewPage: React.FC = () => {
                   } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
-                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                  <p className="text-gray-600">
+                    {quotationData.selectedCustomer.company_name}
+                  </p>
                 )}
                 {/* {quotationData.selectedCustomer && (
                   <p className="text-gray-600">Mobile: {quotationData.selectedCustomer.mobile}</p>
                 )} */}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {quotationData.selectedCustomer.email}
                   </p>
                 )}
                 {quotationData.selectedCustomer?.mobile && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {quotationData.selectedCustomer.mobile}
                   </p>
                 )}
                 {quotationData.selectedCustomer?.gst && (
@@ -685,10 +894,14 @@ const QuotationPreviewPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+              SHIP TO
+            </h3>
             <div className="text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {quotationData.selectedCustomer ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}` : 'N/A'}
+                {quotationData.selectedCustomer
+                  ? `${quotationData.selectedCustomer.first_name} ${quotationData.selectedCustomer.last_name}`
+                  : "N/A"}
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
@@ -698,16 +911,20 @@ const QuotationPreviewPage: React.FC = () => {
                   } */}
                 </p>
                 {quotationData.selectedCustomer?.company_name && (
-                  <p className="text-gray-600">{quotationData.selectedCustomer.company_name}</p>
+                  <p className="text-gray-600">
+                    {quotationData.selectedCustomer.company_name}
+                  </p>
                 )}
                 {quotationData.selectedCustomer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {quotationData.selectedCustomer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {quotationData.selectedCustomer.email}
                   </p>
                 )}
                 {quotationData.selectedCustomer && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {quotationData.selectedCustomer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {quotationData.selectedCustomer.mobile}
                   </p>
                 )}
                 {quotationData.selectedCustomer?.gst && (
@@ -727,12 +944,24 @@ const QuotationPreviewPage: React.FC = () => {
           <table className="w-full border border-black">
             <thead>
               <tr className="border-b-2 border-black bg-gray-100">
-                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
-                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
+                  Item DESCRIPTION
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  QTY
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">
+                  PRICE/ITEM
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  DISC.
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  TAX
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">
+                  TOTAL
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
@@ -740,42 +969,88 @@ const QuotationPreviewPage: React.FC = () => {
                 <tr key={item.id}>
                   <td className="px-3 py-2 align-top border-r border-black">
                     <div className="flex items-start gap-1">
-                      <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
+                      <span className="font-medium text-sm text-black min-w-[20px]">
+                        {index + 1}.
+                      </span>
                       <div className="flex-1">
-                        <p className="font-medium text-sm text-black leading-snug">{item.item_name}</p>
+                        <p className="font-medium text-sm text-black leading-snug">
+                          {item.item_name}
+                        </p>
                         {item.description && (
-                          <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
+                          <p className="text-xs text-black mt-1 leading-relaxed">
+                            {item.description}
+                          </p>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                    {item.quantity}{" "}
+                    <span className="text-[10px] ml-0.5">
+                      {getMeasuringUnit(item.measuring_unit_id)}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.price_per_item)}</td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    {formatCurrency(item.price_per_item)}
+                  </td>
                   <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     <div className="flex flex-col items-end">
-                      <span>-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</span>
-                      {item.discount > 0 && <span className="text-[10px]">({item.discount}%)</span>}
+                      <span>
+                        -
+                        {formatCurrency(
+                          (item.price_per_item *
+                            item.quantity *
+                            item.discount) /
+                            100,
+                        )}
+                      </span>
+                      {item.discount > 0 && (
+                        <span className="text-[10px]">({item.discount}%)</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     <div className="flex flex-col items-end">
-                      <span>{formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}</span>
-                      {item.tax > 0 && <span className="text-[10px]">({item.tax}%)</span>}
+                      <span>
+                        {formatCurrency(
+                          (item.price_per_item *
+                            item.quantity *
+                            (1 - item.discount / 100) *
+                            item.tax) /
+                            100,
+                        )}
+                      </span>
+                      {item.tax > 0 && (
+                        <span className="text-[10px]">({item.tax}%)</span>
+                      )}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">
+                    {formatCurrency(item.amount)}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(totals.totalAmount)}</td>
+                <td
+                  colSpan={2}
+                  className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black"
+                >
+                  SUBTOTAL
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  {formatCurrency(totals.subtotal)}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  -{formatCurrency(totals.totalDiscount)}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  {formatCurrency(totals.totalTax)}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">
+                  {formatCurrency(totals.totalAmount)}
+                </td>
               </tr>
             </tfoot>
           </table>
