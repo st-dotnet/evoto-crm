@@ -10,6 +10,7 @@ from app.utils.lead_utils import sync_lead_to_customer
 from flask import current_app
 from sqlalchemy import String, cast, or_, func
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import IntegrityError
 from io import BytesIO
 from flask import send_file
 from openpyxl import Workbook

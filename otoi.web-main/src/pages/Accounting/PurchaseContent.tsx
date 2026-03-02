@@ -8,6 +8,7 @@ import {
     KeenIcon,
     DataGridRowSelectAll,
     DataGridRowSelect,
+    useDataGrid,
 } from "@/components";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -102,8 +103,8 @@ const Toolbar = ({
     }, [purchases, searchInput]);
 
     return (
-        <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-            <div className="flex grow md:grow-0">
+        <div className="card-header flex justify-between items-center flex-wrap gap-4 border-b-0 px-5 py-4">
+            <div className="flex grow w-full md:w-auto">
                 <Popover open={open} onOpenChange={setOpen}>
                     <div className="relative w-full md:w-64 lg:w-72">
                         <PopoverTrigger asChild>
@@ -139,11 +140,11 @@ const Toolbar = ({
                     >
                         <Command>
                             <CommandList>
-                                {filteredPurchases.length === 0 && (
+                                {(filteredPurchases || [])?.length === 0 && (
                                     <CommandEmpty>No invoice found.</CommandEmpty>
                                 )}
                                 <CommandGroup>
-                                    {filteredPurchases?.map((customer) => (
+                                    {(filteredPurchases || [])?.map((customer) => (
                                         <CommandItem
                                             key={customer?.uuid}
                                             value={customer?.name}
@@ -185,6 +186,91 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
     useEffect(() => {
         setRefreshKey((prev) => prev + 1);
     }, [refreshStatus, searchQuery]);
+
+    const MobileView = () => {
+        const { table, loading: gridLoading, props } = useDataGrid();
+        const rows = table.getRowModel().rows;
+        const { onEdit, onDelete, onDetails } = props as any;
+
+        if (gridLoading && rows.length === 0) return null;
+
+        return (
+            <div className="flex flex-col lg:hidden border-t border-gray-100">
+                {(rows || []).map((row: any) => {
+                    const purchase = row.original as PurchaseEntry;
+                    return (
+                        <div
+                            key={purchase.uuid}
+                            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+                        >
+                            <div
+                                className="flex flex-col cursor-pointer grow pr-4"
+                                onClick={() => {
+                                    // navigation to details if available
+                                }}
+                            >
+                                <span className="font-semibold text-gray-900 text-sm mb-0.5">
+                                    Invoice: {purchase.invoice_number}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                                        ₹ {purchase.amount?.toLocaleString('en-IN')}
+                                    </span>
+                                    <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
+                                        • {purchase.date}
+                                    </span>
+                                    {purchase.entered_bill && (
+                                        <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
+                                            Register
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                                        <MoreVertical className="h-4.5 w-4.5" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+                                    <DropdownMenuItem
+                                        className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                                        onClick={async () => {
+                                            const details = await fetchPurchaseDetails(purchase.uuid!);
+                                            if (details) setModalOpen(true);
+                                        }}
+                                    >
+                                        <Edit className="mr-1 h-4 w-2 text-gray-500" />
+                                        Edit
+                                    </DropdownMenuItem>
+                                    <div className="my-1 border-t border-gray-100"></div>
+                                    <DropdownMenuItem
+                                        className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                                        onClick={async () => {
+                                            const details = await fetchPurchaseDetails(purchase.uuid!);
+                                            if (details) setShowDeleteDialog(true);
+                                        }}
+                                    >
+                                        <Trash2 className="mr-1 h-4 w-2" />
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    );
+                })}
+                {rows.length === 0 && !gridLoading && (
+                    <div className="p-16 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
+                            <span className="text-gray-400 text-sm font-medium">No purchase entries found.</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const fetchPurchaseEntries = async (params: TDataGridRequestParams) => {
         try {
@@ -349,8 +435,23 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
                         setSearch={setSearchQuery}
                     />
                 }
-                layout={{ card: true }}
-            />
+                layout={{
+                    card: true,
+                    classes: {
+                        container: 'hidden lg:block'
+                    }
+                }}
+                onEdit={async (purchase: PurchaseEntry) => {
+                    const details = await fetchPurchaseDetails(purchase.uuid!);
+                    if (details) setModalOpen(true);
+                }}
+                onDelete={(purchase: PurchaseEntry) => {
+                    setSelectedEntry(purchase);
+                    setShowDeleteDialog(true);
+                }}
+            >
+                <MobileView />
+            </DataGrid>
 
             <ModalPurchase
                 open={modalOpen}
@@ -364,19 +465,19 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
             />
 
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="sm:max-w-[420px] p-6">
+                <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
                     <DialogHeader className="flex flex-col items-center text-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
                             <AlertCircle className="h-6 w-6 text-red-600" />
                         </div>
-                        <DialogTitle>Delete Purchase Entry</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-lg font-semibold">Delete Purchase Entry</DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
                             Are you sure you want to delete invoice <strong>{selectedEntry?.invoice_number}</strong>?
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="flex gap-3">
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="px-14">Cancel</Button>
-                        <Button variant="destructive" onClick={() => deleteEntry(selectedEntry?.uuid || "")} className="bg-red-600 hover:bg-red-700 px-14">Delete</Button>
+                    <DialogFooter className="flex flex-row gap-3 mt-2">
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="flex-1">Cancel</Button>
+                        <Button variant="destructive" onClick={() => deleteEntry(selectedEntry?.uuid || "")} className="flex-1 bg-red-600 hover:bg-red-700">Delete</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

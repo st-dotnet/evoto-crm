@@ -209,7 +209,7 @@ def get_all_users():
             return jsonify([
                 {
                     "uuid": str(user.uuid),
-                    "name": f"{user.firstName} {user.lastName}".strip()
+                    "name": f"{user.firstName} {user.lastName if user.lastName else ''}".strip()
                 }
                 for user in query.all()
             ])

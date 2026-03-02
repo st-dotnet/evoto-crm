@@ -16,7 +16,7 @@ const HeaderLogo = () => {
   };
 
   return (
-    <div className="flex gap-1 lg:hidden items-center -ms-1">
+    <div className="flex gap-0.5 sm:gap-1 lg:hidden items-center -ms-1">
       <Link to="/" className="shrink-0">
         <img
           src={toAbsoluteUrl('/media/app/mini-logo.svg')}

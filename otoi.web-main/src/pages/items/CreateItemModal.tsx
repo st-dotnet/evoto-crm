@@ -79,13 +79,16 @@ const saveItemSchema = Yup.object().shape({
     item_type_id: Yup.number().required(),
 
     item_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("Item name is required"),
 
     category_id: Yup.string().required("Category is required"),
 
-    item_code: Yup.string().required("Item code is required"),
+    item_code: Yup.string()
+        .trim()
+        .required("Item code is required"),
 
     sales_price: Yup.number()
         .typeError("Sales price must be a number")
@@ -144,16 +147,16 @@ export default function CreateItemModal({
 
             try {
                 const postData: Partial<IItem> = {
-                    item_name: values.item_name,
+                    item_name: values.item_name?.trim(),
                     item_type_id: values.item_type_id,
                     category_id: values.category_id || null,  // Ensure we send null instead of empty string
                     sales_price: Number(values.sales_price),
                     gst_tax_rate: Number(values.gst_tax_rate),
                     measuring_unit_id: values.measuring_unit_id,
                     // Only include item_code if it has changed from the original value
-                    ...(values.item_code !== item?.item_code && { item_code: values.item_code || null }),
-                    hsn_code: isService ? null : values.hsn_code || null,
-                    description: values.description || null,
+                    ...(values.item_code?.trim() !== item?.item_code?.trim() && { item_code: values.item_code?.trim() || null }),
+                    hsn_code: isService ? null : values.hsn_code?.trim() || null,
+                    description: values.description?.trim() || null,
                     show_in_online_store: Boolean(values.show_in_online_store),
                     tax_type: values.tax_type || "with_tax",
 
@@ -194,11 +197,11 @@ export default function CreateItemModal({
                     }
                 }
             } catch (error: any) {
-                
+
                 // Get the error message from the error object
-                let errorMessage = error?.message || 
-                                 error?.response?.data?.message || 
-                                 "An error occurred while saving the item.";
+                let errorMessage = error?.message ||
+                    error?.response?.data?.message ||
+                    "An error occurred while saving the item.";
 
                 // If the error is about duplicate item code, show a specific message
                 if (errorMessage.toLowerCase().includes('item code') && errorMessage.toLowerCase().includes('already exists')) {
@@ -208,7 +211,7 @@ export default function CreateItemModal({
                 // Set the status and show error toast
                 setStatus(errorMessage);
                 toast.error(errorMessage);
-            
+
             } finally {
                 setLoading(false);
                 setSubmitting(false);
@@ -371,31 +374,31 @@ export default function CreateItemModal({
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-[900px] p-0 rounded-lg shadow-lg h-[80vh] flex flex-col">
+                <DialogContent className="max-w-[900px] w-[95vw] p-0 rounded-lg shadow-lg h-[90vh] md:h-[80vh] flex flex-col overflow-hidden">
                     <DialogHeader className="bg-gray-50 p-6 border-b">
                         <DialogTitle className="text-lg font-semibold text-gray-800">
                             {item ? "Edit Item" : "Create New Item"}
                         </DialogTitle>
                     </DialogHeader>
 
-                    <DialogBody className="overflow-y-auto max-h-[70vh] flex-1">
-                        <div className="flex h-full">
+                    <DialogBody className="overflow-y-auto flex-1 p-0">
+                        <div className="flex flex-col md:flex-row h-full">
                             {/* Left Sidebar */}
-                            <div className="w-64 p-4 bg-gray-50 border-r overflow-y-auto">
+                            <div className="w-full md:w-64 p-2 md:p-4 bg-gray-50 border-b md:border-r overflow-x-auto md:overflow-y-auto flex md:flex-col gap-2 md:gap-0 sticky top-0 z-10">
                                 <div
                                     className={clsx(
-                                        "p-2 rounded mb-4 cursor-pointer",
+                                        "p-1.5 md:p-2 rounded mb-0 md:mb-4 cursor-pointer whitespace-nowrap text-xs md:text-sm",
                                         activeSection === "basic" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
                                     )}
                                     onClick={() => setActiveSection("basic")}
                                 >
                                     <button>Basic Details <span className="text-red-500">*</span></button>
                                 </div>
-                                <h2 className="text-sm font-bold text-black-500 mb-2">Advance Details</h2>
+                                <h2 className="hidden md:block text-sm font-bold text-black-500 mb-2">Advance Details</h2>
                                 {formik.values.item_type_id === 2 ? (
                                     <div
                                         className={clsx(
-                                            "p-2 rounded mb-2 cursor-pointer",
+                                            "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer whitespace-nowrap text-xs md:text-sm",
                                             activeSection === "other" ? "bg-purple-100 text-purple-800" : "text-gray-500"
                                         )}
                                         onClick={() => setActiveSection("other")}
@@ -406,7 +409,7 @@ export default function CreateItemModal({
                                     <>
                                         <div
                                             className={clsx(
-                                                "p-2 rounded mb-2 cursor-pointer",
+                                                "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer whitespace-nowrap text-xs md:text-sm",
                                                 activeSection === "stock" ? "bg-purple-100 text-purple-800" : "text-gray-500"
                                             )}
                                             onClick={() => setActiveSection("stock")}
@@ -415,7 +418,7 @@ export default function CreateItemModal({
                                         </div>
                                         <div
                                             className={clsx(
-                                                "p-2 mb-2 rounded cursor-pointer",
+                                                "p-1.5 md:p-2 mb-0 md:mb-2 rounded cursor-pointer whitespace-nowrap text-xs md:text-sm",
                                                 activeSection === "price" ? "bg-purple-100 text-purple-800" : "text-gray-500 hover:bg-gray-100"
                                             )}
                                             onClick={() => setActiveSection("price")}
@@ -428,8 +431,8 @@ export default function CreateItemModal({
 
 
                             {/* Right Form Section */}
-                            <div className="flex-1 p-6 overflow-y-auto">
-                                <form id="item-form" onSubmit={formik.handleSubmit} className="space-y-4">
+                            <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+                                <form id="item-form" onSubmit={formik.handleSubmit} className="space-y-6">
                                     {formik.status && (
                                         <Alert variant="danger" className="mb-4">
                                             {formik.status}
@@ -440,24 +443,26 @@ export default function CreateItemModal({
                                     {activeSection === "basic" && (
                                         <>
                                             {/* Item Type */}
-                                            <div className="flex items-center gap-6 mb-4">
-                                                <label className="font-medium">Item Type<span className="text-red-500">*</span></label>
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mb-4">
+                                                <label className="font-medium text-sm md:text-base">Item Type<span className="text-red-500">*</span></label>
                                                 <div className="flex gap-4">
-                                                    <label className="flex items-center gap-1">
+                                                    <label className="flex items-center gap-1 text-sm md:text-base cursor-pointer">
                                                         <input
                                                             type="radio"
                                                             checked={formik.values.item_type_id === 1}
                                                             onChange={() => formik.setFieldValue("item_type_id", 1)}
                                                             disabled={isEditing} // Disable during edit mode
+                                                            className="size-4"
                                                         />
                                                         Product
                                                     </label>
-                                                    <label className="flex items-center gap-1">
+                                                    <label className="flex items-center gap-1 text-sm md:text-base cursor-pointer">
                                                         <input
                                                             type="radio"
                                                             checked={formik.values.item_type_id === 2}
                                                             onChange={() => formik.setFieldValue("item_type_id", 2)}
                                                             disabled={isEditing} // Disable during edit mode
+                                                            className="size-4"
                                                         />
                                                         Service
                                                     </label>
@@ -466,8 +471,8 @@ export default function CreateItemModal({
 
 
                                             {/* Item Name or Service Name and Category */}
-                                            <div className="flex gap-4 mb-4">
-                                                <div className="flex-1">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">
                                                         {formik.values.item_type_id === 2 ? (
                                                             <>Service Name <span className="text-red-500">*</span></>
@@ -480,7 +485,7 @@ export default function CreateItemModal({
                                                         type="text"
                                                         placeholder={formik.values.item_type_id === 2 ? "ex: Mobile service" : "ex: Maggie 20gm"}
                                                         className={clsx(
-                                                            "w-full p-2 border rounded",
+                                                            "w-full p-2 border rounded text-sm md:text-base",
                                                             { "border-red-500": formik.touched.item_name && formik.errors.item_name }
                                                         )}
                                                         {...formik.getFieldProps("item_name")}
@@ -491,13 +496,13 @@ export default function CreateItemModal({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-1">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">
                                                         Category <span className="text-red-500">*</span>
                                                     </label>
 
                                                     <select
-                                                        className={`w-full p-2 border rounded ${formik.touched.category_id && formik.errors.category_id
+                                                        className={`w-full p-2 border rounded text-sm md:text-base ${formik.touched.category_id && formik.errors.category_id
                                                             ? "border-red-500"
                                                             : "border-gray-300"
                                                             }`}
@@ -543,18 +548,18 @@ export default function CreateItemModal({
                                             </div> */}
 
                                             {/* Sales Price and GST Tax Rate */}
-                                            <div className="flex gap-4 mb-4">
-                                                <div className="flex-1">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">Sales Price</label>
                                                     <div className="flex">
-                                                        <span className="p-2 border rounded-l bg-gray-100">₹</span>
+                                                        <span className="p-2 border rounded-l bg-gray-100 text-sm md:text-base">₹</span>
                                                         <input
                                                             type="text"
                                                             placeholder="ex: ₹200"
                                                             inputMode="numeric"
                                                             pattern="[0-9]*"
                                                             className={clsx(
-                                                                "flex-1 p-2 border rounded-r",
+                                                                "flex-1 p-2 border rounded-r text-sm md:text-base",
                                                                 {
                                                                     "border-red-500":
                                                                         formik.touched.sales_price && formik.errors.sales_price,
@@ -573,10 +578,10 @@ export default function CreateItemModal({
                                                         <div className="text-red-500 text-xs mt-1">{formik.errors.sales_price}</div>
                                                     )}
                                                 </div>
-                                                <div className="flex-1">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">GST Tax Rate(%)</label>
                                                     <select
-                                                        className="w-full p-2 border rounded"
+                                                        className="w-full p-2 border rounded text-sm md:text-base"
                                                         {...formik.getFieldProps("gst_tax_rate")}
                                                     >
                                                         <option value="">None</option>
@@ -589,11 +594,11 @@ export default function CreateItemModal({
                                             </div>
 
                                             {/* Measuring Unit and Opening Stock or Service Code */}
-                                            <div className="flex gap-4">
-                                                <div className="flex-1">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">Measuring Unit</label>
                                                     <select
-                                                        className="w-full p-2 border rounded"
+                                                        className="w-full p-2 border rounded text-sm md:text-base"
                                                         value={formik.values.measuring_unit_id}
                                                         onChange={(e) => formik.setFieldValue("measuring_unit_id", Number(e.target.value) as 1 | 2 | 3)}
                                                     >
@@ -603,7 +608,7 @@ export default function CreateItemModal({
                                                         {/* <option value={4}>Meter (MTR)</option> */}
                                                     </select>
                                                 </div>
-                                                <div className="flex-1">
+                                                <div>
                                                     <label className="block text-sm font-medium mb-1">
                                                         {formik.values.item_type_id === 2 ? (
                                                             <>Service Code <span className="text-red-500">*</span></>
@@ -617,7 +622,7 @@ export default function CreateItemModal({
                                                                 type="text"
                                                                 placeholder="Enter Service Code"
                                                                 className={clsx(
-                                                                    "w-full p-2 border rounded",
+                                                                    "w-full p-2 border rounded text-sm md:text-base",
                                                                     { "border-red-500": formik.touched.item_code && formik.errors.item_code }
                                                                 )}
                                                                 {...formik.getFieldProps("item_code")}
@@ -633,7 +638,7 @@ export default function CreateItemModal({
                                                             <input
                                                                 type="text"
                                                                 placeholder="ex: 150 PCS"
-                                                                className="flex-1 p-2 border rounded-l"
+                                                                className="flex-1 p-2 border rounded-l text-sm md:text-base"
                                                                 {...formik.getFieldProps("opening_stock")}
                                                                 onChange={(e) => {
                                                                     const value = e.target.value;
@@ -642,7 +647,7 @@ export default function CreateItemModal({
                                                                     }
                                                                 }}
                                                             />
-                                                            <span className="p-2 border rounded-r bg-gray-100">
+                                                            <span className="p-2 border rounded-r bg-gray-100 text-sm md:text-base">
                                                                 {formik.values.measuring_unit_id === 1 ? "PCS" : "KG"}
                                                             </span>
                                                         </div>
@@ -662,13 +667,14 @@ export default function CreateItemModal({
                             </div>
                         </div>
                     </DialogBody>
-                    <DialogFooter className="bg-gray-50 px-6 py-4 border-t">
-                        <div className="flex justify-end space-x-3">
+                    <DialogFooter className="bg-gray-50 px-4 md:px-6 py-3 md:py-4 border-t">
+                        <div className="flex justify-end space-x-2 md:space-x-3 w-full sm:w-auto">
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={() => onOpenChange(false)}
                                 disabled={loading}
+                                className="flex-1 sm:flex-none text-xs md:text-sm h-9 md:h-10"
                             >
                                 Cancel
                             </Button>
@@ -676,11 +682,11 @@ export default function CreateItemModal({
                                 type="submit"
                                 form="item-form"
                                 disabled={loading || formik.isSubmitting}
-                                className="min-w-[120px]"
+                                className="flex-1 sm:flex-none min-w-0 sm:min-w-[120px] text-xs md:text-sm h-9 md:h-10"
                             >
                                 {loading || formik.isSubmitting ? (
                                     <span className="flex items-center">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 mr-2 h-3 w-3 md:h-4 md:w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -719,16 +725,16 @@ export default function CreateItemModal({
                         <div className="flex justify-end gap-3 pt-2">
                             <Button
                                 variant="outline"
-                                className="rounded-lg px-4 py-2 text-sm"
-                                onClick={() => {setNewCategory(""); setShowCategoryModal(false);}}
+                                className="rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm h-9 md:h-10"
+                                onClick={() => { setNewCategory(""); setShowCategoryModal(false); }}
                                 style={{ background: "white" }}
                             >
                                 Cancel
                             </Button>
 
                             <Button
-                                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white
-          hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg bg-blue-600 px-4 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white
+          hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 h-9 md:h-10"
                                 disabled={!newCategory}
                                 onClick={async () => {
                                     try {

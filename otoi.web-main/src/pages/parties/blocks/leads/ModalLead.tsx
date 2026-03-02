@@ -281,10 +281,10 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         city: values.city,
         state: values.state,
         country: values.country,
-        address1: values.address1,
-        address2: values.address2,
+        address1: values.address1?.trim() || '',
+        address2: values.address2?.trim() || '',
         pin: values.pin,
-        reason: values.reason,
+        reason: values.reason?.trim() || null,
         bypass_duplicate: true, // Allow bypassing duplicate checks
       };
 
@@ -406,17 +406,17 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         }
         onOpenChange(isOpen);
       }}>
-        <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
-          <DialogHeader className="bg-gray-50 p-6 border-b">
-            <DialogTitle className="text-lg font-semibold text-gray-800">
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg">
+          <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b">
+            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
               {lead ? "Edit Lead" : "Add Lead"}
             </DialogTitle>
             <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
           </DialogHeader>
-          <DialogBody className="p-6">
+          <DialogBody className="p-3 sm:p-6">
             <div className="max-w-[auto] w-full">
               <form
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
                 noValidate
                 onSubmit={formik.handleSubmit}
               >
@@ -427,8 +427,8 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 )}
 
                 {/* First Name */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     First Name<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -437,7 +437,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                     autoComplete="off"
                     {...formik.getFieldProps("first_name")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.first_name && formik.errors.first_name,
                       }
@@ -451,8 +451,8 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 </div>
 
                 {/* Last Name */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Last Name<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -461,7 +461,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                     autoComplete="off"
                     {...formik.getFieldProps("last_name")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.last_name && formik.errors.last_name,
                       }
@@ -475,13 +475,13 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 </div>
 
                 {/* Mobile */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Mobile
                   </label>
                   <input
                     {...formik.getFieldProps("mobile")}
-                    className="input"
+                    className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                     type="text"
                     inputMode="tel"
                     onChange={(e) => {
@@ -518,9 +518,9 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                   )}
                 </div>
                 {/* Email */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input {...formik.getFieldProps("email")} className="input" />
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Email</label>
+                  <input {...formik.getFieldProps("email")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm" />
                   {formik.touched.email && formik.errors.email && (
                     <span role="alert" className="text-xs text-red-500">
                       {formik.errors.email}
@@ -529,12 +529,12 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 </div>
 
                 {/* Status */}
-                <div className="flex flex-col gap-1.5 col-span">
-                  <label className="block text-sm font-medium text-gray-700">Status<span style={{ color: "red" }}>*</span></label>
+                <div className="flex flex-col gap-1 col-span">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Status<span style={{ color: "red" }}>*</span></label>
                   <select
                     {...formik.getFieldProps("status")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.status && formik.errors.status,
                       }
@@ -557,18 +557,18 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 {/* Extra fields for Win/Lose status */}
                 {formik.values.status === "4" && (
                   <div className="col-span-full pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
                       {/* GST */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">GST<span style={{ color: "red" }}>*</span></label>
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">GST<span style={{ color: "red" }}>*</span></label>
                         <input
                           placeholder="GST"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("gst")}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             { "border-red-500": formik.touched.gst && formik.errors.gst }
                           )}
                           onInput={(e) => {
@@ -586,15 +586,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* Address 1 */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Address 1</label>
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Address 1</label>
                         <input
                           placeholder="Address 1"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("address1")}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             { "border-red-500": formik.touched.address1 && formik.errors.address1 }
                           )}
                         />
@@ -606,15 +606,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* Address 2 */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Address 2</label>
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Address 2</label>
                         <input
                           placeholder="Address 2"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("address2")}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             { "border-red-500": formik.touched.address2 && formik.errors.address2 }
                           )}
                         />
@@ -626,8 +626,8 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* Country */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
                           Country <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -638,7 +638,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                             formik.setFieldValue("city", "");
                           }}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             {
                               "border-red-500 ": formik.touched.country && formik.errors.country,
                             }
@@ -659,8 +659,8 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* State */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
                           State <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -671,7 +671,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                           }}
                           disabled={!formik.values.country}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             {
                               "border-red-500 ": formik.touched.state && formik.errors.state,
                             }
@@ -693,15 +693,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* City */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
                           City <span className="text-red-500">*</span>
                         </label>
                         <select
                           {...formik.getFieldProps("city")}
                           disabled={!formik.values.state}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             {
                               "border-red-500 ": formik.touched.city && formik.errors.city,
                             }
@@ -724,15 +724,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                       </div>
 
                       {/* Pin Code */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
+                      <div className="flex flex-col gap-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"
                           autoComplete="off"
                           {...formik.getFieldProps("pin")}
                           className={clsx(
-                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                             {
                               "border-red-500 ": formik.touched.pin && formik.errors.pin,
                             }
@@ -751,14 +751,14 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
 
                 {formik.values.status === "5" && (
-                  <div className="flex flex-col gap-1.5 col-span-full">
-                    <label className="block text-sm font-medium text-gray-700">Reason<span style={{ color: "red" }}>*</span></label>
+                  <div className="flex flex-col gap-1 col-span-full">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Reason<span style={{ color: "red" }}>*</span></label>
                     <textarea
                       placeholder="Reason"
                       autoComplete="off"
                       {...formik.getFieldProps("reason")}
                       className={clsx(
-                        "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                        "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                         {
                           "border-red-500 ": formik.touched.reason && formik.errors.reason,
                         }
@@ -773,17 +773,17 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 )}
 
                 {/* Footer buttons */}
-                <div className="flex justify-end col-span-full pt-4 gap-2">
+                <div className="flex justify-end col-span-full pt-3 sm:pt-4 gap-2">
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
+                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-10 px-4 py-2"
+                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                     disabled={loading || formik.isSubmitting}
                   >
                     {loading ? "Please wait..." : "Save"}

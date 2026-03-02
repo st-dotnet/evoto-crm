@@ -12,6 +12,7 @@ import {
   KeenIcon,
   DataGridRowSelectAll,
   DataGridRowSelect,
+  useDataGrid,
 } from "@/components";
 import {
   DropdownMenu,
@@ -183,29 +184,8 @@ const Toolbar = ({
   }, [vendors, searchInput]);
 
   return (
-//     <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-//       <div className="flex flex-wrap items-center gap-2.5 lg:gap-5">
-//         <div className="flex grow md:grow-0">
-//           <label className="input input-sm w-full md:w-64 lg:w-72">
-//             <span onClick={() => setSearch(searchInput)} className="cursor-pointer flex items-center">
-//               <KeenIcon icon="magnifier" />
-//             </span>
-//             <input
-//               type="text"
-//               placeholder="Search vendors"
-//               value={searchInput}
-//               onChange={handleChange}
-//               onKeyDown={handleKeyDown}
-//               className="w-full focus:outline-none"
-//             />
-//           </label>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-    <div className="card-header flex justify-between flex-wrap gap-3 border-b-0 px-5 py-4">
-      <div className="flex grow md:grow-0">
+    <div className="card-header flex justify-between items-center flex-wrap gap-4 border-b-0 px-5 py-4">
+      <div className="flex grow w-full md:w-auto">
         <Popover open={open} onOpenChange={setOpen}>
           <div className="relative w-full md:w-64 lg:w-72">
             <PopoverTrigger asChild>
@@ -293,6 +273,89 @@ const PartiesVendorsContent = ({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const navigate = useNavigate();
+
+  const MobileView = () => {
+    const { table, loading: gridLoading, props } = useDataGrid();
+    const rows = table.getRowModel().rows;
+    const { onEdit, onDelete, onDetails } = props as any;
+
+    if (gridLoading && rows.length === 0) return null;
+
+    return (
+      <div className="flex flex-col lg:hidden border-t border-gray-100">
+        {(rows || []).map((row: any) => {
+          const vendor = row.original as Vendor;
+          return (
+            <div
+              key={vendor.uuid}
+              className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            >
+              <div
+                className="flex flex-col cursor-pointer grow pr-4"
+                onClick={() => {
+                  // navigation to details if available
+                  // navigate(`/vendor/${vendor.uuid}`)
+                }}
+              >
+                <span className="font-semibold text-gray-900 text-sm mb-0.5">
+                  {vendor.company_name}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-medium truncate max-w-[150px]">
+                    {vendor.email || "No email"}
+                  </span>
+                  {vendor.city && (
+                    <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
+                      • {vendor.city}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                    <MoreVertical className="h-4.5 w-4.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                    onClick={async () => {
+                      const details = await fetchVendorDetails(vendor.uuid!);
+                      if (details) openPersonModal(details);
+                    }}
+                  >
+                    <Edit className="mr-1 h-4 w-4 text-gray-500" />
+                    Edit
+                  </DropdownMenuItem>
+                  <div className="my-1 border-t border-gray-100"></div>
+                  <DropdownMenuItem
+                    className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                    onClick={async () => {
+                      const details = await fetchVendorDetails(vendor.uuid!);
+                      if (details) setShowDeleteDialog(true);
+                    }}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        })}
+        {rows.length === 0 && !gridLoading && (
+          <div className="p-16 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
+              <span className="text-gray-400 text-sm font-medium">No vendors found matching your criteria.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Fetch vendor details from server to ensure fresh data before actions
   const fetchVendorDetails = async (uuid?: string) => {
@@ -605,8 +668,23 @@ const PartiesVendorsContent = ({
             setDefaultPersonType={handlePersonTypeSearch}
           />
         }
-        layout={{ card: true }}
-      />
+        layout={{
+          card: true,
+          classes: {
+            container: 'hidden lg:block'
+          }
+        }}
+        onEdit={async (vendor: Vendor) => {
+          const details = await fetchVendorDetails(vendor.uuid!);
+          if (details) openPersonModal(details);
+        }}
+        onDelete={(vendor: Vendor) => {
+          setSelectedVendors(vendor);
+          setShowDeleteDialog(true);
+        }}
+      >
+        <MobileView />
+      </DataGrid>
       <ModalVendor
         open={personModalOpen}
         onOpenChange={handleClose}
@@ -618,7 +696,7 @@ const PartiesVendorsContent = ({
         lead={selectedCustomerForActivity}
       />
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[420px] p-6">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
           <DialogHeader className="flex flex-col items-center text-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <AlertCircle className="h-6 w-6 text-red-600" />
@@ -634,12 +712,12 @@ const PartiesVendorsContent = ({
 
           </DialogHeader>
 
-          <DialogFooter className="flex gap-3">
+          <DialogFooter className="flex flex-row gap-3 mt-2">
 
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-              className="px-14"
+              className="flex-1"
             >
               Cancel
             </Button>
@@ -647,7 +725,7 @@ const PartiesVendorsContent = ({
             <Button
               variant="destructive"
               onClick={() => deleteVendors(selectedVendors?.uuid || "")}
-              className="bg-red-600 hover:bg-red-700 px-14"
+              className="flex-1 bg-red-600 hover:bg-red-700"
             >
               Delete
             </Button>

@@ -83,21 +83,21 @@ const LeadsPage = () => {
       .then((response) => {
         const { message, details } = response.data;
         const { imported, skipped_no_contact, skipped_internal_duplicates, skipped_database_duplicates } = details;
-        
+
         // Calculate total skipped records
         const totalSkipped = skipped_no_contact + skipped_internal_duplicates + skipped_database_duplicates;
-        
+
         // Create a single comprehensive toast message
         let toastMessage = `${imported} records imported successfully`;
-        
+
         if (totalSkipped > 0) {
           let skipReasons = [];
           if (skipped_no_contact > 0) skipReasons.push(`${skipped_no_contact} missing contact info`);
           if (skipped_internal_duplicates > 0) skipReasons.push(`${skipped_internal_duplicates} internal duplicates`);
           if (skipped_database_duplicates > 0) skipReasons.push(`${skipped_database_duplicates} existing duplicates`);
-          
+
           toastMessage += `. ${totalSkipped} records were skipped: ${skipReasons.join(', ')}.`;
-          
+
           toast.warning(toastMessage, {
             duration: 8000,
           });
@@ -106,7 +106,7 @@ const LeadsPage = () => {
             duration: 4000,
           });
         }
-        
+
         setRefreshKey((prevKey) => prevKey + 1);
         event.target.value = "";
       })
@@ -148,21 +148,21 @@ const LeadsPage = () => {
                 onChange={handleImportCSV}
               />
               <button
-                className="btn btn-sm btn-light"
+                className="btn btn-sm btn-light grow md:grow-0 justify-center"
                 onClick={() => fileInputRef.current?.click()}
               >
                 Import Leads CSV
               </button>
               {/* Download Template Button */}
               <button
-                className="btn btn-sm btn-success"
+                className="btn btn-sm btn-success grow md:grow-0 justify-center"
                 onClick={handleDownloadTemplate}
               >
                 Download Lead Template
               </button>
               {/* Add Lead Button */}
               <a
-                className="btn btn-sm btn-primary"
+                className="btn btn-sm btn-primary grow md:grow-0 justify-center"
                 onClick={(e) => openLeadModal(e)}
                 href="#"
               >

@@ -489,7 +489,7 @@ export const UserDetails = () => {
   }
 
   return (
-    <div className="p-6 lg:p-10 bg-[#F9FAFB] min-h-screen">
+    <div className="p-6 lg:p-10 bg-[#F9FAFB] min-h-screen dark:bg-[#09090B]">
       {/* Header & Breadcrumbs */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -523,7 +523,7 @@ export const UserDetails = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
             <div className="flex flex-col items-center text-center pb-8 border-b border-gray-100">
               <div className="h-24 w-24 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-bold mb-4 border border-blue-100">
                 {initials || user.username?.[0].toUpperCase()}
@@ -552,11 +552,11 @@ export const UserDetails = () => {
         <div className="lg:col-span-2 space-y-8">
           {/* General Information Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white dark:bg-[#121214]">
               <h3 className="font-bold text-gray-900 text-lg">General Information</h3>
               <KeenIcon icon="user" className="text-gray-400 text-xl" />
             </div>
-            <div className="p-8">
+            <div className="p-8 dark:bg-[#121214]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                 <DataField label="Full Name" value={fullName} />
                 <DataField label="Username" value={user.username} />
@@ -574,17 +574,17 @@ export const UserDetails = () => {
 
           {/* Associated Businesses Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between dark:bg-[#121214]">
               <h3 className="font-bold text-gray-900 text-lg">Associated Businesses</h3>
               <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">
                 {user.businesses?.length || 0} Total
               </span>
             </div>
-            <div className="p-2">
+            <div className="p-2 dark:bg-[#121214]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {user.businesses && user.businesses.length > 0 ? (
                   user.businesses.map((b) => (
-                    <div key={b.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-xl hover:border-blue-200 transition-colors group bg-gray-50/30">
+                    <div key={b.id} className="flex items-center gap-4 p-4 dark:bg-[#121214] border border-gray-100 rounded-xl hover:border-blue-200 transition-colors group bg-gray-50/30">
                       <div className="h-12 w-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-blue-600 group-hover:scale-105 transition-transform">
                         <KeenIcon icon="shop" className="text-2xl" />
                       </div>
@@ -608,7 +608,7 @@ export const UserDetails = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteDialog && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-[#121214] rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="h-16 w-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-6 mx-auto">
               <KeenIcon icon="trash" className="text-3xl" />
             </div>
@@ -625,7 +625,7 @@ export const UserDetails = () => {
               </button>
               <button
                 onClick={() => deleteUser(user.id)}
-                className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg "
               >
                 Confirm
               </button>

@@ -49,9 +49,9 @@ const DataGridTable = <TData,>() => {
                 colSpan={header.colSpan}
                 className={cn(
                   headCellSpacing,
-                  cellBorder && "border-e",
-                  "h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pe-0",
-                  header.column.columnDef.meta?.headerClassName,
+                  cellBorder && 'border-e',
+                  'h-12 text-left rtl:text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]',
+                  header.column.columnDef.meta?.headerClassName
                 )}
               >
                 {header.isPlaceholder
@@ -83,9 +83,9 @@ const DataGridTable = <TData,>() => {
                   key={cell.id}
                   className={cn(
                     bodyCellSpacing,
-                    cellBorder && "border-e",
-                    "align-middle [&:has([role=checkbox])]:pe-0",
-                    cell.column.columnDef.meta?.cellClassName,
+                    cellBorder && 'border-e',
+                    'align-middle [&:has([role=checkbox])]',
+                    cell.column.columnDef.meta?.cellClassName
                   )}
                   onClick={cell.column.columnDef.meta?.disableRowClick ? (e) => e.stopPropagation() : undefined}
                 >

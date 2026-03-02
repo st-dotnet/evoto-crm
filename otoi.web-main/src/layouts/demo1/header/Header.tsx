@@ -25,7 +25,7 @@ const Header = () => {
         headerSticky && 'shadow-sm'
       )}
     >
-      <Container className="flex justify-between items-stretch lg:gap-4">
+      <Container className="flex justify-between items-stretch gap-2 lg:gap-4 px-3 sm:px-4 lg:px-6">
         <HeaderLogo />
         {pathname.includes('/account') ? <Breadcrumbs /> : <MegaMenu />}
         <HeaderTopbar />

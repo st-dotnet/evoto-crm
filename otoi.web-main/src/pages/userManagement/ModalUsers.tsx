@@ -81,10 +81,12 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
   const saveUserSchema = useMemo(() => {
     return Yup.object().shape({
       first_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .required("First Name is required"),
       last_name: Yup.string()
+        .trim()
         .min(3, "Minimum 3 symbols")
         .max(50, "Maximum 50 symbols")
         .nullable(),
@@ -132,9 +134,9 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
 
       try {
         const postData = {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          email: values.email,
+          first_name: values.first_name?.trim(),
+          last_name: values.last_name?.trim() || null,
+          email: values.email?.trim(),
           mobile: values.mobile || null,
           role: values.role,
           isActive: values.isActive,
@@ -226,17 +228,17 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
         }
         onOpenChange(isOpen);
       }}>
-        <DialogContent className="container-fixed max-w-[900px] p-0 rounded-lg shadow-lg">
-          <DialogHeader className="bg-gray-50 p-6 border-b">
-            <DialogTitle className="text-lg font-semibold text-gray-800">
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg">
+          <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b">
+            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
               {user ? "Edit User" : "Add User"}
             </DialogTitle>
             <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
           </DialogHeader>
-          <DialogBody className="p-6">
+          <DialogBody className="p-3 sm:p-6">
             <div className="max-w-[auto] w-full">
               <form
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
                 noValidate
                 onSubmit={formik.handleSubmit}
               >
@@ -247,8 +249,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 )}
 
                 {/* First Name */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     First Name<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -257,7 +259,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                     autoComplete="off"
                     {...formik.getFieldProps("first_name")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.first_name && formik.errors.first_name,
                       }
@@ -271,8 +273,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* Last Name */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Last Name
                   </label>
                   <input
@@ -281,7 +283,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                     autoComplete="off"
                     {...formik.getFieldProps("last_name")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.last_name && formik.errors.last_name,
                       }
@@ -295,8 +297,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* Email */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Email<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -305,7 +307,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                     autoComplete="off"
                     {...formik.getFieldProps("email")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.email && formik.errors.email,
                       }
@@ -319,8 +321,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* Mobile */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Mobile<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -329,7 +331,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                     // className="input"
                     type="text"
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.mobile && formik.errors.mobile,
                       }
@@ -370,8 +372,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* Country */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Country<span style={{ color: "red" }}>*</span>
                   </label>
                   <select
@@ -381,7 +383,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                       formik.setFieldValue("state", ""); // Reset state when country changes
                     }}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.country && formik.errors.country,
                       }
@@ -402,15 +404,15 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* State */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     State<span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     {...formik.getFieldProps("state")}
                     disabled={!formik.values.country}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.state && formik.errors.state,
                         "bg-gray-100": !formik.values.country,
@@ -433,14 +435,14 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 </div>
 
                 {/* Role */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
                     Role<span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     {...formik.getFieldProps("role")}
                     className={clsx(
-                      "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                       {
                         "border-red-500 ": formik.touched.role && formik.errors.role,
                       }
@@ -462,8 +464,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
 
                 {/* Status (isActive) - Only show when editing */}
                 {user?.id && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="block text-sm font-medium text-gray-700">
+                  <div className="flex flex-col gap-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
                       Status
                     </label>
                     <select
@@ -472,7 +474,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                       onChange={(e) => {
                         formik.setFieldValue("isActive", e.target.value === "true");
                       }}
-                      className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                      className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                     >
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
@@ -483,8 +485,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 {/* Password (only for new user) */}
                 {!user?.id && (
                   <>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="block text-sm font-medium text-gray-700">
+                    <div className="flex flex-col gap-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700">
                         Password<span style={{ color: "red" }}>*</span>
                       </label>
                       <input
@@ -493,7 +495,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                         autoComplete="off"
                         {...formik.getFieldProps("password")}
                         className={clsx(
-                          "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                          "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                           {
                             "border-red-500 ": formik.touched.password && formik.errors.password,
                           }
@@ -506,8 +508,8 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="block text-sm font-medium text-gray-700">
+                    <div className="flex flex-col gap-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700">
                         Confirm Password<span style={{ color: "red" }}>*</span>
                       </label>
                       <input
@@ -516,7 +518,7 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                         autoComplete="off"
                         {...formik.getFieldProps("confirmPassword")}
                         className={clsx(
-                          "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                          "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm",
                           {
                             "border-red-500 ": formik.touched.confirmPassword && formik.errors.confirmPassword,
                           }
@@ -532,17 +534,17 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
                 )}
 
                 {/* Footer buttons */}
-                <div className="flex justify-end col-span-full pt-4 gap-2">
+                <div className="flex justify-end col-span-full pt-3 sm:pt-4 gap-2">
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-10 px-4 py-2"
+                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-10 px-4 py-2"
+                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                     disabled={loading || formik.isSubmitting}
                   >
                     {loading ? "Please wait..." : "Save"}

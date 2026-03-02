@@ -1,7 +1,8 @@
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { useDataGrid, DataGridLoader, DataGridTable, DataGridPagination } from '.';
 
-const DataGridInner = () => {
+const DataGridInner = ({ children }: { children?: React.ReactNode }) => {
   const { props, table, loading } = useDataGrid();
 
   return (
@@ -9,7 +10,7 @@ const DataGridInner = () => {
       className={cn(
         'grid',
         props.layout?.card &&
-          `
+        `
         card
         [&>[data-container]]:border-x-0
         [&>[data-container]]:rounded-none
@@ -23,6 +24,7 @@ const DataGridInner = () => {
       )}
     >
       {props.toolbar && props.toolbar}
+      {children}
       <div
         className={cn(
           'relative w-full scrollable-x-auto border rounded-md',

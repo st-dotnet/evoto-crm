@@ -10,6 +10,7 @@ import {
 import { useLayout } from "@/providers";
 import { KeenIcon } from "@/components";
 import { toast } from "sonner";
+import { useResponsive } from "@/hooks";
 
 type Role = "Admin" | "Manager" | "User";
 type Action = "View" | "Add" | "Edit" | "Delete";
@@ -25,6 +26,7 @@ interface PermissionState {
 
 const PartiesRoles: React.FC = () => {
   const { currentLayout } = useLayout();
+  const isMobile = useResponsive("down", "lg");
   const roles: Role[] = ["Admin", "Manager", "User"];
   const modules: Module[] = [
     "Leads",
@@ -127,12 +129,12 @@ const PartiesRoles: React.FC = () => {
               </h3>
             </div>
             <div className="card-body px-5 pb-5 pt-0">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {roles.map((role) => (
                   <button
                     key={role}
                     onClick={() => setSelectedRole(role)}
-                    className={`btn btn-sm ${selectedRole === role
+                    className={`btn btn-sm flex-1 sm:flex-none justify-center ${selectedRole === role
                       ? "btn-primary"
                       : "btn-light"
                       }`}
@@ -164,68 +166,105 @@ const PartiesRoles: React.FC = () => {
               </div>
             </div>
             <div className="card-body p-0">
-              <div className="overflow-x-auto">
-                <table className="table align-middle text-sm text-gray-500">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-5 py-3 text-start text-xs font-semibold uppercase text-gray-600 min-w-[180px]">
-                        Module
-                      </th>
-                      {actions.map((action) => (
-                        <th
-                          key={action}
-                          className="px-5 py-3 text-start text-xs font-semibold uppercase text-gray-600 min-w-[100px]"
+              {isMobile ? (
+                <div className="grid gap-4 p-5">
+                  {modules.map((module) => (
+                    <div key={module} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="font-bold text-gray-900 text-sm">
+                          {module}
+                        </span>
+                        <button
+                          onClick={() => toggleRow(module)}
+                          className="btn btn-xs btn-light"
                         >
-                          {action}
-                        </th>
-                      ))}
-                      <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600 min-w-[120px]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modules.map((module) => (
-                      <tr
-                        key={module}
-                        className="border-b border-gray-200 last:border-b-0"
-                      >
-                        <td className="px-5 py-3.5">
-                          <span className="font-medium text-gray-900 text-sm">
-                            {module}
-                          </span>
-                        </td>
+                          Toggle Row
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         {actions.map((action) => {
-                          const isActive =
-                            permissions[selectedRole]?.[module]?.[action];
+                          const isActive = permissions[selectedRole]?.[module]?.[action];
                           return (
-                            <td key={action} className="px-5 py-3.5 text-center">
+                            <div key={action} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-100">
+                              <span className="text-xs font-medium text-gray-600">{action}</span>
                               <label className="switch switch-sm">
                                 <input
                                   type="checkbox"
                                   checked={!!isActive}
-                                  onChange={() =>
-                                    handleToggle(module, action)
-                                  }
-                                  className="order-1"
+                                  onChange={() => handleToggle(module, action)}
                                 />
                               </label>
-                            </td>
+                            </div>
                           );
                         })}
-                        <td className="px-5 py-3.5 text-center">
-                          <button
-                            onClick={() => toggleRow(module)}
-                            className="btn btn-xs btn-light"
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table align-middle text-sm text-gray-500">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="px-5 py-3 text-start text-xs font-semibold uppercase text-gray-600 min-w-[180px]">
+                          Module
+                        </th>
+                        {actions.map((action) => (
+                          <th
+                            key={action}
+                            className="px-5 py-3 text-start text-xs font-semibold uppercase text-gray-600 min-w-[100px]"
                           >
-                            Toggle Row
-                          </button>
-                        </td>
+                            {action}
+                          </th>
+                        ))}
+                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600 min-w-[120px]">
+                          Actions
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {modules.map((module) => (
+                        <tr
+                          key={module}
+                          className="border-b border-gray-200 last:border-b-0"
+                        >
+                          <td className="px-5 py-3.5">
+                            <span className="font-medium text-gray-900 text-sm">
+                              {module}
+                            </span>
+                          </td>
+                          {actions.map((action) => {
+                            const isActive =
+                              permissions[selectedRole]?.[module]?.[action];
+                            return (
+                              <td key={action} className="px-5 py-3.5 text-center">
+                                <label className="switch switch-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!isActive}
+                                    onChange={() =>
+                                      handleToggle(module, action)
+                                    }
+                                    className="order-1"
+                                  />
+                                </label>
+                              </td>
+                            );
+                          })}
+                          <td className="px-5 py-3.5 text-center">
+                            <button
+                              onClick={() => toggleRow(module)}
+                              className="btn btn-xs btn-light"
+                            >
+                              Toggle Row
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 

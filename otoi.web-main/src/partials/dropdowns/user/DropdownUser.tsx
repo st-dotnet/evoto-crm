@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl';
 import { useAuthContext } from '@/auth';
 import { useLanguage } from '@/i18n';
 import { DropdownUserLanguages } from './DropdownUserLanguages';
+import { useResponsive } from '@/hooks';
 import { useSettings } from '@/providers/SettingsProvider';
 import { DefaultTooltip, KeenIcon } from '@/components';
 import {
@@ -24,6 +25,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
   const { settings, storeSettings } = useSettings();
   const { logout, currentUser } = useAuthContext();
   const { isRTL } = useLanguage();
+  const isDesktop = useResponsive('up', 'lg');
 
   const handleThemeMode = (event: ChangeEvent<HTMLInputElement>) => {
     const newThemeMode = event.target.checked ? 'dark' : 'light';
@@ -49,7 +51,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
       `${currentUser?.first_name?.[0] ?? ''}`
     ).toUpperCase() || 'U';
     return (
-      <div className="flex items-center justify-between px-5 py-1.5 gap-1.5">
+      <div className="flex items-center overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] justify-between px-5 py-1.5 gap-1.5">
         <div className="flex items-center gap-2">
           <div className="size-9 rounded-full border-2 border-success bg-gray-200 text-gray-700 flex items-center justify-center">
             <span className="text-xs font-semibold">{initials}</span>
@@ -102,8 +104,8 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
             </MenuLink>
           </MenuItem>
           <MenuItem
-            toggle="dropdown"
-            trigger="hover"
+            toggle={isDesktop ? 'dropdown' : 'accordion'}
+            trigger={isDesktop ? 'hover' : 'click'}
             dropdownProps={{
               placement: isRTL() ? 'left-start' : 'right-start',
               modifiers: [

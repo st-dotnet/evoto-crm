@@ -91,19 +91,17 @@ def signup():
     country = (data.get("country") or "").strip()
 
     if not email or not password:
-        return jsonify({"error": "email and password are required"}), 400
+        return jsonify({"error": "Email and password are required"}), 400
 
     if not state or not country:
-        return jsonify({"error": "state and country are required"}), 400
+        return jsonify({"error": "State and country are required"}), 400
 
     if password != password_confirmation:
-        return jsonify({"error": "password and password_confirmation do not match"}), 400
+        return jsonify({"error": "Password and confirmation do not match"}), 400
 
-    # Uniqueness checks
-    if User.query.filter_by(username=username).first() is not None:
-        return jsonify({"error": "username already exists"}), 400
+    # Uniqueness check for email (username will be handled by integrity error or auto-generation)
     if User.query.filter_by(email=email).first() is not None:
-        return jsonify({"error": "email already exists"}), 400
+        return jsonify({"error": "Email already exists"}), 400
 
     # Resolve default role 'User' (auto-create if missing)
     role = Role.query.filter_by(name="User").first()
@@ -113,17 +111,33 @@ def signup():
         db.session.flush()
 
     # Create user
-    user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role, state=state, country=country)
-    user.set_password(password)
-    user.update_ut_status()
+    try:
+        user = User(firstName=firstName, lastName=lastName, username=username, email=email, mobileNo=mobileNo, role=role, state=state, country=country)
+        user.set_password(password)
+        user.update_ut_status()
 
-    # Persist and set audit fields
-    db.session.add(user)
-    db.session.flush()  # to get user.uuid
-    user.created_by = user.uuid
-    user.updated_by = user.uuid
+        # Persist and set audit fields
+        db.session.add(user)
+        db.session.flush()  # to get user.uuid
+        user.created_by = user.uuid
+        user.updated_by = user.uuid
 
-    db.session.commit()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        from sqlalchemy.exc import IntegrityError
+        if isinstance(e, IntegrityError):
+            error_msg = str(e.orig).lower()
+            if 'unique' in error_msg or 'duplicate' in error_msg:
+                if 'email' in error_msg:
+                    return jsonify({"error": "Email already exists"}), 400
+                elif 'username' in error_msg:
+                    # In case of username collision, we could retry with a suffix,
+                    # but for now, we'll return a friendly error or just handle it.
+                    return jsonify({"error": "Username already exists"}), 400
+                elif 'mobileno' in error_msg:
+                    return jsonify({"error": "Mobile number already exists"}), 400
+        return jsonify({"error": "An error occurred during signup. Please try again."}), 500
 
     # Issue token like login
     business_id = user.businesses[0].id if user.businesses else None
