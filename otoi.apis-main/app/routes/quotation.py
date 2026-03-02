@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_cors import cross_origin
 from sqlalchemy import or_, func, desc, asc, and_
 from sqlalchemy.orm.attributes import flag_modified
@@ -11,6 +11,8 @@ from app.models.business import Business
 from app.models.user import User
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
+from app.services.pdf_service import generate_quotation_pdf
+
 
 quotation_blueprint = Blueprint("quotation", __name__)
 
@@ -909,3 +911,63 @@ def get_suggestions():
             'error': 'Failed to fetch suggestions',
             'details': str(e)
         }), 500
+
+
+@quotation_blueprint.route("/<uuid:quotation_id>/pdf", methods=["GET"])
+def download_quotation_pdf(quotation_id):
+    """
+    Download quotation as a PDF
+    ---
+    tags:
+      - Quotations
+    parameters:
+      - name: quotation_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: PDF file download
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      404:
+        description: Quotation not found
+      500:
+        description: PDF generation failed
+    """
+    try:
+        quotation = Quotation.query.get_or_404(quotation_id)
+
+        # Build items data (same logic as get_quotation)
+        items_data = []
+        for item in quotation.items:
+            item_info = {
+                "description": item.description,
+                "quantity": float(item.quantity) if item.quantity else 0,
+                "unit_price": float(item.unit_price) if item.unit_price else 0,
+                "discount": item.discount or {},
+                "tax": item.tax or {},
+                "total_price": float(item.total_price) if item.total_price else 0,
+            }
+            if item.item_id:
+                inventory_item = Item.query.get(item.item_id)
+                if inventory_item:
+                    item_info["product_name"] = inventory_item.item_name
+                    item_info["hsn_sac_code"] = inventory_item.hsn_code
+            items_data.append(item_info)
+
+        pdf_buffer = generate_quotation_pdf(quotation, items_data)
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{quotation.quotation_number}.pdf",
+        )
+
+    except Exception as e:
+        return jsonify({"error": "PDF generation failed", "details": str(e)}), 500

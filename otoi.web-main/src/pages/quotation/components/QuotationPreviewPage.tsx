@@ -1,20 +1,11 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Download,
-  Printer,
-  Share,
-  FileText,
-  Receipt,
-} from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 // import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -92,9 +83,7 @@ const QuotationPreviewPage: React.FC = () => {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          console.log("=== Fetching quotation with ID:", id);
           const response = await getQuotationById(id);
-          console.log("=== API Response:", response);
           if (response.success && response.data) {
             const data = response.data;
 
@@ -174,10 +163,6 @@ const QuotationPreviewPage: React.FC = () => {
               terms: data.terms_and_conditions,
               business: data.business, // Include business info from DB
             };
-            console.log(
-              "=== Final transformed data with business:",
-              transformedData,
-            );
             setFetchedData(transformedData);
           }
         } finally {
@@ -299,54 +284,44 @@ const QuotationPreviewPage: React.FC = () => {
   };
 
   const handleDownloadPDF = async () => {
-    if (!quotationRef.current) return;
+    const quotationId = id || location.state?.quotationId;
+    if (!quotationId) {
+      toast.error("Please save the quotation first before downloading as PDF.");
+      return;
+    }
     const downloadToast = toast.loading("Generating PDF...");
     try {
-      // Ensure the element is fully captured even if it's long
-      const element = quotationRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        onclone: (clonedDoc: { getElementById: (arg0: string) => any }) => {
-          // You can modify the cloned element here if needed for PDF-only styles
-          const clonedElement = clonedDoc.getElementById(
-            "quotation-print-area",
-          );
-          if (clonedElement) {
-            clonedElement.style.height = "auto";
-            clonedElement.style.overflow = "visible";
-          }
-        },
+      const token = (() => {
+        try {
+          const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+          if (!authData) return null;
+          const parsedAuth = JSON.parse(authData);
+          return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+        } catch (error) {
+          return null;
+        }
+      })();
+
+      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/quotations/${quotationId}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Add the first page
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      // Keep adding pages until we've captured the full height
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
       }
 
-      pdf.save(`Quotation-${quotationData.quotationNo || "Draft"}.pdf`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quotation-${quotationData.quotationNo || "Draft"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
       toast.success("PDF downloaded successfully", { id: downloadToast });
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -361,44 +336,36 @@ const QuotationPreviewPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  const handleShare = async () => {
-    if (!quotationRef.current) return;
-    const shareToast = toast.loading("Preparing for share...");
-    try {
-      const canvas = await html2canvas(quotationRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error("Failed to generate blob"));
-        }, "image/png"),
-      );
-      const file = new File(
-        [blob],
-        `Quotation-${quotationData.quotationNo}.png`,
-        { type: "image/png" },
-      );
+  // const handleShare = async () => {
+  //   if (!quotationRef.current) return;
+  //   const shareToast = toast.loading("Preparing for share...");
+  //   try {
+  //     const canvas = await html2canvas(quotationRef.current, { scale: 2 });
+  //     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
+  //       if (b) resolve(b);
+  //       else reject(new Error("Failed to generate blob"));
+  //     }, "image/png"));
+  //     const file = new File([blob], `Quotation-${quotationData.quotationNo}.png`, { type: "image/png" });
 
-      if (navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: `Quotation ${quotationData.quotationNo}`,
-          text: `Check out our quotation: ${quotationData.quotationNo}`,
-        });
-        toast.success("Shared successfully", { id: shareToast });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Quotation-${quotationData.quotationNo}.png`;
-        a.click();
-        toast.success("Image saved (Direct sharing not supported)", {
-          id: shareToast,
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to share", { id: shareToast });
-    }
-  };
+  //     if (navigator.share) {
+  //       await navigator.share({
+  //         files: [file],
+  //         title: `Quotation ${quotationData.quotationNo}`,
+  //         text: `Check out our quotation: ${quotationData.quotationNo}`
+  //       });
+  //       toast.success("Shared successfully", { id: shareToast });
+  //     } else {
+  //       const url = URL.createObjectURL(blob);
+  //       const a = document.createElement("a");
+  //       a.href = url;
+  //       a.download = `Quotation-${quotationData.quotationNo}.png`;
+  //       a.click();
+  //       toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+  //     }
+  //   } catch (error) {
+  //     toast.error("Failed to share", { id: shareToast });
+  //   }
+  // };
 
   const formatCurrency = (amount: number) => {
     return `₹ ${amount.toFixed(2)}`;
@@ -749,7 +716,7 @@ const QuotationPreviewPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
+            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
 
             {/* Show Convert to Invoice - temporarily always visible for debugging */}
             {(!linkedInvoiceId || quotationData.status === 'open') && (
@@ -1080,13 +1047,14 @@ const QuotationPreviewPage: React.FC = () => {
                 <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
                   Terms & Conditions
                 </h4>
+
                 <div className="text-[10px] text-black space-y-1">
                   {quotationData.terms
-                    .split('\n')
-                    .filter(t => t.trim() !== '')
+                    ?.split("\n")
+                    .filter((t) => t.trim() !== "")
                     .map((term, i) => (
                       <p key={i} className="leading-tight">
-                        • {term}
+                        {term}
                       </p>
                     ))}
                 </div>

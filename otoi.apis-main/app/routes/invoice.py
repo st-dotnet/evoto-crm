@@ -1,12 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
-from app.models import Invoice, InvoiceItem, Quotation, Item, Customer
+from app.models import Invoice, InvoiceItem, Quotation, Item, Customer, quotation
+from app.services.pdf_service import generate_invoice_pdf, generate_quotation_pdf
 from app.utils.stamping import set_created_fields, set_updated_fields
 from app.utils.decorators import login_required
 import uuid
 from datetime import datetime, timedelta
+
 
 invoice_blueprint = Blueprint("invoice", __name__)
 
@@ -869,3 +871,64 @@ def soft_delete_invoice(invoice_id):
             "error": "An error occurred while deleting the invoice",
             "details": str(e)
         }), 500
+    
+
+@invoice_blueprint.route("/<uuid:invoice_id>/pdf", methods=["GET"])
+def download_invoice_pdf(invoice_id):
+    """
+    Download invoice as a PDF
+    ---
+    tags:
+      - Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: PDF file download
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      404:
+        description: Quotation not found
+      500:
+        description: PDF generation failed
+    """
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+
+        # Build items data (same logic as get_invoice)
+        items_data = []
+        for item in invoice.items:
+            item_info = {
+                "description": item.description,
+                "quantity": float(item.quantity) if item.quantity else 0,
+                "unit_price": float(item.unit_price) if item.unit_price else 0,
+                "discount": item.discount or {},
+                "tax": item.tax or {},
+                "total_price": float(item.total_price) if item.total_price else 0,
+            }
+            if item.item_id:
+                inventory_item = Item.query.get(item.item_id)
+                if inventory_item:
+                    item_info["product_name"] = inventory_item.item_name
+                    item_info["hsn_sac_code"] = inventory_item.hsn_code
+            items_data.append(item_info)
+
+        pdf_buffer = generate_invoice_pdf(invoice, items_data)
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{invoice.invoice_number}.pdf",
+        )
+
+    except Exception as e:
+        return jsonify({"error": "PDF generation failed", "details": str(e)}), 500
+

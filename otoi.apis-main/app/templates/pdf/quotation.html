@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quotation {{ quotation.quotation_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 1.8cm 2cm 1.8cm;
+
+            @frame footer {
+                -pdf-frame-content: footer_content;
+                bottom: 1cm;
+                margin-left: 1.8cm;
+                margin-right: 1.8cm;
+                height: 1cm;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #1a1a1a;
+            background: #ffffff;
+        }
+
+        #footer_content {
+            font-size: 9px;
+            color: #666666;
+            text-align: center;
+            border-top: 1px solid #cccccc;
+            padding-top: 5px;
+        }
+
+        /* ══════════════════════════════
+           HEADER
+        ══════════════════════════════ */
+        .header-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .company-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .company-meta {
+            font-size: 10px;
+            color: #666666;
+            line-height: 1.6;
+        }
+
+        /* ══════════════════════════════
+           DIVIDER
+        ══════════════════════════════ */
+        .divider {
+            border: none;
+            border-top: 1.5px solid #dddddd;
+            margin: 0 0 16px 0;
+        }
+
+        /* ══════════════════════════════
+           META GRID
+        ══════════════════════════════ */
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+        }
+
+        .meta-table th {
+            border: 1px solid #cccccc;
+            background-color: #f5f5f5;
+            padding: 7px 12px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: left;
+            color: #444444;
+            letter-spacing: 0.4px;
+        }
+
+        .meta-table td {
+            border: 1px solid #cccccc;
+            padding: 8px 12px;
+            font-size: 12px;
+            text-align: left;
+            color: #1a1a1a;
+        }
+
+        /* ══════════════════════════════
+           BILL TO / SHIP TO
+        ══════════════════════════════ */
+        .address-table {
+            width: 100%;
+            margin-bottom: 22px;
+        }
+
+        .address-section-title {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #444444;
+            border-bottom: 1.5px solid #1a1a1a;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+
+        .address-customer-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+
+        .address-detail {
+            font-size: 10px;
+            color: #333333;
+            line-height: 1.7;
+        }
+
+        .address-detail strong {
+            color: #1a1a1a;
+        }
+
+        /* ══════════════════════════════
+           ITEMS TABLE
+        ══════════════════════════════ */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+        }
+
+        .items-table th {
+            border: 1px solid #cccccc;
+            background-color: #f5f5f5;
+            padding: 8px 10px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #444444;
+        }
+
+        .items-table td {
+            border: 1px solid #cccccc;
+            padding: 9px 10px;
+            font-size: 11px;
+            color: #1a1a1a;
+            vertical-align: middle;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .item-desc {
+            font-size: 9px;
+            color: #888888;
+            margin-top: 2px;
+        }
+
+        .subtotal-row td {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            font-size: 11px;
+            border-top: 1.5px solid #aaaaaa;
+        }
+
+        /* ══════════════════════════════
+           BOTTOM
+        ══════════════════════════════ */
+        .bottom-table {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .notes-title {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #444444;
+            border-bottom: 1.5px solid #1a1a1a;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+
+        .notes-content {
+            font-size: 10px;
+            color: #555555;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .totals-table td {
+            padding: 5px 0;
+            font-size: 11px;
+        }
+
+        .totals-label {
+            color: #555555;
+            text-align: left;
+            width: 60%;
+        }
+
+        .totals-value {
+            font-weight: bold;
+            text-align: right;
+            color: #1a1a1a;
+        }
+
+        .totals-divider {
+            border: none;
+            border-top: 1px solid #cccccc;
+            margin: 6px 0;
+        }
+
+        .grand-total-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a1a1a;
+            text-align: left;
+        }
+
+        .grand-total-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a1a1a;
+            text-align: right;
+        }
+
+        .in-words {
+            font-size: 9px;
+            color: #666666;
+            text-align: right;
+            padding-top: 4px;
+            font-style: italic;
+            line-height: 1.5;
+        }
+
+        /* ══════════════════════════════
+           SIGNATURE
+        ══════════════════════════════ */
+        .signature-section {
+            width: 100%;
+            margin-top: 50px;
+        }
+
+        .signature-line {
+            border-top: 1.5px solid #1a1a1a;
+            width: 200px;
+            padding-top: 7px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            text-align: center;
+            color: #1a1a1a;
+            display: inline-block;
+        }
+
+        /* ══════════════════════════════
+           UTILS
+        ══════════════════════════════ */
+        .align-right {
+            text-align: right;
+        }
+
+        .align-center {
+            text-align: center;
+        }
+
+        .align-left {
+            text-align: left;
+        }
+
+        .text-bold {
+            font-weight: bold;
+        }
+
+        .text-muted {
+            color: #888888;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══ HEADER ══ -->
+    <table class="header-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 65%; vertical-align: top; padding-top: 15px;">
+                <div class="company-name">{{ business.name }}</div>
+                <div class="company-meta">
+                    {% if business.email %}<div>{{ business.email }}</div>{% endif %}
+                    {% if business.phone_number %}<div>{{ business.phone_number }}</div>{% endif %}
+                    {% if business_address %}
+                    <div>
+                        {{ business_address.address1 }}{% if business_address.address2 %}, {{ business_address.address2
+                        }}{% endif %},
+                        {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }},
+                        {{ business_address.country }}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td style="width: 35%; text-align: right; vertical-align: top;">
+                {% if logo_data_uri %}
+                <img src="{{ logo_data_uri }}" width="100" alt="Logo" style="margin-top: -10px;">
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <hr class="divider">
+
+    <!-- ══ QUOTATION META ══ -->
+    <table class="meta-table" cellpadding="0" cellspacing="0">
+        <thead>
+            <tr>
+                <th style="width: 33%;">Quotation No.</th>
+                <th style="width: 33%;">Quotation Date</th>
+                <th style="width: 34%;">Expiry Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ quotation.quotation_number }}</td>
+                <td>{{ quotation.quotation_date }}</td>
+                <td>{{ quotation.valid_till or '&mdash;' }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- ══ BILL TO / SHIP TO ══ -->
+    <table class="address-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 46%; vertical-align: top; padding-right: 15px;">
+                <div class="address-section-title">Bill To</div>
+                {% if customer %}
+                <div class="address-customer-name">{{ customer.first_name }} {{ customer.last_name }}</div>
+                <div class="address-detail">
+                    {% if customer.email %}<div><strong>Email:</strong> {{ customer.email }}</div>{% endif %}
+                    {% if customer.mobile %}<div><strong>Mobile:</strong> {{ customer.mobile }}</div>{% endif %}
+                    {% if customer.gst %}<div><strong>GST:</strong> {{ customer.gst }}</div>{% endif %}
+                    <div><strong>Billing Address:</strong>
+                        {{ customer.address1 }}{% if customer.address2 %}, {{ customer.address2 }}{% endif %}
+                    </div>
+                    <div>
+                        <strong>City:</strong> {{ customer.city }},
+                        <strong>State:</strong> {{ customer.state }},
+                        <strong>Country:</strong> {{ customer.country }},
+                        <strong>PIN:</strong> {{ customer.pin }}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            <td style="width: 8%;"></td>
+            <td style="width: 46%; vertical-align: top; padding-left: 15px;">
+                <div class="address-section-title">Ship To</div>
+                {% if customer %}
+                <div class="address-customer-name">{{ customer.first_name }} {{ customer.last_name }}</div>
+                <div class="address-detail">
+                    {% if customer.email %}<div><strong>Email:</strong> {{ customer.email }}</div>{% endif %}
+                    {% if customer.mobile %}<div><strong>Mobile:</strong> {{ customer.mobile }}</div>{% endif %}
+                    {% if customer.gst %}<div><strong>GST:</strong> {{ customer.gst }}</div>{% endif %}
+                    <div><strong>Shipping Address:</strong>
+                        {{ customer.shipping_address1 or customer.address1 }}{% if customer.shipping_address2 or
+                        customer.address2 %}, {{ customer.shipping_address2 or customer.address2 }}{% endif %}
+                    </div>
+                    <div>
+                        <strong>City:</strong> {{ customer.shipping_city or customer.city }},
+                        <strong>State:</strong> {{ customer.shipping_state or customer.state }},
+                        <strong>Country:</strong> {{ customer.shipping_country or customer.country }},
+                        <strong>PIN:</strong> {{ customer.shipping_pin or customer.pin }}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <!-- ══ ITEMS TABLE ══ -->
+    <table class="items-table" cellpadding="0" cellspacing="0">
+        <thead>
+            <tr>
+                <th style="width: 35%;" class="align-left">Item Description</th>
+                <th style="width: 9%;" class="align-center">Qty</th>
+                <th style="width: 14%;" class="align-right">Price/Item</th>
+                <th style="width: 10%;" class="align-center">Disc.</th>
+                <th style="width: 14%;" class="align-center">Tax</th>
+                <th style="width: 18%;" class="align-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    <div class="item-name">{{ loop.index }}. &nbsp;{{ item.product_name or '&mdash;' }}</div>
+                    {% if item.description %}
+                    <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
+                    {% endif %}
+                </td>
+                <td class="align-center">
+                    {{ item.quantity }}
+                    <span class="text-muted" style="font-size:9px;"> PCS</span>
+                </td>
+                <td class="align-right">
+                    Rs. {{ "%.2f"|format(item.unit_price) }}
+                </td>
+                <td class="align-center">
+                    {% if item.discount and (item.discount.discount_percentage or item.discount.discount_amount) %}
+                    {% if item.discount.discount_amount %}
+                    -Rs. {{ "%.2f"|format(item.discount.discount_amount) }}
+                    {% endif %}
+                    {% if item.discount.discount_percentage %}
+                    <br><span style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage
+                        }}%)</span>
+                    {% endif %}
+                    {% else %}
+                    -Rs. 0.00
+                    {% endif %}
+                </td>
+                <td class="align-center">
+                    {% if item.tax and (item.tax.tax_percentage or item.tax.tax_amount) %}
+                    {% if item.tax.tax_amount %}
+                    Rs. {{ "%.2f"|format(item.tax.tax_amount) }}
+                    {% endif %}
+                    {% if item.tax.tax_percentage %}
+                    <br><span style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</span>
+                    {% endif %}
+                    {% else %}
+                    Rs. 0.00
+                    {% endif %}
+                </td>
+                <td class="align-right text-bold">
+                    Rs. {{ "%.2f"|format(item.total_price) }}
+                </td>
+            </tr>
+            {% endfor %}
+
+            <!-- SUBTOTAL ROW -->
+            <tr class="subtotal-row">
+                <td colspan="2" class="align-right"
+                    style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
+                <td class="align-right">Rs. {{ "%.2f"|format(charges.subtotal) }}</td>
+                <td class="align-center">-Rs. {{ "%.2f"|format(charges.discount_total) }}</td>
+                <td class="align-center">Rs. {{ "%.2f"|format(charges.tax_total) }}</td>
+                <td class="align-right">Rs. {{ "%.2f"|format(charges.subtotal - charges.discount_total +
+                    charges.tax_total) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- ══ BOTTOM: NOTES LEFT / TOTALS RIGHT ══ -->
+    <table class="bottom-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <!-- LEFT: Notes & Terms -->
+            <td style="width: 44%; vertical-align: top; padding-right: 20px;">
+                {% if notes.notes %}
+                <div class="notes-title">Notes</div>
+                <div class="notes-content">{{ notes.notes|replace('\r', '')|replace('\n', '<br />')|safe }}</div>
+                {% endif %}
+
+                {% if notes.terms_and_conditions %}
+                <div class="notes-title">Terms &amp; Conditions</div>
+                <div class="notes-content">{{ notes.terms_and_conditions|replace('\r', '')|replace('\n', '<br />')|safe
+                    }}</div>
+                {% endif %}
+            </td>
+
+            <!-- RIGHT: Totals -->
+            <td style="width: 56%; vertical-align: top; padding-left: 10px;">
+                <table class="totals-table" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="totals-label">Taxable Amount</td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.subtotal - charges.discount_total) }}</td>
+                    </tr>
+                    {% if charges.discount_total %}
+                    <tr>
+                        <td class="totals-label">Total Discount</td>
+                        <td class="totals-value">-Rs. {{ "%.2f"|format(charges.discount_total) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if charges.tax_total %}
+                    {% if charges.cgst %}
+                    <tr>
+                        <td class="totals-label">CGST{% if charges.cgst_rate %} ({{ charges.cgst_rate }}%){% endif %}
+                        </td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.cgst) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if charges.sgst %}
+                    <tr>
+                        <td class="totals-label">SGST{% if charges.sgst_rate %} ({{ charges.sgst_rate }}%){% endif %}
+                        </td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.sgst) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if charges.igst %}
+                    <tr>
+                        <td class="totals-label">IGST{% if charges.igst_rate %} ({{ charges.igst_rate }}%){% endif %}
+                        </td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.igst) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if charges.utgst %}
+                    <tr>
+                        <td class="totals-label">UTGST{% if charges.utgst_rate %} ({{ charges.utgst_rate }}%){% endif %}
+                        </td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.utgst) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if not charges.cgst and not charges.sgst and not charges.igst and not charges.utgst %}
+                    <tr>
+                        <td class="totals-label">Tax (Total)</td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.tax_total) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endif %}
+                    {% if charges.additional_charges_total %}
+                    <tr>
+                        <td class="totals-label">Additional Charges</td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.additional_charges_total) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if charges.round_off %}
+                    <tr>
+                        <td class="totals-label">Round Off</td>
+                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.round_off) }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+
+                <hr class="totals-divider">
+
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="grand-total-label">Grand Total</td>
+                        <td class="grand-total-value">Rs. {{ "%.2f"|format(quotation.total_amount) }}</td>
+                    </tr>
+                    {% if quotation.amount_in_words %}
+                    <tr>
+                        <td colspan="2" class="in-words">
+                            <strong>In Words:</strong> {{ quotation.amount_in_words }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ══ SIGNATURE ══ -->
+    <table class="signature-section" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 60%;"></td>
+            <td style="width: 40%; text-align: right;">
+                <div class="signature-line">Authorized Signatory</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ══ FOOTER STRIP ══ -->
+    <div id="footer_content">
+        {{ business.name }} &nbsp;|&nbsp;
+        {% if business.email %}{{ business.email }} &nbsp;|&nbsp;{% endif %}
+        {% if business.phone_number %}{{ business.phone_number }}{% endif %}
+        &nbsp;&mdash;&nbsp; Thank you for your business!
+    </div>
+
+</body>
+
+</html>

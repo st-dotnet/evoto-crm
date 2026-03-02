@@ -576,7 +576,15 @@ def update_lead(lead_id):
     try:
         data = request.get_json() or {}
         bypass_duplicate = data.get("bypass_duplicate", False)
-        lead = Lead.query.filter_by(uuid=lead_id, is_deleted=False).first()
+        lead = (
+            Lead.query
+            .filter_by(uuid=lead_id, is_deleted=False)
+            .options(
+                joinedload(Lead.lead_addresses).joinedload(LeadAddress.address),
+                joinedload(Lead.customers)
+            )
+            .first()
+        )
         if not lead:
             return jsonify({"error": "Lead not found"}), 404
 
@@ -637,7 +645,7 @@ def update_lead(lead_id):
         if status.lower() in ["lose", "5"]:
             lead.is_deleted = True
             # Also find and delete linked customer if exists
-            customer = Customer.query.filter_by(lead_id=lead.uuid).first()
+            customer = lead.customers[0] if lead.customers else None
             if customer:
                 customer.is_deleted = True
                 set_updated_fields(customer)
@@ -659,7 +667,7 @@ def update_lead(lead_id):
                 return jsonify({"error": "Complete address is required when status is Win"}), 400
 
             # Check for existing LeadAddress
-            lead_address = LeadAddress.query.filter_by(lead_id=lead.uuid).first()
+            lead_address = lead.lead_addresses[0] if lead.lead_addresses else None
             if lead_address:
                 # Update existing address
                 addr = lead_address.address
@@ -697,7 +705,7 @@ def update_lead(lead_id):
         address_data = None
         if str(lead.status).strip().lower() in ["win", "4"]:
             # Check for existing LeadAddress
-            lead_address = LeadAddress.query.filter_by(lead_id=lead.uuid).first()
+            lead_address = lead.lead_addresses[0] if lead.lead_addresses else None
             if lead_address and lead_address.address:
                 addr = lead_address.address
                 address_data = {

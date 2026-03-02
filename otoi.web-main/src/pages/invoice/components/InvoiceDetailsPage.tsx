@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,18 +9,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getInvoiceById } from "../services/invoice.service";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { getInvoiceById } from "../services/invoice.services";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogBody,
+  DialogClose
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,83 +136,82 @@ const InvoiceDetailsPage: React.FC = () => {
     }
   }, [id]);
 
-    const fetchInvoiceData = async () => {
-        setIsLoading(true);
-        try {
-            const response = await getInvoiceById(id!);
-            if (response.success && response.data) {
-                const data = response.data;
-                setInvoiceData(data);
+  const fetchInvoiceData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getInvoiceById(id!);
+      if (response.success && response.data) {
+        const data = response.data;
+        setInvoiceData(data);
 
-                // Fetch customer details separately to get address information
-                if (data.customer_id || data.customer?.uuid) {
-                    const custId = data.customer_id || data.customer?.uuid;
-                    try {
-                        const customerRes = await getCustomerById(custId);
-                        if (customerRes.success && customerRes.data) {
-                            setInvoiceData(prev => prev ? ({
-                                ...prev,
-                                customer: {
-                                    ...prev.customer,
-                                    ...customerRes.data,
-                                    billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
-                                    shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
-                                }
-                            }) : null);
-                        }
-                    } catch (custError) {
-                        console.error("Error fetching customer details for invoice:", custError);
-                    }
+        // Fetch customer details separately to get address information
+        if (data.customer_id || data.customer?.uuid) {
+          const custId = data.customer_id || data.customer?.uuid;
+          try {
+            const customerRes = await getCustomerById(custId);
+            if (customerRes.success && customerRes.data) {
+              setInvoiceData(prev => prev ? ({
+                ...prev,
+                customer: {
+                  ...prev.customer,
+                  ...customerRes.data,
+                  billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
+                  shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
                 }
-            } else {
-                toast.error(response.error || "Failed to load invoice");
-                navigate("/invoices");
+              }) : null);
             }
-        } catch (error) {
-            console.error("Error fetching invoice:", error);
-            toast.error("Failed to load invoice");
-            navigate("/invoices");
-        } finally {
-            setIsLoading(false);
+          } catch (custError) {
+            console.error("Error fetching customer details for invoice:", custError);
+          }
         }
-    };
+      } else {
+        toast.error(response.error || "Failed to load invoice");
+        navigate("/invoices");
+      }
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      toast.error("Failed to load invoice");
+      navigate("/invoices");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDownloadPDF = async () => {
-    if (!invoiceRef.current) return;
+    if (!invoiceData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
-      const element = invoiceRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
+      const token = (() => {
+        try {
+          const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+          if (!authData) return null;
+          const parsedAuth = JSON.parse(authData);
+          return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+        } catch (error) {
+          return null;
+        }
+      })();
+
+      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/invoices/${invoiceData.uuid}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
       }
 
-      pdf.save(`Invoice-${invoiceData?.invoice_number || "Draft"}.pdf`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${invoiceData.invoice_number || "Draft"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
       toast.success("PDF downloaded successfully", { id: downloadToast });
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -227,44 +226,36 @@ const InvoiceDetailsPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  const handleShare = async () => {
-    if (!invoiceRef.current) return;
-    const shareToast = toast.loading("Preparing for share...");
-    try {
-      const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error("Failed to generate blob"));
-        }, "image/png"),
-      );
-      const file = new File(
-        [blob],
-        `Invoice-${invoiceData?.invoice_number}.png`,
-        { type: "image/png" },
-      );
+  // const handleShare = async () => {
+  //     if (!invoiceRef.current) return;
+  //     const shareToast = toast.loading("Preparing for share...");
+  //     try {
+  //         const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
+  //         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
+  //             if (b) resolve(b);
+  //             else reject(new Error("Failed to generate blob"));
+  //         }, "image/png"));
+  //         const file = new File([blob], `Invoice-${invoiceData?.invoice_number}.png`, { type: "image/png" });
 
-      if (navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: `Invoice ${invoiceData?.invoice_number}`,
-          text: `Check out our invoice: ${invoiceData?.invoice_number}`,
-        });
-        toast.success("Shared successfully", { id: shareToast });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Invoice-${invoiceData?.invoice_number}.png`;
-        a.click();
-        toast.success("Image saved (Direct sharing not supported)", {
-          id: shareToast,
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to share", { id: shareToast });
-    }
-  };
+  //         if (navigator.share) {
+  //             await navigator.share({
+  //                 files: [file],
+  //                 title: `Invoice ${invoiceData?.invoice_number}`,
+  //                 text: `Check out our invoice: ${invoiceData?.invoice_number}`
+  //             });
+  //             toast.success("Shared successfully", { id: shareToast });
+  //         } else {
+  //             const url = URL.createObjectURL(blob);
+  //             const a = document.createElement("a");
+  //             a.href = url;
+  //             a.download = `Invoice-${invoiceData?.invoice_number}.png`;
+  //             a.click();
+  //             toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+  //         }
+  //     } catch (error) {
+  //         toast.error("Failed to share", { id: shareToast });
+  //     }
+  // };
 
   const handleRecordPayment = () => {
     if (!invoiceData) return;
@@ -284,7 +275,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const maxAmount = invoiceData.balance_due;
     const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
     const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
-    
+
     if (amount > maxAllowedAmount) {
       setAmountError(
         `Amount received cannot exceed ${formatCurrency(maxAllowedAmount)} (balance due: ${formatCurrency(maxAmount)} - discount: ${formatCurrency(currentDiscount)})`,
@@ -332,7 +323,7 @@ const InvoiceDetailsPage: React.FC = () => {
         if (response.error?.includes("Overpayment not allowed")) {
           setAmountError(response.error);
           toast.error(response.error);
-          
+
           // Auto-correct to max allowed amount if provided
           if ((response.data as any)?.max_allowed) {
             setPaymentForm({
@@ -347,13 +338,13 @@ const InvoiceDetailsPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Payment recording error:", error);
-      
+
       // Handle overpayment error from API response
       if (error.response?.data?.error?.includes("Overpayment not allowed")) {
         const errorData = error.response.data;
         setAmountError(errorData.error);
         toast.error(errorData.error);
-        
+
         // Auto-correct to max allowed amount
         if (errorData.max_allowed) {
           setPaymentForm({
@@ -370,9 +361,9 @@ const InvoiceDetailsPage: React.FC = () => {
     }
   };
 
-    // const handleEdit = () => {
-    //     navigate(`/invoices/${id}/edit`);
-    // };
+  // const handleEdit = () => {
+  //     navigate(`/invoices/${id}/edit`);
+  // };
 
   const formatCurrency = (amount: number) => {
     return `₹ ${amount.toFixed(2)}`;
@@ -567,19 +558,19 @@ const InvoiceDetailsPage: React.FC = () => {
 
     const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
 
-        if (line1) elements.push(<>
-            <span className="font-semibold">{prefix}:</span> {line1}
-        </>);
-        // if (line2) elements.push(<>
-        //     <span className="font-semibold">Line 2:</span> {line2}
-        // </>);
+    if (line1) elements.push(<>
+      <span className="font-semibold">{prefix}:</span> {line1}
+    </>);
+    // if (line2) elements.push(<>
+    //     <span className="font-semibold">Line 2:</span> {line2}
+    // </>);
 
-        const parts = [];
-        if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
-        if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
-        if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
-        const pin = address.pin || address.postal_code || address.zip;
-        if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
+    const parts = [];
+    if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
+    if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
+    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+    const pin = address.pin || address.postal_code || address.zip;
+    if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
 
 
     if (parts.length > 0) {
@@ -597,25 +588,25 @@ const InvoiceDetailsPage: React.FC = () => {
     let address =
       type === "shipping"
         ? customer.shipping_address ||
-          customer.shippingAddress ||
-          customer.shipping_addresses
+        customer.shippingAddress ||
+        customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
       address = address.find((addr: any) => addr?.is_default) || address[0];
     }
 
-        if (!address) {
-            const prefix = type === "shipping" ? "shipping_" : "";
-            address = {
-                address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
-                address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
-                city: customer[`${prefix}city`] || customer.city,
-                state: customer[`${prefix}state`] || customer.state,
-                country: customer[`${prefix}country`] || customer.country,
-                pin: customer[`${prefix}pin`] || customer.pin,
-            };
-        }
+    if (!address) {
+      const prefix = type === "shipping" ? "shipping_" : "";
+      address = {
+        address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
+        address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
+        city: customer[`${prefix}city`] || customer.city,
+        state: customer[`${prefix}state`] || customer.state,
+        country: customer[`${prefix}country`] || customer.country,
+        pin: customer[`${prefix}pin`] || customer.pin,
+      };
+    }
 
     return address;
   };
@@ -699,35 +690,35 @@ const InvoiceDetailsPage: React.FC = () => {
             }
           }
         `}
-            </style>
-            {/* Sticky Header Actions */}
-            <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-                <div className="flex items-center justify-between max-w-7xl mx-auto">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/invoices")}><ArrowLeft className="h-4 w-4" /></Button>
-                        <div>
-                            <h1 className="text-xl font-semibold text-black">Invoice #{invoiceData.invoice_number}</h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
-                                    {invoiceData.payment_status}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-                        <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button>
-                        {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
-                        <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
-                        {invoiceData.balance_due > 0 && (
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
-                                <CreditCard className="h-4 w-4" />Record Payment
-                            </Button>
-                        )}
-                    </div>
-                </div>
+      </style>
+      {/* Sticky Header Actions */}
+      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/invoices")}><ArrowLeft className="h-4 w-4" /></Button>
+            <div>
+              <h1 className="text-xl font-semibold text-black">Invoice #{invoiceData.invoice_number}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
+                  {invoiceData.payment_status}
+                </span>
+              </div>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
+            {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
+            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
+            {invoiceData.balance_due > 0 && (
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
+                <CreditCard className="h-4 w-4" />Record Payment
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main Invoice Preview Area */}
       <div
@@ -772,18 +763,18 @@ const InvoiceDetailsPage: React.FC = () => {
           })()}
         </div>
 
-                {/* Invoice Details */}
-                <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-                    {/* Labels Row */}
-                    <div className="px-4 py-1 border-b border-black bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
-                    </div>
-                    <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
-                    </div>
-                    <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-                        <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
-                    </div>
+        {/* Invoice Details */}
+        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
+          {/* Labels Row */}
+          <div className="px-4 py-1 border-b border-black bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
+          </div>
+          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
+          </div>
+          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
+          </div>
 
           {/* Values Row */}
           <div className="px-4 py-1">
@@ -803,643 +794,640 @@ const InvoiceDetailsPage: React.FC = () => {
           </div>
         </div>
 
-                <div className="grid grid-cols-2 gap-12 mb-12">
-                    <div>
-                        <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
-                        <div className="space-y-1 text-black text-sm">
-                            <p className="font-semibold text-lg mb-2">
-                                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
-                            </p>
-                            <div className="space-y-1">
-                                <p className="font-medium">
-                                    {/* {invoiceData.customer ?
+        <div className="grid grid-cols-2 gap-12 mb-12">
+          <div>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
+            <div className="space-y-1 text-black text-sm">
+              <p className="font-semibold text-lg mb-2">
+                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+              </p>
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {/* {invoiceData.customer ?
                                         `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
                                         'No customer selected'
                                     } */}
-                                </p>
-                                {invoiceData.customer?.company_name && (
-                                    <p className="text-gray-600">{invoiceData.customer.company_name}</p>
-                                )}
-                                {invoiceData.customer?.email && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Email:</span> {invoiceData.customer.email}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.mobile && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.gst && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
-                                    </p>
-                                )}
-                                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
-                                    <p key={i} className="text-black">{element}</p>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
-                        <div className="text-black text-sm">
-                            <p className="font-semibold text-lg mb-2">
-                                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
-                            </p>
-                            <div className="space-y-1">
-                                <p className="font-medium">
-                                    {/* {invoiceData.customer ?
+                </p>
+                {invoiceData.customer?.company_name && (
+                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                )}
+                {invoiceData.customer?.email && (
+                  <p className="text-black">
+                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                  </p>
+                )}
+                {invoiceData.customer?.mobile && (
+                  <p className="text-black">
+                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                  </p>
+                )}
+                {invoiceData.customer?.gst && (
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                  </p>
+                )}
+                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
+                  <p key={i} className="text-black">{element}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
+            <div className="text-black text-sm">
+              <p className="font-semibold text-lg mb-2">
+                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+              </p>
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {/* {invoiceData.customer ?
                                         `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
                                         'No customer selected'
                                     } */}
-                                </p>
-                                {invoiceData.customer?.company_name && (
-                                    <p className="text-gray-600">{invoiceData.customer.company_name}</p>
-                                )}
-                                {invoiceData.customer?.email && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Email:</span> {invoiceData.customer.email}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.mobile && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
-                                    </p>
-                                )}
-                                {invoiceData.customer?.gst && (
-                                    <p className="text-black">
-                                        <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
-                                    </p>
-                                )}
-                                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
-                                    <p key={i} className="text-black">{element}</p>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </p>
+                {invoiceData.customer?.company_name && (
+                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                )}
+                {invoiceData.customer?.email && (
+                  <p className="text-black">
+                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                  </p>
+                )}
+                {invoiceData.customer?.mobile && (
+                  <p className="text-black">
+                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                  </p>
+                )}
+                {invoiceData.customer?.gst && (
+                  <p className="text-black">
+                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                  </p>
+                )}
+                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
+                  <p key={i} className="text-black">{element}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
-                <div className="mb-4">
-                    <table className="w-full border border-black">
-                        <thead>
-                            <tr className="border-b-2 border-black bg-gray-100">
-                                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
-                                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-black">
-                            {invoiceData.items?.map((item, index) => (
-                                <tr key={item.uuid}>
-                                    <td className="px-3 py-2 align-top border-r border-black">
-                                        <div className="flex items-start gap-1">
-                                            <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-sm text-black leading-snug">{item.product_name}</p>
-                                                {item.description && (
-                                                    <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        <div className="flex flex-col items-end">
-                                            <span>-{formatCurrency(item.discount_amount)}</span>
-                                            {item.discount_percentage > 0 && <span className="text-[10px]">({item.discount_percentage}%)</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        <div className="flex flex-col items-end">
-                                            <span>{formatCurrency(item.tax_amount)}</span>
-                                            {item.tax_percentage > 0 && <span className="text-[10px]">({item.tax_percentage}%)</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
-                                    {formatCurrency(invoiceData.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0))}
-                                </td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(invoiceData.discount_total)}</td>
-                                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(invoiceData.tax_total)}</td>
-                                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                {/* ===== Bottom Section (Two Column Layout) ===== */}
-                <div className="mt-16 grid grid-cols-2 gap-16">
-
-                    {/* ================= LEFT SIDE ================= */}
-                    <div className="space-y-10">
-
-                        {/* Notes */}
-                        {invoiceData.notes && (
-                            <div>
-                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
-                                    Notes
-                                </h4>
-                                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
-                                    {invoiceData.notes}
-                                </p>
-                            </div>
+        <div className="mb-4">
+          <table className="w-full border border-black">
+            <thead>
+              <tr className="border-b-2 border-black bg-gray-100">
+                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
+                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black">
+              {invoiceData.items?.map((item, index) => (
+                <tr key={item.uuid}>
+                  <td className="px-3 py-2 align-top border-r border-black">
+                    <div className="flex items-start gap-1">
+                      <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-black leading-snug">{item.product_name}</p>
+                        {item.description && (
+                          <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
                         )}
-
-                        {/* Terms */}
-                        {invoiceData.terms_and_conditions && (
-                            <div>
-                                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
-                                    Terms & Conditions
-                                </h4>
-                                <div className="text-[10px] text-black space-y-1">
-                                    {invoiceData.terms_and_conditions
-                                        .split('\n')
-                                        .filter(t => t.trim() !== '')
-                                        .map((term, i) => (
-                                            <p key={i} className="leading-tight">
-                                                • {term}
-                                            </p>
-                                        ))}
-                                </div>
-                            </div>
-                        )}
+                      </div>
                     </div>
-
-                    {/* ================= RIGHT SIDE ================= */}
-                    <div>
-
-                        {/* ===== Tax Summary ===== */}
-                        <div className="space-y-0">
-
-                            <div className="flex justify-between items-center py-2">
-                                <span className="text-xs font-normal text-black uppercase">
-                                    Taxable Amount
-                                </span>
-                                <span className="text-sm font-bold text-black">
-                                    {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
-                                </span>
-                            </div>
-
-                            {invoiceData.tax_total > 0 && (
-                                <>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-xs font-normal text-black uppercase">
-                                            CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
-                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                                                : 0}%)
-                                        </span>
-                                        <span className="text-sm font-bold text-black">
-                                            {formatCurrency(invoiceData.tax_total / 2)}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex justify-between items-center py-2 border-b border-black">
-                                        <span className="text-xs font-normal text-black uppercase">
-                                            {currentUser?.isUT ? 'UTGST' : 'SGST'}
-                                            ({invoiceData.subtotal - invoiceData.discount_total > 0
-                                                ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                                                : 0}%)
-                                        </span>
-                                        <span className="text-sm font-bold text-black">
-                                            {formatCurrency(invoiceData.tax_total / 2)}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
-
-                            {invoiceData.additional_charges_total > 0 && (
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-xs font-normal text-black uppercase">
-                                        Additional Charges
-                                    </span>
-                                    <span className="text-sm font-bold text-black">
-                                        {formatCurrency(invoiceData.additional_charges_total)}
-                                    </span>
-                                </div>
-                            )}
-
-                            <div className="flex justify-between items-center py-3 border-b-2 border-black">
-                                <span className="text-sm font-bold text-black uppercase tracking-wider">
-                                    Grand Total
-                                </span>
-                                <span className="text-xl font-bold text-black">
-                                    {formatCurrency(invoiceData.total_amount)}
-                                </span>
-                            </div>
-
-                            <div className="pt-2 text-right">
-                                <p className="text-[10px] text-gray-500 uppercase font-medium">
-                                    Amount in Words
-                                </p>
-                                <p className="text-xs font-bold text-black">
-                                    {formatNumberInWords(invoiceData.total_amount)}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* ===== Signature ===== */}
-                        <div className="mt-20 flex justify-end">
-                            <div className="text-center">
-                                <div className="w-48 border-b border-black mb-2"></div>
-                                <p className="text-xs font-bold text-black uppercase">
-                                    Authorized Signatory
-                                </p>
-                            </div>
-                        </div>
-
+                  </td>
+                  <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>-{formatCurrency(item.discount_amount)}</span>
+                      {item.discount_percentage > 0 && <span className="text-[10px]">({item.discount_percentage}%)</span>}
                     </div>
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>{formatCurrency(item.tax_amount)}</span>
+                      {item.tax_percentage > 0 && <span className="text-[10px]">({item.tax_percentage}%)</span>}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-black bg-gray-50 font-bold">
+                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  {formatCurrency(invoiceData.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0))}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(invoiceData.discount_total)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(invoiceData.tax_total)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {/* ===== Bottom Section (Two Column Layout) ===== */}
+        <div className="mt-16 grid grid-cols-2 gap-16">
 
+          {/* ================= LEFT SIDE ================= */}
+          <div className="space-y-10">
+
+            {/* Notes */}
+            {invoiceData.notes && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                  Notes
+                </h4>
+                <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
+                  {invoiceData.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Terms */}
+            {invoiceData.terms_and_conditions && (
+              <div>
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                  Terms & Conditions
+                </h4>
+
+                <div className="text-[10px] text-black space-y-1">
+                  {invoiceData.terms_and_conditions
+                    ?.split("\n")
+                    .filter((t) => t.trim() !== "")
+                    .map((term, i) => (
+                      <p key={i} className="leading-tight">
+                        {term}
+                      </p>
+                    ))}
                 </div>
+              </div>
+            )}
+          </div>
 
-      {/* Payment History Sidebar */}
-      <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
-        <SheetContent
-          side="right"
-          className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200"
-        >
-          <SheetHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between">
-            <SheetTitle className="text-xl font-bold text-gray-800">
-              Payment History - Invoice #{invoiceData.invoice_number}
-            </SheetTitle>
-          </SheetHeader>
+          {/* ================= RIGHT SIDE ================= */}
+          <div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Summary Section */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-medium">
-                  Invoice Amount
+            {/* ===== Tax Summary ===== */}
+            <div className="space-y-0">
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  Taxable Amount
                 </span>
-                <span className="text-gray-900 font-bold">
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
+                </span>
+              </div>
+
+              {invoiceData.tax_total > 0 && (
+                <>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-xs font-normal text-black uppercase">
+                      CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
+                        ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                        : 0}%)
+                    </span>
+                    <span className="text-sm font-bold text-black">
+                      {formatCurrency(invoiceData.tax_total / 2)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-2 border-b border-black">
+                    <span className="text-xs font-normal text-black uppercase">
+                      {currentUser?.isUT ? 'UTGST' : 'SGST'}
+                      ({invoiceData.subtotal - invoiceData.discount_total > 0
+                        ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
+                        : 0}%)
+                    </span>
+                    <span className="text-sm font-bold text-black">
+                      {formatCurrency(invoiceData.tax_total / 2)}
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {invoiceData.additional_charges_total > 0 && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs font-normal text-black uppercase">
+                    Additional Charges
+                  </span>
+                  <span className="text-sm font-bold text-black">
+                    {formatCurrency(invoiceData.additional_charges_total)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center py-3 border-b-2 border-black">
+                <span className="text-sm font-bold text-black uppercase tracking-wider">
+                  Grand Total
+                </span>
+                <span className="text-xl font-bold text-black">
                   {formatCurrency(invoiceData.total_amount)}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
-                <span className="text-gray-500 font-medium tracking-tight">
-                  Initial Amount Received
-                </span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(0)}
-                </span>
+
+              <div className="pt-2 text-right">
+                <p className="text-[10px] text-gray-500 uppercase font-medium">
+                  Amount in Words
+                </p>
+                <p className="text-xs font-bold text-black">
+                  {formatNumberInWords(invoiceData.total_amount)}
+                </p>
               </div>
             </div>
 
-            {/* Payments List */}
-            <div className="space-y-4">
-              {invoiceData.amount_paid > 0 ? (
-                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-bold text-blue-600">
-                      Payment in #{invoiceData.invoice_number}
-                    </h4>
-                    <span className="text-sm font-bold text-gray-900">
-                      {formatCurrency(invoiceData.amount_paid)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                    <span>
-                      {new Date(invoiceData.invoice_date).toLocaleDateString(
-                        "en-IN",
-                      )}
-                    </span>
-                    <span className="capitalize">Cash</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-12 text-center">
-                  <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                    <CreditCard className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-sm text-gray-500 font-medium">
-                    No payments recorded yet
-                  </p>
-                </div>
-              )}
+            {/* ===== Signature ===== */}
+            <div className="mt-20 flex justify-end">
+              <div className="text-center">
+                <div className="w-48 border-b border-black mb-2"></div>
+                <p className="text-xs font-bold text-black uppercase">
+                  Authorized Signatory
+                </p>
+              </div>
             </div>
+
           </div>
 
-          {/* Sidebar Footer */}
-          <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm font-medium">
-                <span className="text-gray-600">Total Amount Received</span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.amount_paid)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-gray-600">Balance Amount</span>
-                <span className="text-red-600">
-                  {formatCurrency(invoiceData.balance_due)}
-                </span>
-              </div>
-            </div>
+        </div>
 
-            {invoiceData.balance_due > 0 && (
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
-                onClick={handleActualRecordPayment}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Record Payment In
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+        {/* Payment History Sidebar */}
+        <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
+          <SheetContent
+            side="right"
+            className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200"
+          >
+            <SheetHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between">
+              <SheetTitle className="text-xl font-bold text-gray-800">
+                Payment History - Invoice #{invoiceData.invoice_number}
+              </SheetTitle>
+            </SheetHeader>
 
-      {/* Record Payment Modal */}
-      <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="px-6 py-4 border-b border-gray-200">
-            <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-gray-600" />
-              Record Payment For Invoice #{invoiceData.invoice_number}
-            </DialogTitle>
-          </DialogHeader>
-
-          <DialogBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Form Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Amount Received <span className="text-red-500">*</span>
-                      </label>
-                    </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.amountReceived === null ||
-                        paymentForm.amountReceived === 0
-                          ? ""
-                          : paymentForm.amountReceived
-                      }
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
-                        const cappedAmount = Math.min(amount, maxAllowedAmount);
-                        setPaymentForm({
-                          ...paymentForm,
-                          amountReceived: cappedAmount,
-                        });
-                        validateAmountReceived(cappedAmount);
-                      }}
-                      className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                    {amountError && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {amountError}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Payment Discount
-                      </label>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
-                    </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.discount === null ||
-                        paymentForm.discount === 0
-                          ? ""
-                          : paymentForm.discount
-                      }
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
-                        const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
-                        
-                        // Adjust amount received if it exceeds the new maximum allowed
-                        const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
-                        
-                        setPaymentForm({
-                          ...paymentForm,
-                          discount: newDiscount,
-                          amountReceived: adjustedAmountReceived,
-                        });
-                        validateAmountReceived(adjustedAmountReceived);
-                      }}
-                      className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                  </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Summary Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-medium">
+                    Invoice Amount
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.total_amount)}
+                  </span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Payment Date
-                    </label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full h-10 justify-start text-left font-normal border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-100",
-                            !paymentForm.date && "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                          {paymentForm.date ? (
-                            format(paymentForm.date, "dd MMM yyyy")
-                          ) : (
-                            <span className="text-gray-500">Select date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={paymentForm.date}
-                          onSelect={(date) =>
-                            date && setPaymentForm({ ...paymentForm, date })
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Payment Mode
-                    </label>
-                    <Select
-                      value={paymentForm.mode}
-                      onValueChange={(value) =>
-                        setPaymentForm({ ...paymentForm, mode: value })
-                      }
-                    >
-                      <SelectTrigger className="h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
-                        <SelectValue placeholder="Select mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank_transfer">
-                          Bank Transfer
-                        </SelectItem>
-                        <SelectItem value="upi">UPI</SelectItem>
-                        <SelectItem value="cheque">Cheque</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Notes
-                  </label>
-                  <Textarea
-                    placeholder="Add any remarks or payment notes..."
-                    className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
-                    value={paymentForm.notes}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, notes: e.target.value })
-                    }
-                  />
+                <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium tracking-tight">
+                    Initial Amount Received
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(0)}
+                  </span>
                 </div>
               </div>
 
-              {/* Info & Calculation Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                    Invoice #{invoiceData.invoice_number}
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Customer Name</span>
-                      <span className="text-gray-900 font-medium">
-                        {invoiceData.customer?.first_name}{" "}
-                        {invoiceData.customer?.last_name}
+              {/* Payments List */}
+              <div className="space-y-4">
+                {invoiceData.amount_paid > 0 ? (
+                  <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-blue-600">
+                        Payment in #{invoiceData.invoice_number}
+                      </h4>
+                      <span className="text-sm font-bold text-gray-900">
+                        {formatCurrency(invoiceData.amount_paid)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Total Amount</span>
-                      <span className="text-gray-900 font-medium">
-                        {formatCurrency(invoiceData.total_amount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Due Date</span>
-                      <span className="text-gray-900 font-medium">
-                        {new Date(invoiceData.due_date).toLocaleDateString(
+                    <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                      <span>
+                        {new Date(invoiceData.invoice_date).toLocaleDateString(
                           "en-IN",
                         )}
                       </span>
+                      <span className="capitalize">Cash</span>
                     </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center">
+                    <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                      <CreditCard className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium">
+                      No payments recorded yet
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sidebar Footer */}
+            <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-600">Total Amount Received</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.amount_paid)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-bold">
+                  <span className="text-gray-600">Balance Amount</span>
+                  <span className="text-red-600">
+                    {formatCurrency(invoiceData.balance_due)}
+                  </span>
+                </div>
+              </div>
+
+              {invoiceData.balance_due > 0 && (
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
+                  onClick={handleActualRecordPayment}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Record Payment In
+                </Button>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Record Payment Modal */}
+        <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
+            <DialogHeader className="px-6 py-4 border-b border-gray-200">
+              <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-gray-600" />
+                Record Payment For Invoice #{invoiceData.invoice_number}
+              </DialogTitle>
+            </DialogHeader>
+
+            <DialogBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Form Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount Received <span className="text-red-500">*</span>
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.amountReceived === null ||
+                            paymentForm.amountReceived === 0
+                            ? ""
+                            : paymentForm.amountReceived
+                        }
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
+                          const cappedAmount = Math.min(amount, maxAllowedAmount);
+                          setPaymentForm({
+                            ...paymentForm,
+                            amountReceived: cappedAmount,
+                          });
+                          validateAmountReceived(cappedAmount);
+                        }}
+                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      {amountError && (
+                        <p className="text-xs text-red-600 font-medium">
+                          {amountError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Payment Discount
+                        </label>
+                        <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.discount === null ||
+                            paymentForm.discount === 0
+                            ? ""
+                            : paymentForm.discount
+                        }
+                        onChange={(e) => {
+                          const newDiscount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
+                          const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
+
+                          // Adjust amount received if it exceeds the new maximum allowed
+                          const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
+
+                          setPaymentForm({
+                            ...paymentForm,
+                            discount: newDiscount,
+                            amountReceived: adjustedAmountReceived,
+                          });
+                          validateAmountReceived(adjustedAmountReceived);
+                        }}
+                        className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Payment Date
+                      </label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full h-10 justify-start text-left font-normal border-gray-200 hover:bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-100",
+                              !paymentForm.date && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
+                            {paymentForm.date ? (
+                              format(paymentForm.date, "dd MMM yyyy")
+                            ) : (
+                              <span className="text-gray-500">Select date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={paymentForm.date}
+                            onSelect={(date) =>
+                              date && setPaymentForm({ ...paymentForm, date })
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Payment Mode
+                      </label>
+                      <Select
+                        value={paymentForm.mode}
+                        onValueChange={(value) =>
+                          setPaymentForm({ ...paymentForm, mode: value })
+                        }
+                      >
+                        <SelectTrigger className="h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
+                          <SelectValue placeholder="Select mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="bank_transfer">
+                            Bank Transfer
+                          </SelectItem>
+                          <SelectItem value="upi">UPI</SelectItem>
+                          <SelectItem value="cheque">Cheque</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Notes
+                    </label>
+                    <Textarea
+                      placeholder="Add any remarks or payment notes..."
+                      className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
+                      value={paymentForm.notes}
+                      onChange={(e) =>
+                        setPaymentForm({ ...paymentForm, notes: e.target.value })
+                      }
+                    />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                    Payment Calculation
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-red-600 font-medium">
-                        Pending Amount
-                      </span>
-                      <span className="text-red-600 font-semibold">
-                        {formatCurrency(invoiceData.balance_due)}
-                      </span>
+                {/* Info & Calculation Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                      Invoice #{invoiceData.invoice_number}
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Customer Name</span>
+                        <span className="text-gray-900 font-medium">
+                          {invoiceData.customer?.first_name}{" "}
+                          {invoiceData.customer?.last_name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Total Amount</span>
+                        <span className="text-gray-900 font-medium">
+                          {formatCurrency(invoiceData.total_amount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Due Date</span>
+                        <span className="text-gray-900 font-medium">
+                          {new Date(invoiceData.due_date).toLocaleDateString(
+                            "en-IN",
+                          )}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Amount Received</span>
-                      <span className="text-gray-900 font-medium">
-                        {formatCurrency(paymentForm.amountReceived)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="text-gray-900 font-medium">
-                        -{formatCurrency(paymentForm.discount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm font-semibold text-gray-800">
-                        New Balance
-                      </span>
-                      <span className="text-base font-bold text-blue-600">
-                        {formatCurrency(
-                          Math.max(
-                            0,
-                            invoiceData.balance_due -
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                      Payment Calculation
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-600 font-medium">
+                          Pending Amount
+                        </span>
+                        <span className="text-red-600 font-semibold">
+                          {formatCurrency(invoiceData.balance_due)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Amount Received</span>
+                        <span className="text-gray-900 font-medium">
+                          {formatCurrency(paymentForm.amountReceived)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Discount</span>
+                        <span className="text-gray-900 font-medium">
+                          -{formatCurrency(paymentForm.discount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                        <span className="text-sm font-semibold text-gray-800">
+                          New Balance
+                        </span>
+                        <span className="text-base font-bold text-blue-600">
+                          {formatCurrency(
+                            Math.max(
+                              0,
+                              invoiceData.balance_due -
                               paymentForm.amountReceived -
                               paymentForm.discount,
-                          ),
-                        )}
-                      </span>
+                            ),
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </DialogBody>
+            </DialogBody>
 
-          <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              <span className="font-medium">Note:</span> Fields marked with{" "}
-              <span className="text-red-500">*</span> are required
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsRecordPaymentOpen(false)}
-                className="bg-white border-gray-300 font-medium"
-              >
-                Cancel
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                onClick={handleSavePayment}
-                disabled={
-                  isSavingPayment ||
-                  paymentForm.amountReceived <= 0 ||
-                  amountError !== ""
-                }
-              >
-                {isSavingPayment ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Saving...
-                  </div>
-                ) : (
-                  <>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Record Payment
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">Note:</span> Fields marked with <span className="text-red-500">*</span> are required
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsRecordPaymentOpen(false)}
+                  className="bg-white border-gray-300 font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  onClick={handleSavePayment}
+                  disabled={isSavingPayment || paymentForm.amountReceived <= 0 || amountError !== ""}
+                >
+                  {isSavingPayment ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Saving...
+                    </div>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Record Payment
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 };

@@ -6,6 +6,7 @@ from app.routes import register_blueprints
 from app.middleware import extract_jwt_info
 from app.cli import register_cli
 from dotenv import load_dotenv
+from app.utils.query_profiler import init_profiler
 import os
 
 load_dotenv()
@@ -82,6 +83,9 @@ def create_app():
 
     # Register blueprints
     register_blueprints(app)
+
+    # Initialize query profiler
+    init_profiler(app, slow_query_threshold=0.1)
 
     return app
 
