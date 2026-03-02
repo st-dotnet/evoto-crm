@@ -271,7 +271,7 @@ const MobileView = ({
             >
               <span className="font-semibold text-gray-900 text-sm mb-0.5">{lead.first_name} {lead.last_name}</span>
               <span className="text-xs text-gray-400 font-medium truncate max-w-[200px] sm:max-w-none">
-                {lead.email || "No email provided"}
+                {lead.email || ""}
               </span>
             </div>
 

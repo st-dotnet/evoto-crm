@@ -481,7 +481,7 @@ export const CustomerDetails = () => {
                 {initials || fullName[0]}
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-1">{fullName}</h2>
-              <p className="text-gray-500 text-sm mb-4">{customer.email || "No email provided"}</p>
+              <p className="text-gray-500 text-sm mb-4">{customer.email || ""}</p>
 
               <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${customer.status === "4" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
                 }`}>
@@ -501,13 +501,13 @@ export const CustomerDetails = () => {
         {/* Right Column: Information Tabs/Sections */}
         <div className="lg:col-span-2 space-y-8">
           {/* Tabs */}
-          <div className="overflow-x-auto border-b">
+          <div className="overflow-hidden border-b">
             <div className="flex min-w-max">
               {["overview", "activities", "intelligence"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
-                  className={`px-6 py-3 text-sm font-medium transition ${activeTab === tab
+                  className={`px-5 py-3 text-sm font-medium transition ${activeTab === tab
                     ? "border-b-2 border-blue-600 text-blue-600"
                     : "text-gray-500 hover:text-gray-700"
                     }`}
@@ -621,7 +621,7 @@ export const CustomerDetails = () => {
 
             {/* Activity Tabs */}
             <div className="border-b mb-6 -mx-1 px-1">
-              <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-px">
+              <div className="flex gap-3 md:gap-5 overflow-hidden no-scrollbar scroll-smooth pb-px">
                 {["Orders", "Payments", "Support", "Notes", "Calls", "Meetings"].map(
                   (tab) => (
                     <button

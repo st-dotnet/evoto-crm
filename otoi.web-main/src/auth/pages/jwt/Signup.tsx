@@ -97,7 +97,7 @@ const Signup = () => {
   return (
     <div className="card max-w-[700px] w-full">
       <form
-        className="card-body flex flex-col gap-5 p-10"
+        className="card-body flex flex-col gap-5 p-5 sm:p-10"
         noValidate
         onSubmit={formik.handleSubmit}
       >
@@ -138,12 +138,12 @@ const Signup = () => {
         </div>
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               First Name <span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <input
                 placeholder="First Name"
                 type="text"
@@ -163,8 +163,8 @@ const Signup = () => {
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">Last Name</label>
-            <label className="input">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">Last Name</label>
+            <label className="input h-8 sm:h-10">
               <input
                 placeholder="Last Name"
                 type="text"
@@ -180,12 +180,12 @@ const Signup = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Email<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <input
                 placeholder="email@email.com"
                 type="email"
@@ -205,10 +205,10 @@ const Signup = () => {
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Mobile No.<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <input
                 placeholder="83******25"
                 type="text"
@@ -241,13 +241,13 @@ const Signup = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {/* Country */}
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Country<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <select
                 {...formik.getFieldProps("country")}
                 onChange={(e) => {
@@ -255,7 +255,7 @@ const Signup = () => {
                   formik.setFieldValue("state", ""); // Reset state when country changes
                 }}
                 className={clsx(
-                  "form-control bg-transparent",
+                  "form-control bg-transparent w-full",
                   {
                     "is-invalid": formik.touched.country && formik.errors.country,
                   },
@@ -281,15 +281,15 @@ const Signup = () => {
 
           {/* State */}
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               State<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <select
                 {...formik.getFieldProps("state")}
                 disabled={!formik.values.country}
                 className={clsx(
-                  "form-control bg-transparent",
+                  "form-control bg-transparent w-full",
                   {
                     "is-invalid": formik.touched.state && formik.errors.state,
                   },
@@ -318,12 +318,12 @@ const Signup = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Password<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter Password"
@@ -353,10 +353,10 @@ const Signup = () => {
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <label className="form-label text-gray-900">
+            <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Confirm Password<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input">
+            <label className="input h-8 sm:h-10">
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Re-enter Password"
@@ -408,7 +408,7 @@ const Signup = () => {
 
         <button
           type="submit"
-          className="btn btn-primary flex justify-center grow"
+          className="btn btn-primary flex justify-center grow h-8 sm:h-10"
           disabled={loading || formik.isSubmitting}
         >
           {loading ? 'Please wait...' : 'Sign up'}

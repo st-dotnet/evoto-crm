@@ -119,6 +119,8 @@ const ShippingAddressModal = ({
       try {
         const addressToSave: ShippingAddress = {
           ...values,
+          address1: values.address1?.trim() || "",
+          address2: values.address2?.trim() || "",
           uuid: address?.uuid || uniqueID(),
           created_at: address?.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),

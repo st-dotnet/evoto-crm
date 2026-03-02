@@ -238,7 +238,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 font-medium truncate max-w-[150px]">
-                    {customer.email || "No email"}
+                    {customer.email || ""}
                   </span>
                   {customer.city && (
                     <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
