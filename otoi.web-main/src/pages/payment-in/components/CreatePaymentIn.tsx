@@ -371,7 +371,6 @@ export const CreatePaymentIn = () => {
 
       if (response.success && response.data) {
         const paymentData = response.data;
-        console.log("Payment data loaded for edit:", paymentData);
 
         // Set form fields with payment data
         setPaymentDate(

@@ -93,7 +93,7 @@
         .meta-table td {
             border: 1px solid #cccccc;
             padding: 8px 12px;
-            font-size: 12px;
+            font-size: 11px;
             text-align: left;
             color: #1a1a1a;
         }
@@ -421,39 +421,38 @@
                     {% endif %}
                 </td>
                 <td class="align-center">
-                    {{ item.quantity }}
-                    <span class="text-muted" style="font-size:9px;"> PCS</span>
+                    {{ item.quantity }}<span class="text-muted" style="font-size:9px;"> PCS</span>
                 </td>
                 <td class="align-right">
-                    Rs. {{ "%.2f"|format(item.unit_price) }}
+                    Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
                 </td>
                 <td class="align-center">
                     {% if item.discount and (item.discount.discount_percentage or item.discount.discount_amount) %}
                     {% if item.discount.discount_amount %}
-                    -Rs. {{ "%.2f"|format(item.discount.discount_amount) }}
+                    -Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}
                     {% endif %}
                     {% if item.discount.discount_percentage %}
-                    <br><span style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage
+                    <span style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage
                         }}%)</span>
                     {% endif %}
                     {% else %}
-                    -Rs. 0.00
+                    -Rs.&nbsp;0.00
                     {% endif %}
                 </td>
                 <td class="align-center">
                     {% if item.tax and (item.tax.tax_percentage or item.tax.tax_amount) %}
                     {% if item.tax.tax_amount %}
-                    Rs. {{ "%.2f"|format(item.tax.tax_amount) }}
+                    Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}
                     {% endif %}
                     {% if item.tax.tax_percentage %}
-                    <br><span style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</span>
+                    <span style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</span>
                     {% endif %}
                     {% else %}
-                    Rs. 0.00
+                    Rs.&nbsp;0.00
                     {% endif %}
                 </td>
                 <td class="align-right text-bold">
-                    Rs. {{ "%.2f"|format(item.total_price) }}
+                    Rs.&nbsp;{{ "%.2f"|format(item.total_price) }}
                 </td>
             </tr>
             {% endfor %}
@@ -462,10 +461,10 @@
             <tr class="subtotal-row">
                 <td colspan="2" class="align-right"
                     style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
-                <td class="align-right">Rs. {{ "%.2f"|format(charges.subtotal) }}</td>
-                <td class="align-center">-Rs. {{ "%.2f"|format(charges.discount_total) }}</td>
-                <td class="align-center">Rs. {{ "%.2f"|format(charges.tax_total) }}</td>
-                <td class="align-right">Rs. {{ "%.2f"|format(charges.subtotal - charges.discount_total +
+                <td class="align-right">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
+                <td class="align-center">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
+                <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total) }}</td>
+                <td class="align-right">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal - charges.discount_total +
                     charges.tax_total) }}</td>
             </tr>
         </tbody>
@@ -493,12 +492,12 @@
                 <table class="totals-table" cellpadding="0" cellspacing="0">
                     <tr>
                         <td class="totals-label">Taxable Amount</td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.subtotal - charges.discount_total) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal - charges.discount_total) }}</td>
                     </tr>
                     {% if charges.discount_total %}
                     <tr>
                         <td class="totals-label">Total Discount</td>
-                        <td class="totals-value">-Rs. {{ "%.2f"|format(charges.discount_total) }}</td>
+                        <td class="totals-value">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
                     </tr>
                     {% endif %}
                     {% if charges.tax_total %}
@@ -506,47 +505,47 @@
                     <tr>
                         <td class="totals-label">CGST{% if charges.cgst_rate %} ({{ charges.cgst_rate }}%){% endif %}
                         </td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.cgst) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.cgst) }}</td>
                     </tr>
                     {% endif %}
                     {% if charges.sgst %}
                     <tr>
                         <td class="totals-label">SGST{% if charges.sgst_rate %} ({{ charges.sgst_rate }}%){% endif %}
                         </td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.sgst) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.sgst) }}</td>
                     </tr>
                     {% endif %}
                     {% if charges.igst %}
                     <tr>
                         <td class="totals-label">IGST{% if charges.igst_rate %} ({{ charges.igst_rate }}%){% endif %}
                         </td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.igst) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.igst) }}</td>
                     </tr>
                     {% endif %}
                     {% if charges.utgst %}
                     <tr>
                         <td class="totals-label">UTGST{% if charges.utgst_rate %} ({{ charges.utgst_rate }}%){% endif %}
                         </td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.utgst) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.utgst) }}</td>
                     </tr>
                     {% endif %}
                     {% if not charges.cgst and not charges.sgst and not charges.igst and not charges.utgst %}
                     <tr>
                         <td class="totals-label">Tax (Total)</td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.tax_total) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total) }}</td>
                     </tr>
                     {% endif %}
                     {% endif %}
                     {% if charges.additional_charges_total %}
                     <tr>
                         <td class="totals-label">Additional Charges</td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.additional_charges_total) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.additional_charges_total) }}</td>
                     </tr>
                     {% endif %}
                     {% if charges.round_off %}
                     <tr>
                         <td class="totals-label">Round Off</td>
-                        <td class="totals-value">Rs. {{ "%.2f"|format(charges.round_off) }}</td>
+                        <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.round_off) }}</td>
                     </tr>
                     {% endif %}
                 </table>
@@ -556,7 +555,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td class="grand-total-label">Grand Total</td>
-                        <td class="grand-total-value">Rs. {{ "%.2f"|format(quotation.total_amount) }}</td>
+                        <td class="grand-total-value">Rs.&nbsp;{{ "%.2f"|format(quotation.total_amount) }}</td>
                     </tr>
                     {% if quotation.amount_in_words %}
                     <tr>
