@@ -62,6 +62,12 @@ def get_items():
         schema:
           type: string
         description: Sort order: asc or desc (default: desc)
+      - name: low_stock
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Filter products with opening stock less than or equal to 5
       - name: dropdown
         in: query
         required: false
@@ -169,6 +175,16 @@ def get_items():
                         Item.hsn_code.ilike(f"%{query_value}%")
                     )
                 )
+
+        # Handle low_stock filter
+        low_stock = request.args.get("low_stock")
+        if low_stock == 'true':
+            query = query.filter(
+                or_(
+                    Item.opening_stock <= 5,  # Products with low stock
+                    Item.opening_stock.is_(None)  # Services (NULL opening_stock)
+                )
+            )
 
         sort = request.args.get("sort", "created_at")  # Default sort by created_at
         order = request.args.get("order", "desc").upper()  # Default order is 'desc'

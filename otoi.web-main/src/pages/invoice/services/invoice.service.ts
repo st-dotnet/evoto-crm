@@ -11,6 +11,18 @@ interface ApiResponse<T = any> {
   message?: string;
 }
 
+interface InvoiceItemsResponse {
+  data: any[];
+  pagination: {
+    total: number;
+    items_per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
+}
+
 // Frontend InvoiceItem structure
 interface InvoiceItem {
   id: string;
@@ -201,22 +213,33 @@ export const createInvoice = async (
 export const getInvoices = async (
   search = "",
   page = 1,
-  limit = 10,
-): Promise<ApiResponse> => {
+  per_page = 5,
+  party_name = "",
+  invoice_number = "",
+  payment_status = "",
+): Promise<ApiResponse<InvoiceItemsResponse>> => {
   const token = getAuthToken();
   if (!token) {
     return { success: false, error: "Authentication required", status: 401 };
   }
 
   try {
-    const params = new URLSearchParams({
-      search,
-      page: String(page),
-      limit: String(limit),
-    });
+    const params = new URLSearchParams();
+    
+    // Add search parameters
+    if (search) params.append('search', search);
+    if (party_name) params.append('party_name', party_name);
+    if (invoice_number) params.append('invoice_number', invoice_number);
+    if (payment_status && payment_status !== 'all') params.append('payment_status', payment_status);
+    
+    // Add pagination parameters
+    params.append('page', String(page));
+    params.append('per_page', String(per_page));
+
+    const apiUrl = `${API_URL}/invoices?${params.toString()}`;
 
     const response = await axios.get(
-      `${API_URL}/invoices?${params.toString()}`,
+      apiUrl,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -690,13 +713,29 @@ export const recordPayment = async (
   }
 
   try {
+    // First, get current invoice data to fetch existing discount
+    const invoiceResponse = await axios.get(
+      `${API_URL}/invoices/${invoiceId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      },
+    );
+
+    // Calculate total discount (existing + new)
+    const currentPaymentDiscount = invoiceResponse.data?.payment_discount || 0;
+    const totalDiscount = (currentPaymentDiscount || 0) + (discount || 0);
+
     const response = await axios.post(
       `${API_URL}/invoices/${invoiceId}/record-payment`,
       {
         amount,
         payment_method: paymentMethod,
         reference,
-        discount,
+        discount: totalDiscount, // Send accumulated discount
       },
       {
         headers: {
@@ -727,5 +766,149 @@ export const recordPayment = async (
       error: errorMessage,
       status: error?.response?.status || 500,
     };
+  }
+};
+
+export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/invoices?customer_dropdown_active=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    // Fallback to frontend approach if backend doesn't support the new parameter
+    console.warn('Backend does not support customer_dropdown_active, falling back to frontend approach');
+    
+    try {
+      const fallbackResponse = await axios.get(
+        `${API_URL}/invoices?per_page=1000`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Extract only the minimal data needed for dropdown from actual invoices
+      if (fallbackResponse.data && fallbackResponse.data.data) {
+        const uniqueCustomers = new Map();
+        
+        fallbackResponse.data.data.forEach((item: any) => {
+          if (item.customer_name && item.customer_name.trim()) {
+            const customerName = item.customer_name.trim();
+            if (!uniqueCustomers.has(customerName)) {
+              uniqueCustomers.set(customerName, {
+                uuid: item.customer_id,
+                name: customerName
+              });
+            }
+          }
+        });
+        
+        const minimalData = Array.from(uniqueCustomers.values()).sort((a, b) => a.name.localeCompare(b.name));
+        
+        return {
+          success: true,
+          data: minimalData,
+          status: fallbackResponse.status,
+        };
+      }
+
+      return {
+        success: true,
+        data: [],
+        status: fallbackResponse.status,
+      };
+    } catch (fallbackError: any) {
+      return {
+        success: false,
+        error: fallbackError.response?.data?.error || fallbackError.response?.data?.message || 'Failed to fetch customers',
+        status: fallbackError.response?.status || 500,
+      };
+    }
+  }
+};
+
+export const getInvoiceNumbersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/invoices?invoice_numbers_only=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    // Fallback to frontend approach if backend doesn't support the new parameter
+    console.warn('Backend does not support invoice_numbers_only, falling back to optimized frontend approach');
+    
+    try {
+      const fallbackResponse = await axios.get(
+        `${API_URL}/invoices?per_page=1000`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Extract only the minimal data needed for dropdown from actual invoices
+      if (fallbackResponse.data && fallbackResponse.data.data) {
+        const minimalData = fallbackResponse.data.data.map((item: any) => ({
+          uuid: item.uuid,
+          invoice_number: item.invoice_number,
+          customer_id: item.customer_id
+        }));
+        
+        return {
+          success: true,
+          data: minimalData,
+          status: fallbackResponse.status,
+        };
+      }
+
+      return {
+        success: true,
+        data: [],
+        status: fallbackResponse.status,
+      };
+    } catch (fallbackError: any) {
+      return {
+        success: false,
+        error: fallbackError.response?.data?.error || fallbackError.response?.data?.message || 'Failed to fetch invoice numbers',
+        status: fallbackError.response?.status || 500,
+      };
+    }
   }
 };

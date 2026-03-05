@@ -227,7 +227,7 @@ def create_invoice():
 @invoice_blueprint.route("/", methods=["GET"])
 def get_invoices():
     """
-    Get all invoices with optional filtering
+    Get all invoices with pagination, search, and sorting.
     ---
     tags:
       - Invoices
@@ -252,69 +252,254 @@ def get_invoices():
         type: string
         required: false
         description: Filter by payment status
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Page number (default: 1)
+      - name: items_per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Items per page (default: 5)
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Sort field (default: created_at)
+      - name: order
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Sort order: asc or desc (default: desc)
+      - name: dropdown
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Return simplified format for dropdowns
+      - name: customer_dropdown_all
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Return all unique customers (party names) for dropdown
     responses:
       200:
-        description: A list of invoices
+        description: A paginated list of invoices.
     """
-    query = Invoice.query.filter(Invoice.is_deleted == False)
-    
-    # Get search parameters
-    search = request.args.get('search', '').strip()
-    party_name = request.args.get('party_name', '').strip()
-    invoice_number = request.args.get('invoice_number', '').strip()
-    payment_status = request.args.get('payment_status', '').strip()
-    
-    # Apply search filters with priority to search parameter
-    if search:
-        # If search parameter is provided, use it for both party name and invoice number
-        # Also handle multiple spaces by normalizing them
-        normalized_search = ' '.join(search.split())
-        query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).filter(
-            or_(
-                Invoice.invoice_number.ilike(f'%{search}%'),
-                Customer.first_name.ilike(f'%{search}%'),
-                Customer.last_name.ilike(f'%{search}%'),
-                func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{search}%'),
-                func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_search}%')
-            )
-        )
-    else:
-        # If no search parameter, check individual filters
-        if party_name:
-            # Handle multiple spaces by normalizing them
-            normalized_party_name = ' '.join(party_name.split())
+    try:
+        query = Invoice.query.filter(Invoice.is_deleted == False)
+        
+        # Get search parameters
+        search = request.args.get('search', '').strip()
+        party_name = request.args.get('party_name', '').strip()
+        invoice_number = request.args.get('invoice_number', '').strip()
+        payment_status = request.args.get('payment_status', '').strip()
+        
+        # Apply search filters with priority to search parameter
+        if search:
+            # If search parameter is provided, use it for both party name and invoice number
+            # Also handle multiple spaces by normalizing them
+            normalized_search = ' '.join(search.split())
             query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).filter(
                 or_(
-                    Customer.first_name.ilike(f'%{party_name}%'),
-                    Customer.last_name.ilike(f'%{party_name}%'),
-                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{party_name}%'),
-                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_party_name}%')
+                    Invoice.invoice_number.ilike(f'%{search}%'),
+                    Customer.first_name.ilike(f'%{search}%'),
+                    Customer.last_name.ilike(f'%{search}%'),
+                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{search}%'),
+                    func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_search}%')
                 )
             )
-        
-        if invoice_number:
-            query = query.filter(Invoice.invoice_number.ilike(f'%{invoice_number}%'))
-        
-        # If no filters are applied, ensure we still have the customer join for consistent behavior
-        if not party_name and not invoice_number:
-            query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid)
+        else:
+            # If no search parameter, check individual filters
+            if party_name:
+                # Handle multiple spaces by normalizing them
+                normalized_party_name = ' '.join(party_name.split())
+                query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).filter(
+                    or_(
+                        Customer.first_name.ilike(f'%{party_name}%'),
+                        Customer.last_name.ilike(f'%{party_name}%'),
+                        func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{party_name}%'),
+                        func.concat(Customer.first_name, ' ', Customer.last_name).ilike(f'%{normalized_party_name}%')
+                    )
+                )
+            
+            if invoice_number:
+                query = query.filter(Invoice.invoice_number.ilike(f'%{invoice_number}%'))
+            
+            # If no filters are applied, ensure we still have the customer join for consistent behavior
+            if not party_name and not invoice_number:
+                query = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid)
 
-    # Apply payment_status filter if provided
-    if payment_status and payment_status != '':
-        query = query.filter(Invoice.payment_status == payment_status)
-    
-    invoices = query.order_by(Invoice.created_at.desc()).all()
-    
-    return jsonify({
-        "data": [
-            {
+        # Apply payment_status filter if provided
+        if payment_status and payment_status != '':
+            query = query.filter(Invoice.payment_status == payment_status)
+        
+        # Handle sorting
+        sort = request.args.get("sort", "created_at")  # Default sort by created_at
+        order = request.args.get("order", "desc").upper()  # Default order is 'desc'
+
+        if sort == "invoice_number":
+            if order == "desc":
+                query = query.order_by(db.desc(Invoice.invoice_number))
+            else:
+                query = query.order_by(Invoice.invoice_number)
+        elif sort == "invoice_date":
+            if order == "desc":
+                query = query.order_by(db.desc(Invoice.invoice_date))
+            else:
+                query = query.order_by(Invoice.invoice_date)
+        elif sort == "due_date":
+            if order == "desc":
+                query = query.order_by(db.desc(Invoice.due_date))
+            else:
+                query = query.order_by(Invoice.due_date)
+        elif sort == "total_amount":
+            if order == "desc":
+                query = query.order_by(db.desc(Invoice.total_amount))
+            else:
+                query = query.order_by(Invoice.total_amount)
+        elif sort == "payment_status":
+            if order == "desc":
+                query = query.order_by(db.desc(Invoice.payment_status))
+            else:
+                query = query.order_by(Invoice.payment_status)
+        else:
+            # Handle other fields (including created_at)
+            if sort.startswith("-"):
+                query = query.order_by(db.desc(getattr(Invoice, sort[1:], "id")))
+            else:
+                query = query.order_by(getattr(Invoice, sort, "id"))
+
+        # Return all invoices for dropdown if requested
+        if request.args.get("dropdown") == "true":
+            invoices = query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).all()
+            return jsonify([
+                {
+                    "uuid": str(inv.uuid),
+                    "invoice_number": inv.invoice_number,
+                    "customer_name": f"{inv.customer.first_name} {inv.customer.last_name}" if inv.customer else None
+                }
+                for inv in invoices
+            ]), 200
+        
+        # Return customer names dropdown if requested
+        if request.args.get("customer_dropdown") == "true":
+            # Start fresh query for customer dropdown
+            customer_query = Invoice.query.outerjoin(Customer, Invoice.customer_id == Customer.uuid)
+            customers = customer_query.with_entities(
+                Customer.uuid,
+                Customer.first_name,
+                Customer.last_name,
+                func.concat(Customer.first_name, ' ', Customer.last_name).label('full_name')
+            ).distinct().all()
+            
+            result = []
+            for customer in customers:
+                result.append({
+                    "uuid": str(customer.uuid),
+                    "name": customer.full_name.strip()
+                })
+            
+            # Sort by name
+            result.sort(key=lambda x: x['name'])
+            return jsonify(result), 200
+
+        # Return all customers (party names) for dropdown if requested
+        if request.args.get("customer_dropdown_all") == "true":
+            # Get all unique customers from ALL invoices (not just current page)
+            customer_query = Invoice.query.outerjoin(Customer, Invoice.customer_id == Customer.uuid).with_entities(
+                Customer.uuid,
+                Customer.first_name,
+                Customer.last_name
+            ).distinct().all()
+            
+            result = []
+            for customer in customer_query:
+                if customer.uuid and (customer.first_name or customer.last_name):  # Only include customers with valid UUID and name
+                    full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
+                    if full_name:  # Only include if name is not empty after stripping
+                        result.append({
+                            "uuid": str(customer.uuid),
+                            "name": full_name
+                        })
+            
+            # Sort by name alphabetically
+            result.sort(key=lambda x: x['name'].lower())
+            return jsonify(result), 200
+
+        # Return only customers with active (non-deleted) invoices for dropdown
+        if request.args.get("customer_dropdown_active") == "true":
+            customer_query = Invoice.query.filter(Invoice.is_deleted == False).outerjoin(Customer, Invoice.customer_id == Customer.uuid)
+            customers = customer_query.with_entities(
+                Customer.uuid,
+                Customer.first_name,
+                Customer.last_name,
+                func.concat(Customer.first_name, ' ', Customer.last_name).label('full_name')
+            ).distinct().all()
+            
+            result = []
+            for customer in customers:
+                if customer.uuid and (customer.first_name or customer.last_name):
+                    full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
+                    if full_name:
+                        result.append({
+                            "uuid": str(customer.uuid),
+                            "name": full_name
+                        })
+            
+            result.sort(key=lambda x: x['name'].lower())
+            return jsonify(result), 200
+
+        # Return only invoice numbers with customer IDs for optimized dropdown
+        if request.args.get("invoice_numbers_only") == "true":
+            invoice_query = Invoice.query.filter(Invoice.is_deleted == False)
+            invoices = invoice_query.with_entities(
+                Invoice.uuid,
+                Invoice.invoice_number,
+                Invoice.customer_id
+            ).all()
+            
+            result = []
+            for invoice in invoices:
+                if invoice.uuid and invoice.invoice_number:
+                    result.append({
+                        "uuid": str(invoice.uuid),
+                        "invoice_number": invoice.invoice_number,
+                        "customer_id": str(invoice.customer_id) if invoice.customer_id else None
+                    })
+            
+            result.sort(key=lambda x: x['invoice_number'])
+            return jsonify(result), 200
+
+        # Paginated results for main grid (same pattern as quotation.py)
+        page = int(request.args.get("page", 1))
+        # Accept both 'per_page' and 'items_per_page' for frontend compatibility
+        per_page = int(request.args.get("per_page") or request.args.get("items_per_page") or 5)
+        
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        invoices = pagination.items
+
+        # Get customer data separately to avoid relationship issues
+        customer_ids = [inv.customer_id for inv in invoices]
+        customers = {c.uuid: c for c in Customer.query.filter(Customer.uuid.in_(customer_ids)).all()} if customer_ids else {}
+
+        # Shape response to match frontend expectations: { data: [...], pagination: { total, ... } }
+        result = []
+        for inv in invoices:
+            result.append({
                 "uuid": str(inv.uuid),
                 "invoice_number": inv.invoice_number,
                 "quotation_id": str(inv.quotation_id) if inv.quotation_id else None,
                 "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
                 "due_date": inv.due_date.isoformat() if inv.due_date else None,
                 "customer_id": str(inv.customer_id),
-                "customer_name": f"{inv.customer.first_name} {inv.customer.last_name}" if inv.customer else None,
+                "customer_name": f"{customers[inv.customer_id].first_name} {customers[inv.customer_id].last_name}" if inv.customer_id in customers else None,
                 "total_amount": float(inv.total_amount) if inv.total_amount else 0,
                 "amount_paid": float(inv.amount_paid) if inv.amount_paid else 0,
                 "balance_due": float(inv.balance_due) if inv.balance_due else 0,
@@ -322,10 +507,32 @@ def get_invoices():
                 "payment_status": inv.payment_status,
                 "charges": inv.charges,
                 "created_at": inv.created_at.isoformat() if inv.created_at else None,
-            }
-            for inv in invoices
-        ]
-    }), 200
+            })
+
+        response_data = {
+            "data": result,
+            "pagination": {
+                "total": pagination.total,
+                "items_per_page": per_page,
+                "current_page": page,
+                "last_page": pagination.pages,
+                "from": (
+                    (pagination.page - 1) * per_page + 1 if pagination.total > 0 else 0
+                ),
+                "to": min(pagination.page * per_page, pagination.total),
+                "prev_page_url": None,
+                "next_page_url": None,
+                "first_page_url": None,
+            },
+        }
+        
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to fetch invoices",
+            "details": str(e)
+        }), 500
 
 
 @invoice_blueprint.route("/<uuid:invoice_id>", methods=["GET"])
@@ -521,7 +728,10 @@ def update_invoice(invoice_id):
         
         # Handle payment discount update
         if "payment_discount" in data:
-            invoice.payment_discount = float(data["payment_discount"])
+            # Accumulate discount instead of overwriting
+            current_discount = float(invoice.payment_discount or 0)
+            new_discount = float(data["payment_discount"])
+            invoice.payment_discount = current_discount + new_discount
             payment_discount_updated = True
         
         # Update charges JSON
@@ -807,7 +1017,7 @@ def record_payment(invoice_id):
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
 
 
-@invoice_blueprint.route("/<uuid:invoice_id>/soft-delete", methods=["PUT"])
+@invoice_blueprint.route("/<uuid:invoice_id>/delete", methods=["PUT"])
 @login_required
 def soft_delete_invoice(invoice_id):
     """

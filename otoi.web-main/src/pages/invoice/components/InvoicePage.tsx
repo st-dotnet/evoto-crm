@@ -1,5 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { DataGrid, DataGridColumnHeader } from "@/components";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import {
+  DataGrid,
+  DataGridColumnHeader,
+  DataGridRowSelect,
+  DataGridRowSelectAll,
+} from "@/components";
 import { Button } from "@/components/ui/button";
 import {
     Plus,
@@ -23,9 +28,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
-import { getInvoices, deleteInvoice } from "../services/invoice.service";
+import { getInvoices, deleteInvoice, getCustomerNamesDropdown, getInvoiceNumbersDropdown } from "../services/invoice.service";
 import { toast } from "sonner";
+import { TDataGridRequestParams } from "@/components";
+import { SpinnerDotted } from 'spinners-react';
 
 interface Invoice {
     id: string;
@@ -43,13 +51,97 @@ const InvoicePage = () => {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [searchType, setSearchType] = useState<'party_name' | 'invoice_number'>('party_name');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [allCustomerNames, setAllCustomerNames] = useState<string[]>([]);
+    const [allInvoiceNumbers, setAllInvoiceNumbers] = useState<string[]>([]);
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+    const [isSearchLoading, setIsSearchLoading] = useState(false);
+    const [isDropdownLoading, setIsDropdownLoading] = useState(false);
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
 
+    // Fetch autocomplete data for search suggestions
+    const fetchAutocompleteData = useCallback(async () => {
+        setIsDropdownLoading(true);
+        try {
+            const [customerResponse, invoiceNumberResponse] = await Promise.all([
+                getCustomerNamesDropdown(),
+                getInvoiceNumbersDropdown()
+            ]);
+
+            if (customerResponse.success && customerResponse.data) {
+                const customerNames = Array.isArray(customerResponse.data)
+                    ? customerResponse.data.map((item: any) => item.name || item).filter(Boolean)
+                    : [];
+                setAllCustomerNames(customerNames);
+            }
+
+            if (invoiceNumberResponse.success && invoiceNumberResponse.data) {
+                const invoiceNumbers = Array.isArray(invoiceNumberResponse.data)
+                    ? invoiceNumberResponse.data.map((item: any) => item.invoice_number || item).filter(Boolean)
+                    : [];
+                setAllInvoiceNumbers(invoiceNumbers);
+            }
+        } catch (error) {
+            console.error('Error fetching autocomplete data:', error);
+        } finally {
+            setIsDropdownLoading(false);
+        }
+    }, []);
+
+    // Fetch autocomplete data on mount and when search type changes
+    useEffect(() => {
+        fetchAutocompleteData();
+    }, [fetchAutocompleteData]);
+
+    // Handle search type change
+    const handleSearchTypeChange = (type: 'party_name' | 'invoice_number') => {
+        setSearchType(type);
+        setShowSuggestions(false);
+        setSearchTerm('');
+        // Clear filtered suggestions immediately for better UX
+        setFilteredSuggestions(type === 'party_name' ? allCustomerNames : allInvoiceNumbers);
+    };
+
+    // Filter suggestions based on search term and type
+    useEffect(() => {
+        if (searchTerm) {
+            const suggestions = searchType === 'party_name'
+                ? allCustomerNames.filter(name =>
+                    name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                : allInvoiceNumbers.filter(number =>
+                    number.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            setFilteredSuggestions(suggestions);
+        } else {
+            // Update suggestions but don't show them automatically
+            const suggestions = searchType === 'party_name' ? allCustomerNames : allInvoiceNumbers;
+            setFilteredSuggestions(suggestions);
+        }
+    }, [searchTerm, searchType, allCustomerNames, allInvoiceNumbers]);
+
     // Fetch invoices from database
-    const fetchInvoices = async () => {
+    const fetchInvoices = useCallback(async (params: TDataGridRequestParams) => {
         setIsLoading(true);
         try {
-            const response = await getInvoices();
+            const response = await getInvoices(
+                searchTerm,
+                params.pageIndex + 1,
+                params.pageSize,
+                searchType === 'party_name' ? searchTerm : '',
+                searchType === 'invoice_number' ? searchTerm : '',
+                selectedStatus === 'all' ? '' : selectedStatus
+            );
+
             if (response.success && response.data) {
                 const invoicesData = response.data.data || response.data;
 
@@ -65,37 +157,67 @@ const InvoicePage = () => {
                     payment_status: item.payment_status || 'unpaid',
                 }));
                 setInvoices(transformedInvoices);
+
+                // Return data for server-side DataGrid
+                return {
+                    data: transformedInvoices,
+                    totalCount: response.data.pagination?.total || transformedInvoices.length,
+                };
             } else {
                 toast.error(response.error || 'Failed to fetch invoices');
+                setInvoices([]);
+                return {
+                    data: [],
+                    totalCount: 0,
+                };
             }
         } catch (error) {
             console.error('Error fetching invoices:', error);
             toast.error('Failed to fetch invoices');
+            setInvoices([]);
+            return {
+                data: [],
+                totalCount: 0,
+            };
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [searchTerm, searchType, selectedStatus]);
 
-    useEffect(() => {
-        fetchInvoices();
-    }, []);
-
-    // Filter invoices by payment status
+    // Filter invoices by payment status (kept for compatibility but not used with server-side filtering)
     const filteredInvoices = useMemo(() => {
-        if (selectedStatus === 'all') return invoices;
-        return invoices.filter(inv => inv.payment_status === selectedStatus);
-    }, [invoices, selectedStatus]);
+        return invoices;
+    }, [invoices]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this invoice?')) return;
+        // Prevent any pending navigation
+        window.event?.stopPropagation();
+        window.event?.preventDefault();
 
-        const response = await deleteInvoice(id);
+        setInvoiceToDelete(id);
+        setShowDeleteDialog(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!invoiceToDelete || isDeleting) return;
+        setIsDeleting(true);
+
+        const response = await deleteInvoice(invoiceToDelete);
         if (response.success) {
             toast.success('Invoice deleted successfully');
-            fetchInvoices();
+            setRefreshKey(prev => prev + 1);
         } else {
             toast.error(response.error || 'Failed to delete invoice');
         }
+
+        setShowDeleteDialog(false);
+        setInvoiceToDelete(null);
+        setIsDeleting(false);
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteDialog(false);
+        setInvoiceToDelete(null);
     };
 
     const getPaymentStatusBadge = (status: string) => {
@@ -120,25 +242,14 @@ const InvoicePage = () => {
     const columns = useMemo<ColumnDef<Invoice>[]>(() => [
         {
             id: "select",
-            header: ({ table }) => (
-                <div className="w-full flex items-center justify-center h-full p-0 m-0">
-                    <input
-                        type="checkbox"
-                        checked={table.getIsAllPageRowsSelected()}
-                        onChange={table.getToggleAllPageRowsSelectedHandler()}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
+            header: () => (
+                <div className="flex items-center justify-center w-full h-full">
+                    <DataGridRowSelectAll />
                 </div>
             ),
             cell: ({ row }) => (
-                <div className="w-full flex items-center justify-center h-full p-0 m-0">
-                    <input
-                        type="checkbox"
-                        checked={row.getIsSelected()}
-                        disabled={!row.getCanSelect()}
-                        onChange={row.getToggleSelectedHandler()}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
+                <div className="flex items-center justify-center w-full h-full">
+                    <DataGridRowSelect row={row} />
                 </div>
             ),
             enableSorting: false,
@@ -274,6 +385,11 @@ const InvoicePage = () => {
             cell: ({ row }) => {
                 const [isOpen, setIsOpen] = useState(false);
 
+                // Update global dropdown state
+                useEffect(() => {
+                    setIsDropdownOpen(isOpen);
+                }, [isOpen]);
+
                 return (
                     <div className="flex justify-center">
                         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -281,6 +397,7 @@ const InvoicePage = () => {
                                 <button
                                     type="button"
                                     onClick={(e) => e.stopPropagation()}
+                                    data-dropdown-trigger="true"
                                     className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
                                 >
                                     <MoreVertical className="h-4 w-4" />
@@ -313,9 +430,10 @@ const InvoicePage = () => {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
-                                    onSelect={(e) => {
+                                    onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        e.nativeEvent.stopImmediatePropagation();
                                         handleDelete(row.original.id);
                                         setIsOpen(false);
                                     }}
@@ -332,19 +450,11 @@ const InvoicePage = () => {
     ], []);
 
     return (
+
         <div className="container-fluid p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Invoices</h1>
                 <div className="flex items-center gap-2">
-                    <div className="w-36">
-                        <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Last 365 Days
-                            </span>
-                        </Button>
-                    </div>
-
                     <div className="w-44">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -361,7 +471,10 @@ const InvoicePage = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-[200px]">
                                 <DropdownMenuItem
-                                    onClick={() => setSelectedStatus('all')}
+                                    onClick={() => {
+                                        setSelectedStatus('all');
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
                                     className="flex items-center gap-2"
                                 >
                                     <Circle className="h-4 w-4 text-gray-500" />
@@ -369,7 +482,10 @@ const InvoicePage = () => {
                                     {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => setSelectedStatus('paid')}
+                                    onClick={() => {
+                                        setSelectedStatus('paid');
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
                                     className="flex items-center gap-2"
                                 >
                                     <Circle className="h-4 w-4 text-green-500" />
@@ -377,7 +493,10 @@ const InvoicePage = () => {
                                     {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => setSelectedStatus('unpaid')}
+                                    onClick={() => {
+                                        setSelectedStatus('unpaid');
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
                                     className="flex items-center gap-2"
                                 >
                                     <Circle className="h-4 w-4 text-red-500" />
@@ -385,7 +504,10 @@ const InvoicePage = () => {
                                     {selectedStatus === 'unpaid' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => setSelectedStatus('partial')}
+                                    onClick={() => {
+                                        setSelectedStatus('partial');
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
                                     className="flex items-center gap-2"
                                 >
                                     <Circle className="h-4 w-4 text-yellow-500" />
@@ -394,6 +516,14 @@ const InvoicePage = () => {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                    </div>
+                    <div className="w-36">
+                        <Button variant="outline" size="sm" className="h-8 w-full gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                Last 365 Days
+                            </span>
+                        </Button>
                     </div>
 
                     <Button
@@ -411,24 +541,125 @@ const InvoicePage = () => {
 
             <div className="bg-white border rounded-lg overflow-hidden">
                 <div className="p-4 border-b">
-                    <div className="relative w-full max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input
-                            type="search"
-                            placeholder="Search invoices..."
-                            className="pl-9 h-9 w-full border rounded-md px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        />
+                    <div className="relative w-fit">
+                        <div className="flex">
+                            <div className="relative">
+                                <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="h-9 w-80 justify-start px-3" disabled={isDropdownLoading}>
+                                            {isDropdownLoading ? (
+                                                <span className="flex items-center">
+                                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                                    Loading...
+                                                </span>
+                                            ) : (
+                                                searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by invoice number...')
+                                            )}
+                                            {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                setSearchTerm('');
+                                                setRefreshKey(prev => prev + 1);
+                                            }}
+                                            className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                                        >
+                                            <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Invoices'}</span>
+                                        </DropdownMenuItem>
+                                        {isDropdownLoading ? (
+                                            <DropdownMenuItem disabled>
+                                                <div className="flex items-center justify-center w-full py-2">
+                                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                                    Loading options...
+                                                </div>
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            (searchType === 'party_name' ? allCustomerNames : allInvoiceNumbers).map((item, index) => (
+                                                <DropdownMenuItem
+                                                    key={index}
+                                                    onClick={() => {
+                                                        setSearchTerm(item);
+                                                        setRefreshKey(prev => prev + 1);
+                                                    }}
+                                                    className={searchTerm === item ? "bg-blue-50 text-blue-600" : ""}
+                                                >
+                                                    {item}
+                                                </DropdownMenuItem>
+                                            ))
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
+                                    >
+                                        <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                                        {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Invoice'}: ${searchTerm}` : 'Filter by'}
+                                        <ChevronDown className="h-3 w-3 ml-1" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-48">
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            handleSearchTypeChange('party_name');
+                                            setShowFilterDropdown(false);
+                                        }}
+                                        className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
+                                    >
+                                        <Filter className="h-3.5 w-3.5 mr-2" />
+                                        Party Name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            handleSearchTypeChange('invoice_number');
+                                            setShowFilterDropdown(false);
+                                        }}
+                                        className={searchType === 'invoice_number' ? "bg-blue-50 text-blue-600" : ""}
+                                    >
+                                        <Filter className="h-3.5 w-3.5 mr-2" />
+                                        Invoice Number
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
-                <div className="overflow-auto">
+                <div className="overflow-auto relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
+                            <SpinnerDotted
+                                size={50}
+                                thickness={100}
+                                speed={100}
+                                color="#2563eb"
+                            />
+                        </div>
+                    )}
                     <DataGrid
-                        key="invoice-grid"
+                        key={refreshKey}
                         columns={columns}
-                        data={filteredInvoices}
+                        serverSide={true}
+                        onFetchData={fetchInvoices}
                         rowSelection
-                        getRowId={(row) => row.id.toString()}
-                        pagination={{ size: 10 }}
-                        onRowClick={(row) => {
+                        getRowId={(row: any) => row.id?.toString()}
+                        pagination={{ size: 5 }}
+                        onRowClick={(row: any) => {
+                            // Don't navigate if delete dialog is open or any dropdown is open
+                            if (showDeleteDialog || isDropdownOpen) {
+                                return;
+                            }
+                            // Check if the click originated from a dropdown trigger
+                            const clickedElement = document.activeElement;
+                            if (clickedElement && clickedElement.getAttribute('data-dropdown-trigger') === 'true') {
+                                return;
+                            }
                             navigate(`/invoices/${row.original.id}`);
                         }}
                         layout={{
@@ -439,6 +670,48 @@ const InvoicePage = () => {
                     />
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
+                    <div className="p-6 text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                            <Trash2 className="h-6 w-6 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-lg font-semibold text-gray-900 mb-4">
+                            Delete Invoice
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-600">
+                            Are you sure you want to delete this invoice? This action will permanently remove all the data.
+                        </DialogDescription>
+                    </div>
+                    <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3">
+                        <Button
+                            variant="outline"
+                            onClick={handleDeleteCancel}
+                            disabled={isDeleting}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isDeleting ? (
+                                <div className="flex items-center">
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                    Deleting...
+                                </div>
+                            ) : (
+                                'Delete'
+                            )}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

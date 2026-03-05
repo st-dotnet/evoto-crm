@@ -256,7 +256,7 @@ const InvoiceDetailsPage: React.FC = () => {
   const handleRecordPayment = () => {
     if (!invoiceData) return;
     setPaymentForm({
-      amountReceived: invoiceData.amount_paid,
+      amountReceived: roundToTwo(invoiceData.amount_paid),
       discount: 0,
       date: new Date(),
       mode: "cash",
@@ -324,7 +324,7 @@ const InvoiceDetailsPage: React.FC = () => {
           if ((response.data as any)?.max_allowed) {
             setPaymentForm({
               ...paymentForm,
-              amountReceived: (response.data as any).max_allowed,
+              amountReceived: roundToTwo((response.data as any).max_allowed),
             });
             toast.info(`Amount adjusted to maximum allowed: ₹${(response.data as any).max_allowed}`);
           }
@@ -345,7 +345,7 @@ const InvoiceDetailsPage: React.FC = () => {
         if (errorData.max_allowed) {
           setPaymentForm({
             ...paymentForm,
-            amountReceived: errorData.max_allowed,
+            amountReceived: roundToTwo(errorData.max_allowed),
           });
           toast.info(`Amount adjusted to maximum allowed: ₹${errorData.max_allowed}`);
         }
@@ -363,6 +363,11 @@ const InvoiceDetailsPage: React.FC = () => {
 
   const formatCurrency = (amount: number) => {
     return `₹ ${amount.toFixed(2)}`;
+  };
+
+  // Helper function to round numbers to 2 decimal places to avoid floating-point precision issues
+  const roundToTwo = (num: number) => {
+    return Math.round(num * 100) / 100;
   };
 
   const formatNumberInWords = (num: number) => {
@@ -1315,7 +1320,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         paymentForm.amountReceived === null ||
                         paymentForm.amountReceived === 0
                           ? ""
-                          : paymentForm.amountReceived
+                          : roundToTwo(paymentForm.amountReceived)
                       }
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
@@ -1325,7 +1330,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         const cappedAmount = Math.min(amount, maxAllowedAmount);
                         setPaymentForm({
                           ...paymentForm,
-                          amountReceived: cappedAmount,
+                          amountReceived: roundToTwo(cappedAmount),
                         });
                         validateAmountReceived(cappedAmount);
                       }}
@@ -1353,7 +1358,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         paymentForm.discount === null ||
                         paymentForm.discount === 0
                           ? ""
-                          : paymentForm.discount
+                          : roundToTwo(paymentForm.discount)
                       }
                       onChange={(e) => {
                         const newDiscount = parseFloat(e.target.value) || 0;
@@ -1366,8 +1371,8 @@ const InvoiceDetailsPage: React.FC = () => {
                         
                         setPaymentForm({
                           ...paymentForm,
-                          discount: newDiscount,
-                          amountReceived: adjustedAmountReceived,
+                          discount: roundToTwo(newDiscount),
+                          amountReceived: roundToTwo(adjustedAmountReceived),
                         });
                         validateAmountReceived(adjustedAmountReceived);
                       }}

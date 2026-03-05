@@ -63,7 +63,14 @@ export const createPaymentIn = async (
   }
 };
 
-export const getPaymentInList = async (): Promise<ApiResponse> => {
+export const getPaymentInList = async (
+  page = 1,
+  per_page = 5,
+  payment_status = "",
+  party_name = "",
+  payment_number = "",
+  date_filter = "",
+): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return {
@@ -74,8 +81,32 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
   }
 
   try {
-    // Use invoices API endpoint and filter for paid status
-    const response = await axios.get(`${API_URL}/invoices`, {
+    // Build API URL with filters
+    let apiUrl = `${API_URL}/invoices?page=${page}&per_page=${per_page}`;
+    
+    // Add payment status filter
+    if (payment_status && payment_status !== 'all') {
+      const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
+      apiUrl += `&payment_status=${backendStatus}`;
+    }
+    
+    // Add search filters
+    if (party_name) {
+      apiUrl += `&party_name=${encodeURIComponent(party_name)}`;
+    }
+    
+    if (payment_number) {
+      // Extract invoice number from payment number (remove PAY- prefix)
+      const invoiceNumber = payment_number.replace('PAY-', '');
+      apiUrl += `&invoice_number=${encodeURIComponent(invoiceNumber)}`;
+    }
+    
+    // Add date filter
+    if (date_filter) {
+      apiUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
+    }
+    
+    const response = await axios.get(apiUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -85,15 +116,19 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
 
     // Check if response.data is an array, if not try to extract the array
     let invoicesData = response.data;
+    let paginationData: any = {};
+    
     if (!Array.isArray(response.data)) {
       // The actual array is nested under response.data.data
       if (response.data?.data && Array.isArray(response.data.data)) {
         invoicesData = response.data.data;
+        paginationData = response.data.pagination || {};
       } else if (
         response.data?.invoices &&
         Array.isArray(response.data.invoices)
       ) {
         invoicesData = response.data.invoices;
+        paginationData = response.data.pagination || {};
       } else {
         console.error(
           "Response data is not in expected format:",
@@ -107,28 +142,16 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
       }
     }
 
-    // Filter only paid and partially paid invoices (exclude unpaid ones) and transform them to payment format
-    const paidInvoices =
-      invoicesData?.filter((invoice: any) => {
-        // Consider invoice paid if balance_due is 0 and amount_paid > 0
-        const isPaid =
-          (invoice.balance_due === 0 || invoice.balance_due === "0") &&
-          invoice.amount_paid &&
-          invoice.amount_paid > 0;
-
-        // Consider invoice partially paid if balance_due > 0 and amount_paid > 0
-        const isPartiallyPaid =
-          (invoice.balance_due > 0 || invoice.balance_due === "0") &&
-          invoice.amount_paid &&
-          invoice.amount_paid > 0 &&
-          invoice.balance_due !== 0;
-
-        // Include both paid and partially paid invoices, exclude unpaid
-        return isPaid || isPartiallyPaid;
-      }) || [];
+    // For 'all' status, filter out unpaid invoices client-side
+    if (!payment_status || payment_status === 'all') {
+      invoicesData = invoicesData.filter((invoice: any) => {
+        const paymentStatus = invoice.payment_status;
+        return paymentStatus === 'paid' || paymentStatus === 'partial';
+      });
+    }
 
     // Transform invoice data to payment format
-    const paymentData = paidInvoices.map((invoice: any) => ({
+    const paymentData = invoicesData.map((invoice: any) => ({
       id: invoice.uuid || invoice.id,
       payment_number: `PAY-${invoice.invoice_number || "INV"}`,
       date:
@@ -145,7 +168,6 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
       invoice_number: invoice.invoice_number || invoice.invoiceNo,
       balance_due: invoice.balance_due || 0,
       payment_status:
-        invoice.payment_status ||
         ((invoice.balance_due || 0) === 0
           ? "paid"
           : (invoice.amount_paid || 0) > 0
@@ -153,10 +175,26 @@ export const getPaymentInList = async (): Promise<ApiResponse> => {
             : "unpaid"),
     }));
 
+    // Update pagination data for 'all' status to reflect filtered count
+    if (!payment_status || payment_status === 'all') {
+      if (paginationData.total) {
+        paginationData.total = invoicesData.length;
+        paginationData.last_page = Math.ceil(invoicesData.length / per_page);
+      }
+    }
+
     return {
       success: true,
-      data: paymentData,
-      status: response.status,
+      data: {
+        data: paymentData,
+        pagination: paginationData || {
+          current_page: page,
+          last_page: 1,
+          per_page: per_page,
+          total: paymentData.length,
+        }
+      },
+      status: response?.status || 200,
     };
   } catch (error: any) {
     console.error("Error fetching payment-in list:", error);
@@ -229,7 +267,7 @@ export const deletePaymentIn = async (id: string): Promise<ApiResponse> => {
   try {
     // Soft delete by updating the is_deleted column
     const response = await axios.put(
-      `${API_URL}/invoices/${id}/soft-delete`,
+      `${API_URL}/invoices/${id}/delete`,
       { is_deleted: true },
       {
         headers: {
@@ -283,6 +321,120 @@ export const generatePaymentNumber = (): string => {
   return `PAY-${year}${month}-${random}`;
 };
 
+// Function to get payment numbers for autocomplete
+export const getPaymentNumbersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    // Fetch all invoices with payments to get payment numbers
+    const response = await axios.get(
+      `${API_URL}/invoices?per_page=1000`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      },
+    );
+
+    let invoicesData = response.data;
+    if (!Array.isArray(response.data)) {
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        invoicesData = response.data.data;
+      } else if (response.data?.invoices && Array.isArray(response.data.invoices)) {
+        invoicesData = response.data.invoices;
+      }
+    }
+
+    // Filter invoices that have payments and extract payment numbers
+    const paymentNumbers = invoicesData
+      .filter((invoice: any) => 
+        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+        invoice.invoice_number
+      )
+      .map((invoice: any) => `PAY-${invoice.invoice_number}`);
+
+    return {
+      success: true,
+      data: paymentNumbers,
+      status: response.status,
+    };
+  } catch (error: any) {
+    console.error("Error fetching payment numbers:", error);
+    return {
+      success: false,
+      error: "Failed to fetch payment numbers",
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+// Function to get party names for autocomplete
+export const getPartyNamesDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    // Fetch all invoices with payments to get party names
+    const response = await axios.get(
+      `${API_URL}/invoices?per_page=1000`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      },
+    );
+
+    let invoicesData = response.data;
+    if (!Array.isArray(response.data)) {
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        invoicesData = response.data.data;
+      } else if (response.data?.invoices && Array.isArray(response.data.invoices)) {
+        invoicesData = response.data.invoices;
+      }
+    }
+
+    // Filter invoices that have payments and extract unique party names
+    const partyNames = [...new Set(
+      invoicesData
+        .filter((invoice: any) => 
+          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+          invoice.customer_name
+        )
+        .map((invoice: any) => invoice.customer_name)
+    )];
+
+    return {
+      success: true,
+      data: partyNames,
+      status: response.status,
+    };
+  } catch (error: any) {
+    console.error("Error fetching party names:", error);
+    return {
+      success: false,
+      error: "Failed to fetch party names",
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
 // Function to create payment entry when invoice status is changed to paid
 export const getPartyInvoices = async (
   partyName: string,
@@ -299,7 +451,7 @@ export const getPartyInvoices = async (
   try {
     // Fetch invoices for the specific party using server-side filtering
     const response = await axios.get(
-      `${API_URL}/invoices?party_name=${encodeURIComponent(partyName)}`,
+      `${API_URL}/invoices?party_name=${encodeURIComponent(partyName)}&per_page=1000`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -343,10 +495,9 @@ export const getPartyInvoices = async (
 
         // Invoice which are partially paid if balance_due > 0 and amount_paid > 0
         const isPartiallyPaid =
-          (invoice.balance_due > 0 || invoice.balance_due === "0") &&
+          (invoice.balance_due > 0 && invoice.balance_due !== "0") &&
           invoice.amount_paid &&
-          invoice.amount_paid > 0 &&
-          invoice.balance_due !== 0;
+          invoice.amount_paid > 0;
 
         // Include both paid and partially paid invoices, exclude unpaid
         return isPaid || isPartiallyPaid;
@@ -371,7 +522,6 @@ export const getPartyInvoices = async (
       balance_amount: invoice.balance_due || 0,
       balance_due: invoice.balance_due || 0,
       payment_status:
-        invoice.payment_status ||
         ((invoice.balance_due || 0) === 0
           ? "paid"
           : (invoice.amount_paid || 0) > 0
