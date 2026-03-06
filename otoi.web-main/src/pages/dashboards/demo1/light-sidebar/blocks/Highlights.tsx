@@ -9,13 +9,13 @@ interface IHighlightsRow {
   stats: number;
   increase: boolean;
 }
-interface IHighlightsRows extends Array<IHighlightsRow> {}
+interface IHighlightsRows extends Array<IHighlightsRow> { }
 
 interface IHighlightsItem {
   badgeColor: string;
   lebel: string;
 }
-interface IHighlightsItems extends Array<IHighlightsItem> {}
+interface IHighlightsItems extends Array<IHighlightsItem> { }
 
 interface IHighlightsProps {
   limit?: number;
@@ -46,7 +46,7 @@ const Highlights = ({ limit }: IHighlightsProps) => {
           <span className="text-sm font-normal text-gray-900">{row.text}</span>
         </div>
 
-        <div className="flex items-center text-sm font-medium text-gray-800 gap-6">
+        <div className="flex items-center text-sm font-medium text-gray-800 gap-4 sm:gap-6">
           <span className="lg:text-right">${row.total}k</span>
           <span className="lg:text-right">
             {row.increase ? (

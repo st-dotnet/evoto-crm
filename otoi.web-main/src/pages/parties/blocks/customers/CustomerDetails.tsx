@@ -475,7 +475,7 @@ export const CustomerDetails = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
+          <div className="bg-white overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
             <div className="flex flex-col items-center text-center pb-8 border-b border-gray-100">
               <div className="h-24 w-24 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-bold mb-4 border border-blue-100">
                 {initials || fullName[0]}
@@ -558,29 +558,7 @@ export const CustomerDetails = () => {
                 </div>
               </div>
 
-              {/* Activity Summary Card */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between dark:bg-[#121214]">
-                  <h3 className="font-bold text-gray-900 text-lg">Activity Summary</h3>
-                  <KeenIcon icon="chart-line" className="text-gray-400 text-xl" />
-                </div>
-                <div className="p-8 dark:bg-[#121214]">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
-                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Orders</p>
-                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
-                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Payments</p>
-                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
-                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Tickets</p>
-                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           )}
 
@@ -637,10 +615,10 @@ export const CustomerDetails = () => {
 
             {/* Timeline */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+              {/* <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">September 2025</span>
                 <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
-              </div>
+              </div> */}
 
               <div className="bg-white dark:bg-[#0D0E12] border border-gray-200 dark:border-gray-800 rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
@@ -680,6 +658,29 @@ export const CustomerDetails = () => {
                     <div className="flex items-center gap-2 mt-3 text-[11px] md:text-xs text-gray-400">
                       <KeenIcon icon="calendar" className="text-sm" />
                       <span>{customer.created_at || "--"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Activity Summary Card */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between dark:bg-[#121214]">
+                  <h3 className="font-bold text-gray-900 text-lg">Activity Summary</h3>
+                  <KeenIcon icon="chart-line" className="text-gray-400 text-xl" />
+                </div>
+                <div className="p-8 dark:bg-[#121214]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Orders</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Payments</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-gray-50/50 border border-gray-100 dark:bg-white/5 dark:border-white/5 text-center">
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider mb-2">Tickets</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white">0</p>
                     </div>
                   </div>
                 </div>

@@ -90,8 +90,8 @@ const initialValues: Person = {
 };
 
 const saveCustomerSchema = Yup.object().shape({
-  first_name: Yup.string().trim().min(3).max(50).required("First Name is required"),
-  last_name: Yup.string().trim().min(3).max(50).required("Last Name is required"),
+  first_name: Yup.string().trim().min(3).max(20).required("First Name is required"),
+  last_name: Yup.string().trim().min(3).max(20).required("Last Name is required"),
 
   mobile: Yup.string()
     .nullable()

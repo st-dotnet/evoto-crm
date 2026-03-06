@@ -56,17 +56,17 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
           <div className="size-9 rounded-full border-2 border-success bg-gray-200 text-gray-700 flex items-center justify-center">
             <span className="text-xs font-semibold">{initials}</span>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 overflow-hidden">
             <Link
               to="/account/hoteme/get-stard"
-              className="text-sm text-gray-800 hover:text-primary font-semibold leading-none"
+              className="text-sm text-gray-800 hover:text-primary font-semibold leading-none truncate"
             >
               {fullName}
             </Link>
             {email ? (
               <a
                 href={`mailto:${email}`}
-                className="text-xs text-gray-600 hover:text-primary font-medium leading-none"
+                className="text-xs text-gray-600 hover:text-primary font-medium leading-none truncate"
               >
                 {email}
               </a>
@@ -129,7 +129,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
                 <KeenIcon icon="right" className="text-3xs rtl:transform rtl:rotate-180" />
               </MenuArrow>
             </MenuLink>
-            <MenuSub className="menu-default light:border-gray-300 w-[200px]] md:w-[220px]">
+            <MenuSub className="menu-default light:border-gray-300 w-[200px] md:w-[220px]">
               <MenuItem>
                 <MenuLink path="/account/home/get-started">
                   <MenuIcon>
@@ -207,7 +207,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
                     <FormattedMessage id="USER.MENU.NOTIFICATIONS" />
                   </MenuTitle>
                   <label className="switch switch-sm">
-                    <input name="check" type="checkbox" checked onChange={() => {}} value="1" />
+                    <input name="check" type="checkbox" checked onChange={() => { }} value="1" />
                   </label>
                 </MenuLink>
               </MenuItem>
@@ -264,7 +264,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
 
   return (
     <MenuSub
-      className="menu-default light:border-gray-300 w-[200px] md:w-[280px]"
+      className="menu-default light:border-gray-300 w-[220px] md:w-[280px]"
       rootClassName="p-0"
     >
       {buildHeader()}

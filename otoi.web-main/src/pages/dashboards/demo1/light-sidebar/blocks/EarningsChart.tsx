@@ -33,7 +33,7 @@ const EarningsChart = () => {
   ];
 
   useEffect(() => {
-    fetchEarningsChart().then((value) => setCharData(value.data));
+    // fetchEarningsChart().then((value) => setCharData(value.data));
   }, []);
 
   const options: ApexOptions = {
@@ -179,10 +179,10 @@ const EarningsChart = () => {
 
   return (
     <div className="card h-full">
-      <div className="card-header">
+      <div className="card-header flex-wrap gap-2">
         <h3 className="card-title">Earnings</h3>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center flex-wrap gap-2 sm:gap-5">
           <label className="switch switch-sm">
             <input name="check" type="checkbox" value="1" className="order-2" readOnly />
             <span className="switch-label order-1">Referrals only</span>

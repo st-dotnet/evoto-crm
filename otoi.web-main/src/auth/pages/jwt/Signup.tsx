@@ -143,14 +143,14 @@ const Signup = () => {
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               First Name <span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 placeholder="First Name"
                 type="text"
                 autoComplete="off"
                 {...formik.getFieldProps('firstName')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.firstName && formik.errors.firstName },
                   { 'is-valid': formik.touched.firstName && !formik.errors.firstName }
                 )}
@@ -164,14 +164,14 @@ const Signup = () => {
           </div>
           <div className="flex flex-col gap-1">
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">Last Name</label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 placeholder="Last Name"
                 type="text"
                 autoComplete="off"
                 {...formik.getFieldProps('lastName')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.lastName && formik.errors.lastName },
                   { 'is-valid': formik.touched.lastName && !formik.errors.lastName }
                 )}
@@ -185,14 +185,14 @@ const Signup = () => {
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Email<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 placeholder="email@email.com"
                 type="email"
                 autoComplete="off"
                 {...formik.getFieldProps('email')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.email && formik.errors.email },
                   { 'is-valid': formik.touched.email && !formik.errors.email }
                 )}
@@ -208,14 +208,14 @@ const Signup = () => {
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Mobile No.<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 placeholder="83******25"
                 type="text"
                 autoComplete="off"
                 {...formik.getFieldProps('mobileNo')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.mobileNo && formik.errors.mobileNo },
                   { 'is-valid': formik.touched.mobileNo && !formik.errors.mobileNo }
                 )}
@@ -323,14 +323,14 @@ const Signup = () => {
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Password<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter Password"
                 autoComplete="off"
                 {...formik.getFieldProps('password')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.password && formik.errors.password },
                   { 'is-valid': formik.touched.password && !formik.errors.password }
                 )}
@@ -356,14 +356,14 @@ const Signup = () => {
             <label className="form-label text-gray-900 text-xs sm:text-sm font-medium">
               Confirm Password<span style={{ color: "red" }}>*</span>
             </label>
-            <label className="input h-8 sm:h-10">
+            <label className="input h-8 sm:h-10 w-full">
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Re-enter Password"
                 autoComplete="off"
                 {...formik.getFieldProps('changepassword')}
                 className={clsx(
-                  'form-control bg-transparent',
+                  'form-control bg-transparent w-full',
                   { 'is-invalid': formik.touched.changepassword && formik.errors.changepassword },
                   { 'is-valid': formik.touched.changepassword && !formik.errors.changepassword }
                 )}
