@@ -435,7 +435,7 @@ const CreateQuotationPage = () => {
         setFormData((prev) => ({
           ...prev,
           validFor: 0,
-          validityDate: "",
+          validityDate: prev.quotationDate || today,
         }));
         return;
       }
@@ -572,7 +572,7 @@ const CreateQuotationPage = () => {
           : today;
         const validityDate = data.valid_till
           ? data.valid_till.split("T")[0]
-          : "";
+          : addDays(quotationDate, 10); // Default to 10 days from quotation date
         const validFor = validityDate
           ? diffDays(quotationDate, validityDate)
           : 0;
@@ -1867,7 +1867,7 @@ const CreateQuotationPage = () => {
               <Input
                 type="number"
                 name="validFor"
-                value={formData.validFor === 0 ? "" : formData.validFor}
+                value={formData.validFor}
                 onChange={handleChange}
                 className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="0"

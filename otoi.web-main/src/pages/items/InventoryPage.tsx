@@ -243,6 +243,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isEditing, setIsEditing] = useState(false);
   const [itemsData, setItemsData] = useState<InventoryItem[]>([]);
+  const [allItemsForCount, setAllItemsForCount] = useState<InventoryItem[]>([]);
 
   const navigate = useNavigate();
 
@@ -251,6 +252,40 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     if (value === null || value === undefined || value === 'None') return fallback;
     const num = Number(value);
     return isNaN(num) ? fallback : num;
+  };
+
+  // Fetch all items for accurate low stock count
+  const fetchAllItemsForCount = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?items_per_page=10000`);
+      const payload: any = response?.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      
+      const mappedItems: InventoryItem[] = rows.map((item: any) => ({
+        item_id: item.id || "",
+        item_name: item.item_name || "Unnamed Item",
+        item_code: item.item_code || `ITEM-${Date.now()}`,
+        opening_stock: toNumber(item.opening_stock, 0),
+        sales_price: toNumber(item.sales_price, 0),
+        purchase_price:
+          item.purchase_price !== null && item.purchase_price !== "None"
+            ? toNumber(item.purchase_price, 0)
+            : null,
+        type: item.item_type || item.type || "Product",
+        item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
+        category: item.category || "Uncategorized",
+        business_id: item.business_id || null,
+        description: item.description,
+        hsn_code: item.hsn_code,
+        category_id: item.category_id,
+        measuring_unit_id: item.measuring_unit_id,
+        gst_tax_rate: item.gst_tax_rate,
+      }));
+      
+      setAllItemsForCount(mappedItems);
+    } catch (error) {
+      console.error("Failed to fetch all items for count", error);
+    }
   };
 
   // Fetch items from API with pagination, sorting, and search
@@ -296,7 +331,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
 
       // Map response data to our interface
-      const mappedItems = rows.map((item: any) => ({
+      const mappedItems: InventoryItem[] = rows.map((item: any) => ({
         item_id: item.id || "",
         item_name: item.item_name || "Unnamed Item",
         item_code: item.item_code || `ITEM-${Date.now()}`,
@@ -317,6 +352,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         gst_tax_rate: item.gst_tax_rate,
       }));
 
+      // Backend handles filtering when low_stock=true, no need for client-side filtering
       setItems(mappedItems);
       return {
         data: mappedItems,
@@ -344,6 +380,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   // Fetch items on component mount or when dependencies change
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
+    fetchAllItemsForCount(); // Fetch all items for accurate low stock count
   }, [refreshStatus, searchQuery, lowStock]);
 
   // Calculate stock value and low stock count (Products only)
@@ -351,7 +388,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     .filter(item => item.item_type_id === 1)
     .reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
 
-  const lowStockCount = items.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
+  const lowStockCount = allItemsForCount.filter((item) => (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
   const handleDeleteClick = (id: string, onClose?: () => void) => {

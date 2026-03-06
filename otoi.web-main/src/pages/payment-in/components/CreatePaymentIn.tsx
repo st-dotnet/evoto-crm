@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
+import { ArrowLeft,
   Save,
-  Plus,
   User,
-  Calendar,
-  CreditCard,
-  Wallet,
-  Banknote,
   FileText,
   Search,
   X,
@@ -19,8 +13,8 @@ import {
   getPaymentById,
 } from "../services/payment-in.service";
 import { recordPayment } from "../../invoice/services/invoice.service";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
 import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
@@ -31,7 +25,6 @@ export const CreatePaymentIn = () => {
   const location = useLocation();
   const { id } = useParams();
   const [isEditMode, setIsEditMode] = useState(!!id);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [paymentMode, setPaymentMode] = useState("cash");
@@ -100,8 +93,22 @@ export const CreatePaymentIn = () => {
       return;
     }
 
-    if (!paymentReceived || parseFloat(paymentReceived) <= 0) {
-      toast.error("Please enter a valid amount received");
+    const actualPaymentAmount = parseFloat(paymentReceived) || 0;
+    const discountAmount = parseFloat(paymentDiscount) || 0;
+    const totalAppliedAmount = actualPaymentAmount + discountAmount;
+    
+    if (!paymentReceived || actualPaymentAmount <= 0) {
+      toast.error("Please enter a valid payment amount");
+      return;
+    }
+    
+    const selectedInvoice = partyInvoices.find(
+      (inv) => inv.id === selectedInvoiceId,
+    );
+    const balanceAmount = selectedInvoice?.balance_amount || 0;
+    
+    if (totalAppliedAmount > balanceAmount + 0.01) {
+      toast.error("Total payment cannot exceed balance amount");
       return;
     }
 
@@ -110,10 +117,6 @@ export const CreatePaymentIn = () => {
     setInvoiceFieldError(false);
 
     try {
-      const actualPaymentAmount = Math.max(
-        0,
-        (parseFloat(paymentReceived) || 0) - (parseFloat(paymentDiscount) || 0),
-      );
       const response = await recordPayment(
         selectedInvoiceId,
         actualPaymentAmount,
@@ -129,7 +132,7 @@ export const CreatePaymentIn = () => {
         setSelectedInvoiceId(null);
         setPaymentReceived("");
         setPaymentDiscount("");
-        setPaymentNumber("");
+        setPaymentNumber(""); 
         setNotes("");
 
         // Refresh party invoices to update the data
@@ -183,7 +186,8 @@ export const CreatePaymentIn = () => {
   const fetchParties = async () => {
     setIsPartiesLoading(true);
     try {
-      const response = await getPaymentInList();
+      // Fetch all payment records to get all party names (use page=1, per_page=1000)
+      const response = await getPaymentInList(1, 1000, '', '', '');
 
       if (response.success && response.data) {
         const paymentData = response.data.data || response.data;
@@ -318,7 +322,7 @@ export const CreatePaymentIn = () => {
 
     // Pre-fill form with latest payment data for this party
     try {
-      const response = await getPaymentInList();
+      const response = await getPaymentInList(1, 1000, '', '', '');
       if (response.success && response.data) {
         const paymentData = response.data.data || response.data;
         const partyPayments = paymentData.filter(
@@ -781,29 +785,25 @@ export const CreatePaymentIn = () => {
               placeholder="0.00"
               value={paymentReceived}
               onChange={(e) => {
-                const inputValue = e.target.value;
+                const actualPaymentAmount = parseFloat(e.target.value) || 0;
                 const selectedInvoice = partyInvoices.find(
                   (inv) => inv.id === selectedInvoiceId,
                 );
                 const balanceAmount = selectedInvoice?.balance_amount || 0;
-
-                // Only allow non-negative values up to the balance amount (with small epsilon for floating point precision)
-                const epsilon = 0.01; // Small tolerance for floating point precision
-                if (
-                  inputValue === "" ||
-                  (parseFloat(inputValue) >= 0 &&
-                    parseFloat(inputValue) <= balanceAmount + epsilon)
-                ) {
-                  setPaymentReceived(inputValue);
+                const currentDiscount = parseFloat(paymentDiscount) || 0;
+                
+                // Calculate the gross amount (actual payment + discount)
+                const grossAmount = actualPaymentAmount + currentDiscount;
+                
+                // Only allow if gross amount doesn't exceed balance amount
+                if (grossAmount <= balanceAmount + 0.01) {
+                  setPaymentReceived(actualPaymentAmount.toString());
                   setPaymentError(""); // Clear error when user changes amount
-                } else if (parseFloat(inputValue) < 0) {
-                  // Prevent negative values
-                  setPaymentReceived("0");
-                  setPaymentError("Payment amount cannot be negative");
                 } else {
-                  // Set to max allowed amount and show error
-                  setPaymentReceived(balanceAmount.toString());
-                  setPaymentError(`Amount cannot exceed balance amount `);
+                  // Set to max allowed actual payment amount
+                  const maxActualPayment = Math.max(0, balanceAmount - currentDiscount);
+                  setPaymentReceived(maxActualPayment.toString());
+                  setPaymentError(`Total payment cannot exceed balance amount`);
                 }
               }}
               className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${
@@ -831,7 +831,24 @@ export const CreatePaymentIn = () => {
               min="0"
               placeholder={paymentDiscount || "0.00"}
               value={paymentDiscount}
-              onChange={(e) => setPaymentDiscount(e.target.value)}
+              onChange={(e) => {
+                const newDiscount = parseFloat(e.target.value) || 0;
+                const selectedInvoice = partyInvoices.find(
+                  (inv) => inv.id === selectedInvoiceId,
+                );
+                const balanceAmount = selectedInvoice?.balance_amount || 0;
+                const currentActualPayment = parseFloat(paymentReceived) || 0;
+                
+                // Calculate max allowed actual payment amount
+                const maxActualPayment = Math.max(0, balanceAmount - newDiscount);
+                
+                // Adjust actual payment if it exceeds new maximum allowed
+                const adjustedActualPayment = Math.min(currentActualPayment, maxActualPayment);
+                
+                setPaymentDiscount(e.target.value);
+                setPaymentReceived(adjustedActualPayment.toString());
+                setPaymentError(""); // Clear error when user changes discount
+              }}
               className="w-full h-10 pl-8 pr-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
               readOnly={isFullyPaid}
             />
@@ -839,21 +856,40 @@ export const CreatePaymentIn = () => {
         </div>
       </div>
 
-      {/* Show actual payment amount after discount */}
-      {paymentReceived && paymentDiscount && (
+      {/* Show payment breakdown */}
+      {paymentReceived && (
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-blue-700">
-              Actual Payment Amount:
-            </span>
-            <span className="text-sm font-bold text-blue-900">
-              ₹
-              {Math.max(
-                0,
-                (parseFloat(paymentReceived) || 0) -
-                  (parseFloat(paymentDiscount) || 0),
-              ).toLocaleString("en-IN")}
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-700">
+                Actual Payment Amount:
+              </span>
+              <span className="text-sm font-bold text-blue-900">
+                ₹
+                {(parseFloat(paymentReceived) || 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-700">
+                Payment Discount:
+              </span>
+              <span className="text-sm font-bold text-blue-900">
+                -₹
+                {(parseFloat(paymentDiscount) || 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-blue-300">
+              <span className="text-sm font-semibold text-blue-800">
+                Total Applied to Invoice:
+              </span>
+              <span className="text-base font-bold text-blue-900">
+                ₹
+                {(
+                  (parseFloat(paymentReceived) || 0) + 
+                  (parseFloat(paymentDiscount) || 0)
+                ).toLocaleString("en-IN")}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -1166,7 +1202,7 @@ export const CreatePaymentIn = () => {
           </div>
         </div>
 
-        {/* ── Invoice Table Section ─────────────────────────────────── */}
+        {/* ── Invoice Table Section */}
         {selectedParty && (
           <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">

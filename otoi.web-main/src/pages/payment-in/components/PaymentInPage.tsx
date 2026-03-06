@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   DataGrid,
   DataGridColumnHeader,
   DataGridRowSelect,
   DataGridRowSelectAll,
+  TDataGridRequestParams,
 } from "@/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,10 @@ import {
   Eye,
   Edit,
   Trash2,
+  Filter,
+  ChevronDown,
+  Circle,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,14 +42,33 @@ import {
   getPaymentInList,
   getPartyInvoices,
   deletePaymentIn,
+  createPaymentIn,
+  getPaymentNumbersDropdown,
+  getPartyNamesDropdown,
 } from "../services/payment-in.service";
 import { toast } from "sonner";
 import { SpinnerDotted } from "spinners-react";
+
+const API_URL = import.meta.env.VITE_APP_API_URL;
+
+const getAuthToken = (): string | null => {
+  return localStorage.getItem("OTOI-auth-v1.0.0.1");
+};
 
 export const PaymentInPage = () => {
   const navigate = useNavigate();
   const [payments, setPayments] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'partially paid'>('all');
+  const [searchType, setSearchType] = useState<'party_name' | 'payment_number'>('party_name');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allPartyNames, setAllPartyNames] = useState<string[]>([]);
+  const [allPaymentNumbers, setAllPaymentNumbers] = useState<string[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [isDropdownLoading, setIsDropdownLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showLast365Days, setShowLast365Days] = useState(false);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,23 +77,135 @@ export const PaymentInPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
 
-  // Fetch payment records
-  const fetchPayments = async () => {
+  // Fetch autocomplete data for search suggestions
+  const fetchAutocompleteData = useCallback(async () => {
+    setIsDropdownLoading(true);
+    try {
+      const [partyResponse, paymentNumberResponse] = await Promise.all([
+        getPartyNamesDropdown(),
+        getPaymentNumbersDropdown()
+      ]);
+      
+      if (partyResponse.success && partyResponse.data) {
+        const partyNames = Array.isArray(partyResponse.data) 
+          ? partyResponse.data.filter(Boolean)
+          : [];
+        setAllPartyNames(partyNames);
+      }
+      
+      if (paymentNumberResponse.success && paymentNumberResponse.data) {
+        const paymentNumbers = Array.isArray(paymentNumberResponse.data)
+          ? paymentNumberResponse.data.filter(Boolean)
+          : [];
+        setAllPaymentNumbers(paymentNumbers);
+      }
+    } catch (error) {
+      console.error('Error fetching autocomplete data:', error);
+    } finally {
+      setIsDropdownLoading(false);
+    }
+  }, []);
+
+  // Fetch autocomplete data on mount and when search type changes
+  useEffect(() => {
+    fetchAutocompleteData();
+  }, [fetchAutocompleteData]);
+
+  // Handle search type change
+  const handleSearchTypeChange = (type: 'party_name' | 'payment_number') => {
+    setSearchType(type);
+    setShowSuggestions(false);
+    setSearchTerm('');
+    setFilteredSuggestions(type === 'party_name' ? allPartyNames : allPaymentNumbers);
+  };
+
+  // Filter suggestions based on search term and type
+  useEffect(() => {
+    if (searchTerm) {
+      const suggestions = searchType === 'party_name'
+        ? allPartyNames.filter(name =>
+            name.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : allPaymentNumbers.filter(number =>
+            number.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+      setFilteredSuggestions(suggestions);
+    } else {
+      const suggestions = searchType === 'party_name' ? allPartyNames : allPaymentNumbers;
+      setFilteredSuggestions(suggestions);
+    }
+  }, [searchTerm, searchType, allPartyNames, allPaymentNumbers]);
+
+  // Fetch payment records with server-side pagination
+  const fetchPayments = useCallback(async (params: TDataGridRequestParams) => {
     setIsLoading(true);
     try {
-      const response = await getPaymentInList();
+      const response = await getPaymentInList(
+        params.pageIndex + 1,
+        params.pageSize,
+        selectedStatus === 'all' ? '' : selectedStatus,
+        searchType === 'party_name' ? searchTerm : '',
+        searchType === 'payment_number' ? searchTerm : '',
+        selectedDateFilter
+      );
+      
+      if (response.success && response.data) {
+        const paymentsData = response.data.data || [];
+        const paginationData = response.data.pagination || {};
+        
+        setPayments(paymentsData);
 
-      if (response.success) {
-        setPayments(response.data || []);
+        const totalCount = paginationData.total || paymentsData.length;
+        
+        return {
+          data: paymentsData,
+          totalCount: totalCount,
+        };
       } else {
         setPayments([]);
+        toast.error(response.error || 'Failed to fetch payments');
+        return {
+          data: [],
+          totalCount: 0,
+        };
       }
     } catch (error) {
       setPayments([]);
+      toast.error('Failed to fetch payments');
+      return {
+        data: [],
+        totalCount: 0,
+      };
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedStatus, searchTerm, searchType, selectedDateFilter]);
+
+  // Fetch data on mount and when filters change
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getPaymentInList(
+          1, 
+          1000, 
+          selectedStatus === 'all' ? '' : selectedStatus,
+          searchType === 'party_name' ? searchTerm : '',
+          searchType === 'payment_number' ? searchTerm : ''
+        );
+        if (response.success && response.data) {
+          setPayments(response.data.data || []);
+        }
+      } catch (error) {
+        toast.error('Failed to fetch payments');
+        setPayments([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [selectedStatus, searchTerm, searchType, selectedDateFilter]);
 
   const handleDelete = (id: string) => {
     setPaymentToDelete(id);
@@ -82,7 +219,7 @@ export const PaymentInPage = () => {
       const response = await deletePaymentIn(paymentToDelete);
       if (response.success) {
         toast.success("Payment deleted successfully");
-        fetchPayments(); // Refresh the payments list
+        // DataGrid will automatically refresh on delete
       } else {
         toast.error(response.error || "Failed to delete payment");
       }
@@ -100,24 +237,23 @@ export const PaymentInPage = () => {
     setDeleteDialogOpen(false);
   };
 
-  useEffect(() => {
-    fetchPayments();
-  }, []);
-
   // Table columns definition
   const columns: ColumnDef<any>[] = [
     {
       id: "select",
       header: () => (
-        <div className="w-full flex items-center justify-center h-full p-0 m-0">
+        <div className="flex items-center justify-center w-full h-full">
           <DataGridRowSelectAll />
         </div>
       ),
       cell: ({ row }) => (
-        <div className="w-full flex items-center justify-center h-full p-0 m-0">
+        <div className="flex items-center justify-center w-full h-full">
           <DataGridRowSelect row={row} />
         </div>
       ),
+      enableSorting: false,
+      enableHiding: false,
+      meta: { headerClassName: "w-[60px] p-0", cellClassName: "text-center p-0" },
     },
     {
       accessorKey: "date",
@@ -175,7 +311,10 @@ export const PaymentInPage = () => {
       ),
       cell: (info) => (
         <div className="text-sm font-medium text-center">
-          ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
+          ₹{(info.getValue() as number)?.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }) || "0.00"}
         </div>
       ),
     },
@@ -195,10 +334,16 @@ export const PaymentInPage = () => {
 
         return (
           <div className="text-sm font-medium text-center text-black-600">
-            ₹{amountReceived.toLocaleString("en-IN")}
+            ₹{amountReceived.toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}
             {discount > 0 && (
               <div className="text-xs text-red-500">
-                - ₹{discount.toLocaleString("en-IN")} discount
+                - ₹{discount.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })} discount
               </div>
             )}
           </div>
@@ -332,12 +477,140 @@ export const PaymentInPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Payment In</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1">
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Last 365 Days
-            </span>
-          </Button>
+          {/* Status Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <Filter className="h-3.5 w-3.5" />
+                <span className="truncate">
+                  {selectedStatus === 'all' && 'All Payments'}
+                  {selectedStatus === 'paid' && 'Paid Payments'}
+                  {selectedStatus === 'partially paid' && 'Pending Payments'}
+                </span>
+                <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem
+                onClick={() => setSelectedStatus('all')}
+                className="flex items-center gap-2"
+              >
+                <Circle className="h-4 w-4 text-gray-500" />
+                <span>All Payments</span>
+                {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedStatus('paid')}
+                className="flex items-center gap-2"
+              >
+                <Circle className="h-4 w-4 text-green-500" />
+                <span>Done Payments</span>
+                {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedStatus('partially paid')}
+                className="flex items-center gap-2"
+              >
+                <Circle className="h-4 w-4 text-yellow-500" />
+                <span>Pending Payments</span>
+                {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* Date Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  {selectedDateFilter === 'all' && 'All Dates'}
+                  {selectedDateFilter === 'today' && 'Today'}
+                  {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
+                  {selectedDateFilter === 'day_after_tomorrow' && 'Day After Tomorrow'}
+                  {selectedDateFilter === 'this_week' && 'This Week'}
+                  {selectedDateFilter === 'last_week' && 'Last Week'}
+                  {selectedDateFilter === 'this_month' && 'This Month'}
+                  {selectedDateFilter === 'last_month' && 'Last Month'}
+                  {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                </span>
+                <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('all')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span>All Dates</span>
+                {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('today')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>Today</span>
+                {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('tomorrow')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-green-500" />
+                <span>Tomorrow</span>
+                {selectedDateFilter === 'tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('day_after_tomorrow')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-purple-500" />
+                <span>Day After Tomorrow</span>
+                {selectedDateFilter === 'day_after_tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('this_week')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-orange-500" />
+                <span>This Week</span>
+                {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('last_week')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-yellow-500" />
+                <span>Last Week</span>
+                {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('this_month')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-indigo-500" />
+                <span>This Month</span>
+                {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('last_month')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-pink-500" />
+                <span>Last Month</span>
+                {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSelectedDateFilter('last_365_days')}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4 text-red-500" />
+                <span>Last 365 Days</span>
+                {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             size="sm"
             className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
@@ -354,29 +627,117 @@ export const PaymentInPage = () => {
       <div className="bg-white rounded-lg shadow-sm border">
         {/* Search Bar */}
         <div className="p-4 border-b">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
+          <div className="relative w-fit">
+            <div className="flex">
+              <div className="relative">
+                <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-9 w-80 justify-start px-3" disabled={isDropdownLoading}>
+                      {isDropdownLoading ? (
+                        <span className="flex items-center">
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Loading...
+                        </span>
+                      ) : (
+                        searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by payment number...')
+                      )}
+                      {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSearchTerm('');
+                        setRefreshKey(prev => prev + 1);
+                      }}
+                      className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                    >
+                      <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Payments'}</span>
+                    </DropdownMenuItem>
+                    {isDropdownLoading ? (
+                      <DropdownMenuItem disabled>
+                        <div className="flex items-center justify-center w-full py-2">
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Loading options...
+                        </div>
+                      </DropdownMenuItem>
+                    ) : (
+                      (searchType === 'party_name' ? allPartyNames : allPaymentNumbers).map((item, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          onClick={() => {
+                            setSearchTerm(item);
+                            setRefreshKey(prev => prev + 1);
+                          }}
+                          className={searchTerm === item ? "bg-blue-50 text-blue-600" : ""}
+                        >
+                          {item}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                    {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Payment'}: ${searchTerm}` : 'Filter by'}
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      handleSearchTypeChange('party_name');
+                    }}
+                    className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Party Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      handleSearchTypeChange('payment_number');
+                    }}
+                    className={searchType === 'payment_number' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Payment Number
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <input
-              type="text"
-              placeholder="Search payments..."
-              className="w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-9"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </div>
         </div>
 
-        <DataGrid
+        <div className="overflow-auto relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
+              <SpinnerDotted
+                size={50}
+                thickness={100}
+                speed={100}
+                color="#2563eb"
+              />
+            </div>
+          )}
+          <DataGrid
           columns={columns}
           data={payments}
+          serverSide={false}
           loading={isLoading}
           getRowId={(row: any) => row.id?.toString() || row.payment_number}
           pagination={{ size: 5 }}
           rowSelection={true}
           onRowClick={(row) => handleRowClick(row.original)}
         />
+        </div>
       </div>
 
       {/* Payment Details Modal */}
@@ -469,7 +830,11 @@ export const PaymentInPage = () => {
                           ₹
                           {selectedPayment.total_amount_settled?.toLocaleString(
                             "en-IN",
-                          ) || "0"}
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }
+                          ) || "0.00"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -481,7 +846,11 @@ export const PaymentInPage = () => {
                           ₹
                           {selectedPayment.balance_due?.toLocaleString(
                             "en-IN",
-                          ) || "0"}
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }
+                          ) || "0.00"}
                         </span>
                       </div>
                     </div>
@@ -513,7 +882,11 @@ export const PaymentInPage = () => {
                           ₹
                           {selectedPayment.amount_received?.toLocaleString(
                             "en-IN",
-                          ) || "0"}
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }
+                          ) || "0.00"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -550,7 +923,11 @@ export const PaymentInPage = () => {
                         ₹
                         {selectedPayment.payment_discount?.toLocaleString(
                           "en-IN",
-                        ) || "0"}
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          }
+                        ) || "0.00"}
                       </span>
                     </div>
                   </div>
@@ -559,7 +936,7 @@ export const PaymentInPage = () => {
                   {paymentInvoices.length > 0 && (
                     <div>
                       <h4 className="text-md font-semibold-400 text-gray-800 mb-4">
-                        Related Invoices with {selectedPayment.party_name}
+                        Other Related Invoices with {selectedPayment.party_name}
                       </h4>
                       <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl mx-auto max-h-[98vh] overflow-hidden">
                         <div className="overflow-x-auto">
@@ -640,19 +1017,31 @@ export const PaymentInPage = () => {
                                     ₹
                                     {invoice.invoice_amount?.toLocaleString(
                                       "en-IN",
-                                    ) || "0"}
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      }
+                                    ) || "0.00"}
                                   </td>
                                   <td className="px-4 py-4 text-center font-medium text-green-600">
                                     ₹
                                     {invoice.amount_received?.toLocaleString(
                                       "en-IN",
-                                    ) || "0"}
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      }
+                                    ) || "0.00"}
                                   </td>
                                   <td className="px-4 py-4 text-center font-medium">
                                     ₹
                                     {invoice.balance_amount?.toLocaleString(
                                       "en-IN",
-                                    ) || "0"}
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      }
+                                    ) || "0.00"}
                                   </td>
                                   <td className="px-4 py-4 text-center">
                                     <span
