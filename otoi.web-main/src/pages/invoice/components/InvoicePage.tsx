@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  DataGrid,
-  DataGridColumnHeader,
-  DataGridRowSelect,
-  DataGridRowSelectAll,
+    DataGrid,
+    DataGridColumnHeader,
+    DataGridRowSelect,
+    DataGridRowSelectAll,
 } from "@/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -190,6 +190,10 @@ const InvoicePage = () => {
         return invoices;
     }, [invoices]);
 
+    const handleEdit = (id: string) => {
+        navigate(`/invoices/${id}/edit`);
+    };
+
     const handleDelete = async (id: string) => {
         // Prevent any pending navigation
         window.event?.stopPropagation();
@@ -203,13 +207,22 @@ const InvoicePage = () => {
         if (!invoiceToDelete || isDeleting) return;
         setIsDeleting(true);
 
-        const response = await deleteInvoice(id);
+        const response = await deleteInvoice(invoiceToDelete);
         if (response.success) {
             toast.success('Invoice deleted successfully');
             setRefreshKey(prev => prev + 1);
         } else {
             toast.error(response.error || 'Failed to delete invoice');
         }
+
+        setShowDeleteDialog(false);
+        setInvoiceToDelete(null);
+        setIsDeleting(false);
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteDialog(false);
+        setInvoiceToDelete(null);
     };
 
     const getPaymentStatusBadge = (status: string) => {
@@ -377,6 +390,11 @@ const InvoicePage = () => {
             cell: ({ row }) => {
                 const [isOpen, setIsOpen] = useState(false);
 
+                // Update global dropdown state
+                useEffect(() => {
+                    setIsDropdownOpen(isOpen);
+                }, [isOpen]);
+
                 return (
                     <div className="flex justify-center">
                         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -420,6 +438,7 @@ const InvoicePage = () => {
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        e.nativeEvent.stopImmediatePropagation();
                                         handleDelete(row.original.id);
                                         setIsOpen(false);
                                     }}
@@ -617,7 +636,17 @@ const InvoicePage = () => {
                         </div>
                     </div>
                 </div>
-                <div className="overflow-auto">
+                <div className="overflow-auto relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
+                            <SpinnerDotted
+                                size={50}
+                                thickness={100}
+                                speed={100}
+                                color="#2563eb"
+                            />
+                        </div>
+                    )}
                     <DataGrid
                         key={refreshKey}
                         columns={columns}
@@ -689,7 +718,7 @@ const InvoicePage = () => {
                 </DialogContent>
             </Dialog>
         </div>
-        
+
     );
 };
 
