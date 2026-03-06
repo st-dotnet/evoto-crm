@@ -83,12 +83,12 @@ const ModalUser = ({ open, onOpenChange, user }: IModalUserProps) => {
       first_name: Yup.string()
         .trim()
         .min(3, "Minimum 3 symbols")
-        .max(50, "Maximum 50 symbols")
+        .max(20, "Maximum 20 symbols")
         .required("First Name is required"),
       last_name: Yup.string()
         .trim()
         .min(3, "Minimum 3 symbols")
-        .max(50, "Maximum 50 symbols")
+        .max(20, "Maximum 20 symbols")
         .nullable(),
       email: Yup.string()
         .required("Email is required")

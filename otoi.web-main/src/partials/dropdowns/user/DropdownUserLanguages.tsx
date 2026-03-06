@@ -78,7 +78,7 @@ const DropdownUserLanguages = ({ menuItemRef }: IDropdownUserLanguagesProps) => 
           />
         </div>
       </MenuLink>
-      <MenuSub className="menu-default light:border-gray-300 w-[190px]">{buildItems()}</MenuSub>
+      <MenuSub className="menu-default light:border-gray-300 w-[200px]">{buildItems()}</MenuSub>
     </MenuItem>
   );
 };

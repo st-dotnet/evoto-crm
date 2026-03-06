@@ -25,7 +25,8 @@ def create_app():
 
     # Enable CORS
     # CORS(app)
-    CORS( app,resources={r"/api/*": {"origins": "*"}},supports_credentials=True,allow_headers=["Content-Type", "Authorization"],expose_headers=["Authorization"],methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],)
+    frontend_url = app.config.get("FRONTEND_URL", "http://localhost:5173")
+    CORS(app, resources={r"/api/*": {"origins": [frontend_url]}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"], expose_headers=["Authorization"], methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     # authentication barrier
     swagger_template = {

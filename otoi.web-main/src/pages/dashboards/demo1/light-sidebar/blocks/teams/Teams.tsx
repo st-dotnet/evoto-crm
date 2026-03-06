@@ -158,6 +158,7 @@ const Teams = () => {
         });
       }
 
+      /*
       const response = await axios.get<TeamsQueryApiResponse>(
         `${import.meta.env.VITE_APP_API_URL}/teams/query?${queryParams.toString()}`
       );
@@ -165,6 +166,11 @@ const Teams = () => {
       return {
         data: response.data.data, // Server response data
         totalCount: response.data.pagination.total // Total count for pagination
+      };
+      */
+      return {
+        data: [],
+        totalCount: 0
       };
     } catch (error) {
       toast(`Connection Error`, {
@@ -223,9 +229,9 @@ const Teams = () => {
     };
 
     return (
-      <div className="card-header border-b-0 px-5">
+      <div className="card-header flex-wrap border-b-0 px-5 gap-2">
         <h3 className="card-title">Teams</h3>
-        <div className="input input-sm max-w-48">
+        <div className="input input-sm w-full sm:max-w-48">
           <KeenIcon icon="magnifier" />
           <input
             type="text"

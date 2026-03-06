@@ -368,7 +368,7 @@ export const LeadDetails = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
+          <div className="bg-white overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
             <div className="flex flex-col items-center text-center pb-8 border-b border-gray-100">
               <div className="h-24 w-24 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-bold mb-4 border border-blue-100">
                 {initials || fullName[0]}

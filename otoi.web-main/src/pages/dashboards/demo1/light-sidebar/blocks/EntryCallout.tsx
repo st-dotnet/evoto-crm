@@ -24,7 +24,7 @@ const EntryCallout = ({ className }: IEntryCalloutProps) => {
       </style>
 
       <div className={`card h-full ${className}`}>
-        <div className="card-body p-10 bg-[length:80%] rtl:[background-position:-70%_25%] [background-position:175%_25%] bg-no-repeat entry-callout-bg">
+        <div className="card-body p-5 lg:p-10 bg-[length:80%] rtl:[background-position:-70%_25%] [background-position:175%_25%] sm:[background-position:120%_25%] lg:[background-position:175%_25%] bg-no-repeat entry-callout-bg">
           <div className="flex flex-col justify-center gap-4">
             <CommonAvatars
               size="size-10"
@@ -40,17 +40,14 @@ const EntryCallout = ({ className }: IEntryCalloutProps) => {
             />
 
             <h2 className="text-1.5xl font-semibold text-gray-900">
-              Connect Today & Join <br />
-              the{' '}
+              Connect Today & Join the{' '}
               <a href="#" className="link">
                 KeenThemes Network
               </a>
             </h2>
 
-            <p className="text-sm font-normal text-gray-700 leading-5.5">
-              Enhance your projects with premium themes and <br />
-              templates. Join the KeenThemes community today <br />
-              for top-quality designs and resources.
+            <p className="text-sm font-normal text-gray-700 leading-5.5 max-w-[280px] sm:max-w-full">
+              Enhance your projects with premium themes and templates. Join the KeenThemes community today for top-quality designs and resources.
             </p>
           </div>
         </div>

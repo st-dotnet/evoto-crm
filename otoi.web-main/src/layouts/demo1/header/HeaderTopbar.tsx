@@ -9,6 +9,7 @@ import { DropdownChat } from '@/partials/dropdowns/chat';
 import { ModalSearch } from '@/partials/modals/search/ModalSearch';
 import { useLanguage } from '@/i18n';
 import { useAuthContext } from '@/auth';
+import { useResponsive } from '@/hooks';
 
 const HeaderTopbar = () => {
   const { currentUser } = useAuthContext();
@@ -17,6 +18,7 @@ const HeaderTopbar = () => {
   const itemAppsRef = useRef<any>(null);
   const itemUserRef = useRef<any>(null);
   const itemNotificationsRef = useRef<any>(null);
+  const isDesktop = useResponsive('up', 'lg');
 
   const handleShow = () => {
     window.dispatchEvent(new Event('resize'));
@@ -53,7 +55,7 @@ const HeaderTopbar = () => {
               {
                 name: 'offset',
                 options: {
-                  offset: isRTL() ? [-170, 10] : [170, 10]
+                  offset: isRTL() ? [isDesktop ? -170 : 0, 10] : [isDesktop ? 170 : 0, 10]
                 }
               }
             ]
@@ -78,7 +80,7 @@ const HeaderTopbar = () => {
               {
                 name: 'offset',
                 options: {
-                  offset: isRTL() ? [-10, 10] : [10, 10]
+                  offset: isRTL() ? [isDesktop ? -10 : 0, 10] : [isDesktop ? 10 : 0, 10]
                 }
               }
             ]
@@ -103,7 +105,7 @@ const HeaderTopbar = () => {
               {
                 name: 'offset',
                 options: {
-                  offset: isRTL() ? [-70, 10] : [70, 10] // [skid, distance]
+                  offset: isRTL() ? [isDesktop ? -70 : 0, 10] : [isDesktop ? 70 : 0, 10] // [skid, distance]
                 }
               }
             ]
@@ -127,7 +129,7 @@ const HeaderTopbar = () => {
               {
                 name: 'offset',
                 options: {
-                  offset: isRTL() ? [-20, 10] : [20, 10] // [skid, distance]
+                  offset: isRTL() ? [isDesktop ? -20 : 0, 10] : [isDesktop ? 20 : 0, 10] // [skid, distance]
                 }
               }
             ]

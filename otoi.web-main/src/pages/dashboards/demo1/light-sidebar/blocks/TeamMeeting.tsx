@@ -17,18 +17,16 @@ const TeamMeeting = () => {
         </div>
 
         <p className="text-sm font-normal text-gray-800 leading-5.5 mb-8">
-          Team meeting to discuss strategies, outline <br />
-          project milestones, define key goals, and <br />
-          establish clear timelines.
+          Team meeting to discuss strategies, outline project milestones, define key goals, and establish clear timelines.
         </p>
 
-        <div className="flex rounded-lg bg-gray-100 gap-10 p-5">
-          <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap rounded-lg bg-gray-100 gap-5 sm:gap-10 p-5">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 text-sm font-normal text-gray-800">
               <KeenIcon icon="geolocation" className="text-base text-gray-500" />
               Location
             </div>
-            <div className="text-sm font-medium text-gray-800 pt-1.5">Amsterdam</div>
+            <div className="text-sm font-medium text-gray-800">Amsterdam</div>
           </div>
 
           <div className="flex flex-col gap-5">

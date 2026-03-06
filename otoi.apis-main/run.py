@@ -12,7 +12,7 @@ app.config["SQLALCHEMY_ECHO"] = True
 app.config["DEBUG"] = True   
    
 # Enable CORS for your frontend domain   
-CORS(app)   
+# CORS(app)   
    
 # -----------------------------   
 # Setup Logging   
