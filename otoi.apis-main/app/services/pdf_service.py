@@ -35,10 +35,20 @@ def get_amount_in_words(amount):
     except Exception:
         return ""
 
+import requests
+
+_cached_logo_uri = None
+
 def get_logo_data_uri():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    logo_path = os.path.abspath(os.path.join(current_dir, "../../../otoi.web-main/public/media/app/Evoto-Logo.png"))
+    global _cached_logo_uri
+    if _cached_logo_uri is not None:
+        return _cached_logo_uri
+        
+    logo_path = os.environ.get("LOGO_PATH") or os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../otoi.web-main/public/media/app/Evoto-Logo.png")
+    )
     
+    # Priority 1: Check local filesystem
     if os.path.exists(logo_path):
         try:
             with Image.open(logo_path) as img:
@@ -50,12 +60,43 @@ def get_logo_data_uri():
                 buffer = BytesIO()
                 background.save(buffer, format="JPEG", quality=90)
                 encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
-            return f"data:image/jpeg;base64,{encoded_string}"
+                _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
+                return _cached_logo_uri
         except Exception:
-            # Fallback if PIL processing fails
-            with open(logo_path, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-            return f"data:image/png;base64,{encoded_string}"
+            try:
+                with open(logo_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
+                return _cached_logo_uri
+            except Exception:
+                pass
+                
+    # Priority 2: Try to retrieve from internet if the frontend hosts it
+    # Uses the FRONTEND_URL or a sensible default
+    try:
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip('/')
+        logo_url = f"{frontend_url}/media/app/Evoto-Logo.png"
+        response = requests.get(logo_url, timeout=5)
+        if response.status_code == 200:
+            try:
+                with Image.open(BytesIO(response.content)) as img:
+                    img = img.convert("RGBA")
+                    background = Image.new("RGBA", img.size, (255, 255, 255))
+                    background.paste(img, mask=img)
+                    background = background.convert("RGB")
+                    
+                    buffer = BytesIO()
+                    background.save(buffer, format="JPEG", quality=90)
+                    encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                    _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
+                    return _cached_logo_uri
+            except Exception:
+                encoded_string = base64.b64encode(response.content).decode("utf-8")
+                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
+                return _cached_logo_uri
+    except Exception:
+        pass
+        
     return ""
 
 def get_font_path():
@@ -167,23 +208,53 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
 
     # Auto-calculate breakdown if missing
     if tax_total > 0 and not any([cgst, sgst, igst, utgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
         half_tax = tax_total / 2.0
-        rate = round(((tax_total / taxable_amount) * 100) / 2.0, 2) if taxable_amount > 0 else 0
+        
+        b_state = (business_address.state or "").strip().lower() if business_address else ""
         
         cgst = half_tax
-        cgst_rate = rate
+        cgst_rate = half_rate
         
-        # Check if state is UT
-        state_str = (business_address.state or "").lower() if business_address else ""
         ut_keywords = ['andaman', 'chandigarh', 'dadra', 'daman', 'lakshadweep', 'delhi', 'puducherry', 'ladakh', 'jammu']
-        is_ut = any(ut in state_str for ut in ut_keywords)
+        is_ut = any(ut in b_state for ut in ut_keywords) if b_state else False
         
         if is_ut:
             utgst = half_tax
-            utgst_rate = rate
+            utgst_rate = half_rate
         else:
             sgst = half_tax
-            sgst_rate = rate
+            sgst_rate = half_rate
+
+    # ── Resolve shipping address (from Shipping model, fallback to billing) ──
+    ship = None
+    if customer and hasattr(customer, 'default_shipping'):
+        ship = customer.default_shipping
+
+    customer_ctx = None
+    if customer:
+        customer_ctx = {
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,
+            "gst": customer.gst,
+            # Billing address (flat columns on Customer)
+            "address1": customer.address1,
+            "address2": customer.address2,
+            "city": customer.city,
+            "state": customer.state,
+            "country": customer.country,
+            "pin": customer.pin,
+            # Shipping address (from Shipping model, fallback to billing)
+            "shipping_address1": (ship.address1 if ship else None) or customer.address1,
+            "shipping_address2": None,  # Shipping model has no address2
+            "shipping_city": (ship.city if ship else None) or customer.city,
+            "shipping_state": (ship.state if ship else None) or customer.state,
+            "shipping_country": (ship.country if ship else None) or customer.country,
+            "shipping_pin": (ship.pin if ship else None) or customer.pin,
+        }
 
     context = {
         "invoice": {
@@ -214,18 +285,7 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
             "pin": business_address.pin,
             "country": business_address.country,
         } if business_address else None,
-        "customer": {
-            "first_name": customer.first_name,
-            "last_name": customer.last_name,
-            "mobile": customer.mobile,
-            "email": customer.email,
-            "gst": customer.gst,
-            "address1": customer.address1,
-            "address2": customer.address2,
-            "city": customer.city,
-            "state": customer.state,
-            "pin": customer.pin,
-        } if customer else None,
+        "customer": customer_ctx,
         "quotation_number": quotation_number,
         "charges": {
             "subtotal": subtotal,
@@ -331,23 +391,53 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
 
     # Auto-calculate breakdown if missing
     if tax_total > 0 and not any([cgst, sgst, igst, utgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
         half_tax = tax_total / 2.0
-        rate = round(((tax_total / taxable_amount) * 100) / 2.0, 2) if taxable_amount > 0 else 0
+        
+        b_state = (business_address.state or "").strip().lower() if business_address else ""
         
         cgst = half_tax
-        cgst_rate = rate
+        cgst_rate = half_rate
         
-        # Check if state is UT
-        state_str = (business_address.state or "").lower() if business_address else ""
         ut_keywords = ['andaman', 'chandigarh', 'dadra', 'daman', 'lakshadweep', 'delhi', 'puducherry', 'ladakh', 'jammu']
-        is_ut = any(ut in state_str for ut in ut_keywords)
+        is_ut = any(ut in b_state for ut in ut_keywords) if b_state else False
         
         if is_ut:
             utgst = half_tax
-            utgst_rate = rate
+            utgst_rate = half_rate
         else:
             sgst = half_tax
-            sgst_rate = rate
+            sgst_rate = half_rate
+
+    # ── Resolve shipping address (from Shipping model, fallback to billing) ──
+    ship = None
+    if customer and hasattr(customer, 'default_shipping'):
+        ship = customer.default_shipping
+
+    customer_ctx = None
+    if customer:
+        customer_ctx = {
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+            "mobile": customer.mobile,
+            "email": customer.email,
+            "gst": customer.gst,
+            # Billing address (flat columns on Customer)
+            "address1": customer.address1,
+            "address2": customer.address2,
+            "city": customer.city,
+            "state": customer.state,
+            "country": customer.country,
+            "pin": customer.pin,
+            # Shipping address (from Shipping model, fallback to billing)
+            "shipping_address1": (ship.address1 if ship else None) or customer.address1,
+            "shipping_address2": None,  # Shipping model has no address2
+            "shipping_city": (ship.city if ship else None) or customer.city,
+            "shipping_state": (ship.state if ship else None) or customer.state,
+            "shipping_country": (ship.country if ship else None) or customer.country,
+            "shipping_pin": (ship.pin if ship else None) or customer.pin,
+        }
 
     context = {
         "quotation": {
@@ -374,18 +464,7 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
             "pin": business_address.pin,
             "country": business_address.country,
         } if business_address else None,
-        "customer": {
-            "first_name": customer.first_name,
-            "last_name": customer.last_name,
-            "mobile": customer.mobile,
-            "email": customer.email,
-            "gst": customer.gst,
-            "address1": customer.address1,
-            "address2": customer.address2,
-            "city": customer.city,
-            "state": customer.state,
-            "pin": customer.pin,
-        } if customer else None,
+        "customer": customer_ctx,
         "charges": {
             "subtotal": subtotal,
             "discount_total": discount_total,

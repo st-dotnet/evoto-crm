@@ -1,7 +1,8 @@
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, send_file
 from flask_cors import cross_origin
-from sqlalchemy import or_, func, desc, asc, and_
+from sqlalchemy import or_, func, desc, asc, and_, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from app.extensions import db
 from app.models.quotation import Quotation, QuotationItem
@@ -29,26 +30,26 @@ def generate_quotation_number():
 
 
 def check_and_update_quotation_status():
-    """Check and update quotation status based on valid_till date"""
+    """Check and update quotation status based on valid_till date using a single bulk UPDATE."""
     today = date.today()
-    
-    # Find all open quotations that have expired or are expiring today
-    expired_quotations = Quotation.query.filter(
-        and_(
-            Quotation.status == 'open',
-            Quotation.valid_till <= today
+
+    # Single bulk UPDATE — no Python-side loop, no extra SELECT
+    result = db.session.execute(
+        update(Quotation)
+        .where(
+            and_(
+                Quotation.status == 'open',
+                Quotation.valid_till <= today
+            )
         )
-    ).all()
-    
-    updated_count = 0
-    for quotation in expired_quotations:
-        quotation.status = 'closed'
-        updated_count += 1
-    
+        .values(status='closed')
+        .execution_options(synchronize_session='fetch')
+    )
+    updated_count = result.rowcount
+
     if updated_count > 0:
         db.session.commit()
-        # print(f"DEBUG: Updated {updated_count} quotations to 'closed' status (valid_till <= {today})")
-    
+
     return updated_count
 
 
@@ -412,30 +413,29 @@ def get_quotations():
 
         # Return all customers (party names) for dropdown if requested
         if request.args.get("customer_dropdown_all") == "true":
-            # Get all unique customers from ALL quotations (not just current page)
-            customer_query = Quotation.query.outerjoin(Customer, Quotation.customer_id == Customer.uuid).with_entities(
-                Customer.uuid,
-                Customer.first_name,
-                Customer.last_name
-            ).distinct().all()
-            
-            # Debug: Log all quotations and their customers
-            all_quotations = Quotation.query.all()
-            for q in all_quotations:
-                customer = Customer.query.filter_by(uuid=q.customer_id).first()
-                customer_name = f"{customer.first_name} {customer.last_name}" if customer else "Unknown"
-            
+            # Single JOIN query — fetch all distinct customers that have at least one quotation
+            customer_query = (
+                Quotation.query
+                .outerjoin(Customer, Quotation.customer_id == Customer.uuid)
+                .with_entities(
+                    Customer.uuid,
+                    Customer.first_name,
+                    Customer.last_name
+                )
+                .distinct()
+                .all()
+            )
+
             result = []
             for customer in customer_query:
-                if customer.uuid and (customer.first_name or customer.last_name):  # Only include customers with valid UUID and name
+                if customer.uuid and (customer.first_name or customer.last_name):
                     full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
-                    if full_name:  # Only include if name is not empty after stripping
+                    if full_name:
                         result.append({
                             "uuid": str(customer.uuid),
                             "name": full_name
                         })
-            
-            # Sort by name alphabetically
+
             result.sort(key=lambda x: x['name'].lower())
             return jsonify(result), 200
 
@@ -518,16 +518,26 @@ def get_quotation(quotation_id):
     try:
         # Check and update quotation status based on valid_till date
         check_and_update_quotation_status()
-        
-        quotation = Quotation.query.filter_by(uuid=quotation_id).first()
+
+        # Eagerly load items in one extra SELECT (avoids lazy-load per attribute access)
+        quotation = (
+            Quotation.query
+            .options(selectinload(Quotation.items))
+            .filter_by(uuid=quotation_id)
+            .first()
+        )
         if not quotation:
             return jsonify({"error": "Quotation not found"}), 404
 
-        # Fetch quotation items
-        items = QuotationItem.query.filter_by(quotation_id=quotation.uuid).all()
-        items_data = []
+        # Batch-fetch all linked inventory items in a single IN query
+        item_ids = [qi.item_id for qi in quotation.items if qi.item_id]
+        inventory_map = {}
+        if item_ids:
+            inventory_items = Item.query.filter(Item.id.in_(item_ids)).all()
+            inventory_map = {i.id: i for i in inventory_items}
 
-        for item in items:
+        items_data = []
+        for item in quotation.items:
             item_info = {
                 "uuid": str(item.uuid),
                 "item_id": item.item_id,
@@ -538,15 +548,14 @@ def get_quotation(quotation_id):
                 "tax": item.tax or {},
                 "total_price": float(item.total_price) if item.total_price else 0,
             }
-            
-            # Fetch product details from linked inventory item
-            if item.item_id:
-                inventory_item = Item.query.get(item.item_id)
-                if inventory_item:
-                    item_info["product_name"] = inventory_item.item_name
-                    item_info["hsn_sac_code"] = inventory_item.hsn_code
-                    item_info["measuring_unit_id"] = inventory_item.measuring_unit_id
-            
+
+            # Look up inventory item from pre-fetched map (no extra DB round-trip)
+            if item.item_id and item.item_id in inventory_map:
+                inv = inventory_map[item.item_id]
+                item_info["product_name"] = inv.item_name
+                item_info["hsn_sac_code"] = inv.hsn_code
+                item_info["measuring_unit_id"] = inv.measuring_unit_id
+
             items_data.append(item_info)
 
         quotation_data = {
@@ -940,9 +949,22 @@ def download_quotation_pdf(quotation_id):
         description: PDF generation failed
     """
     try:
-        quotation = Quotation.query.get_or_404(quotation_id)
+        # Eagerly load items so quotation.items is already populated
+        quotation = (
+            Quotation.query
+            .options(selectinload(Quotation.items))
+            .filter_by(uuid=quotation_id)
+            .first_or_404()
+        )
 
-        # Build items data (same logic as get_quotation)
+        # Batch-fetch all linked inventory items in one query
+        item_ids = [qi.item_id for qi in quotation.items if qi.item_id]
+        inventory_map = {}
+        if item_ids:
+            inventory_items = Item.query.filter(Item.id.in_(item_ids)).all()
+            inventory_map = {i.id: i for i in inventory_items}
+
+        # Build items data using the pre-fetched inventory map
         items_data = []
         for item in quotation.items:
             item_info = {
@@ -953,11 +975,10 @@ def download_quotation_pdf(quotation_id):
                 "tax": item.tax or {},
                 "total_price": float(item.total_price) if item.total_price else 0,
             }
-            if item.item_id:
-                inventory_item = Item.query.get(item.item_id)
-                if inventory_item:
-                    item_info["product_name"] = inventory_item.item_name
-                    item_info["hsn_sac_code"] = inventory_item.hsn_code
+            if item.item_id and item.item_id in inventory_map:
+                inv = inventory_map[item.item_id]
+                item_info["product_name"] = inv.item_name
+                item_info["hsn_sac_code"] = inv.hsn_code
             items_data.append(item_info)
 
         pdf_buffer = generate_quotation_pdf(quotation, items_data)

@@ -1,5 +1,5 @@
 from app.models.common import BaseMixin
-from sqlalchemy import Column, Integer, Numeric, ForeignKey, String, Text, Date, JSON
+from sqlalchemy import Column, Integer, Numeric, ForeignKey, String, Text, Date, JSON, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -41,6 +41,18 @@ class Quotation(BaseMixin, db.Model):
     customer = relationship("Customer")
     items = relationship("QuotationItem", back_populates="quotation", cascade="all, delete-orphan")
 
+    __table_args__ = (
+        # FK lookup indexes
+        Index('idx_quotations_customer_id',  'customer_id'),
+        Index('idx_quotations_business_id',  'business_id'),
+        # Status / expiry — powers bulk UPDATE and listing sort
+        Index('idx_quotations_status',                    'status'),
+        Index('idx_quotations_status_valid_till',         'status', 'valid_till'),
+        Index('idx_quotations_business_status_valid_till','business_id', 'status', 'valid_till'),
+        # Pagination / number generation
+        Index('idx_quotations_created_at',   'created_at'),
+    )
+
     def __repr__(self):
         return f"<Quotation {self.quotation_number} | ₹{self.total_amount}>"
 
@@ -75,6 +87,12 @@ class QuotationItem(BaseMixin, db.Model):
     # Relationships
     quotation = relationship("Quotation", back_populates="items")
     item = relationship("Item")
+
+    __table_args__ = (
+        # FK indexes — used in selectinload and batch IN queries
+        Index('idx_quotation_items_quotation_id', 'quotation_id'),
+        Index('idx_quotation_items_item_id',      'item_id'),
+    )
 
     def __repr__(self):
         return f"<QuotationItem {self.uuid} | Qty: {self.quantity}>"

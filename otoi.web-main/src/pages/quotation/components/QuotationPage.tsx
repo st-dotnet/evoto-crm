@@ -69,7 +69,7 @@ const QuotationPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'open' | 'all' | 'closed' | 'converted'>('open');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'open' | 'closed' | 'converted'>('open');
   const [activeTab, setActiveTab] = useState<'quotations' | 'items'>('quotations');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -186,7 +186,7 @@ const QuotationPage = () => {
         search: searchTerm,
         party_name: searchType === 'party_name' ? searchTerm : '',
         quotation_number: searchType === 'quotation_number' ? searchTerm : '',
-        status: selectedStatus === 'all' ? 'open,closed,converted' : selectedStatus, // Include all statuses including converted
+        status: selectedStatus === 'all' ? '' : selectedStatus, // Empty string fetches all statuses without API exact match issue
         page: params.pageIndex + 1,
         per_page: params.pageSize,
         sort: 'valid_till', // Always sort by due date to show urgent items first
@@ -242,6 +242,12 @@ const QuotationPage = () => {
       setIsLoading(false);
     }
   }, [searchTerm, searchType, selectedStatus]);
+
+
+  const filteredquotation = useMemo(() => {
+    if (selectedStatus === 'all') return quotations;
+    return quotations.filter(inv => inv.status === selectedStatus);
+  }, [quotations, selectedStatus]);
 
   // Debounce search term (300ms delay)
   useEffect(() => {
@@ -432,7 +438,7 @@ const QuotationPage = () => {
         return (
           <div className="flex items-center justify-center">
             <span className={`px-2 py-1 text-xs rounded-full ${status === 'open' ? 'bg-green-100 text-green-800' :
-                status === 'closed' ? 'bg-red-100 text-red-800' :
+              status === 'closed' ? 'bg-red-100 text-red-800' :
                 status === 'converted' ? 'bg-purple-100 text-purple-800' :
                   'bg-gray-100 text-gray-800'
               }`}>
@@ -459,6 +465,11 @@ const QuotationPage = () => {
       cell: ({ row }) => {
         const [isOpen, setIsOpen] = useState(false);
         const handleEdit = (id: string) => {
+          if (row.original.status === 'converted') {
+            toast.error("This voucher cannot be edited because, it has been converted to a sales invoice.");
+            setIsOpen(false);
+            return;
+          }
           navigate(`/quotes/${id}/edit`);
           setIsOpen(false);
         };
@@ -563,7 +574,7 @@ const QuotationPage = () => {
                   <Eye className="mr-2 h-4 w-4" />
                   View Details
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
@@ -620,8 +631,8 @@ const QuotationPage = () => {
                 <Button variant="outline" size="sm" className="h-8 w-full gap-1">
                   <Filter className="h-3.5 w-3.5" />
                   <span className="truncate">
-                    {selectedStatus === 'open' && 'Open Quotation'}
                     {selectedStatus === 'all' && 'All Quotation'}
+                    {selectedStatus === 'open' && 'Open Quotation'}
                     {selectedStatus === 'closed' && 'Closed Quotation'}
                     {selectedStatus === 'converted' && 'Converted Quotation'}
                   </span>
@@ -631,7 +642,7 @@ const QuotationPage = () => {
               <DropdownMenuContent align="end" className="w-[200px]">
                 <DropdownMenuItem
                   onClick={() => {
-                    setSelectedStatus('open');
+                    setSelectedStatus('all');
                     setRefreshKey(prev => prev + 1);
                   }}
                   className="flex items-center gap-2"

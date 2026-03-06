@@ -2,8 +2,8 @@ from flask import Blueprint, request, jsonify, send_file
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
-from app.models import Invoice, InvoiceItem, Quotation, Item, Customer, quotation
-from app.services.pdf_service import generate_invoice_pdf, generate_quotation_pdf
+from app.models import Invoice, InvoiceItem, Quotation, Item, Customer
+from app.services.pdf_service import generate_invoice_pdf
 from app.utils.stamping import set_created_fields, set_updated_fields
 from app.utils.decorators import login_required
 import uuid
@@ -871,7 +871,7 @@ def soft_delete_invoice(invoice_id):
             "error": "An error occurred while deleting the invoice",
             "details": str(e)
         }), 500
-    
+
 
 @invoice_blueprint.route("/<uuid:invoice_id>/pdf", methods=["GET"])
 def download_invoice_pdf(invoice_id):
@@ -895,7 +895,7 @@ def download_invoice_pdf(invoice_id):
               type: string
               format: binary
       404:
-        description: Quotation not found
+        description: Invoice not found
       500:
         description: PDF generation failed
     """
@@ -931,4 +931,3 @@ def download_invoice_pdf(invoice_id):
 
     except Exception as e:
         return jsonify({"error": "PDF generation failed", "details": str(e)}), 500
-

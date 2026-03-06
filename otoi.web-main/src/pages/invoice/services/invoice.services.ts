@@ -214,10 +214,6 @@ export const getInvoices = async (
       page: String(page),
       limit: String(limit),
     });
-
-    console.log("📡 Fetching invoices from:", `${API_URL}/invoices?${params.toString()}`);
-    console.log("🔑 Token available:", !!token);
-
     const response = await axios.get(
       `${API_URL}/invoices?${params.toString()}`,
       {
@@ -229,24 +225,12 @@ export const getInvoices = async (
       },
     );
 
-    console.log("✅ Invoices API Response:", response.data);
-    console.log("📊 Response structure:", {
-      hasData: !!response.data,
-      dataType: typeof response.data,
-      dataKeys: response.data ? Object.keys(response.data) : [],
-      isArray: Array.isArray(response.data)
-    });
-
     return {
       success: true,
       data: response.data,
       status: response.status,
     };
-  } catch (error: any) {
-    console.error("❌ Invoices API Error:", error);
-    console.error("📄 Error response:", error.response?.data);
-    console.error("🔢 Error status:", error.response?.status);
-    
+  } catch (error: any) { 
     return {
       success: false,
       error: error.response?.data?.message || error.response?.data?.error || "Failed to fetch invoices",

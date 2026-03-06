@@ -394,13 +394,17 @@
           {% if customer.mobile %}<div><strong>Mobile:</strong> {{ customer.mobile }}</div>{% endif %}
           {% if customer.gst %}<div><strong>GST:</strong> {{ customer.gst }}</div>{% endif %}
           <div><strong>Billing Address:</strong>
-            {{ customer.address1 }}{% if customer.address2 %}, {{ customer.address2 }}{% endif %}
+            {{ customer.address1 }}{% if customer.address2 and customer.address2 != customer.address1 %}, {{
+            customer.address2 }}{% endif %}
           </div>
           <div>
-            <strong>City:</strong> {{ customer.city }},
-            <strong>State:</strong> {{ customer.state }},
-            <strong>Country:</strong> {{ customer.country }},
-            <strong>PIN:</strong> {{ customer.pin }}
+            {% if customer.city %}<strong>City:</strong> {{ customer.city }}{% endif %}
+            {% if customer.state %}{% if customer.city %}, {% endif %}<strong>State:</strong> {{ customer.state }}{%
+            endif %}
+            {% if customer.country %}{% if customer.city or customer.state %}, {% endif %}<strong>Country:</strong> {{
+            customer.country }}{% endif %}
+            {% if customer.pin %}{% if customer.city or customer.state or customer.country %}, {% endif
+            %}<strong>PIN:</strong> {{ customer.pin }}{% endif %}
           </div>
         </div>
         {% endif %}
@@ -415,14 +419,21 @@
           {% if customer.mobile %}<div><strong>Mobile:</strong> {{ customer.mobile }}</div>{% endif %}
           {% if customer.gst %}<div><strong>GST:</strong> {{ customer.gst }}</div>{% endif %}
           <div><strong>Shipping Address:</strong>
-            {{ customer.shipping_address1 or customer.address1 }}{% if customer.shipping_address2 or
-            customer.address2 %}, {{ customer.shipping_address2 or customer.address2 }}{% endif %}
+            {% set ship_addr1 = customer.shipping_address1 or customer.address1 %}
+            {% set ship_addr2 = customer.shipping_address2 or customer.address2 %}
+            {{ ship_addr1 }}{% if ship_addr2 and ship_addr2 != ship_addr1 %}, {{ ship_addr2 }}{% endif %}
           </div>
           <div>
-            <strong>City:</strong> {{ customer.shipping_city or customer.city }},
-            <strong>State:</strong> {{ customer.shipping_state or customer.state }},
-            <strong>Country:</strong> {{ customer.shipping_country or customer.country }},
-            <strong>PIN:</strong> {{ customer.shipping_pin or customer.pin }}
+            {% set ship_city = customer.shipping_city or customer.city %}
+            {% set ship_state = customer.shipping_state or customer.state %}
+            {% set ship_country = customer.shipping_country or customer.country %}
+            {% set ship_pin = customer.shipping_pin or customer.pin %}
+            {% if ship_city %}<strong>City:</strong> {{ ship_city }}{% endif %}
+            {% if ship_state %}{% if ship_city %}, {% endif %}<strong>State:</strong> {{ ship_state }}{% endif %}
+            {% if ship_country %}{% if ship_city or ship_state %}, {% endif %}<strong>Country:</strong> {{ ship_country
+            }}{% endif %}
+            {% if ship_pin %}{% if ship_city or ship_state or ship_country %}, {% endif %}<strong>PIN:</strong> {{
+            ship_pin }}{% endif %}
           </div>
         </div>
         {% endif %}
@@ -446,8 +457,8 @@
         <th style="width: 35%;" class="align-left">Item Description</th>
         <th style="width: 9%;" class="align-center">Qty</th>
         <th style="width: 14%;" class="align-right">Price/Item</th>
-        <th style="width: 10%;" class="align-center">Disc.</th>
-        <th style="width: 14%;" class="align-center">Tax</th>
+        <th style="width: 10%;" class="align-right">Disc.</th>
+        <th style="width: 14%;" class="align-right">Tax</th>
         <th style="width: 18%;" class="align-right">Total</th>
       </tr>
     </thead>
@@ -460,36 +471,34 @@
           <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
           {% endif %}
         </td>
-        <td class="align-center">
-          {{ item.quantity }}
-          <span class="text-muted" style="font-size:9px;"> PCS</span>
+        <td class="align-center" style="white-space: nowrap;">
+          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">PCS</span>
         </td>
         <td class="align-right">
           Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
         </td>
-        <td class="align-center">
+        <td class="align-right">
           {% if item.discount and (item.discount.discount_percentage or item.discount.discount_amount) %}
           {% if item.discount.discount_amount %}
-          -Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}
+          <div>-Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}</div>
           {% endif %}
           {% if item.discount.discount_percentage %}
-          <br><span style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage
-            }}%)</span>
+          <div style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage }}%)</div>
           {% endif %}
           {% else %}
-          -Rs.&nbsp;0.00
+          <div>-Rs.&nbsp;0.00</div>
           {% endif %}
         </td>
-        <td class="align-center">
+        <td class="align-right">
           {% if item.tax and (item.tax.tax_percentage or item.tax.tax_amount) %}
           {% if item.tax.tax_amount %}
-          Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}
+          <div>Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}</div>
           {% endif %}
           {% if item.tax.tax_percentage %}
-          <br><span style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</span>
+          <div style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</div>
           {% endif %}
           {% else %}
-          Rs.&nbsp;0.00
+          <div>Rs.&nbsp;0.00</div>
           {% endif %}
         </td>
         <td class="align-right text-bold">

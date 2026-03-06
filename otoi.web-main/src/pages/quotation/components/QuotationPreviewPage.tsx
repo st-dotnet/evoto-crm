@@ -69,14 +69,14 @@ const QuotationPreviewPage: React.FC = () => {
 
   const quotationData: QuotationData = fetchedData ||
     location.state?.quotationData || {
-      quotationNo: "",
-      quotationDate: "",
-      validFor: 0,
-      validityDate: "",
-      status: "",
-      selectedCustomer: null,
-      quotationItems: [],
-    };
+    quotationNo: "",
+    quotationDate: "",
+    validFor: 0,
+    validityDate: "",
+    status: "",
+    selectedCustomer: null,
+    quotationItems: [],
+  };
 
   useEffect(() => {
     if (id && !location.state?.quotationData) {
@@ -206,7 +206,7 @@ const QuotationPreviewPage: React.FC = () => {
           item.quantity *
           (1 - item.discount / 100) *
           item.tax) /
-          100,
+        100,
       0,
     );
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -591,8 +591,8 @@ const QuotationPreviewPage: React.FC = () => {
     let address =
       type === "shipping"
         ? customer.shipping_address ||
-          customer.shippingAddress ||
-          customer.shipping_addresses
+        customer.shippingAddress ||
+        customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
@@ -888,7 +888,7 @@ const QuotationPreviewPage: React.FC = () => {
                     {quotationData.selectedCustomer.email}
                   </p>
                 )}
-                {quotationData.selectedCustomer && (
+                {quotationData.selectedCustomer?.mobile && (
                   <p className="text-black">
                     <span className="font-semibold">Mobile:</span>{" "}
                     {quotationData.selectedCustomer.mobile}
@@ -968,7 +968,7 @@ const QuotationPreviewPage: React.FC = () => {
                           (item.price_per_item *
                             item.quantity *
                             item.discount) /
-                            100,
+                          100,
                         )}
                       </span>
                       {item.discount > 0 && (
@@ -984,7 +984,7 @@ const QuotationPreviewPage: React.FC = () => {
                             item.quantity *
                             (1 - item.discount / 100) *
                             item.tax) /
-                            100,
+                          100,
                         )}
                       </span>
                       {item.tax > 0 && (
