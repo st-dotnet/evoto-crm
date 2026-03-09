@@ -176,14 +176,12 @@ def get_items():
                     )
                 )
 
-        # Handle low_stock filter
+        # Handle low_stock filter - only applies to Products (Services have no stock)
         low_stock = request.args.get("low_stock")
         if low_stock == 'true':
             query = query.filter(
-                or_(
-                    Item.opening_stock <= 5,  # Products with low stock
-                    Item.opening_stock.is_(None)  # Services (NULL opening_stock)
-                )
+                Item.item_type_id == 1,          # Products only (not Services)
+                Item.opening_stock <= 5           # with low stock quantity
             )
 
         sort = request.args.get("sort", "created_at")  # Default sort by created_at
@@ -339,7 +337,7 @@ def create_item():
     # if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
     #     print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
     #     return jsonify({
-    #         "message": "An item with this name already exists",
+    #         "message": "An item with this name already exit",
     #         "suggestion": "Please choose a different name"
     #     }), 400
     
@@ -347,7 +345,7 @@ def create_item():
     # Check for duplicate item_code (only among active items)
     if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
         return jsonify({
-            "message": "An Item code already exists",
+            "message": "An Item code already exit",
             "suggestion": "Please choose a different item code"
         }), 400
  
@@ -673,7 +671,7 @@ def update_item(item_id):
                 ).first()
                 if existing:
                     errors.setdefault("item_code", []).append(
-                        "Item code already exixts"
+                        "Item code already exit"
                     )      
                 else:
                     item.item_code = new_code

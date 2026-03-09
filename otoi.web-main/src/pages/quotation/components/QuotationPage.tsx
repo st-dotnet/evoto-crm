@@ -643,12 +643,12 @@ const QuotationPage = () => {
               <DropdownMenuContent align="end" className="w-[200px]">
                 <DropdownMenuItem
                   onClick={() => {
-                    setSelectedStatus('all');
+                    setSelectedStatus('open');
                     setRefreshKey(prev => prev + 1);
                   }}
                   className="flex items-center gap-2"
                 >
-                  <Circle className="h-4 w-4 text-green-500" />
+                  <CircleCheck className="h-4 w-4 text-green-500" />
                   <span>Open Quotation</span>
                   {selectedStatus === 'open' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>

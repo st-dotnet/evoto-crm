@@ -260,7 +260,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?items_per_page=10000`);
       const payload: any = response?.data as any;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-      
+
       const mappedItems: InventoryItem[] = rows.map((item: any) => ({
         item_id: item.id || "",
         item_name: item.item_name || "Unnamed Item",
@@ -281,7 +281,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         measuring_unit_id: item.measuring_unit_id,
         gst_tax_rate: item.gst_tax_rate,
       }));
-      
+
       setAllItemsForCount(mappedItems);
     } catch (error) {
       console.error("Failed to fetch all items for count", error);
@@ -388,7 +388,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
     .filter(item => item.item_type_id === 1)
     .reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
 
-  const lowStockCount = allItemsForCount.filter((item) => (item.opening_stock || 0) <= 5).length;
+  const lowStockCount = allItemsForCount.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
 
   // Delete an item with confirmation
   const handleDeleteClick = (id: string, onClose?: () => void) => {
