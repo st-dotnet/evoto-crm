@@ -28,9 +28,23 @@ const getAuthToken = (): string | null => {
   }
 };
 
-export const getItemById = async (id: string) => {
-  const response = await axios.get(`${API_URL}/items/${id}`);
-  return response.data;
+export const getItemById = async (id: string): Promise<ApiResponse> => {
+  try {
+    const response = await axios.get(`${API_URL}/items/${id}`, {
+      withCredentials: true,
+    });
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to fetch item",
+      status: error.response?.status || 500,
+    };
+  }
 };
 
 export const getItems = async (
@@ -355,3 +369,79 @@ export const downloadBarcode = async (
     };
   }
 };
+
+export const uploadItemImage = async (itemId: string, imageData: string, name: string = "", isMain: boolean = false): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required. Please log in again.",
+      status: 401,
+    };
+  }
+
+  try {
+    const response = await axios.post(`${API_URL}/item_images/`, {
+      item_id: itemId,
+      image: imageData,
+      name: name,
+      is_main: isMain
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error.message ||
+      "Failed to upload image";
+
+    return {
+      success: false,
+      error: errorMessage,
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const deleteAllItemImages = async (itemId: string): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return {
+      success: false,
+      error: "Authentication required.",
+      status: 401,
+    };
+  }
+
+  try {
+    const response = await axios.delete(`${API_URL}/item_images/item/${itemId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      withCredentials: true,
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to delete images",
+      status: error.response?.status || 500,
+    };
+  }
+};
+

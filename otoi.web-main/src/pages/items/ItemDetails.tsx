@@ -5,6 +5,8 @@ import { FiArrowLeft, FiBox, FiDollarSign, FiInfo, FiTag } from "react-icons/fi"
 import { getItemById } from "./services/items.service";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FiX } from "react-icons/fi";
 
 // Types
 export interface IItem {
@@ -16,7 +18,7 @@ export interface IItem {
   sales_price?: number | string;
   purchase_price?: number | string;
   gst_tax_rate?: number | string;
-  measuring_unit?: string;  
+  measuring_unit?: string;
   opening_stock?: number | string;
   low_stock_warning?: boolean;
   low_stock_quantity?: number;
@@ -34,6 +36,7 @@ export interface IItem {
     item_type_id?: number;
     item_type_name?: string;
   };
+  images?: { id: number; url: string; name: string }[];
 }
 
 interface ItemDetailsProps {
@@ -54,33 +57,44 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
   const [item, setItem] = useState<IItem | null>(initialItem ?? null);
   const [loading, setLoading] = useState(!initialItem);
   const [error, setError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialItem || !itemId) return;
 
     const fetchItem = async () => {
       setLoading(true);
-      const res = await getItemById(itemId);
+      try {
+        const res = await getItemById(itemId);
 
-      if (res) {
-        // Map API response to IItem
-        const mappedItem: IItem = {
-          ...res,
-          category: {
-            category_id: res.category_id,
-            category_name: res.category,
-          },
-          item_type: {
-            item_type_id: res.item_type_id,
-            item_type_name: res.item_type,
-          },
-        };
-        setItem(mappedItem);
-      } else {
-        setError(res.error || "Failed to load item");
-        toast.error(res.error || "Failed to load item");
+        if (res?.success && res.data) {
+          const data = res.data;
+          // Map API response to IItem
+          const mappedItem: IItem = {
+            ...data,
+            category: {
+              category_id: data.category_id,
+              category_name: data.category,
+            },
+            item_type: {
+              item_type_id: data.item_type_id,
+              item_type_name: data.item_type,
+            },
+            images: data.images || []
+          };
+          setItem(mappedItem);
+        } else {
+          const msg = res?.error || "Failed to load item";
+          setError(msg);
+          toast.error(msg);
+        }
+      } catch (err: any) {
+        const msg = err.message || "Failed to fetch item";
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchItem();
@@ -191,7 +205,52 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
           )}
         </div>
       </div>
+
+      {/* Image Gallery */}
+      {item.images && item.images.length > 0 && (
+        <div className="mt-6 bg-white border rounded-lg shadow-sm p-3">
+          <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
+            <FiBox /> Product Images
+          </h4>
+          <div className="flex flex-wrap gap-3">
+            {item.images.map((img) => (
+              <div
+                key={img.id}
+                onClick={() => setPreviewImage(img.url)}
+                className="group relative w-24 h-24 rounded-lg overflow-hidden border bg-gray-50 shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                <img
+                  src={img.url}
+                  alt={img.name}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                  <span className="text-white text-[10px] truncate w-full">{img.name}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-1 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition-colors"
+            >
+              <FiX className="size-8" />
+            </button>
+            <img
+              src={previewImage || ""}
+              alt="Preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-
 }

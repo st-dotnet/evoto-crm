@@ -54,12 +54,12 @@ def upgrade():
         postgresql_where=sa.text('is_deleted = false')
     )
     # Fast pagination for customers
-    op.create_index(
-        "idx_customers_active_created",
-        "customers",
-        ["created_at"],
-        postgresql_where=sa.text("is_deleted = false"),
-    )
+    # op.create_index(
+    #     "idx_customers_active_created",
+    #     "customers",
+    #     ["created_at"],
+    #     postgresql_where=sa.text("is_deleted = false"),
+    # )
 
     # Shipping FK lookup
     op.create_index(
