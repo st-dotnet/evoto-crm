@@ -11,6 +11,10 @@ class Config:
     # Frontend URL for password reset links
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
+    # Asset Storage
+    UPLOAD_BASE_PATH = os.path.join(os.getcwd(), 'static', 'uploads')
+    BUSINESS_ASSETS_FOLDER = os.path.join(UPLOAD_BASE_PATH, 'business')
+
     SWAGGER = {
         "title": "OTOI REST API",
         "uiversion": 3,

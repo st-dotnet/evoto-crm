@@ -17,6 +17,7 @@ from app.routes.barcode import barcode_blueprint
 from app.routes.purchase import purchase_blueprint
 from app.routes.quotation import quotation_blueprint
 from app.routes.invoice import invoice_blueprint
+from app.routes.business_config import business_config_blueprint
 
 
 
@@ -40,6 +41,7 @@ def register_blueprints(app):
     app.register_blueprint(purchase_blueprint, url_prefix="/api/purchase")
     app.register_blueprint(quotation_blueprint, url_prefix="/api/quotations")
     app.register_blueprint(invoice_blueprint, url_prefix="/api/invoices")
+    app.register_blueprint(business_config_blueprint, url_prefix="/api/business-config")
     # app.register_blueprint(quotation_item_blueprint, url_prefix="/api/quotation-items")
 
 

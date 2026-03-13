@@ -40,9 +40,8 @@ def extract_jwt_info():
         '/favicon.ico'
     ]
     
-    # Check if current endpoint is public
-    # print(f"Request path: {request.path}")
-    if any(request.path.startswith(endpoint) for endpoint in public_endpoints):
+    # Check if current endpoint is public or a static file
+    if request.path.startswith('/static/') or any(request.path.startswith(endpoint) for endpoint in public_endpoints):
         return None
 
     # Require authentication for all other endpoints

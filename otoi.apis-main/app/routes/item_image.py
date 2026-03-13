@@ -31,7 +31,7 @@ def upload_item_image():
                 description: Base64 encoded image data
               is_main:
                 type: boolean
-                description: Flag to indicate if this is the main image
+                description: Flag to indicate if this is the feature image
     responses:
       201:
         description: Image uploaded successfully.

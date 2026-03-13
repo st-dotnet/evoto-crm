@@ -11,6 +11,8 @@ from xhtml2pdf import pisa
 import os
 import base64
 import math
+from app.models.business import GlobalConfig
+from app.config import Config
 
 from PIL import Image
 
@@ -35,69 +37,82 @@ def get_amount_in_words(amount):
     except Exception:
         return ""
 
-import requests
-
-_cached_logo_uri = None
-
-def get_logo_data_uri():
-    global _cached_logo_uri
-    if _cached_logo_uri is not None:
-        return _cached_logo_uri
+def get_business_asset_data_uri(business_id, key):
+    """
+    Fetch a business asset (logo or e-sign) from GlobalConfig, 
+    decode the file, and return as a base64 data URI.
+    """
+    config = GlobalConfig.query.filter_by(business_id=business_id, key=key).first()
+    if not config:
+        return None
         
+    # Construct the absolute path on the filesystem
+    # config.path is something like 'site_logo_1.png'
+    asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.path)
+    
+    if os.path.exists(asset_path):
+        try:
+            with Image.open(asset_path) as img:
+                # Determine format based on extension
+                ext = os.path.splitext(asset_path)[1].lower()
+                mime = "image/png" if ext == ".png" else "image/jpeg"
+                
+                # If transparent PNG, might need conversion for some PDF engines, 
+                # but xhtml2pdf handles PNG well. 
+                # For consistency with existing logic:
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGBA")
+                    background = Image.new("RGBA", img.size, (255, 255, 255))
+                    background.paste(img, mask=img)
+                    img = background.convert("RGB")
+                    mime = "image/jpeg"
+                
+                buffer = BytesIO()
+                # Save back to buffer to get base64
+                if mime == "image/jpeg":
+                    img.save(buffer, format="JPEG", quality=95)
+                else:
+                    img.save(buffer, format="PNG")
+                    
+                encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                return f"data:{mime};base64,{encoded_string}"
+        except Exception as e:
+            print(f"Error processing PDF asset {key}: {e}")
+            try:
+                # Fallback: just read the raw bytes if PIL fails
+                with open(asset_path, "rb") as f:
+                    encoded_string = base64.b64encode(f.read()).decode("utf-8")
+                    ext = os.path.splitext(asset_path)[1].lower()
+                    mime = "image/png" if ext == ".png" else "image/jpeg"
+                    return f"data:{mime};base64,{encoded_string}"
+            except:
+                pass
+                
+    return None
+
+def get_logo_data_uri(business_id=None):
+    if business_id:
+        uri = get_business_asset_data_uri(business_id, 'site_logo')
+        if uri:
+            return uri
+
+    # Fallback to default logo
     logo_path = os.environ.get("LOGO_PATH") or os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../../otoi.web-main/public/media/app/Evoto-Logo.png")
     )
     
-    # Priority 1: Check local filesystem
     if os.path.exists(logo_path):
         try:
-            with Image.open(logo_path) as img:
-                img = img.convert("RGBA")
-                background = Image.new("RGBA", img.size, (255, 255, 255))
-                background.paste(img, mask=img)
-                background = background.convert("RGB")
-                
-                buffer = BytesIO()
-                background.save(buffer, format="JPEG", quality=90)
-                encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
-                return _cached_logo_uri
+            with open(logo_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+            return f"data:image/png;base64,{encoded_string}"
         except Exception:
-            try:
-                with open(logo_path, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
-                return _cached_logo_uri
-            except Exception:
-                pass
-                
-    # Priority 2: Try to retrieve from internet if the frontend hosts it
-    # Uses the FRONTEND_URL or a sensible default
-    try:
-        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip('/')
-        logo_url = f"{frontend_url}/media/app/Evoto-Logo.png"
-        response = requests.get(logo_url, timeout=5)
-        if response.status_code == 200:
-            try:
-                with Image.open(BytesIO(response.content)) as img:
-                    img = img.convert("RGBA")
-                    background = Image.new("RGBA", img.size, (255, 255, 255))
-                    background.paste(img, mask=img)
-                    background = background.convert("RGB")
-                    
-                    buffer = BytesIO()
-                    background.save(buffer, format="JPEG", quality=90)
-                    encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                    _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
-                    return _cached_logo_uri
-            except Exception:
-                encoded_string = base64.b64encode(response.content).decode("utf-8")
-                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
-                return _cached_logo_uri
-    except Exception:
-        pass
-        
+            pass
+            
     return ""
+
+def get_esign_data_uri(business_id):
+    return get_business_asset_data_uri(business_id, 'e_sign')
 
 def get_font_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +199,7 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
+            "image": item.get("image", ""),
             "hsn_sac_code": item.get("hsn_sac_code", ""),
             "quantity": qty,
             "unit_price": item.get("unit_price", 0),
@@ -269,7 +285,8 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
             "payment_discount": float(invoice.payment_discount or 0),
             "payment_status": invoice.payment_status or "unpaid",
         },
-        "logo_data_uri": get_logo_data_uri(),
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
         "roboto_font_path": get_font_path(),
         "business": {
             "name": business.name if business else "",
@@ -367,6 +384,7 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
+            "image": item.get("image", ""),
             "hsn_sac_code": item.get("hsn_sac_code", ""),
             "quantity": qty,
             "unit_price": item.get("unit_price", 0),
@@ -448,7 +466,8 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
             "amount_in_words": get_amount_in_words(float(quotation.total_amount or 0)),
             "status": quotation.status or "open",
         },
-        "logo_data_uri": get_logo_data_uri(),
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
         "roboto_font_path": get_font_path(),
         "business": {
             "name": business.name if business else "",

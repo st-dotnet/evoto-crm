@@ -55,3 +55,21 @@ class Business(db.Model):
     users = relationship("User", secondary=user_business, back_populates="businesses")
     addresses = relationship("Address", back_populates="business", cascade="all, delete-orphan")
     active_types = relationship("ActiveType", back_populates="business")
+    global_configs = relationship("GlobalConfig", back_populates="business", cascade="all, delete-orphan")
+
+
+class GlobalConfig(db.Model):
+    __tablename__ = "global_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    business_id = Column(Integer, ForeignKey('businesses.id', ondelete="CASCADE"), nullable=False)
+    key = Column(String(100), nullable=False)  # 'site_logo', 'e_sign'
+    path = Column(String(500), nullable=False)
+
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid", ondelete="SET NULL"), nullable=True)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+
+    # Relationships
+    business = relationship("Business", back_populates="global_configs")

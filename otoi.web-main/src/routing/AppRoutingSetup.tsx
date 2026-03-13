@@ -88,6 +88,7 @@ import {
   AuthenticationAccountDeactivatedPage,
   AuthenticationGetStartedPage
 } from '@/pages/authentication';
+import GlobalConfig from '@/pages/global-config/GlobalConfig';
 // import PartiesRoles from '@/pages/userManagement/roles/PartiesRoles';
 // Lazy loaded other pages
 const PartiesRoles = lazy(() => import('@/pages/userManagement/roles/PartiesRoles').then(module => ({ default: module.default })));
@@ -275,6 +276,7 @@ const AppRoutingSetup = (): ReactElement => {
           {/* Admin Only Routes */}
           <Route element={<CheckRole allowedRoles={['Admin']} />}>
             <Route path="/user/:id/edit" element={<UserEdit />} />
+            <Route path="/global-config" element={<GlobalConfig />} />
           </Route>
 
           {/* Common Authenticated Routes */}

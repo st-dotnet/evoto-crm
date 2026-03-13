@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, send_file
 from flask_cors import cross_origin
@@ -533,7 +534,9 @@ def get_quotation(quotation_id):
         item_ids = [qi.item_id for qi in quotation.items if qi.item_id]
         inventory_map = {}
         if item_ids:
-            inventory_items = Item.query.filter(Item.id.in_(item_ids)).all()
+            inventory_items = Item.query.options(
+                selectinload(Item.images)
+            ).filter(Item.id.in_(item_ids)).all()
             inventory_map = {i.id: i for i in inventory_items}
 
         items_data = []
@@ -555,6 +558,12 @@ def get_quotation(quotation_id):
                 item_info["product_name"] = inv.item_name
                 item_info["hsn_sac_code"] = inv.hsn_code
                 item_info["measuring_unit_id"] = inv.measuring_unit_id
+                # Get the feature image for the item
+                main_image_obj = next((img for img in (inv.images or []) if img.is_main), None)
+                if not main_image_obj and inv.images:
+                    main_image_obj = inv.images[0]
+                if main_image_obj:
+                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
 
             items_data.append(item_info)
 
@@ -957,11 +966,13 @@ def download_quotation_pdf(quotation_id):
             .first_or_404()
         )
 
-        # Batch-fetch all linked inventory items in one query
+        # Batch-fetch all linked inventory items in one query (with images)
         item_ids = [qi.item_id for qi in quotation.items if qi.item_id]
         inventory_map = {}
         if item_ids:
-            inventory_items = Item.query.filter(Item.id.in_(item_ids)).all()
+            inventory_items = Item.query.options(
+                selectinload(Item.images)
+            ).filter(Item.id.in_(item_ids)).all()
             inventory_map = {i.id: i for i in inventory_items}
 
         # Build items data using the pre-fetched inventory map
@@ -979,6 +990,12 @@ def download_quotation_pdf(quotation_id):
                 inv = inventory_map[item.item_id]
                 item_info["product_name"] = inv.item_name
                 item_info["hsn_sac_code"] = inv.hsn_code
+                # Get the feature image for the item
+                main_image_obj = next((img for img in (inv.images or []) if img.is_main), None)
+                if not main_image_obj and inv.images:
+                    main_image_obj = inv.images[0]
+                if main_image_obj:
+                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
             items_data.append(item_info)
 
         pdf_buffer = generate_quotation_pdf(quotation, items_data)

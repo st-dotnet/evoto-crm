@@ -600,6 +600,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     ]
   },
   {
+    title: "Global Config",
+    icon: "verify",
+    path: "/global-config"
+  },
+  {
     title: "Projects",
     icon: "questionnaire-tablet",
     disabled: true

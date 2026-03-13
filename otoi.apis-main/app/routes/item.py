@@ -238,7 +238,7 @@ def get_items():
             item_type = item.item_type
             measuring_unit = item.measuring_unit
 
-            # Get the main image, or the first image if no main is set
+            # Get the feature image, or the first image if no main is set
             main_image_obj = next((img for img in (item.images or []) if img.is_main), None)
             if not main_image_obj and item.images:
                 main_image_obj = item.images[0]

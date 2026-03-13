@@ -87,7 +87,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
     const wasMain = newImages[index].is_main;
     newImages.splice(index, 1);
 
-    // If we deleted the main image, make the first one main if any are left
+    // If we deleted the feature image, make the first one main if any are left
     if (wasMain && newImages.length > 0) {
       newImages[0].is_main = true;
     }
@@ -102,7 +102,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
       is_main: i === index
     }));
     formik.setFieldValue('images', newImages);
-    toast.success("Main image updated");
+    toast.success("Feature image updated");
   };
 
   return (
@@ -155,7 +155,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
                     onClick={() => handleSetMainImage(index)}
                     className="bg-white/90 hover:bg-white text-gray-800 text-[10px] md:text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg transition-transform hover:scale-105"
                   >
-                    Set as Main
+                    Set as Feature
                   </button>
                 )}
                 <button
@@ -172,7 +172,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
               {img.is_main && (
                 <div className="absolute top-2 left-2 bg-blue-500 text-white text-[10px] md:text-[11px] font-bold px-2 py-1 rounded-md shadow-sm z-10 flex items-center gap-1 leading-none">
                   <KeenIcon icon="star" className="size-2.5 md:size-3 text-white" />
-                  Main Image
+                  Feature Image
                 </div>
               )}
             </div>
