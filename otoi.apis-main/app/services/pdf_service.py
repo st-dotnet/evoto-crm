@@ -236,7 +236,7 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
         ut_keywords = ['andaman', 'chandigarh', 'dadra', 'daman', 'lakshadweep', 'delhi', 'puducherry', 'ladakh', 'jammu']
         is_ut = any(ut in b_state for ut in ut_keywords) if b_state else False
         
-        if is_ut:
+        if is_ut == True:
             utgst = half_tax
             utgst_rate = half_rate
         else:
