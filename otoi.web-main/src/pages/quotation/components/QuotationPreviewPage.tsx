@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, FileText, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/inv
 import { SpinnerDotted } from "spinners-react";
 // import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 interface QuotationItem {
   id: string;
@@ -22,6 +23,7 @@ interface QuotationItem {
   amount: number;
   measuring_unit_id?: number;
   description?: string | null;
+  image?: string | null;
 }
 
 interface Customer {
@@ -65,6 +67,7 @@ const QuotationPreviewPage: React.FC = () => {
     useState(true);
   const [fetchedData, setFetchedData] = useState<QuotationData | null>(null);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
+  const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
   const quotationRef = useRef<HTMLDivElement>(null);
 
   const quotationData: QuotationData = fetchedData ||
@@ -157,6 +160,7 @@ const QuotationPreviewPage: React.FC = () => {
                   tax: tax,
                   amount: item.total_price || 0,
                   measuring_unit_id: item.measuring_unit_id || 1,
+                  image: item.image || null,
                 };
               }),
               notes: data.notes,
@@ -186,7 +190,19 @@ const QuotationPreviewPage: React.FC = () => {
       };
       checkLinkedInvoice();
     }
+    fetchBrandingAssets();
   }, [id, location.state]);
+
+  const fetchBrandingAssets = async () => {
+    try {
+      const response = await getGlobalAssets();
+      if (response.success && response.data) {
+        setBrandingAssets(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching branding assets:", error);
+    }
+  };
 
   const calculateTotals = () => {
     const items = quotationData.quotationItems || [];
@@ -764,11 +780,19 @@ const QuotationPreviewPage: React.FC = () => {
                   )}
                 </div>
                 <div className="flex flex-col items-end -mt-8">
-                  <img
-                    src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                    className="h-40 w-auto object-contain"
-                    alt="Evoto Technologies"
-                  />
+                  {brandingAssets?.logo_path ? (
+                    <img
+                      src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                      className="h-40 w-auto object-contain"
+                      alt={businessInfo?.name || "Logo"}
+                    />
+                  ) : (
+                    <img
+                      src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                      className="h-40 w-auto object-contain"
+                      alt="Evoto Technologies"
+                    />
+                  )}
                 </div>
               </>
             );
@@ -915,6 +939,9 @@ const QuotationPreviewPage: React.FC = () => {
                   Item DESCRIPTION
                 </th>
                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  IMAGE
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
                   QTY
                 </th>
                 <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">
@@ -950,6 +977,19 @@ const QuotationPreviewPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                  </td>
+                  <td className="px-3 py-2 text-center align-top border-r border-black">
+                    {item.image ? (
+                      <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-200">
+                        <img
+                          src={item.image}
+                          alt={item.item_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-500">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     {item.quantity}{" "}
@@ -1001,7 +1041,7 @@ const QuotationPreviewPage: React.FC = () => {
             <tfoot>
               <tr className="border-t-2 border-black bg-gray-50 font-bold">
                 <td
-                  colSpan={2}
+                  colSpan={3}
                   className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black"
                 >
                   SUBTOTAL
@@ -1119,6 +1159,15 @@ const QuotationPreviewPage: React.FC = () => {
             {/* ===== Signature ===== */}
             <div className="mt-20 flex justify-end">
               <div className="text-center">
+                {brandingAssets?.esign_path && (
+                  <div className="mb-2 flex justify-center">
+                    <img
+                      src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.esign_path}?t=${Date.now()}`}
+                      className="h-16 w-auto object-contain"
+                      alt="Signature"
+                    />
+                  </div>
+                )}
                 <div className="w-48 border-b border-black mb-2"></div>
                 <p className="text-xs font-bold text-black uppercase">
                   Authorized Signatory

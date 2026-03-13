@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useFormik } from "formik";
+import clsx from "clsx";
 import {
   getBarcodePreview,
   getItemBarcode,
@@ -173,11 +174,10 @@ export default function StockDetails({
               <button
                 onClick={() => handleGetBarcode(true)}
                 disabled={isLoadingBarcode}
-                className={`px-4 py-2 rounded transition-colors ${
-                  isLoadingBarcode
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
+                className={`px-4 py-2 rounded transition-colors ${isLoadingBarcode
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
               >
                 {isLoadingBarcode ? "Generating..." : "Download Barcode"}
               </button>
@@ -189,66 +189,66 @@ export default function StockDetails({
   };
 
   return (
-    <div className="border rounded-lg p-4">
+    <div className="border border-gray-100 rounded-xl p-3 sm:p-5 bg-white shadow-sm">
       {isBarcodeModalOpen && <BarcodeModal />}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 
         {/* Item Code */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">
-            Item Code <span className="text-red-500">*</span>
+        <div className="space-y-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">
+            Item Code <span className="text-red-500 ml-0.5">*</span>
           </label>
-          {barcodeError && (
-            <div className="text-red-500 text-sm">{barcodeError}</div>
-          )}
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="ex: DECOX50P"
-              className={`flex-1 min-w-0 p-2 border rounded text-sm ${formik.touched.item_code && formik.errors.item_code ? "border-red-500" : ""}`}
+              className={clsx(
+                "flex-1 min-w-0 px-3 py-2 border rounded-md text-[13px] sm:text-sm outline-none transition-all",
+                formik.touched.item_code && formik.errors.item_code ? "border-red-500" : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10"
+              )}
               {...formik.getFieldProps("item_code")}
             />
 
             <button
               type="button"
               onClick={() => handleGetBarcode()}
-              className="px-3 py-2 text-xs md:text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
+              className="px-3 py-2 text-[11px] sm:text-xs font-semibold border border-primary/20 rounded-md bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all whitespace-nowrap"
             >
               Get Barcode
             </button>
           </div>
           {formik.touched.item_code && formik.errors.item_code && (
-            <div className="text-red-500 text-xs">
+            <div className="text-red-500 text-[11px] font-medium">
               {formik.errors.item_code}
             </div>
           )}
         </div>
 
         {/* HSN Code */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">HSN Code</label>
+        <div className="space-y-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">HSN Code</label>
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="ex: 4010"
-              className="flex-1 min-w-0 p-2 border rounded text-sm"
+              className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               {...formik.getFieldProps("hsn_code")}
             />
             <button
               type="button"
-              className="px-3 py-2 text-xs md:text-sm border rounded bg-blue-50 text-blue-600 hover:bg-blue-100 whitespace-nowrap"
+              className="px-3 py-2 text-[11px] sm:text-xs font-semibold border border-primary/20 rounded-md bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all whitespace-nowrap"
             >
-              Find HSN code
+              Find HSN
             </button>
           </div>
         </div>
 
         {/* Measuring Unit */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Measuring Unit</label>
+        <div className="space-y-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">Measuring Unit</label>
           <div className="flex flex-col sm:flex-row gap-2">
             <select
-              className="flex-1 p-2 border rounded text-sm"
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
               {...formik.getFieldProps("measuring_unit")}
             >
               <option value="PCS">Pieces (PCS)</option>
@@ -259,11 +259,11 @@ export default function StockDetails({
             <button
               type="button"
               onClick={() => setShowAlternativeUnit(!showAlternativeUnit)}
-              className="px-3 py-2 text-xs border rounded text-blue-600 hover:bg-gray-50 whitespace-nowrap"
+              className="px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/5 rounded-md transition-all whitespace-nowrap"
             >
               {showAlternativeUnit
-                ? "- Remove Alternative Unit"
-                : "+ Add Alternative Unit"}
+                ? "Remove Alt Unit"
+                : "+ Add Alt Unit"}
             </button>
           </div>
         </div>
@@ -271,10 +271,10 @@ export default function StockDetails({
         {/* Alternative Unit */}
         {showAlternativeUnit && (
           <>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Secondary Unit</label>
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-gray-700">Secondary Unit</label>
               <select
-                className="w-full p-2 border rounded text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
                 {...formik.getFieldProps("secondary_unit")}
               >
                 <option value="PCS">PCS</option>
@@ -283,17 +283,17 @@ export default function StockDetails({
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Conversion Rate</label>
-              <div className="flex gap-2">
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-gray-700">Conversion Rate</label>
+              <div className="flex group">
                 <input
                   type="number"
                   placeholder="1 PCS ="
-                  className="flex-1 min-w-0 p-2 border rounded text-sm"
+                  className="flex-1 px-3 py-2 border border-r-0 border-gray-200 rounded-l-md text-[13px] sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   {...formik.getFieldProps("conversion_rate")}
                 />
                 <select
-                  className="w-24 p-2 border rounded bg-gray-100 cursor-not-allowed appearance-none text-sm"
+                  className="w-24 px-2 py-2 border border-gray-200 rounded-r-md bg-gray-50 cursor-not-allowed appearance-none text-[13px] sm:text-sm text-gray-500"
                   {...formik.getFieldProps("conversion_unit")}
                   disabled
                 >
@@ -307,26 +307,26 @@ export default function StockDetails({
         )}
 
         {/* Opening Stock */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Opening Stock</label>
-          <div className="flex">
+        <div className="space-y-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">Opening Stock</label>
+          <div className="flex group">
             <input
               type="number"
               placeholder="ex: 100"
-              className="flex-1 min-w-0 p-2 border rounded-l"
+              className="flex-1 px-3 py-2 border border-r-0 border-gray-200 rounded-l-md text-[13px] sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               {...formik.getFieldProps("opening_stock")}
             />
-            <span className="px-3 flex items-center border border-l-0 rounded-r bg-gray-50 text-sm">
+            <span className="px-4 flex items-center border border-gray-200 rounded-r-md bg-gray-50 text-gray-500 text-[13px] sm:text-sm">
               {formik.values.measuring_unit || "PCS"}
             </span>
           </div>
         </div>
 
-        {/* As of Date - Auto-set to current date */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">As of Date</label>
+        {/* As of Date */}
+        <div className="space-y-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">As of Date</label>
           {isEditing ? (
-            <div className="w-full p-2 border rounded bg-gray-50 text-sm">
+            <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-[13px] sm:text-sm text-gray-600">
               {new Date(formik.values.as_of_date || new Date()).toLocaleDateString('en-US', {
                 day: 'numeric',
                 month: 'long',
@@ -336,7 +336,7 @@ export default function StockDetails({
           ) : (
             <input
               type="date"
-              className="w-full p-2 border rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all text-gray-700"
               value={formik.values.as_of_date || new Date().toISOString().split('T')[0]}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -345,9 +345,9 @@ export default function StockDetails({
           )}
         </div>
 
-        {/* Low Stock Warning - Full width on small screens, part of grid on larger */}
-        <div className="space-y-2 sm:col-span-2">
-          <div className="flex items-center gap-2">
+        {/* Low Stock Warning */}
+        <div className="space-y-3 sm:col-span-2 py-1">
+          <div className="flex items-center gap-3">
             <input
               type="checkbox"
               name="low_stock_warning"
@@ -356,34 +356,34 @@ export default function StockDetails({
               onChange={(e) =>
                 formik.setFieldValue("low_stock_warning", e.target.checked)
               }
-              className="h-4 w-4 cursor-pointer"
+              className="h-4.5 w-4.5 rounded text-primary focus:ring-primary/20 cursor-pointer"
             />
 
-            <label htmlFor="low_stock_warning" className="text-sm cursor-pointer">
+            <label htmlFor="low_stock_warning" className="text-[13px] sm:text-sm font-medium text-gray-700 cursor-pointer">
               Enable low stock quantity warning
             </label>
           </div>
 
           {formik.values.low_stock_warning && (
-            <div className="ml-6 space-y-4 max-w-md">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">
+            <div className="ml-7 pt-1 space-y-4 max-w-md animate-in fade-in slide-in-from-left-2 duration-300">
+              <div className="space-y-1.5">
+                <label className="text-xs sm:text-sm font-semibold text-gray-700">
                   Low Stock Quantity
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex group">
                   <input
                     type="number"
                     placeholder="Enter Low Stock Quantity"
-                    className="flex-1 p-2 border rounded-l text-sm"
+                    className="flex-1 px-3 py-2 border border-r-0 border-gray-200 rounded-l-md text-[13px] sm:px-1 sm:py-1 sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                     {...formik.getFieldProps("low_stock_quantity")}
                   />
                   <select
-                    className="p-2 border rounded-r bg-white text-sm"
+                    className="px-3 py-2 sm:px-1 sm:py-1 border border-gray-200 rounded-r-md bg-white text-[10px] sm:text-sm focus:border-primary outline-none"
                     {...formik.getFieldProps("low_stock_measuring_unit")}
                   >
-                    <option value="PCS">Pieces (PCS)</option>
-                    <option value="KG">Kilogram</option>
-                    <option value="L">Liter</option>
+                    <option value="PCS">PCS</option>
+                    <option value="KG">KG</option>
+                    <option value="L">LTR</option>
                   </select>
                 </div>
               </div>
@@ -392,13 +392,13 @@ export default function StockDetails({
         </div>
 
         {/* Description - Full width */}
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-sm block font-medium">
+        <div className="space-y-1.5 sm:col-span-2">
+          <label className="text-xs sm:text-sm font-semibold text-gray-700">
             Description
           </label>
           <textarea
-            placeholder="Enter Description"
-            className="w-full p-2 border rounded text-sm"
+            placeholder="Enter item description..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
             rows={3}
             {...formik.getFieldProps("description")}
           />

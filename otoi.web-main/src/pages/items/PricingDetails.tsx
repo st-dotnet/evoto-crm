@@ -7,32 +7,32 @@ interface IPricingDetailsProps {
 
 export default function PricingDetails({ formik }: IPricingDetailsProps) {
     return (
-        <div className="border rounded-lg p-4 space-y-6">
+        <div className="border border-gray-100 rounded-xl p-3 sm:p-5 bg-white shadow-sm space-y-4 sm:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Sales Price */}
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">Sales Price</label>
+                <div className="space-y-1.5">
+                    <label className="text-xs sm:text-sm font-semibold text-gray-700">Sales Price</label>
 
-                    <div className="flex items-center w-full border rounded-md overflow-hidden">
+                    <div className="flex items-center w-full border border-gray-200 rounded-md overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all">
                         {/* Amount input */}
                         <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] sm:text-sm text-gray-500">
                                 ₹
                             </span>
                             <input
                                 type="number"
                                 placeholder="ex: 200"
-                                className="w-full pl-7 pr-2 py-2 text-sm focus:outline-none"
+                                className="w-full pl-7 pr-2 py-2 text-[13px] sm:text-sm text-gray-700 outline-none"
                                 {...formik.getFieldProps("sales_price")}
                             />
                         </div>
 
                         {/* Divider */}
-                        <div className="h-6 w-px bg-gray-300" />
+                        <div className="h-6 w-px bg-gray-200" />
 
                         {/* Tax type */}
                         <select
-                            className="px-3 py-2 text-xs md:text-sm bg-gray-100 focus:outline-none"
+                            className="px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-medium bg-gray-50 text-gray-600 outline-none cursor-pointer hover:bg-gray-100"
                             {...formik.getFieldProps("sales_tax_type")}
                         >
                             <option value="with_tax">With Tax</option>
@@ -42,29 +42,29 @@ export default function PricingDetails({ formik }: IPricingDetailsProps) {
                 </div>
 
                 {/* Purchase Price */}
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">Purchase Price</label>
+                <div className="space-y-1.5">
+                    <label className="text-xs sm:text-sm font-semibold text-gray-700">Purchase Price</label>
 
-                    <div className="flex items-center w-full border rounded-md overflow-hidden">
+                    <div className="flex items-center w-full border border-gray-200 rounded-md overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all">
                         {/* Amount input */}
                         <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] sm:text-sm text-gray-500">
                                 ₹
                             </span>
                             <input
                                 type="number"
                                 placeholder="ex: 200"
-                                className="w-full pl-7 pr-2 py-2 text-sm focus:outline-none"
+                                className="w-full pl-7 pr-2 py-2 text-[13px] sm:text-sm text-gray-700 outline-none"
                                 {...formik.getFieldProps("purchase_price")}
                             />
                         </div>
 
                         {/* Divider */}
-                        <div className="h-6 w-px bg-gray-300" />
+                        <div className="h-6 w-px bg-gray-200" />
 
                         {/* Tax type */}
                         <select
-                            className="px-3 py-2 text-xs md:text-sm bg-gray-50 focus:outline-none rounded"
+                            className="px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-medium bg-gray-50 text-gray-600 outline-none cursor-pointer hover:bg-gray-100"
                             {...formik.getFieldProps("purchase_tax_type")}
                         >
                             <option value="with_tax">With Tax</option>
@@ -74,10 +74,10 @@ export default function PricingDetails({ formik }: IPricingDetailsProps) {
                 </div>
 
                 {/* GST Tax Rate */}
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">GST Tax Rate (%)</label>
+                <div className="space-y-1.5">
+                    <label className="text-xs sm:text-sm font-semibold text-gray-700">GST Tax Rate (%)</label>
                     <select
-                        className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm text-gray-700 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                         {...formik.getFieldProps("gst_tax_rate")}
                     >
                         <option value="">None</option>

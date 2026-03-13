@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, send_file
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
+from sqlalchemy.orm import selectinload
+import base64
 from app.extensions import db
 from app.models import Invoice, InvoiceItem, Quotation, Item, Customer
 from app.services.pdf_service import generate_invoice_pdf
@@ -574,11 +576,19 @@ def get_invoice(invoice_id):
         
         # Fetch product details from linked inventory item
         if item.item_id:
-            inventory_item = Item.query.get(item.item_id)
+            inventory_item = Item.query.options(
+                selectinload(Item.images)
+            ).get(item.item_id)
             if inventory_item:
                 item_info["product_name"] = inventory_item.item_name
                 item_info["hsn_sac_code"] = inventory_item.hsn_code
                 item_info["measuring_unit_id"] = inventory_item.measuring_unit_id
+                # Get the feature image for the item
+                main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
+                if not main_image_obj and inventory_item.images:
+                    main_image_obj = inventory_item.images[0]
+                if main_image_obj:
+                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
         
         items_data.append(item_info)
 
@@ -1112,7 +1122,7 @@ def download_invoice_pdf(invoice_id):
     try:
         invoice = Invoice.query.get_or_404(invoice_id)
 
-        # Build items data (same logic as get_invoice)
+        # Build items data (same logic as get_invoice, with images)
         items_data = []
         for item in invoice.items:
             item_info = {
@@ -1124,10 +1134,18 @@ def download_invoice_pdf(invoice_id):
                 "total_price": float(item.total_price) if item.total_price else 0,
             }
             if item.item_id:
-                inventory_item = Item.query.get(item.item_id)
+                inventory_item = Item.query.options(
+                    selectinload(Item.images)
+                ).get(item.item_id)
                 if inventory_item:
                     item_info["product_name"] = inventory_item.item_name
                     item_info["hsn_sac_code"] = inventory_item.hsn_code
+                    # Get the feature image for the item
+                    main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
+                    if not main_image_obj and inventory_item.images:
+                        main_image_obj = inventory_item.images[0]
+                    if main_image_obj:
+                        item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
             items_data.append(item_info)
 
         pdf_buffer = generate_invoice_pdf(invoice, items_data)

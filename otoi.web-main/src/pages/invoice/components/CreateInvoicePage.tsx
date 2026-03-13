@@ -86,6 +86,7 @@ interface InvoiceItem {
   id: string;
   item_id: string;
   item_name: string;
+  image?: string | null;
   hsn_sac?: string;
   quantity: number;
   price_per_item: number;
@@ -100,6 +101,7 @@ interface InvoiceItem {
 interface InventoryItem {
   item_id: string;
   item_name: string;
+  image?: string | null;
   opening_stock: number;
   sales_price: number;
   purchase_price: number | null;
@@ -557,6 +559,7 @@ const CreateInvoicePage = () => {
                 item.item_name ||
                 item.description ||
                 "Item",
+              image: item.image,
               description: item.description || item.item_description || "",
               quantity: Number(item.quantity) || 1,
               price_per_item: Number(item.unit_price) || 0,
@@ -913,6 +916,7 @@ const CreateInvoicePage = () => {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
         item_name: item.item_name,
+        image: item.image,
         hsn_sac: item.hsn_code || "",
         quantity: quantity,
         price_per_item: item.sales_price,
@@ -1515,6 +1519,9 @@ const CreateInvoicePage = () => {
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
                   No.
                 </th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-20">
+                  Image
+                </th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[250px]">
                   Item/Service Details
                 </th>
@@ -1588,6 +1595,28 @@ const CreateInvoicePage = () => {
                     {/* Serial Number */}
                     <td className="px-4 py-4 text-sm font-medium text-gray-600 border-r border-gray-200">
                       {index + 1}
+                    </td>
+
+                    {/* Image Column */}
+                    <td className="px-4 py-4 text-center border-r border-gray-200">
+                      {item.image ? (
+                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
+                          <img
+                            src={item.image}
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/40x40?text=No+Img';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
+                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
                     </td>
 
                     {/* Item Details */}
@@ -1804,7 +1833,7 @@ const CreateInvoicePage = () => {
             <tfoot className="bg-gray-50 border-t-2 border-gray-200">
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="px-4 py-4 border-r border-gray-200"
                 ></td>
                 <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">

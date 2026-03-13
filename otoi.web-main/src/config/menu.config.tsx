@@ -109,7 +109,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
   //   icon: "wallet",
   //   path: "/accounting/expense"
   // },
-  {
+  /* {
     heading: "User"
   },
   {
@@ -225,7 +225,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
         ]
       }
     ]
-  },
+  }, 
   {
     title: "My Account",
     icon: "setting-2",
@@ -583,7 +583,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
         path: "/error/500"
       }
     ]
-  },
+  },*/
   { heading: "Apps" },
   {
     title: "User Management",
@@ -600,6 +600,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     ]
   },
   {
+    title: "Global Config",
+    icon: "verify",
+    path: "/global-config"
+  },
+  {
     title: "Projects",
     icon: "questionnaire-tablet",
     disabled: true
@@ -609,17 +614,17 @@ export const MENU_SIDEBAR: TMenuConfig = [
     icon: "handcart",
     disabled: true
   },
-  { heading: "Miscellaneous" },
-  {
-    title: "Modals",
-    icon: "some-files",
-    disabled: true
-  },
-  {
-    title: "Wizards",
-    icon: "note-2",
-    disabled: true
-  }
+  // { heading: "Miscellaneous" },
+  // {
+  //   title: "Modals",
+  //   icon: "some-files",
+  //   disabled: true
+  // },
+  // {
+  //   title: "Wizards",
+  //   icon: "note-2",
+  //   disabled: true
+  // }
 ];
 
 export const MENU_MEGA: TMenuConfig = [
