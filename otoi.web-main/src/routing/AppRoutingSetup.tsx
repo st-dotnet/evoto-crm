@@ -105,6 +105,12 @@ const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then
 const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
 const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));
 const PartiesPurchaseEntry = lazy(() => import('@/pages/Accounting/PartiesPurchaseEntry').then(module => ({ default: module.PartiesPurchaseEntry })));
+const PurchaseOrderPage = lazy(() => import('@/pages/purchases/components/PurchaseOrderPage').then(module => ({ default: module.default })));
+const CreatePurchaseOrderPage = lazy(() => import('@/pages/purchases/components/CreatePurchaseOrderPage').then(module => ({ default: module.default })));
+const PurchaseOrderPreviewPage = lazy(() => import('@/pages/purchases/components/PurchaseOrderPreviewPage').then(module => ({ default: module.default })));
+const PurchaseInvoicePage = lazy(() => import('@/pages/purchases/components/PurchaseInvoicePage').then(module => ({ default: module.default })));
+const PurchaseInvoiceDetailsPage = lazy(() => import('@/pages/purchases/components/PurchaseInvoiceDetailsPage').then(module => ({ default: module.default })));
+const CreatePurchaseInvoicePage = lazy(() => import('@/pages/purchases/components/CreatePurchaseInvoicePage').then(module => ({ default: module.default })));
 
 
 // Loading fallback component
@@ -341,6 +347,48 @@ const AppRoutingSetup = (): ReactElement => {
             </Suspense>
           } />
 
+          {/* Purchase Order Routes */}
+          <Route path="/purchases/purchase-orders" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PurchaseOrderPage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-orders/new" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePurchaseOrderPage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-orders/:id/edit" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePurchaseOrderPage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-orders/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PurchaseOrderPreviewPage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-orders/preview" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PurchaseOrderPreviewPage />
+            </Suspense>
+          } />
+
+          <Route path="/purchases/purchase-invoices" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PurchaseInvoicePage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-invoices/new" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePurchaseInvoicePage />
+            </Suspense>
+          } />
+          <Route path="/purchases/purchase-invoices/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PurchaseInvoiceDetailsPage />
+            </Suspense>
+          } />
 
           <Route
             path="/auth/account-deactivated"

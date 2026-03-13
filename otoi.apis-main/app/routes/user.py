@@ -30,6 +30,7 @@ def profile():
         "role": user.role.name,
         "isActive": user.isActive,
         "state": user.state,
+        "mobile": user.mobileNo if hasattr(user, 'mobileNo') else None,
         "country": user.country,
         "isUT": user.isUT,
         "businesses": businesses
@@ -183,7 +184,7 @@ def get_all_users():
                     User.country.ilike(f"%{query_value}%"),
                     func.concat(User.firstName, " ", User.lastName).ilike(f"%{query_value}%")
                 ]
-                # Add mobile number search if the field exists
+                # Add mobile number search if the field exisst
                 if hasattr(User, 'mobileNo'):
                     filter_conditions.append(cast(User.mobileNo, String).ilike(f"%{query_value}%"))
                 

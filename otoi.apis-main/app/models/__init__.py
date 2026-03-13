@@ -12,6 +12,8 @@ from .quotation import Quotation, QuotationItem
 from .invoice import Invoice, InvoiceItem
 from .location import Country, UnionTerritory
 from .paymentIn import PaymentIn
+from .purchase_order import PurchaseOrder, PurchaseOrderItem
+from .purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 
 __all__ = [ "User", "Role", "Address", 
            "Lead", "LeadAddress", 
@@ -20,4 +22,6 @@ __all__ = [ "User", "Role", "Address",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business", "user_business",
            "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry",
-           "Quotation", "QuotationItem","Invoice", "InvoiceItem", "Country", "UnionTerritory", "PaymentIn"]
+           "Quotation", "QuotationItem","Invoice", "InvoiceItem", "Country", "UnionTerritory", "PaymentIn",
+           "PurchaseOrder", "PurchaseOrderItem",
+           "PurchaseInvoice", "PurchaseInvoiceItem"]

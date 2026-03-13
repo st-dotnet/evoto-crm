@@ -68,8 +68,12 @@ export const MENU_SIDEBAR: TMenuConfig = [
     icon: "basket",
     children: [
       {
-        title: "Invoices",
-        path: "/purchases/invoices"
+        title: "Purchase Orders",
+        path: "/purchases/purchase-orders"
+      },
+      {
+        title: "Purchase Invoices",
+        path: "/purchases/purchase-invoices"
       },
       {
         title: "Payment Out",

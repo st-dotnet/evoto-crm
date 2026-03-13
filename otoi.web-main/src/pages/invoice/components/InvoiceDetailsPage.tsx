@@ -1167,86 +1167,86 @@ const InvoiceDetailsPage: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
 
-          <DialogBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Form Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Amount Received <span className="text-red-500">*</span>
-                      </label>
+            <DialogBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Form Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount Received <span className="text-red-500">*</span>
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.amountReceived === null ||
+                            paymentForm.amountReceived === 0
+                            ? ""
+                            : roundToTwo(paymentForm.amountReceived)
+                        }
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
+                          const cappedAmount = Math.min(amount, maxAllowedAmount);
+                          setPaymentForm({
+                            ...paymentForm,
+                            amountReceived: roundToTwo(cappedAmount),
+                          });
+                          validateAmountReceived(cappedAmount);
+                        }}
+                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      {amountError && (
+                        <p className="text-xs text-red-600 font-medium">
+                          {amountError}
+                        </p>
+                      )}
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.amountReceived === null ||
-                        paymentForm.amountReceived === 0
-                          ? ""
-                          : roundToTwo(paymentForm.amountReceived)
-                      }
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
-                        const cappedAmount = Math.min(amount, maxAllowedAmount);
-                        setPaymentForm({
-                          ...paymentForm,
-                          amountReceived: roundToTwo(cappedAmount),
-                        });
-                        validateAmountReceived(cappedAmount);
-                      }}
-                      className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                    {amountError && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {amountError}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Payment Discount
-                      </label>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Payment Discount
+                        </label>
+                        <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.discount === null ||
+                            paymentForm.discount === 0
+                            ? ""
+                            : roundToTwo(paymentForm.discount)
+                        }
+                        onChange={(e) => {
+                          const newDiscount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
+                          const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
+
+                          // Adjust amount received if it exceeds the new maximum allowed
+                          const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
+
+                          setPaymentForm({
+                            ...paymentForm,
+                            discount: roundToTwo(newDiscount),
+                            amountReceived: roundToTwo(adjustedAmountReceived),
+                          });
+                          validateAmountReceived(adjustedAmountReceived);
+                        }}
+                        className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.discount === null ||
-                        paymentForm.discount === 0
-                          ? ""
-                          : roundToTwo(paymentForm.discount)
-                      }
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
-                        const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
-                        
-                        // Adjust amount received if it exceeds the new maximum allowed
-                        const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
-                        
-                        setPaymentForm({
-                          ...paymentForm,
-                          discount: roundToTwo(newDiscount),
-                          amountReceived: roundToTwo(adjustedAmountReceived),
-                        });
-                        validateAmountReceived(adjustedAmountReceived);
-                      }}
-                      className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
                   </div>
-                </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
