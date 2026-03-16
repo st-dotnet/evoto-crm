@@ -217,7 +217,7 @@ const GlobalConfig = () => {
             onFileChange={setSiteLogoFile}
             // Add a cache breaker to ensure fresh image is fetched
             // We use replace('/api', '') because VITE_APP_API_URL usually includes /api
-            existingUrl={existingAssets.logo_path ? `${import.meta.env.VITE_APP_API_URL.replace('/api', '')}/static/uploads/business/${existingAssets.logo_path}?t=${Date.now()}` : undefined}
+            existingUrl={existingAssets.logo_path ? `${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${existingAssets.logo_path}?t=${Date.now()}` : undefined}
           />
 
           <UploadCard
@@ -225,7 +225,7 @@ const GlobalConfig = () => {
             desc="Official signature used in PDF receipts."
             file={esignFile}
             onFileChange={setEsignFile}
-            existingUrl={existingAssets.esign_path ? `${import.meta.env.VITE_APP_API_URL.replace('/api', '')}/static/uploads/business/${existingAssets.esign_path}?t=${Date.now()}` : undefined}
+            existingUrl={existingAssets.esign_path ? `${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${existingAssets.esign_path}?t=${Date.now()}` : undefined}
           />
         </div>
 

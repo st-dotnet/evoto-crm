@@ -782,7 +782,7 @@ const QuotationPreviewPage: React.FC = () => {
                 <div className="flex flex-col items-end -mt-8">
                   {brandingAssets?.logo_path ? (
                     <img
-                      src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
                       className="h-40 w-auto object-contain"
                       alt={businessInfo?.name || "Logo"}
                     />
@@ -1162,7 +1162,7 @@ const QuotationPreviewPage: React.FC = () => {
                 {brandingAssets?.esign_path && (
                   <div className="mb-2 flex justify-center">
                     <img
-                      src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.esign_path}?t=${Date.now()}`}
+                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.esign_path}?t=${Date.now()}`}
                       className="h-16 w-auto object-contain"
                       alt="Signature"
                     />
