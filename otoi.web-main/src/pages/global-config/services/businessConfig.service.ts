@@ -21,7 +21,7 @@ interface ApiResponse<T = any> {
   message?: string;
 }
 
-export const updateGlobalAssets = async (payload: { logo?: string; esign?: string }): Promise<ApiResponse> => {
+export const updateGlobalAssets = async (payload: FormData): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return { success: false, error: "Authentication required.", status: 401 };
@@ -31,7 +31,7 @@ export const updateGlobalAssets = async (payload: { logo?: string; esign?: strin
     const response = await axios.post(`${API_URL}/business-config/global-assets`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        "Content-Type": "multipart/form-data",
       },
       withCredentials: true,
     });
