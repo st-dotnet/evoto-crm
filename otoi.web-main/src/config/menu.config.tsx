@@ -77,7 +77,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
       },
       {
         title: "Payment Out",
-        path: "/purchases/payment-outs"
+        path: "/payment-out"
       },
       {
         title: "Debit Note",

@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from sqlalchemy import or_, func, desc, asc, and_, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
@@ -8,9 +8,11 @@ from app.extensions import db
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.vendor import Vendor
 from app.models.inventory import Item
+from app.services.pdf_service import generate_purchase_order_pdf
 
 
 purchase_order_blueprint = Blueprint("purchase_order", __name__)
+
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -682,3 +684,74 @@ def delete_purchase_order(po_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
+
+
+# ── DOWNLOAD PDF ──────────────────────────────────────────────────────────────
+
+@purchase_order_blueprint.route("/<uuid:po_id>/pdf", methods=["GET"])
+def download_purchase_order_pdf(po_id):
+    """
+    Download a purchase order as a PDF.
+    ---
+    tags:
+      - Purchase Orders
+    parameters:
+      - name: po_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: PDF file download
+      404:
+        description: Purchase order not found
+      500:
+        description: PDF generation failed
+    """
+    try:
+        po = (
+            PurchaseOrder.query
+            .options(selectinload(PurchaseOrder.items))
+            .filter_by(uuid=po_id)
+            .first_or_404(description="Purchase order not found")
+        )
+
+        # Build items_data list
+        item_ids = [i.item_id for i in po.items if i.item_id]
+        product_map = (
+            {p.id: p for p in Item.query.filter(Item.id.in_(item_ids)).all()}
+            if item_ids else {}
+        )
+
+        items_data = []
+        for poi in po.items:
+            row = {
+                "description": poi.description,
+                "quantity":    float(poi.quantity) if poi.quantity else 0,
+                "unit_price":  float(poi.unit_price) if poi.unit_price else 0,
+                "discount":    poi.discount or {},
+                "tax":         poi.tax or {},
+                "total_price": float(poi.total_price) if poi.total_price else 0,
+            }
+            if poi.item_id and poi.item_id in product_map:
+                p = product_map[poi.item_id]
+                row["product_name"]      = p.item_name
+                row["hsn_sac_code"]      = p.hsn_code
+                row["measuring_unit_id"] = p.measuring_unit_id
+            else:
+                row["product_name"] = poi.description or "Item"
+            items_data.append(row)
+
+        pdf_buffer = generate_purchase_order_pdf(po, items_data)
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{po.po_number}.pdf",
+        )
+
+    except Exception as e:
+        return jsonify({"error": "PDF generation failed", "details": str(e)}), 500
+

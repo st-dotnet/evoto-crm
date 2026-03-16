@@ -20,6 +20,7 @@ from app.routes.quotation import quotation_blueprint
 from app.routes.invoice import invoice_blueprint
 from app.routes.purchase_invoice import purchase_invoice_blueprint
 from app.routes.business_config import business_config_blueprint
+from app.routes.payment_out import payment_out_blueprint
 
 
 
@@ -44,6 +45,9 @@ def register_blueprints(app):
     app.register_blueprint(purchase_order_blueprint, url_prefix="/api/purchase-orders")
     app.register_blueprint(quotation_blueprint, url_prefix="/api/quotations")
     app.register_blueprint(invoice_blueprint, url_prefix="/api/invoices")
+    app.register_blueprint(purchase_invoice_blueprint, url_prefix="/api/purchase-invoices")
+    app.register_blueprint(payment_out_blueprint, url_prefix="/api/payment-out")
+    app.register_blueprint(business_config_blueprint, url_prefix="/api/business-config")
     # app.register_blueprint(quotation_item_blueprint, url_prefix="/api/quotation-items")
 
 

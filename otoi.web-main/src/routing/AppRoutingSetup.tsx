@@ -102,6 +102,8 @@ const InvoiceDetailsPage = lazy(() => import('@/pages/invoice/components/Invoice
 const CreateInvoicePage = lazy(() => import('@/pages/invoice/components/CreateInvoicePage').then(module => ({ default: module.default })));
 const PaymentInPage = lazy(() => import('@/pages/payment-in/components/PaymentInPage').then(module => ({ default: module.PaymentInPage })));
 const CreatePaymentIn = lazy(() => import('@/pages/payment-in/components/CreatePaymentIn').then(module => ({ default: module.CreatePaymentIn })));
+const PaymentOutPage = lazy(() => import('@/pages/payment-out/components/PaymentOutPage').then(module => ({ default: module.PaymentOutPage })));
+const CreatePaymentOut = lazy(() => import('@/pages/payment-out/components/CreatePaymentOut').then(module => ({ default: module.CreatePaymentOut })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
 const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
 const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));
@@ -319,6 +321,23 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/payment-in/:id" element={
             <Suspense fallback={<LoadingFallback />}>
               <CreatePaymentIn />
+            </Suspense>
+          } />
+
+          {/* Payment Out Routes */}
+          <Route path="/payment-out" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PaymentOutPage />
+            </Suspense>
+          } />
+          <Route path="/payment-out/create" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePaymentOut />
+            </Suspense>
+          } />
+          <Route path="/payment-out/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePaymentOut />
             </Suspense>
           } />
 

@@ -3,12 +3,12 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, FileText, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import axios from "axios";
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
 import { createPurchaseInvoiceFromPO } from "../services/purchaseInvoice.services";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 interface PurchaseOrderItem {
     id: string;
@@ -58,7 +58,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     const { currentUser } = useAuthContext();
     const [isLoading, setIsLoading] = useState(false);
     const [fetchedData, setFetchedData] = useState<PurchaseOrderData | null>(null);
-    const [businessProfile, setBusinessProfile] = useState<any>(null);
+    const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
     const [isConverting, setIsConverting] = useState(false);
     const [associatedInvoice, setAssociatedInvoice] = useState<any>(null);
     const poRef = useRef<HTMLDivElement>(null);
@@ -74,24 +74,17 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const fetchBusinessProfile = async () => {
+        const fetchBrandingAssets = async () => {
             try {
-                const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/user/profile`);
-                const user = response.data.data || response.data;
-                const business = user?.businesses?.[0] || user?.business_profile || user;
-
-                setBusinessProfile({
-                    name: business?.company_name || business?.name || business?.business_name || user?.company_name || "Evoto Technologies",
-                    email: business?.email || user?.email,
-                    phone: business?.phone_number || business?.phone || business?.mobile || user?.phone || user?.mobile,
-                    address: [business?.address || user?.address, user?.city, user?.state, user?.country].filter(Boolean).join(", "),
-                    gst: business?.gst || business?.gstin || user?.gst || user?.gstin,
-                });
+                const response = await getGlobalAssets();
+                if (response.success && response.data) {
+                    setBrandingAssets(response.data);
+                }
             } catch (error) {
-                console.error("Failed to fetch full business profile via API", error);
+                console.error("Failed to fetch branding assets", error);
             }
         };
-        fetchBusinessProfile();
+        fetchBrandingAssets();
     }, []);
 
     useEffect(() => {
@@ -224,6 +217,42 @@ const PurchaseOrderPreviewPage: React.FC = () => {
         }
     };
 
+    const handleDownloadPDF = async () => {
+        if (!id) return;
+        const downloadToast = toast.loading("Generating PDF...");
+        try {
+            const token = (() => {
+                try {
+                    const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+                    if (!authData) return null;
+                    const parsedAuth = JSON.parse(authData);
+                    return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+                } catch { return null; }
+            })();
+
+            const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-orders/${id}/pdf`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) throw new Error('Failed to generate PDF');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PurchaseOrder-${poData.poNo || "Draft"}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success("PDF downloaded successfully", { id: downloadToast });
+        } catch (error) {
+            console.error("PDF generation error:", error);
+            toast.error("Failed to generate PDF", { id: downloadToast });
+        }
+    };
+
     const handlePrintPDF = () => {
         const originalTitle = document.title;
         document.title = `PurchaseOrder-${poData.poNo || "Draft"}`;
@@ -294,8 +323,6 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     };
 
     const getAuthBusinessInfo = () => {
-        if (businessProfile) return businessProfile;
-
         const fetchedBusiness = poData?.business;
         if (fetchedBusiness) {
             return {
@@ -303,6 +330,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                 email: fetchedBusiness.email || currentUser?.email,
                 phone: fetchedBusiness.phone_number || fetchedBusiness.phone || currentUser?.phone,
                 address: fetchedBusiness.address || null,
+                gst: fetchedBusiness.gst_number || fetchedBusiness.gst || null,
             };
         }
 
@@ -319,6 +347,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         email: business.email || currentUser?.email,
                         address: business.address || null,
                         phone: business.phone_number || business.phone || "N/A",
+                        gst: business.gst_number || business.gst || null,
                     };
                 }
             }
@@ -331,6 +360,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
             email: currentUser?.email || "",
             address: null,
             phone: "N/A",
+            gst: null,
         };
     };
 
@@ -443,8 +473,11 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 {isConverting ? "Converting..." : "Convert to Invoice"}
                             </Button>
                         )}
+                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2">
+                            <Download className="h-4 w-4" />Download PDF
+                        </Button>
                         <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
-                            <Printer className="h-4 w-4" />Print / Save PDF
+                            <Printer className="h-4 w-4" />Print PDF
                         </Button>
                     </div>
                 </div>
@@ -466,7 +499,15 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                     {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
                                 </div>
                                 <div className="flex flex-col items-end -mt-8">
-                                    <img src={toAbsoluteUrl("/media/app/Evoto-Logo.png")} className="h-40 w-auto object-contain" alt="Evoto Technologies" />
+                                    {brandingAssets?.logo_path ? (
+                                        <img
+                                            src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                                            className="h-40 w-auto object-contain"
+                                            alt={getAuthBusinessInfo()?.name || "Logo"}
+                                        />
+                                    ) : (
+                                        <img src={toAbsoluteUrl("/media/app/Evoto-Logo.png")} className="h-40 w-auto object-contain" alt="Evoto Technologies" />
+                                    )}
                                 </div>
                             </>
                         );

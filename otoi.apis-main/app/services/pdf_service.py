@@ -507,3 +507,328 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
     }
 
     return _render_pdf("pdf/quotation.html", context)
+
+
+# ── Purchase Invoice PDF ──────────────────────────────────────────────────────
+
+def generate_purchase_invoice_pdf(invoice, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Purchase Invoice.
+
+    Args:
+        invoice: PurchaseInvoice SQLAlchemy model instance (with relationships loaded).
+        items_data: Pre-built list of dicts with item details (product_name, hsn, etc).
+
+    Returns:
+        BytesIO buffer with the PDF content.
+    """
+    business = getattr(invoice, 'business', None)
+    vendor = getattr(invoice, 'vendor', None)
+
+    # Try to get the business address
+    business_address = None
+    if business and hasattr(business, 'addresses') and business.addresses:
+        business_address = business.addresses[0]
+
+    charges = invoice.charges or {}
+    notes = invoice.additional_notes or {}
+
+    # Build typed dicts for template safety
+    items = []
+    for item in items_data:
+        raw_discount = item.get("discount") or {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax") or {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description": item.get("description", ""),
+            "image": item.get("image", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity": qty,
+            "unit_price": item.get("unit_price", 0),
+            "discount": fixed_discount,
+            "tax": fixed_tax,
+            "total_price": item.get("total_price", 0),
+        })
+
+    # Calculate tax totals from items if not in charges
+    tax_total = float(charges.get("tax_total", 0) or 0)
+    subtotal = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+
+    # If charges are empty, compute from items
+    if subtotal == 0 and items:
+        subtotal = sum(
+            float(item.get("unit_price", 0)) * float(item.get("quantity", 0))
+            for item in items_data
+        )
+    if discount_total == 0 and items:
+        discount_total = sum(
+            float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) * float((item.get("discount") or {}).get("discount_percentage", 0) or 0) / 100
+            for item in items_data
+        )
+    if tax_total == 0 and items:
+        tax_total = sum(
+            (float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) - float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) * float((item.get("discount") or {}).get("discount_percentage", 0) or 0) / 100) * float((item.get("tax") or {}).get("tax_percentage", 0) or 0) / 100
+            for item in items_data
+        )
+
+    taxable_amount = subtotal - discount_total
+
+    cgst = float(charges.get("cgst", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+
+    # Auto-calculate breakdown if missing
+    if tax_total > 0 and not any([cgst, sgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
+        half_tax = tax_total / 2.0
+        cgst = half_tax
+        cgst_rate = half_rate
+        sgst = half_tax
+        sgst_rate = half_rate
+
+    vendor_ctx = None
+    if vendor:
+        vendor_ctx = {
+            "vendor_name": vendor.vendor_name,
+            "company_name": vendor.company_name,
+            "mobile": vendor.mobile,
+            "email": vendor.email,
+            "gst": vendor.gst,
+            "address1": vendor.address1,
+            "city": vendor.city,
+            "state": vendor.state,
+            "country": vendor.country,
+            "pin": vendor.pin,
+        }
+
+    context = {
+        "invoice": {
+            "invoice_number": invoice.invoice_number,
+            "invoice_date": invoice.invoice_date.strftime("%d %b %Y") if invoice.invoice_date else "—",
+            "due_date": invoice.due_date.strftime("%d %b %Y") if invoice.due_date else "—",
+            "total_amount": float(invoice.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(invoice.total_amount or 0)),
+            "amount_paid": float(invoice.amount_paid or 0),
+            "balance_due": float(invoice.balance_due or 0),
+            "payment_status": invoice.payment_status or "unpaid",
+        },
+        "logo_data_uri": get_logo_data_uri(getattr(business, 'id', None)),
+        "esign_data_uri": get_esign_data_uri(getattr(business, 'id', None)),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name": business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email": business.email if business else "",
+            "gst_number": business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1,
+            "address2": getattr(business_address, "address2", ""),
+            "city": business_address.city,
+            "state": business_address.state,
+            "pin": business_address.pin,
+            "country": business_address.country,
+        } if business_address else None,
+        "vendor": vendor_ctx,
+        "charges": {
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "tax_total": tax_total,
+            "cgst": cgst,
+            "cgst_rate": cgst_rate,
+            "sgst": sgst,
+            "sgst_rate": sgst_rate,
+        },
+        "notes": {
+            "notes": notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
+        "items": items,
+    }
+
+    return _render_pdf("pdf/purchase_invoice.html", context)
+
+
+# ── Purchase Order PDF ────────────────────────────────────────────────────────
+
+def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Purchase Order.
+
+    Args:
+        po: PurchaseOrder SQLAlchemy model instance (with relationships loaded).
+        items_data: Pre-built list of dicts with item details.
+
+    Returns:
+        BytesIO buffer with the PDF content.
+    """
+    business = getattr(po, 'business', None)
+    vendor   = getattr(po, 'vendor', None)
+
+    # Try to get the business address
+    business_address = None
+    if business and hasattr(business, 'addresses') and business.addresses:
+        business_address = business.addresses[0]
+
+    notes = po.additional_notes or {}
+    charges = po.charges or {}
+
+    # Build typed dicts for template safety
+    items = []
+    for item in items_data:
+        raw_discount = item.get("discount") or {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax") or {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description":  item.get("description", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity":     qty,
+            "unit_price":   item.get("unit_price", 0),
+            "discount":     fixed_discount,
+            "tax":          fixed_tax,
+            "total_price":  item.get("total_price", 0),
+        })
+
+    # Totals — prefer charges JSON, fall back to per-item calculation
+    subtotal       = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+    tax_total      = float(charges.get("tax_total", 0) or 0)
+
+    if subtotal == 0 and items:
+        subtotal = sum(float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) for i in items_data)
+    if discount_total == 0 and items:
+        discount_total = sum(
+            float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) *
+            float((i.get("discount") or {}).get("discount_percentage", 0) or 0) / 100
+            for i in items_data
+        )
+    if tax_total == 0 and items:
+        tax_total = sum(
+            (float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) -
+             float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) *
+             float((i.get("discount") or {}).get("discount_percentage", 0) or 0) / 100) *
+            float((i.get("tax") or {}).get("tax_percentage", 0) or 0) / 100
+            for i in items_data
+        )
+
+    taxable_amount = subtotal - discount_total
+    cgst = float(charges.get("cgst", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+
+    if tax_total > 0 and not any([cgst, sgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
+        half_tax  = tax_total / 2.0
+        cgst = half_tax
+        cgst_rate = half_rate
+        sgst = half_tax
+        sgst_rate = half_rate
+
+    vendor_ctx = None
+    if vendor:
+        vendor_ctx = {
+            "vendor_name":  vendor.vendor_name,
+            "company_name": vendor.company_name,
+            "mobile":       vendor.mobile,
+            "email":        vendor.email,
+            "gst":          vendor.gst,
+            "address1":     vendor.address1,
+            "city":         vendor.city,
+            "state":        vendor.state,
+            "country":      vendor.country,
+            "pin":          vendor.pin,
+        }
+
+    context = {
+        "po": {
+            "po_number":      po.po_number,
+            "po_date":        po.po_date.strftime("%d %b %Y") if po.po_date else "—",
+            "delivery_date":  po.delivery_date.strftime("%d %b %Y") if po.delivery_date else "—",
+            "total_amount":   float(po.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(po.total_amount or 0)),
+            "status":         po.status or "open",
+        },
+        "logo_data_uri":   get_logo_data_uri(getattr(business, 'id', None)),
+        "esign_data_uri":  get_esign_data_uri(getattr(business, 'id', None)),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name":         business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email":        business.email if business else "",
+            "gst_number":   business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1,
+            "address2": getattr(business_address, "address2", ""),
+            "city":     business_address.city,
+            "state":    business_address.state,
+            "pin":      business_address.pin,
+            "country":  business_address.country,
+        } if business_address else None,
+        "vendor": vendor_ctx,
+        "charges": {
+            "subtotal":        subtotal,
+            "discount_total":  discount_total,
+            "tax_total":       tax_total,
+            "cgst":            cgst,
+            "cgst_rate":       cgst_rate,
+            "sgst":            sgst,
+            "sgst_rate":       sgst_rate,
+        },
+        "notes": {
+            "notes":                notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
+        "items": items,
+    }
+
+    return _render_pdf("pdf/purchase_order.html", context)
+

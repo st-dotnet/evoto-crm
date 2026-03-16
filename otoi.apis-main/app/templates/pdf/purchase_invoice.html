@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Purchase Invoice {{ invoice.invoice_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.5cm 1.8cm 2cm 1.8cm;
+
+      @frame footer {
+        -pdf-frame-content: footer_content;
+        bottom: 1cm;
+        margin-left: 1.8cm;
+        margin-right: 1.8cm;
+        height: 1cm;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      background: #ffffff;
+    }
+
+    #footer_content {
+      font-size: 9px;
+      color: #666666;
+      text-align: center;
+      border-top: 1px solid #cccccc;
+      padding-top: 5px;
+    }
+
+    /* ══════════════════════════════
+           HEADER
+        ══════════════════════════════ */
+    .header-table {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .company-name {
+      font-size: 22px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .company-meta {
+      font-size: 10px;
+      color: #666666;
+      line-height: 1.6;
+    }
+
+    /* ══════════════════════════════
+           DIVIDER
+        ══════════════════════════════ */
+    .divider {
+      border: none;
+      border-top: 1.5px solid #dddddd;
+      margin: 0 0 16px 0;
+    }
+
+    /* ══════════════════════════════
+           META GRID
+        ══════════════════════════════ */
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .meta-table th {
+      border: 1px solid #000000;
+      background-color: #f5f5f5;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: left;
+      color: #444444;
+    }
+
+    .meta-table td {
+      border: 1px solid #000000;
+      padding: 4px 12px;
+      font-size: 12px;
+      text-align: left;
+      color: #1a1a1a;
+    }
+
+    /* ══════════════════════════════
+           VENDOR DETAILS
+        ══════════════════════════════ */
+    .vendor-section {
+      margin-bottom: 22px;
+    }
+
+    .vendor-section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #444444;
+      border-bottom: 1.5px solid #1a1a1a;
+      padding-bottom: 5px;
+      margin-bottom: 8px;
+      width: 150px;
+    }
+
+    .vendor-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .vendor-detail {
+      font-size: 12px;
+      color: #333333;
+      line-height: 1.7;
+    }
+
+    .vendor-detail strong {
+      color: #1a1a1a;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    /* ══════════════════════════════
+           STATUS BADGE
+        ══════════════════════════════ */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 15px;
+    }
+
+    .badge-paid {
+      background-color: #dcfce7;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .badge-partial {
+      background-color: #fef3c7;
+      color: #d97706;
+      border: 1px solid #fde68a;
+    }
+
+    .badge-unpaid {
+      background-color: #fecaca;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+    }
+
+    /* ══════════════════════════════
+           ITEMS TABLE
+        ══════════════════════════════ */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 22px;
+    }
+
+    .items-table th {
+      border: 1px solid #000000;
+      background-color: #f5f5f5;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #444444;
+    }
+
+    .items-table td {
+      border: 1px solid #000000;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #1a1a1a;
+      vertical-align: top;
+    }
+
+    .item-name {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .item-desc {
+      font-size: 9px;
+      color: #888888;
+      margin-top: 2px;
+    }
+
+    .subtotal-row td {
+      background-color: #f5f5f5;
+      font-weight: bold;
+      font-size: 11px;
+      border-top: 1.5px solid #aaaaaa;
+    }
+
+    /* ══════════════════════════════
+           BOTTOM
+        ══════════════════════════════ */
+    .bottom-table {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .notes-title {
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #444444;
+      border-bottom: 1.5px solid #1a1a1a;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+
+    .notes-content {
+      font-size: 10px;
+      color: #555555;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .totals-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .totals-table td {
+      padding: 2px 0;
+      font-size: 11px;
+    }
+
+    .totals-label {
+      color: #555555;
+      text-align: left;
+      width: 150px;
+    }
+
+    .totals-value {
+      font-weight: bold;
+      text-align: right;
+      color: #1a1a1a;
+    }
+
+    .totals-divider {
+      border: none;
+      border-top: 1px solid #cccccc;
+      margin: 6px 0;
+    }
+
+    .grand-total-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: left;
+    }
+
+    .grand-total-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: right;
+    }
+
+    .in-words {
+      font-size: 9px;
+      color: #666666;
+      text-align: right;
+      padding-top: 4px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* ══════════════════════════════
+           SIGNATURE
+        ══════════════════════════════ */
+    .signature-section {
+      width: 100%;
+      margin-top: 50px;
+    }
+
+    .signature-line {
+      border-top: 1.5px solid #1a1a1a;
+      width: 200px;
+      padding-top: 7px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      text-align: center;
+      color: #1a1a1a;
+      display: inline-block;
+    }
+
+    /* ══════════════════════════════
+           UTILS
+        ══════════════════════════════ */
+    .align-right {
+      text-align: right;
+    }
+
+    .align-center {
+      text-align: center;
+    }
+
+    .align-left {
+      text-align: left;
+    }
+
+    .text-bold {
+      font-weight: bold;
+    }
+
+    .text-muted {
+      color: #888888;
+      display: inline;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══ HEADER ══ -->
+  <table class="header-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 65%; vertical-align: top; padding-top: 15px;">
+        <div class="company-name">{{ business.name }}</div>
+        <div class="company-meta">
+          {% if business.email %}<div>{{ business.email }}</div>{% endif %}
+          {% if business.phone_number %}<div>{{ business.phone_number }}</div>{% endif %}
+          {% if business_address %}
+          <div>
+            {{ business_address.address1 }}{% if business_address.address2 %}, {{ business_address.address2
+            }}{% endif %},
+            {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }},
+            {{ business_address.country }}
+          </div>
+          {% endif %}
+          {% if business.gst_number %}<div><strong>GSTIN:</strong> {{ business.gst_number }}</div>{% endif %}
+        </div>
+      </td>
+      <td style="width: 35%; text-align: right; vertical-align: top;">
+        {% if logo_data_uri %}
+        <img src="{{ logo_data_uri }}" width="100" alt="Logo" style="margin-top: -10px;">
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <hr class="divider">
+
+  <!-- ══ PURCHASE INVOICE LABEL ══ -->
+  <div style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">Purchase Invoice</div>
+
+  <!-- ══ INVOICE META ══ -->
+  <table class="meta-table" cellpadding="0" cellspacing="0">
+    <thead>
+      <tr>
+        <th style="width: 33%;">Invoice No.</th>
+        <th style="width: 33%;">Invoice Date</th>
+        <th style="width: 34%;">Due Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ invoice.invoice_number }}</td>
+        <td>{{ invoice.invoice_date }}</td>
+        <td>{{ invoice.due_date or '&mdash;' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ══ VENDOR DETAILS ══ -->
+  {% if vendor %}
+  <div class="vendor-section">
+    <div class="vendor-section-title">Vendor Details</div>
+    <div class="vendor-name">{{ vendor.vendor_name }}</div>
+    <div class="vendor-detail">
+      {% if vendor.company_name and vendor.company_name != vendor.vendor_name %}
+      <div>{{ vendor.company_name }}</div>
+      {% endif %}
+      {% if vendor.email %}<div><strong>Email:</strong> {{ vendor.email }}</div>{% endif %}
+      {% if vendor.mobile %}<div><strong>Mobile:</strong> {{ vendor.mobile }}</div>{% endif %}
+      {% if vendor.gst %}<div><strong>GSTIN:</strong> {{ vendor.gst }}</div>{% endif %}
+      {% if vendor.address1 %}<div>{{ vendor.address1 }}</div>{% endif %}
+      <div>
+        {% if vendor.city %}<strong>City:</strong> {{ vendor.city }}{% endif %}
+        {% if vendor.state %}{% if vendor.city %}, {% endif %}<strong>State:</strong> {{ vendor.state }}{% endif %}
+        {% if vendor.country %}{% if vendor.city or vendor.state %}, {% endif %}<strong>Country:</strong> {{ vendor.country }}{% endif %}
+        {% if vendor.pin %}{% if vendor.city or vendor.state or vendor.country %}, {% endif %}<strong>PIN:</strong> {{ vendor.pin }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ STATUS BADGE ══ -->
+  {% if invoice.payment_status == 'paid' %}
+  <div class="badge badge-paid">PAID</div>
+  {% elif invoice.payment_status == 'partial' %}
+  <div class="badge badge-partial">PARTIALLY PAID</div>
+  {% else %}
+  <div class="badge badge-unpaid">UNPAID</div>
+  {% endif %}
+
+  <!-- ══ ITEMS TABLE ══ -->
+  <table class="items-table" cellpadding="0" cellspacing="0">
+    <thead>
+      <tr>
+        <th style="width: 36%;" class="align-left">Item Description</th>
+        <th style="width: 7%;" class="align-center">Qty</th>
+        <th style="width: 15%;" class="align-center">Price/Item</th>
+        <th style="width: 14%;" class="align-center">Disc.</th>
+        <th style="width: 14%;" class="align-center">Tax</th>
+        <th style="width: 14%;" class="align-center">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>
+          <div class="item-name">{{ loop.index }}. &nbsp;{{ item.product_name or '&mdash;' }}</div>
+          {% if item.description %}
+          <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
+          {% endif %}
+          {% if item.hsn_sac_code %}
+          <div style="font-size:9px; color:#aaaaaa; margin-top:2px;">HSN/SAC: {{ item.hsn_sac_code }}</div>
+          {% endif %}
+        </td>
+        <td class="align-center" style="white-space: nowrap;">
+          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">PCS</span>
+        </td>
+        <td class="align-center">
+          Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
+        </td>
+        <td class="align-center">
+          {% if item.discount and (item.discount.discount_percentage or item.discount.discount_amount) %}
+          {% if item.discount.discount_amount %}
+          -Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}
+          {% endif %}
+          {% if item.discount.discount_percentage %}
+          <div style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage }}%)</div>
+          {% endif %}
+          {% else %}
+          -Rs.&nbsp;0.00
+          {% endif %}
+        </td>
+        <td class="align-center">
+          {% if item.tax and (item.tax.tax_percentage or item.tax.tax_amount) %}
+          {% if item.tax.tax_amount %}
+          Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}
+          {% endif %}
+          {% if item.tax.tax_percentage %}
+          <div style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</div>
+          {% endif %}
+          {% else %}
+          Rs.&nbsp;0.00
+          {% endif %}
+        </td>
+        <td class="align-center text-bold">
+          Rs.&nbsp;{{ "%.2f"|format(item.total_price) }}
+        </td>
+      </tr>
+      {% endfor %}
+
+      <!-- SUBTOTAL ROW -->
+      <tr class="subtotal-row">
+        <td colspan="2" class="align-center"
+          style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
+        <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
+        <td class="align-center">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
+        <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total) }}</td>
+        <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(invoice.total_amount) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ══ BOTTOM: NOTES LEFT / TOTALS RIGHT ══ -->
+  <table class="bottom-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <!-- LEFT: Notes & Terms -->
+      <td style="width: 44%; vertical-align: top; padding-right: 20px;">
+        {% if notes.notes %}
+        <div class="notes-title">Notes</div>
+        <div class="notes-content">{{ notes.notes|replace('\r', '')|replace('\n', '<br />')|safe }}</div>
+        {% endif %}
+
+        {% if notes.terms_and_conditions %}
+        <div class="notes-title">Terms &amp; Conditions</div>
+        <div class="notes-content">{{ notes.terms_and_conditions|replace('\r', '')|replace('\n', '<br />')|safe }}</div>
+        {% endif %}
+      </td>
+
+      <!-- RIGHT: Totals -->
+      <td style="width: 56%; vertical-align: top; padding-left: 10px;">
+        <table class="totals-table" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="totals-label">Taxable Amount</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal - charges.discount_total) }}</td>
+          </tr>
+          {% if charges.discount_total %}
+          <tr>
+            <td class="totals-label">Total Discount</td>
+            <td class="totals-value">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.tax_total %}
+          {% if charges.cgst %}
+          <tr>
+            <td class="totals-label">CGST{% if charges.cgst_rate %} ({{ charges.cgst_rate }}%){% endif %}
+            </td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.cgst) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.sgst %}
+          <tr>
+            <td class="totals-label">SGST{% if charges.sgst_rate %} ({{ charges.sgst_rate }}%){% endif %}
+            </td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.sgst) }}</td>
+          </tr>
+          {% endif %}
+          {% if not charges.cgst and not charges.sgst %}
+          <tr>
+            <td class="totals-label">Tax (Total)</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total) }}</td>
+          </tr>
+          {% endif %}
+          {% endif %}
+        </table>
+
+        <hr class="totals-divider">
+
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="grand-total-label">Grand Total</td>
+            <td class="grand-total-value">Rs.&nbsp;{{ "%.2f"|format(invoice.total_amount) }}</td>
+          </tr>
+          {% if invoice.amount_paid %}
+          <tr>
+            <td class="totals-label">Amount Paid</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(invoice.amount_paid) }}</td>
+          </tr>
+          {% endif %}
+          {% if invoice.balance_due %}
+          <tr>
+            <td class="totals-label" style="font-weight: bold; color: #dc2626;">Balance Due</td>
+            <td class="totals-value" style="color: #dc2626;">Rs.&nbsp;{{ "%.2f"|format(invoice.balance_due) }}</td>
+          </tr>
+          {% endif %}
+          {% if invoice.amount_in_words %}
+          <tr>
+            <td colspan="2" class="in-words">
+              <strong>In Words:</strong> {{ invoice.amount_in_words }}
+            </td>
+          </tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ SIGNATURE ══ -->
+  <table class="signature-section" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 60%;"></td>
+      <td style="width: 40%; text-align: right;">
+        {% if esign_data_uri %}
+        <div style="margin-bottom: 5px; text-align: center; width: 200px; display: inline-block;">
+          <img src="{{ esign_data_uri }}" width="120" style="max-height: 60px;">
+        </div>
+        <br>
+        {% endif %}
+        <div class="signature-line">Authorized Signatory</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ FOOTER STRIP ══ -->
+  <div id="footer_content">
+    {{ business.name }} &nbsp;|&nbsp;
+    {% if business.email %}{{ business.email }} &nbsp;|&nbsp;{% endif %}
+    {% if business.phone_number %}{{ business.phone_number }}{% endif %}
+    &nbsp;&mdash;&nbsp; Thank you for your business!
+  </div>
+
+</body>
+
+</html>

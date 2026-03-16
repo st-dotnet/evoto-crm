@@ -72,6 +72,7 @@ class PurchaseInvoice(BaseMixin, db.Model):
     # ── Relationships ─────────────────────────────────────────────────────────
     purchase_order = relationship("PurchaseOrder", backref="purchase_invoices")
     vendor = relationship("Vendor")
+    business = relationship("Business", foreign_keys=[business_id])
     items = relationship(
         "PurchaseInvoiceItem",
         back_populates="purchase_invoice",
