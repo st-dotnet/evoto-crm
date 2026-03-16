@@ -158,14 +158,7 @@ const GlobalConfig = () => {
     fetchAssets()
   }, [])
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = (error) => reject(error)
-    })
-  }
+
 
   const handleSave = async () => {
     if (!siteLogoFile && !esignFile) {
@@ -175,17 +168,17 @@ const GlobalConfig = () => {
 
     setIsSaving(true)
     try {
-      const payload: { logo?: string; esign?: string } = {}
+      const formData = new FormData()
       
       if (siteLogoFile) {
-        payload.logo = await fileToBase64(siteLogoFile)
+        formData.append("logo", siteLogoFile)
       }
       
       if (esignFile) {
-        payload.esign = await fileToBase64(esignFile)
+        formData.append("esign", esignFile)
       }
 
-      const response = await updateGlobalAssets(payload)
+      const response = await updateGlobalAssets(formData)
       
       if (response.success) {
         toast.success("Global assets updated successfully!")

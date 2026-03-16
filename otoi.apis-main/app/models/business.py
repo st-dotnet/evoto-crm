@@ -64,7 +64,7 @@ class GlobalConfig(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
     business_id = Column(Integer, ForeignKey('businesses.id', ondelete="CASCADE"), nullable=False)
     key = Column(String(100), nullable=False)  # 'site_logo', 'e_sign'
-    path = Column(String(500), nullable=False)
+    value = Column(String(500), nullable=False)
 
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid", ondelete="SET NULL"), nullable=True)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid", ondelete="SET NULL"), nullable=True)

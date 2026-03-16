@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, request, jsonify, current_app
 from app.extensions import db
 from app.models.business import Business, GlobalConfig
-from app.utils.file_storage import save_base64_image
+from werkzeug.utils import secure_filename
 from app.utils.stamping import set_updated_fields, set_created_fields
 
 business_config_blueprint = Blueprint("business_config", __name__)
@@ -12,36 +12,37 @@ def update_global_assets():
     """
     Update business global assets (logo and e-sign) in global_config table.
     """
-    data = request.json
     business = Business.query.first()
     
     if not business:
         return jsonify({"message": "Business not found"}), 404
-        
     assets_to_update = {
-        "site_logo": data.get("logo"),
-        "e_sign": data.get("esign")
+        "site_logo": request.files.get("logo"),
+        "e_sign": request.files.get("esign")
     }
     
     updated_keys = []
     
-    for key, base64_data in assets_to_update.items():
-        if base64_data:
+    for key, file_obj in assets_to_update.items():
+        if file_obj:
+            # Secure the filename
+            original_filename = secure_filename(file_obj.filename)
+            ext = os.path.splitext(original_filename)[1] or '.png' # Fallback to png if no extension
+            filename = f"{key}_{business.id}{ext}"
+            
             # Save file to disk
-            filename = f"{key}_{business.id}.png"
-            save_base64_image(
-                base64_data, 
-                current_app.config['BUSINESS_ASSETS_FOLDER'], 
-                filename
-            )
+            folder_path = current_app.config['BUSINESS_ASSETS_FOLDER']
+            os.makedirs(folder_path, exist_ok=True)
+            filepath = os.path.join(folder_path, filename)
+            file_obj.save(filepath)
             
             # Update or Create row in global_config
             asset = GlobalConfig.query.filter_by(business_id=business.id, key=key).first()
             if not asset:
-                asset = GlobalConfig(business_id=business.id, key=key, path=filename)
+                asset = GlobalConfig(business_id=business.id, key=key, value=filename)
                 set_created_fields(asset)
             else:
-                asset.path = filename
+                asset.value = filename
             
             set_updated_fields(asset)
             db.session.add(asset)
@@ -69,8 +70,8 @@ def get_global_assets():
     result = {}
     for asset in assets:
         if asset.key == 'site_logo':
-            result['logo_path'] = asset.path
+            result['logo_path'] = asset.value
         elif asset.key == 'e_sign':
-            result['esign_path'] = asset.path
+            result['esign_path'] = asset.value
             
     return jsonify(result), 200

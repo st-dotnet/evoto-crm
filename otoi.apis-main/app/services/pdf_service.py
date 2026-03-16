@@ -47,8 +47,8 @@ def get_business_asset_data_uri(business_id, key):
         return None
         
     # Construct the absolute path on the filesystem
-    # config.path is something like 'site_logo_1.png'
-    asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.path)
+    # config.value is something like 'site_logo_1.png'
+    asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.value)
     
     if os.path.exists(asset_path):
         try:
