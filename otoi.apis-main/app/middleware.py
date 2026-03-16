@@ -41,7 +41,7 @@ def extract_jwt_info():
     ]
     
     # Check if current endpoint is public or a static file
-    if request.path.startswith('/static/') or any(request.path.startswith(endpoint) for endpoint in public_endpoints):
+    if request.path.startswith('/static/') or request.path.startswith('/api/static/') or any(request.path.startswith(endpoint) for endpoint in public_endpoints):
         return None
 
     # Require authentication for all other endpoints
