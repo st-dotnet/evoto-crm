@@ -19,8 +19,7 @@ import {
     Eye,
     Trash2,
     CreditCard,
-    FileText,
-    Receipt
+    FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -31,44 +30,47 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
-import { getInvoices, deleteInvoice, getCustomerNamesDropdown, getInvoiceNumbersDropdown } from "../services/invoice.service";
-import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
+import { getCreditNotes, deleteCreditNote, getCustomerNamesDropdown, getCreditNoteNumbersDropdown, getCreditNoteById, updateInvoiceStatus, checkCreditNoteExistsForInvoice } from '../service/creditIn.service';
+import axios from 'axios';
 
-interface Invoice {
+interface CreditNote {
     id: string;
     date: string;
-    invoice_number: string;
+    credit_note_number: string;
     party_name: string;
-    due_date: string;
+    invoice_no: string;
     amount: number;
-    total_amount: number;
-    amount_paid: number;
-    balance_due: number;
-    payment_status: string;
+    status: string;
 }
 
-const InvoicePage = () => {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+interface CreditNoteNumberItem {
+    uuid: string;
+    credit_note_number: string;
+    customer_id?: string;
+}
+
+const CreditInpage = () => {
+    const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
     const [invoicesWithCreditNotes, setInvoicesWithCreditNotes] = useState<Set<string>>(new Set());
     const [isCheckingCreditNote, setIsCheckingCreditNote] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'unpaid' | 'refunded'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [searchType, setSearchType] = useState<'party_name' | 'invoice_number'>('party_name');
+    const [searchType, setSearchType] = useState<'party_name' | 'credit_note_number'>('party_name');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [allCustomerNames, setAllCustomerNames] = useState<string[]>([]);
-    const [allInvoiceNumbers, setAllInvoiceNumbers] = useState<string[]>([]);
-    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+    const [allCreditNoteNumbers, setAllCreditNoteNumbers] = useState<string[] | CreditNoteNumberItem[]>([]);
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[] | CreditNoteNumberItem[]>([]);
     const [isSearchLoading, setIsSearchLoading] = useState(false);
     const [isDropdownLoading, setIsDropdownLoading] = useState(false);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+    const [creditNoteToDelete, setCreditNoteToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
@@ -77,106 +79,184 @@ const InvoicePage = () => {
     const fetchAutocompleteData = useCallback(async () => {
         setIsDropdownLoading(true);
         try {
-            const [customerResponse, invoiceNumberResponse] = await Promise.all([
+            const [customerResponse, creditNoteNumberResponse] = await Promise.all([
                 getCustomerNamesDropdown(),
-                getInvoiceNumbersDropdown()
+                getCreditNoteNumbersDropdown()
             ]);
 
             if (customerResponse.success && customerResponse.data) {
-                const customerNames = Array.isArray(customerResponse.data)
-                    ? customerResponse.data.map((item: any) => item.name || item).filter(Boolean)
+                let customerData = customerResponse.data;
+                if (customerData.data && Array.isArray(customerData.data)) {
+                    customerData = customerData.data;
+                }
+                
+                const customerNames = Array.isArray(customerData)
+                    ? [...new Set(customerData
+                        .filter((item: any) => item.party_name && item.party_name.trim())
+                        .map((item: any) => item.party_name.trim())
+                    )].sort()
                     : [];
                 setAllCustomerNames(customerNames);
+            } else {
+                setAllCustomerNames([]);
             }
 
-            if (invoiceNumberResponse.success && invoiceNumberResponse.data) {
-                const invoiceNumbers = Array.isArray(invoiceNumberResponse.data)
-                    ? invoiceNumberResponse.data.map((item: any) => item.invoice_number || item).filter(Boolean)
+            if (creditNoteNumberResponse.success && creditNoteNumberResponse.data) {
+                // Handle nested structure - data is nested under data.credit_notes
+                let creditNoteData = creditNoteNumberResponse.data;
+                if (creditNoteData.data && creditNoteData.data.credit_notes) {
+                    creditNoteData = creditNoteData.data.credit_notes;
+                } else if (creditNoteData.credit_notes) {
+                    creditNoteData = creditNoteData.credit_notes;
+                }
+                const creditNoteNumbers = Array.isArray(creditNoteData)
+                    ? creditNoteData.map((item: any) => item.credit_note_number || item).filter(Boolean)
                     : [];
-                setAllInvoiceNumbers(invoiceNumbers);
+                setAllCreditNoteNumbers(creditNoteNumbers);
+            } else {
+                setAllCreditNoteNumbers([]);
             }
         } catch (error) {
-            console.error('Error fetching autocomplete data:', error);
+            setAllCustomerNames([]);
+            setAllCreditNoteNumbers([]);
         } finally {
             setIsDropdownLoading(false);
         }
-    }, []);
+    }, [refreshKey]);
 
-    // Fetch autocomplete data on mount and when search type changes
     useEffect(() => {
         fetchAutocompleteData();
     }, [fetchAutocompleteData]);
 
-    // Handle search type change
-    const handleSearchTypeChange = (type: 'party_name' | 'invoice_number') => {
+    const handleSearchTypeChange = (type: 'party_name' | 'credit_note_number') => {
         setSearchType(type);
         setShowSuggestions(false);
         setSearchTerm('');
-        // Clear filtered suggestions immediately for better UX
-        setFilteredSuggestions(type === 'party_name' ? allCustomerNames : allInvoiceNumbers);
+        setFilteredSuggestions(type === 'party_name' ? allCustomerNames : allCreditNoteNumbers);
     };
 
-    // Filter suggestions based on search term and type
     useEffect(() => {
         if (searchTerm) {
             const suggestions = searchType === 'party_name'
                 ? allCustomerNames.filter(name =>
                     name.toLowerCase().includes(searchTerm.toLowerCase())
                 )
-                : allInvoiceNumbers.filter(number =>
-                    number.toLowerCase().includes(searchTerm.toLowerCase())
-                );
+                : allCreditNoteNumbers.filter(item => {
+                    const displayValue = typeof item === 'string' ? item : item.credit_note_number || '';
+                    return displayValue.toLowerCase().includes(searchTerm.toLowerCase());
+                }) as string[] | CreditNoteNumberItem[];
             setFilteredSuggestions(suggestions);
         } else {
-            // Update suggestions but don't show them automatically
-            const suggestions = searchType === 'party_name' ? allCustomerNames : allInvoiceNumbers;
+            const suggestions = searchType === 'party_name' ? allCustomerNames : allCreditNoteNumbers;
             setFilteredSuggestions(suggestions);
         }
-    }, [searchTerm, searchType, allCustomerNames, allInvoiceNumbers]);
+    }, [searchTerm, searchType, allCustomerNames, allCreditNoteNumbers]);
 
-  // Fetch invoices from database
-  const fetchInvoices = useCallback(async (params: TDataGridRequestParams) => {
-    setIsLoading(true);
-    try {
-      const response = await getInvoices(
-        searchTerm,
-        params.pageIndex + 1,
-        params.pageSize,
-        searchType === 'party_name' ? searchTerm : '',
-        searchType === 'invoice_number' ? searchTerm : '',
-        selectedStatus === 'all' ? '' : selectedStatus
-      );
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
-      if (response.success && response.data) {
-        const invoicesData = response.data.data || response.data;
+    // Removed the problematic refresh effect
 
-        const transformedInvoices = invoicesData.map((item: any) => ({
-          id: item.uuid,
-          date: item.invoice_date || item.created_at,
-          invoice_number: item.invoice_number,
-          party_name: item.customer_name || 'N/A',
-          due_date: item.due_date,
-          amount: item.total_amount || 0,
-          total_amount: item.total_amount || 0,
-          amount_paid: item.amount_paid || 0,
-          balance_due: item.balance_due || 0,
-          payment_status: item.payment_status || 'unpaid',
-        }));
-        setInvoices(transformedInvoices);
+    const handleCreditNoteUpdate = (event: CustomEvent) => {
+        // Refresh the credit note data to show updated status
+        setRefreshKey(prev => prev + 1);
+    };
 
-        // Check which invoices have credit notes
-        checkInvoicesForCreditNotes(transformedInvoices);
-
-        // Return data for server-side DataGrid
-        return {
-          data: transformedInvoices,
-          totalCount: response.data.pagination?.total || transformedInvoices.length,
+    useEffect(() => {
+        window.addEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
         };
+    }, [creditNotes]);
+
+    // Filter credit notes by status (kept for compatibility but not used with server-side filtering)
+    const filteredCreditNotes = useMemo(() => {
+        return creditNotes;
+    }, [creditNotes]);
+
+    const fetchCreditNotes = useCallback(async (params: TDataGridRequestParams) => {
+        setIsLoading(true);
+        try {
+            const apiParams = {
+                page: params.pageIndex + 1, // DataGrid uses 0-based indexing
+                per_page: params.pageSize,
+                sort: params.sorting?.[0]?.id,
+                order: params.sorting?.[0]?.desc ? 'desc' : 'asc',
+                ...(searchTerm && {
+                    [searchType === 'party_name' ? 'party_name' : 'credit_note_number']: searchTerm
+                }),
+                status: selectedStatus === 'all' ? '' : selectedStatus
+            };
+
+            const response = await getCreditNotes(apiParams);
+            
+            if (response.success && response.data) {
+                const creditNotesData = response.data.credit_notes || response.data.data || response.data;
+               
+                // Handle nested structure - credit_notes might be nested under data
+                const notesArray = creditNotesData.credit_notes || creditNotesData;
+               
+                const formattedData = Array.isArray(notesArray) ? notesArray.map((note: any) => ({
+                    id: note.uuid?.toString() || note.id?.toString() || '',
+                    date: note.credit_note_date || note.date || '',
+                    credit_note_number: note.credit_note_number || '',
+                    party_name: note.customer_name || (() => {
+                        const customer = note.customer;
+                        if (customer) {
+                            const name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+                            return name || note.party_name || '';
+                        }
+                        return note.party_name || '';
+                    })(),
+                    invoice_no: note.invoice_number || note.invoice_no || '',
+                    amount: note.total_amount || note.amount || 0,
+                    status: note.status || 'draft'
+                })) : [];
+                
+                // Check if backend returned pagination info
+                let totalCount = response.data.data?.pagination?.total || response.data.pagination?.total || response.data.total;
+                
+                if (!totalCount) {
+                    // Backend didn't return pagination info, fetch all items to get total count
+                    try {
+                        const allItemsResponse = await getCreditNotes({
+                            per_page: 1000, // Fetch all items
+                            sort: apiParams.sort,
+                            order: apiParams.order,
+                            ...(searchTerm && {
+                                [searchType === 'party_name' ? 'party_name' : 'credit_note_number']: searchTerm
+                            }),
+                            status: selectedStatus === 'all' ? '' : selectedStatus
+                        });
+                        
+                        if (allItemsResponse.success && allItemsResponse.data) {
+                            const allCreditNotesData = allItemsResponse.data.credit_notes || allItemsResponse.data.data || allItemsResponse.data;
+                            const allNotesArray = allCreditNotesData.credit_notes || allCreditNotesData;
+                            totalCount = Array.isArray(allNotesArray) ? allNotesArray.length : formattedData.length;
+                        } else {
+                            totalCount = formattedData.length;
+                        }
+                    } catch (error) {
+                        totalCount = formattedData.length;
+                    }
+                }
+                
+                return {
+                    data: formattedData,
+                    totalCount: totalCount,
+                };
+            } else {
+                throw new Error(response.error || 'Failed to fetch credit notes');
             }
-        } catch (error) {
-            console.error('Error fetching invoices:', error);
-            toast.error('Failed to fetch invoices');
-            setInvoices([]);
+        } catch (error: any) {
+            console.error('Error fetching credit notes:', error);
+            toast.error(error.message || 'Failed to fetch credit notes');
+            setCreditNotes([]);
             return {
                 data: [],
                 totalCount: 0,
@@ -184,105 +264,71 @@ const InvoicePage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, searchType, selectedStatus]);
-
-    // Check which invoices have credit notes
-    const checkInvoicesForCreditNotes = async (invoiceList: Invoice[]) => {      
-        const invoiceIds = invoiceList.map(inv => inv.id);
-        const creditNoteChecks = invoiceIds.map(async (invoiceId) => {
-            try {
-                const response = await checkCreditNoteExistsForInvoice(invoiceId);
-                return { invoiceId, hasCreditNote: response.success ? response.data.hasCreditNote : false };
-            } catch (error) {
-                console.error(`Error checking credit note for invoice ${invoiceId}:`, error);
-                return { invoiceId, hasCreditNote: false };
-            }
-        });
-
-        const results = await Promise.all(creditNoteChecks);
-        const invoicesWithNotes = new Set(
-            results.filter(result => result.hasCreditNote).map(result => result.invoiceId)
-        );
-        
-        setInvoicesWithCreditNotes(invoicesWithNotes);
-    };
-
-    // Listen for credit note updates to refresh invoice data
-    useEffect(() => {
-        const handleCreditNoteUpdate = (event: CustomEvent) => {
-            // Refresh the invoice data to show updated status
-            setRefreshKey(prev => prev + 1);
-            
-            // Also refresh credit note status for current invoices
-            if (invoices.length > 0) {
-                checkInvoicesForCreditNotes(invoices);
-            }
-        };
-
-        window.addEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
-        
-        return () => {
-            window.removeEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
-        };
-    }, [invoices]);
-
-    // Filter invoices by payment status (kept for compatibility but not used with server-side filtering)
-    const filteredInvoices = useMemo(() => {
-        return invoices;
-    }, [invoices]);
+    }, [debouncedSearchTerm, searchType, selectedStatus, refreshKey]);
 
     const handleDelete = async (id: string) => {
-        // Prevent any pending navigation
         window.event?.stopPropagation();
         window.event?.preventDefault();
-
-        setInvoiceToDelete(id);
+        setCreditNoteToDelete(id);
         setShowDeleteDialog(true);
     };
 
     const handleDeleteConfirm = async () => {
-        if (!invoiceToDelete || isDeleting) return;
+        if (!creditNoteToDelete || isDeleting) return;
         setIsDeleting(true);
-
-        const response = await deleteInvoice(invoiceToDelete);
-        if (response.success) {
-            toast.success('Invoice deleted successfully');
-            setRefreshKey(prev => prev + 1);
-        } else {
-            toast.error(response.error || 'Failed to delete invoice');
+        try {
+            // Get credit note details to find linked invoice before deleting
+            const creditNoteResponse = await getCreditNoteById(creditNoteToDelete);
+            let linkedInvoiceId = null;
+            
+            if (creditNoteResponse.success && creditNoteResponse.data?.data) {
+                const creditNoteData = creditNoteResponse.data.data;
+                linkedInvoiceId = creditNoteData.linked_invoice_id || creditNoteData.linkToInvoice;
+            }
+            
+            // Delete the credit note
+                // Delete the credit note
+            const response = await deleteCreditNote(creditNoteToDelete);
+            if (response.success) {
+                toast.success('Credit note deleted successfully');
+                setRefreshKey(prev => prev + 1); // Refresh autocomplete data
+                
+                // Skip invoice status update due to API CORS issues
+                // TODO: Re-enable when API endpoints are fixed
+                if (linkedInvoiceId) {
+                    // Invoice status update skipped
+                }
+                
+                // Trigger a custom event to notify CreateCreditNotePage to refresh invoice dropdown
+                window.dispatchEvent(new CustomEvent('creditNoteDeleted', { 
+                    detail: { creditNoteId: creditNoteToDelete } 
+                }));
+            } 
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to delete credit note');
         }
-
         setShowDeleteDialog(false);
-        setInvoiceToDelete(null);
+        setCreditNoteToDelete(null);
         setIsDeleting(false);
     };
 
     const handleDeleteCancel = () => {
         setShowDeleteDialog(false);
-        setInvoiceToDelete(null);
+        setCreditNoteToDelete(null);
     };
 
-    const getPaymentStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            paid: 'bg-green-100 text-green-800',
-            partial: 'bg-yellow-100 text-yellow-800',
+            active: 'bg-green-100 text-green-800',
+            draft: 'bg-gray-100 text-gray-800',
+            cancelled: 'bg-red-100 text-red-800',
+            refunded: 'bg-blue-100 text-blue-800',
             unpaid: 'bg-red-100 text-red-800',
         };
         return styles[status] || 'bg-gray-100 text-gray-800';
     };
 
-
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            draft: 'bg-gray-100 text-gray-800',
-            sent: 'bg-blue-100 text-blue-800',
-            paid: 'bg-green-100 text-green-800',
-            overdue: 'bg-red-100 text-red-800',
-        };
-        return styles[status] || 'bg-gray-100 text-gray-800';
-    };
-
-    const columns = useMemo<ColumnDef<Invoice>[]>(() => [
+    const columns = useMemo<ColumnDef<CreditNote>[]>(() => [
         {
             id: "select",
             header: () => (
@@ -317,10 +363,10 @@ const InvoicePage = () => {
             },
         },
         {
-            accessorKey: "invoice_number",
+            accessorKey: "credit_note_number",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Invoice Number"
+                    title="Credit Note Number"
                     column={column}
                     className="justify-start"
                 />
@@ -331,7 +377,7 @@ const InvoicePage = () => {
                 </div>
             ),
             meta: {
-                headerClassName: "min-w-[100px]",
+                headerClassName: "min-w-[150px]",
             },
         },
         {
@@ -353,25 +399,21 @@ const InvoicePage = () => {
             },
         },
         {
-            accessorKey: "due_date",
+            accessorKey: "invoice_no",
             header: ({ column }) => (
                 <DataGridColumnHeader
-                    title="Due In"
+                    title="Invoice No"
                     column={column}
                     className="justify-start"
                 />
             ),
-            cell: (info) => {
-                const dueDate = new Date(info.getValue() as string);
-                const isOverdue = dueDate < new Date();
-                return (
-                    <div className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-                        {dueDate.toLocaleDateString()}
-                    </div>
-                );
-            },
+            cell: (info) => (
+                <div className="text-sm text-gray-900">
+                    {info.getValue() as string}
+                </div>
+            ),
             meta: {
-                headerClassName: "min-w-[100px]",
+                headerClassName: "min-w-[120px]",
             },
         },
         {
@@ -394,7 +436,7 @@ const InvoicePage = () => {
             },
         },
         {
-            accessorKey: "payment_status",
+            accessorKey: "status",
             header: ({ column }) => (
                 <DataGridColumnHeader
                     title="Status"
@@ -403,11 +445,11 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => {
-                const invoice = info.row.original;
+                const status = info.getValue() as string;
                 return (
                     <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.payment_status)}`}>
-                            {invoice.payment_status.charAt(0).toUpperCase() + invoice.payment_status.slice(1)}
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(status)}`}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
                         </span>
                     </div>
                 );
@@ -428,7 +470,6 @@ const InvoicePage = () => {
             cell: ({ row }) => {
                 const [isOpen, setIsOpen] = useState(false);
 
-                // Update global dropdown state
                 useEffect(() => {
                     setIsDropdownOpen(isOpen);
                 }, [isOpen]);
@@ -452,7 +493,7 @@ const InvoicePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/invoices/${row.original.id}`);
+                                        navigate(`/sales/credit-note/${row.original.id}`);
                                         setIsOpen(false);
                                     }}
                                 >
@@ -464,55 +505,12 @@ const InvoicePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/invoices/${row.original.id}/edit`);
+                                        navigate(`/sales/credit-note/${row.original.id}/edit`);
                                         setIsOpen(false);
                                     }}
                                 >
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                    onSelect={async (e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        
-                                        // CHECK IF CREDIT NOTE ALREADY EXISTS - RESTRICT TO ONE PER INVOICE
-                                        setIsCheckingCreditNote(true);
-                                        try {
-                                            const checkResponse = await checkCreditNoteExistsForInvoice(row.original.id);
-                                            
-                                            if (checkResponse.success && checkResponse.data.hasCreditNote) {
-                                                
-                                                // If credit note exists, navigate to edit the first one
-                                                const existingCreditNote = checkResponse.data.creditNotes[0];
-                                                toast.info(`Credit note ${existingCreditNote.credit_note_number} already exists. Opening for editing.`);
-                                                navigate(`/sales/credit-note/edit/${existingCreditNote.uuid}`);
-                                                setIsOpen(false);
-                                                return;
-                                            } else {
-                                                navigate(`/sales/credit-note/create?invoice_id=${row.original.id}`);
-                                                setIsOpen(false);
-                                                return;
-                                            }
-                                        } catch (error) {
-                                            console.error('Error checking credit note existence:', error);
-                                            toast.warning('Unable to verify credit note status. You can proceed, but please verify no duplicates exist.');
-                                            navigate(`/sales/credit-note/create?invoice_id=${row.original.id}`);
-                                            setIsOpen(false);
-                                            return;
-                                        } finally {
-                                            setIsCheckingCreditNote(false);
-                                        }
-                                    }}
-                                    disabled={isCheckingCreditNote}
-                                    className={isCheckingCreditNote ? 'opacity-70' : ''}
-                                >
-                                    <Receipt className="mr-2 h-4 w-4" />
-                                    Create Credit Note
-                                    {isCheckingCreditNote && (
-                                        <span className="ml-2 text-xs text-blue-600">(Checking...)</span>
-                                    )}
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
@@ -536,10 +534,9 @@ const InvoicePage = () => {
     ], []);
 
     return (
-
         <div className="container-fluid p-6">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Invoices</h1>
+                <h1 className="text-2xl font-bold">Credit Notes</h1>
                 <div className="flex items-center gap-2">
                     <div className="w-44">
                         <DropdownMenu>
@@ -547,10 +544,9 @@ const InvoicePage = () => {
                                 <Button variant="outline" size="sm" className="h-8 w-full gap-1">
                                     <Filter className="h-3.5 w-3.5" />
                                     <span className="truncate">
-                                        {selectedStatus === 'all' && 'All Invoices'}
-                                        {selectedStatus === 'paid' && 'Paid'}
+                                        {selectedStatus === 'all' && 'All Credit Notes'}
                                         {selectedStatus === 'unpaid' && 'Unpaid'}
-                                        {selectedStatus === 'partial' && 'Partial'}
+                                        {selectedStatus === 'refunded' && 'Refunded'}
                                     </span>
                                     <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                                 </Button>
@@ -564,19 +560,8 @@ const InvoicePage = () => {
                                     className="flex items-center gap-2"
                                 >
                                     <Circle className="h-4 w-4 text-gray-500" />
-                                    <span>All Invoices</span>
+                                    <span>All Credit Notes</span>
                                     {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedStatus('paid');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-green-500" />
-                                    <span>Paid</span>
-                                    {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
@@ -585,20 +570,20 @@ const InvoicePage = () => {
                                     }}
                                     className="flex items-center gap-2"
                                 >
-                                    <Circle className="h-4 w-4 text-red-500" />
+                                    <Circle className="h-4 w-4 text-orange-500" />
                                     <span>Unpaid</span>
                                     {selectedStatus === 'unpaid' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
-                                        setSelectedStatus('partial');
+                                        setSelectedStatus('refunded');
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
                                 >
-                                    <Circle className="h-4 w-4 text-yellow-500" />
-                                    <span>Partial</span>
-                                    {selectedStatus === 'partial' && <Check className="h-4 w-4 ml-auto" />}
+                                    <Circle className="h-4 w-4 text-blue-500" />
+                                    <span>Refunded</span>
+                                    {selectedStatus === 'refunded' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -615,11 +600,11 @@ const InvoicePage = () => {
                     <Button
                         size="sm"
                         className="h-8 gap-1"
-                        onClick={() => navigate('/invoices/new-invoice')}
+                        onClick={() => navigate('/sales/credit-note/create')}
                     >
                         <Plus className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                            Create Invoice
+                            Create Credit Note
                         </span>
                     </Button>
                 </div>
@@ -639,7 +624,7 @@ const InvoicePage = () => {
                                                     Loading...
                                                 </span>
                                             ) : (
-                                                searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by invoice number...')
+                                                searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by credit note number...')
                                             )}
                                             {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
                                         </Button>
@@ -652,7 +637,7 @@ const InvoicePage = () => {
                                             }}
                                             className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
                                         >
-                                            <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Invoices'}</span>
+                                            <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Credit Notes'}</span>
                                         </DropdownMenuItem>
                                         {isDropdownLoading ? (
                                             <DropdownMenuItem disabled>
@@ -662,58 +647,62 @@ const InvoicePage = () => {
                                                 </div>
                                             </DropdownMenuItem>
                                         ) : (
-                                            (searchType === 'party_name' ? allCustomerNames : allInvoiceNumbers).map((item, index) => (
-                                                <DropdownMenuItem
-                                                    key={index}
-                                                    onClick={() => {
-                                                        setSearchTerm(item);
-                                                        setRefreshKey(prev => prev + 1);
-                                                    }}
-                                                    className={searchTerm === item ? "bg-blue-50 text-blue-600" : ""}
-                                                >
-                                                    {item}
-                                                </DropdownMenuItem>
-                                            ))
+                                            (searchType === 'party_name' ? allCustomerNames : allCreditNoteNumbers).map((item, index) => {
+                                                const displayValue = typeof item === 'string' ? item : item.credit_note_number;
+                                                const keyValue = typeof item === 'string' ? index : item.uuid || index;
+
+                                                return (
+                                                    <DropdownMenuItem
+                                                        key={keyValue}
+                                                        onClick={() => {
+                                                            setSearchTerm(displayValue);
+                                                            setRefreshKey(prev => prev + 1);
+                                                        }}
+                                                        className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
+                                                    >
+                                                        {displayValue}
+                                                    </DropdownMenuItem>
+                                                );
+                                            })
                                         )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
+                                <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
+                                        >
+                                            <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                                            {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Credit Note'}: ${searchTerm}` : 'Filter by'}
+                                            <ChevronDown className="h-3 w-3 ml-1" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-48">
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                handleSearchTypeChange('party_name');
+                                                setShowFilterDropdown(false);
+                                            }}
+                                            className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
+                                        >
+                                            <Filter className="h-3.5 w-3.5 mr-2" />
+                                            Party Name
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                handleSearchTypeChange('credit_note_number');
+                                                setShowFilterDropdown(false);
+                                            }}
+                                            className={searchType === 'credit_note_number' ? "bg-blue-50 text-blue-600" : ""}
+                                        >
+                                            <Filter className="h-3.5 w-3.5 mr-2" />
+                                            Credit Note Number
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
-                                    >
-                                        <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                                        {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Invoice'}: ${searchTerm}` : 'Filter by'}
-                                        <ChevronDown className="h-3 w-3 ml-1" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-48">
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            handleSearchTypeChange('party_name');
-                                            setShowFilterDropdown(false);
-                                        }}
-                                        className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
-                                    >
-                                        <Filter className="h-3.5 w-3.5 mr-2" />
-                                        Party Name
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            handleSearchTypeChange('invoice_number');
-                                            setShowFilterDropdown(false);
-                                        }}
-                                        className={searchType === 'invoice_number' ? "bg-blue-50 text-blue-600" : ""}
-                                    >
-                                        <Filter className="h-3.5 w-3.5 mr-2" />
-                                        Invoice Number
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                         </div>
                     </div>
                 </div>
@@ -732,21 +721,19 @@ const InvoicePage = () => {
                         key={refreshKey}
                         columns={columns}
                         serverSide={true}
-                        onFetchData={fetchInvoices}
+                        onFetchData={fetchCreditNotes}
                         rowSelection
                         getRowId={(row: any) => row.id?.toString()}
                         pagination={{ size: 5 }}
                         onRowClick={(row: any) => {
-                            // Don't navigate if delete dialog is open or any dropdown is open
                             if (showDeleteDialog || isDropdownOpen) {
                                 return;
                             }
-                            // Check if the click originated from a dropdown trigger
                             const clickedElement = document.activeElement;
                             if (clickedElement && clickedElement.getAttribute('data-dropdown-trigger') === 'true') {
                                 return;
                             }
-                            navigate(`/invoices/${row.original.id}`);
+                            navigate(`/sales/credit-note/${row.original.id}`);
                         }}
                         layout={{
                             classes: {
@@ -757,7 +744,6 @@ const InvoicePage = () => {
                 </div>
             </div>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
                     <div className="p-6 text-center">
@@ -765,10 +751,10 @@ const InvoicePage = () => {
                             <Trash2 className="h-6 w-6 text-red-600" />
                         </div>
                         <DialogTitle className="text-lg font-semibold text-gray-900 mb-4">
-                            Delete Invoice
+                            Delete Credit Note
                         </DialogTitle>
                         <DialogDescription className="text-sm text-gray-600">
-                            Are you sure you want to delete this invoice? This action will permanently remove all the data.
+                            Are you sure you want to delete this credit note? This action will permanently remove all of its data from our servers.
                         </DialogDescription>
                     </div>
                     <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3">
@@ -800,6 +786,7 @@ const InvoicePage = () => {
             </Dialog>
         </div>
     );
+
 };
 
-export default InvoicePage;
+export { CreditInpage };

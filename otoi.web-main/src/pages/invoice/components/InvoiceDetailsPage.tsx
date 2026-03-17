@@ -54,6 +54,7 @@ import {
   createPaymentIn,
   generatePaymentNumber,
 } from "../../payment-in/services/payment-in.service";
+import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import { cn } from "@/lib/utils";
 
 interface InvoiceItem {
@@ -102,6 +103,7 @@ interface InvoiceData {
   total_amount: number;
   amount_paid: number;
   balance_due: number;
+  payment_discount?: number;
   notes?: string;
   terms_and_conditions?: string;
   payment_terms?: string;
@@ -117,6 +119,7 @@ const InvoiceDetailsPage: React.FC = () => {
   const [isPaymentHistoryOpen, setIsPaymentHistoryOpen] = useState(false);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const [creditNotes, setCreditNotes] = useState<any[]>([]);
 
   // Payment Form State
   interface PaymentForm {
@@ -142,8 +145,10 @@ const InvoiceDetailsPage: React.FC = () => {
   useEffect(() => {
     if (id) {
       fetchInvoiceData();
+      fetchCreditNotesForInvoice();
     }
   }, [id]);
+
 
   const fetchInvoiceData = async () => {
     setIsLoading(true);
@@ -163,6 +168,35 @@ const InvoiceDetailsPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const fetchCreditNotesForInvoice = async () => {
+    try {
+      const response = await checkCreditNoteExistsForInvoice(id!);
+      if (response.success && response.data) {
+        setCreditNotes(response.data.creditNotes || []);
+      }
+    } catch (error) {
+      console.error("Error fetching credit notes:", error);
+      setCreditNotes([]);
+    }
+  };
+
+  const getTotalCreditNoteAmount = () => {
+    return creditNotes.reduce((total, creditNote) => total + (creditNote.total_amount || 0), 0);
+  };
+
+  const getPendingAmount = () => {
+    if (!invoiceData) return 0;
+    // Use backend's corrected balance_due which now includes credit notes
+    if (invoiceData.balance_due !== undefined) {
+      return Math.max(0, invoiceData.balance_due);
+    }
+    // Fallback calculation for backward compatibility
+    const creditNotesTotal = getTotalCreditNoteAmount();
+    const manualBalance = Math.max(0, invoiceData.total_amount - creditNotesTotal - (invoiceData.amount_paid || 0) - (invoiceData.payment_discount || 0));
+    return manualBalance;
+  };
+
 
   const handleDownloadPDF = async () => {
     if (!invoiceRef.current) return;
@@ -255,8 +289,10 @@ const InvoiceDetailsPage: React.FC = () => {
 
   const handleRecordPayment = () => {
     if (!invoiceData) return;
+    // Use the calculated pending amount after credit notes
+    const maxPayableAmount = getPendingAmount();
     setPaymentForm({
-      amountReceived: roundToTwo(invoiceData.amount_paid),
+      amountReceived: roundToTwo(maxPayableAmount),
       discount: 0,
       date: new Date(),
       mode: "cash",
@@ -268,13 +304,14 @@ const InvoiceDetailsPage: React.FC = () => {
 
   const validateAmountReceived = (amount: number) => {
     if (!invoiceData) return;
-    const maxAmount = invoiceData.balance_due;
+    // Use the calculated pending amount after credit notes
+    const pendingAmount = getPendingAmount();
     const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-    const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
+    const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
     
     if (amount > maxAllowedAmount) {
       setAmountError(
-        `Amount received cannot exceed ${formatCurrency(maxAllowedAmount)} (balance due: ${formatCurrency(maxAmount)} - discount: ${formatCurrency(currentDiscount)})`,
+        `Amount received cannot exceed ${formatCurrency(maxAllowedAmount)} (pending amount: ${formatCurrency(pendingAmount)} - discount: ${formatCurrency(currentDiscount)})`,
       );
     } else {
       setAmountError("");
@@ -664,6 +701,7 @@ const InvoiceDetailsPage: React.FC = () => {
     return styles[status] || "bg-gray-100 text-gray-800";
   };
 
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
@@ -795,7 +833,7 @@ const InvoiceDetailsPage: React.FC = () => {
               <Clock className="h-4 w-4" />
               Payment History
             </Button>
-            {invoiceData.balance_due > 0 && (
+            {Math.max(0, invoiceData.total_amount - (invoiceData.amount_paid + getTotalCreditNoteAmount())) > 0 && (
               <Button
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
@@ -1223,7 +1261,7 @@ const InvoiceDetailsPage: React.FC = () => {
                   Initial Amount Received
                 </span>
                 <span className="text-gray-900 font-bold">
-                  {formatCurrency(0)}
+                  {formatCurrency(invoiceData.amount_paid)}
                 </span>
               </div>
             </div>
@@ -1233,7 +1271,7 @@ const InvoiceDetailsPage: React.FC = () => {
               {invoiceData.amount_paid > 0 ? (
                 <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
                   <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-bold text-blue-600">
+                    <h4 className="text-sm font-normal text-blue-600">
                       Payment in #{invoiceData.invoice_number}
                     </h4>
                     <span className="text-sm font-bold text-gray-900">
@@ -1250,16 +1288,51 @@ const InvoiceDetailsPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center">
-                  <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                    <CreditCard className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-sm text-gray-500 font-medium">
-                    No payments recorded yet
-                  </p>
-                </div>
+                <div className="text-center"></div>
               )}
             </div>
+
+            {/* Credit Note History */}
+            {creditNotes.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-bold text-gray-800 mb-3">
+                  Credit Note History
+                </h4>
+                <div className="space-y-2">
+                  {creditNotes.map((creditNote: any) => (
+                    <div
+                      key={creditNote.uuid}
+                      className="p-4 rounded-xl border border-green-100 bg-green-50/50 hover:bg-green-50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="text-sm font-normal text-green-600">
+                          Credit Note #{creditNote.credit_note_number}
+                        </h4>
+                        <span className="text-sm font-bold text-green-600">
+                          {formatCurrency(creditNote.total_amount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                        <span>
+                          {new Date(creditNote.credit_note_date).toLocaleDateString(
+                            "en-IN",
+                          )}
+                        </span>
+                        <span className={`capitalize px-2 py-1 rounded-full text-xs ${
+                          creditNote.status === 'refunded' 
+                            ? 'bg-red-100 text-red-700' 
+                            : creditNote.status === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {creditNote.status || 'active'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar Footer */}
@@ -1271,15 +1344,23 @@ const InvoiceDetailsPage: React.FC = () => {
                   {formatCurrency(invoiceData.amount_paid)}
                 </span>
               </div>
+              {creditNotes.length > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-green-600">Credit Note(s) Applied</span>
+                  <span className="text-green-600">
+                    -{formatCurrency(getTotalCreditNoteAmount())}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-sm font-bold">
                 <span className="text-gray-600">Balance Amount</span>
                 <span className="text-red-600">
-                  {formatCurrency(invoiceData.balance_due)}
+                  {formatCurrency(getPendingAmount())}
                 </span>
               </div>
             </div>
 
-            {invoiceData.balance_due > 0 && (
+            {getPendingAmount() > 0 && (
               <Button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
                 onClick={handleActualRecordPayment}
@@ -1324,9 +1405,10 @@ const InvoiceDetailsPage: React.FC = () => {
                       }
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
+                        // Use the calculated pending amount after credit notes
+                        const pendingAmount = getPendingAmount();
                         const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
+                        const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
                         const cappedAmount = Math.min(amount, maxAllowedAmount);
                         setPaymentForm({
                           ...paymentForm,
@@ -1362,8 +1444,9 @@ const InvoiceDetailsPage: React.FC = () => {
                       }
                       onChange={(e) => {
                         const newDiscount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
+                        // Use the calculated pending amount after credit notes
+                        const pendingAmount = getPendingAmount();
+                        const maxAllowedAmount = Math.max(0, pendingAmount - newDiscount);
                         const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
                         
                         // Adjust amount received if it exceeds the new maximum allowed
@@ -1493,12 +1576,32 @@ const InvoiceDetailsPage: React.FC = () => {
                     Payment Calculation
                   </h4>
                   <div className="space-y-2">
+                    {creditNotes.length > 0 && (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600 font-medium">
+                            Original Balance Due
+                          </span>
+                          <span className="text-gray-600">
+                            {formatCurrency(invoiceData.total_amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-600 font-medium">
+                            Credit Note(s) Applied
+                          </span>
+                          <span className="text-green-600">
+                            -{formatCurrency(getTotalCreditNoteAmount())}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-red-600 font-medium">
                         Pending Amount
                       </span>
                       <span className="text-red-600 font-semibold">
-                        {formatCurrency(invoiceData.balance_due)}
+                        {formatCurrency(getPendingAmount())}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
@@ -1521,7 +1624,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         {formatCurrency(
                           Math.max(
                             0,
-                            invoiceData.balance_due -
+                            getPendingAmount() -
                               paymentForm.amountReceived -
                               paymentForm.discount,
                           ),
