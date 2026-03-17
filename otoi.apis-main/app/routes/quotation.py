@@ -187,6 +187,8 @@ def create_quotation():
         return jsonify({
             "message": "Quotation created successfully",
             "quotation_uuid": str(quotation.uuid),
+            "uuid": str(quotation.uuid),
+            "id": str(quotation.uuid),
             "quotation_number": quotation.quotation_number
         }), 201
         
@@ -722,6 +724,8 @@ def update_quotation(quotation_id):
         return jsonify({
             "message": "Quotation updated successfully",
             "quotation_uuid": str(quotation.uuid),
+            "uuid": str(quotation.uuid),
+            "id": str(quotation.uuid),
             "quotation_number": quotation.quotation_number
         }), 200
 

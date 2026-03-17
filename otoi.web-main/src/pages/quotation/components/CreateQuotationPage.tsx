@@ -1456,15 +1456,15 @@ const CreateQuotationPage = () => {
             const updatedQuotationData = {
               ...quotationData,
               quotationNo: savedQuotation.quotation_number || quotationData.quotationNo,
-              uuid: savedQuotation.uuid || savedQuotation.id,
-              id: savedQuotation.uuid || savedQuotation.id,
+              uuid: savedQuotation.quotation_uuid || savedQuotation.uuid || savedQuotation.id,
+              id: savedQuotation.quotation_uuid || savedQuotation.uuid || savedQuotation.id,
             };
 
             // Navigate to preview AFTER save
-            navigate(`/quotes/${savedQuotation.uuid || savedQuotation.id}`, {
+            navigate(`/quotes/${savedQuotation.quotation_uuid || savedQuotation.uuid || savedQuotation.id}`, {
               state: {
                 quotationData: updatedQuotationData,
-                quotationId: savedQuotation.uuid || savedQuotation.id,
+                quotationId: savedQuotation.quotation_uuid || savedQuotation.uuid || savedQuotation.id,
               },
             });
           }}
