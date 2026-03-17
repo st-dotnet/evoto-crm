@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import {
 } from "../../payment-in/services/payment-in.service";
 import { cn } from "@/lib/utils";
 import { getCustomerById } from "@/pages/parties/services/customer.service";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 interface InvoiceItem {
   uuid: string;
@@ -60,6 +61,7 @@ interface InvoiceItem {
   tax_amount: number;
   total_price: number;
   measuring_unit_id?: number;
+  image?: string | null;
 }
 
 interface Customer {
@@ -127,14 +129,27 @@ const InvoiceDetailsPage: React.FC = () => {
   });
   const [amountError, setAmountError] = useState("");
   const [updatedBalance, setUpdatedBalance] = useState(0);
+  const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
 
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id) {
       fetchInvoiceData();
+      fetchBrandingAssets();
     }
   }, [id]);
+
+  const fetchBrandingAssets = async () => {
+    try {
+      const response = await getGlobalAssets();
+      if (response.success && response.data) {
+        setBrandingAssets(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching branding assets:", error);
+    }
+  };
 
   const fetchInvoiceData = async () => {
     setIsLoading(true);
@@ -757,11 +772,19 @@ const InvoiceDetailsPage: React.FC = () => {
                   )}
                 </div>
                 <div className="flex flex-col items-end -mt-8">
-                  <img
-                    src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                    className="h-40 w-auto object-contain"
-                    alt="Evoto Technologies"
-                  />
+                  {brandingAssets?.logo_path ? (
+                    <img
+                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                      className="h-40 w-auto object-contain"
+                      alt={businessInfo?.name || "Logo"}
+                    />
+                  ) : (
+                    <img
+                      src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                      className="h-40 w-auto object-contain"
+                      alt="Evoto Technologies"
+                    />
+                  )}
                 </div>
               </>
             );
@@ -880,12 +903,27 @@ const InvoiceDetailsPage: React.FC = () => {
           <table className="w-full border border-black">
             <thead>
               <tr className="border-b-2 border-black bg-gray-100">
-                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">Item DESCRIPTION</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
-                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
-                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+                <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
+                  Item DESCRIPTION
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  IMAGE
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  QTY
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">
+                  PRICE/ITEM
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  DISC.
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                  TAX
+                </th>
+                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">
+                  TOTAL
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
@@ -893,44 +931,94 @@ const InvoiceDetailsPage: React.FC = () => {
                 <tr key={item.uuid}>
                   <td className="px-3 py-2 align-top border-r border-black">
                     <div className="flex items-start gap-1">
-                      <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
+                      <span className="font-medium text-sm text-black min-w-[20px]">
+                        {index + 1}.
+                      </span>
                       <div className="flex-1">
-                        <p className="font-medium text-sm text-black leading-snug">{item.product_name}</p>
+                        <p className="font-medium text-sm text-black leading-snug">
+                          {item.product_name}
+                        </p>
                         {item.description && (
-                          <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>
+                          <p className="text-xs text-black mt-1 leading-relaxed">
+                            {item.description}
+                          </p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                  <td className="px-3 py-2 text-center align-top border-r border-black">
+                    {item.image ? (
+                      <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-200">
+                        <img
+                          src={item.image}
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-500">—</span>
+                    )}
                   </td>
-                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
+                  <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    {item.quantity}{" "}
+                    <span className="text-[10px] ml-0.5">
+                      {getMeasuringUnit(item.measuring_unit_id)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+                    {formatCurrency(item.unit_price)}
+                  </td>
                   <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     <div className="flex flex-col items-end">
                       <span>-{formatCurrency(item.discount_amount)}</span>
-                      {item.discount_percentage > 0 && <span className="text-[10px]">({item.discount_percentage}%)</span>}
+                      {item.discount_percentage > 0 && (
+                        <span className="text-[10px]">
+                          ({item.discount_percentage}%)
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     <div className="flex flex-col items-end">
                       <span>{formatCurrency(item.tax_amount)}</span>
-                      {item.tax_percentage > 0 && <span className="text-[10px]">({item.tax_percentage}%)</span>}
+                      {item.tax_percentage > 0 && (
+                        <span className="text-[10px]">
+                          ({item.tax_percentage}%)
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
+                  <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">
+                    {formatCurrency(item.total_price)}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
-                  {formatCurrency(invoiceData.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0))}
+                <td
+                  colSpan={3}
+                  className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black"
+                >
+                  SUBTOTAL
                 </td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(invoiceData.discount_total)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(invoiceData.tax_total)}</td>
-                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  {formatCurrency(
+                    invoiceData.items.reduce(
+                      (sum, item) => sum + item.unit_price * item.quantity,
+                      0,
+                    ),
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  -{formatCurrency(invoiceData.discount_total)}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">
+                  {formatCurrency(invoiceData.tax_total)}
+                </td>
+                <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">
+                  {formatCurrency(invoiceData.total_amount)}
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -1049,6 +1137,15 @@ const InvoiceDetailsPage: React.FC = () => {
             {/* ===== Signature ===== */}
             <div className="mt-20 flex justify-end">
               <div className="text-center">
+                {brandingAssets?.esign_path && (
+                  <div className="mb-2 flex justify-center">
+                    <img
+                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.esign_path}?t=${Date.now()}`}
+                      className="h-16 w-auto object-contain"
+                      alt="Signature"
+                    />
+                  </div>
+                )}
                 <div className="w-48 border-b border-black mb-2"></div>
                 <p className="text-xs font-bold text-black uppercase">
                   Authorized Signatory

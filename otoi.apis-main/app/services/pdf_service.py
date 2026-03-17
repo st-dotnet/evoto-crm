@@ -11,6 +11,8 @@ from xhtml2pdf import pisa
 import os
 import base64
 import math
+from app.models.business import GlobalConfig
+from app.config import Config
 
 from PIL import Image
 
@@ -35,69 +37,82 @@ def get_amount_in_words(amount):
     except Exception:
         return ""
 
-import requests
-
-_cached_logo_uri = None
-
-def get_logo_data_uri():
-    global _cached_logo_uri
-    if _cached_logo_uri is not None:
-        return _cached_logo_uri
+def get_business_asset_data_uri(business_id, key):
+    """
+    Fetch a business asset (logo or e-sign) from GlobalConfig, 
+    decode the file, and return as a base64 data URI.
+    """
+    config = GlobalConfig.query.filter_by(business_id=business_id, key=key).first()
+    if not config:
+        return None
         
+    # Construct the absolute path on the filesystem
+    # config.value is something like 'site_logo_1.png'
+    asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.value)
+    
+    if os.path.exists(asset_path):
+        try:
+            with Image.open(asset_path) as img:
+                # Determine format based on extension
+                ext = os.path.splitext(asset_path)[1].lower()
+                mime = "image/png" if ext == ".png" else "image/jpeg"
+                
+                # If transparent PNG, might need conversion for some PDF engines, 
+                # but xhtml2pdf handles PNG well. 
+                # For consistency with existing logic:
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGBA")
+                    background = Image.new("RGBA", img.size, (255, 255, 255))
+                    background.paste(img, mask=img)
+                    img = background.convert("RGB")
+                    mime = "image/jpeg"
+                
+                buffer = BytesIO()
+                # Save back to buffer to get base64
+                if mime == "image/jpeg":
+                    img.save(buffer, format="JPEG", quality=95)
+                else:
+                    img.save(buffer, format="PNG")
+                    
+                encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                return f"data:{mime};base64,{encoded_string}"
+        except Exception as e:
+            print(f"Error processing PDF asset {key}: {e}")
+            try:
+                # Fallback: just read the raw bytes if PIL fails
+                with open(asset_path, "rb") as f:
+                    encoded_string = base64.b64encode(f.read()).decode("utf-8")
+                    ext = os.path.splitext(asset_path)[1].lower()
+                    mime = "image/png" if ext == ".png" else "image/jpeg"
+                    return f"data:{mime};base64,{encoded_string}"
+            except:
+                pass
+                
+    return None
+
+def get_logo_data_uri(business_id=None):
+    if business_id:
+        uri = get_business_asset_data_uri(business_id, 'site_logo')
+        if uri:
+            return uri
+
+    # Fallback to default logo
     logo_path = os.environ.get("LOGO_PATH") or os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../../otoi.web-main/public/media/app/Evoto-Logo.png")
     )
     
-    # Priority 1: Check local filesystem
     if os.path.exists(logo_path):
         try:
-            with Image.open(logo_path) as img:
-                img = img.convert("RGBA")
-                background = Image.new("RGBA", img.size, (255, 255, 255))
-                background.paste(img, mask=img)
-                background = background.convert("RGB")
-                
-                buffer = BytesIO()
-                background.save(buffer, format="JPEG", quality=90)
-                encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
-                return _cached_logo_uri
+            with open(logo_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+            return f"data:image/png;base64,{encoded_string}"
         except Exception:
-            try:
-                with open(logo_path, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
-                return _cached_logo_uri
-            except Exception:
-                pass
-                
-    # Priority 2: Try to retrieve from internet if the frontend hosts it
-    # Uses the FRONTEND_URL or a sensible default
-    try:
-        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip('/')
-        logo_url = f"{frontend_url}/media/app/Evoto-Logo.png"
-        response = requests.get(logo_url, timeout=5)
-        if response.status_code == 200:
-            try:
-                with Image.open(BytesIO(response.content)) as img:
-                    img = img.convert("RGBA")
-                    background = Image.new("RGBA", img.size, (255, 255, 255))
-                    background.paste(img, mask=img)
-                    background = background.convert("RGB")
-                    
-                    buffer = BytesIO()
-                    background.save(buffer, format="JPEG", quality=90)
-                    encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                    _cached_logo_uri = f"data:image/jpeg;base64,{encoded_string}"
-                    return _cached_logo_uri
-            except Exception:
-                encoded_string = base64.b64encode(response.content).decode("utf-8")
-                _cached_logo_uri = f"data:image/png;base64,{encoded_string}"
-                return _cached_logo_uri
-    except Exception:
-        pass
-        
+            pass
+            
     return ""
+
+def get_esign_data_uri(business_id):
+    return get_business_asset_data_uri(business_id, 'e_sign')
 
 def get_font_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +199,7 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
+            "image": item.get("image", ""),
             "hsn_sac_code": item.get("hsn_sac_code", ""),
             "quantity": qty,
             "unit_price": item.get("unit_price", 0),
@@ -269,7 +285,8 @@ def generate_invoice_pdf(invoice, items_data: list) -> BytesIO:
             "payment_discount": float(invoice.payment_discount or 0),
             "payment_status": invoice.payment_status or "unpaid",
         },
-        "logo_data_uri": get_logo_data_uri(),
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
         "roboto_font_path": get_font_path(),
         "business": {
             "name": business.name if business else "",
@@ -367,6 +384,7 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
+            "image": item.get("image", ""),
             "hsn_sac_code": item.get("hsn_sac_code", ""),
             "quantity": qty,
             "unit_price": item.get("unit_price", 0),
@@ -448,7 +466,8 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
             "amount_in_words": get_amount_in_words(float(quotation.total_amount or 0)),
             "status": quotation.status or "open",
         },
-        "logo_data_uri": get_logo_data_uri(),
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
         "roboto_font_path": get_font_path(),
         "business": {
             "name": business.name if business else "",
@@ -488,3 +507,328 @@ def generate_quotation_pdf(quotation, items_data: list) -> BytesIO:
     }
 
     return _render_pdf("pdf/quotation.html", context)
+
+
+# ── Purchase Invoice PDF ──────────────────────────────────────────────────────
+
+def generate_purchase_invoice_pdf(invoice, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Purchase Invoice.
+
+    Args:
+        invoice: PurchaseInvoice SQLAlchemy model instance (with relationships loaded).
+        items_data: Pre-built list of dicts with item details (product_name, hsn, etc).
+
+    Returns:
+        BytesIO buffer with the PDF content.
+    """
+    business = getattr(invoice, 'business', None)
+    vendor = getattr(invoice, 'vendor', None)
+
+    # Try to get the business address
+    business_address = None
+    if business and hasattr(business, 'addresses') and business.addresses:
+        business_address = business.addresses[0]
+
+    charges = invoice.charges or {}
+    notes = invoice.additional_notes or {}
+
+    # Build typed dicts for template safety
+    items = []
+    for item in items_data:
+        raw_discount = item.get("discount") or {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax") or {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description": item.get("description", ""),
+            "image": item.get("image", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity": qty,
+            "unit_price": item.get("unit_price", 0),
+            "discount": fixed_discount,
+            "tax": fixed_tax,
+            "total_price": item.get("total_price", 0),
+        })
+
+    # Calculate tax totals from items if not in charges
+    tax_total = float(charges.get("tax_total", 0) or 0)
+    subtotal = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+
+    # If charges are empty, compute from items
+    if subtotal == 0 and items:
+        subtotal = sum(
+            float(item.get("unit_price", 0)) * float(item.get("quantity", 0))
+            for item in items_data
+        )
+    if discount_total == 0 and items:
+        discount_total = sum(
+            float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) * float((item.get("discount") or {}).get("discount_percentage", 0) or 0) / 100
+            for item in items_data
+        )
+    if tax_total == 0 and items:
+        tax_total = sum(
+            (float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) - float(item.get("unit_price", 0)) * float(item.get("quantity", 0)) * float((item.get("discount") or {}).get("discount_percentage", 0) or 0) / 100) * float((item.get("tax") or {}).get("tax_percentage", 0) or 0) / 100
+            for item in items_data
+        )
+
+    taxable_amount = subtotal - discount_total
+
+    cgst = float(charges.get("cgst", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+
+    # Auto-calculate breakdown if missing
+    if tax_total > 0 and not any([cgst, sgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
+        half_tax = tax_total / 2.0
+        cgst = half_tax
+        cgst_rate = half_rate
+        sgst = half_tax
+        sgst_rate = half_rate
+
+    vendor_ctx = None
+    if vendor:
+        vendor_ctx = {
+            "vendor_name": vendor.vendor_name,
+            "company_name": vendor.company_name,
+            "mobile": vendor.mobile,
+            "email": vendor.email,
+            "gst": vendor.gst,
+            "address1": vendor.address1,
+            "city": vendor.city,
+            "state": vendor.state,
+            "country": vendor.country,
+            "pin": vendor.pin,
+        }
+
+    context = {
+        "invoice": {
+            "invoice_number": invoice.invoice_number,
+            "invoice_date": invoice.invoice_date.strftime("%d %b %Y") if invoice.invoice_date else "—",
+            "due_date": invoice.due_date.strftime("%d %b %Y") if invoice.due_date else "—",
+            "total_amount": float(invoice.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(invoice.total_amount or 0)),
+            "amount_paid": float(invoice.amount_paid or 0),
+            "balance_due": float(invoice.balance_due or 0),
+            "payment_status": invoice.payment_status or "unpaid",
+        },
+        "logo_data_uri": get_logo_data_uri(getattr(business, 'id', None)),
+        "esign_data_uri": get_esign_data_uri(getattr(business, 'id', None)),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name": business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email": business.email if business else "",
+            "gst_number": business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1,
+            "address2": getattr(business_address, "address2", ""),
+            "city": business_address.city,
+            "state": business_address.state,
+            "pin": business_address.pin,
+            "country": business_address.country,
+        } if business_address else None,
+        "vendor": vendor_ctx,
+        "charges": {
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "tax_total": tax_total,
+            "cgst": cgst,
+            "cgst_rate": cgst_rate,
+            "sgst": sgst,
+            "sgst_rate": sgst_rate,
+        },
+        "notes": {
+            "notes": notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
+        "items": items,
+    }
+
+    return _render_pdf("pdf/purchase_invoice.html", context)
+
+
+# ── Purchase Order PDF ────────────────────────────────────────────────────────
+
+def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Purchase Order.
+
+    Args:
+        po: PurchaseOrder SQLAlchemy model instance (with relationships loaded).
+        items_data: Pre-built list of dicts with item details.
+
+    Returns:
+        BytesIO buffer with the PDF content.
+    """
+    business = getattr(po, 'business', None)
+    vendor   = getattr(po, 'vendor', None)
+
+    # Try to get the business address
+    business_address = None
+    if business and hasattr(business, 'addresses') and business.addresses:
+        business_address = business.addresses[0]
+
+    notes = po.additional_notes or {}
+    charges = po.charges or {}
+
+    # Build typed dicts for template safety
+    items = []
+    for item in items_data:
+        raw_discount = item.get("discount") or {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax") or {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description":  item.get("description", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity":     qty,
+            "unit_price":   item.get("unit_price", 0),
+            "discount":     fixed_discount,
+            "tax":          fixed_tax,
+            "total_price":  item.get("total_price", 0),
+        })
+
+    # Totals — prefer charges JSON, fall back to per-item calculation
+    subtotal       = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+    tax_total      = float(charges.get("tax_total", 0) or 0)
+
+    if subtotal == 0 and items:
+        subtotal = sum(float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) for i in items_data)
+    if discount_total == 0 and items:
+        discount_total = sum(
+            float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) *
+            float((i.get("discount") or {}).get("discount_percentage", 0) or 0) / 100
+            for i in items_data
+        )
+    if tax_total == 0 and items:
+        tax_total = sum(
+            (float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) -
+             float(i.get("unit_price", 0)) * float(i.get("quantity", 0)) *
+             float((i.get("discount") or {}).get("discount_percentage", 0) or 0) / 100) *
+            float((i.get("tax") or {}).get("tax_percentage", 0) or 0) / 100
+            for i in items_data
+        )
+
+    taxable_amount = subtotal - discount_total
+    cgst = float(charges.get("cgst", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+
+    if tax_total > 0 and not any([cgst, sgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        half_rate = total_rate / 2.0
+        half_tax  = tax_total / 2.0
+        cgst = half_tax
+        cgst_rate = half_rate
+        sgst = half_tax
+        sgst_rate = half_rate
+
+    vendor_ctx = None
+    if vendor:
+        vendor_ctx = {
+            "vendor_name":  vendor.vendor_name,
+            "company_name": vendor.company_name,
+            "mobile":       vendor.mobile,
+            "email":        vendor.email,
+            "gst":          vendor.gst,
+            "address1":     vendor.address1,
+            "city":         vendor.city,
+            "state":        vendor.state,
+            "country":      vendor.country,
+            "pin":          vendor.pin,
+        }
+
+    context = {
+        "po": {
+            "po_number":      po.po_number,
+            "po_date":        po.po_date.strftime("%d %b %Y") if po.po_date else "—",
+            "delivery_date":  po.delivery_date.strftime("%d %b %Y") if po.delivery_date else "—",
+            "total_amount":   float(po.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(po.total_amount or 0)),
+            "status":         po.status or "open",
+        },
+        "logo_data_uri":   get_logo_data_uri(getattr(business, 'id', None)),
+        "esign_data_uri":  get_esign_data_uri(getattr(business, 'id', None)),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name":         business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email":        business.email if business else "",
+            "gst_number":   business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1,
+            "address2": getattr(business_address, "address2", ""),
+            "city":     business_address.city,
+            "state":    business_address.state,
+            "pin":      business_address.pin,
+            "country":  business_address.country,
+        } if business_address else None,
+        "vendor": vendor_ctx,
+        "charges": {
+            "subtotal":        subtotal,
+            "discount_total":  discount_total,
+            "tax_total":       tax_total,
+            "cgst":            cgst,
+            "cgst_rate":       cgst_rate,
+            "sgst":            sgst,
+            "sgst_rate":       sgst_rate,
+        },
+        "notes": {
+            "notes":                notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
+        "items": items,
+    }
+
+    return _render_pdf("pdf/purchase_order.html", context)
+

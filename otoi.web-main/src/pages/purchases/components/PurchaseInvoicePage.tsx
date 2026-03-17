@@ -233,8 +233,8 @@ const PurchaseInvoicePage = () => {
         const res = await recordPurchaseInvoicePayment(selectedInvoice.id, {
             amount: paymentForm.amount,
             payment_mode: paymentForm.mode,
-            notes: paymentForm.notes
-            // Note: backend doesn't support discount and date yet, but we've added them to UI
+            notes: paymentForm.notes,
+            discount: paymentForm.discount
         });
 
         if (res.success) {

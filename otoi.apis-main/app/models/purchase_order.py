@@ -37,8 +37,9 @@ class PurchaseOrder(BaseMixin, db.Model):
     additional_notes = Column(JSON, default={})
 
     # Relationships
-    vendor = relationship("Vendor")
-    items  = relationship(
+    vendor   = relationship("Vendor")
+    business = relationship("Business", foreign_keys=[business_id])
+    items    = relationship(
         "PurchaseOrderItem",
         back_populates="purchase_order",
         cascade="all, delete-orphan",

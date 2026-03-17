@@ -611,7 +611,8 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
             </div>
             <DialogTitle className="text-lg font-semibold">Delete User</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete <strong>{selectedUser?.first_name} {selectedUser?.last_name}</strong> ({selectedUser?.email})?
+              Are you sure you want to delete <strong>{selectedUser?.first_name} {selectedUser?.last_name}</strong> 
+              {/* ({selectedUser?.email})? */}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-row gap-3 mt-2">

@@ -14,8 +14,12 @@ load_dotenv()
 # from app.events import person_events  # IMPORTANT
 
 
+import os
+
 def create_app():
-    app = Flask(__name__)
+    # Use absolute path for the static folder (sibling to 'app')
+    static_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
+    app = Flask(__name__, static_folder=static_folder, static_url_path="/api/static")
     app.config.from_object("app.config.Config")
     
     # Disable strict slash matching to prevent 308 redirects
@@ -26,8 +30,12 @@ def create_app():
 
     # Enable CORS
     # CORS(app)
+    # Enable CORS for both /api/* and /static/*
     frontend_url = app.config.get("FRONTEND_URL", "http://localhost:5173")
-    CORS(app, resources={r"/api/*": {"origins": [frontend_url]}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"], expose_headers=["Authorization"], methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+    CORS(app, resources={
+        r"/api/*": {"origins": [frontend_url]},
+        r"/static/*": {"origins": [frontend_url]}
+    }, supports_credentials=True, allow_headers=["Content-Type", "Authorization"], expose_headers=["Authorization"], methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     # authentication barrier
     swagger_template = {

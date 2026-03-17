@@ -261,7 +261,7 @@ const MobileView = ({
       {rows.map((row) => {
         const lead = row.original as Lead;
         return (
-          <div
+          <div  
             key={lead.uuid}
             className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
           >
@@ -415,11 +415,23 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
     () => [
       {
         accessorKey: "id",
-        header: () => <DataGridRowSelectAll />,
-        cell: ({ row }) => <DataGridRowSelect row={row} />,
+        header: () => (
+          <div className="w-full flex items-center justify-center h-full p-0 m-0">
+            <DataGridRowSelectAll />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="w-full flex items-center justify-center h-full p-0 m-0">
+            <DataGridRowSelect row={row} />
+          </div>
+        ),
         enableSorting: false,
         enableHiding: false,
-        meta: { headerClassName: "w-0" },
+        meta: {
+          headerClassName: "w-12 text-center align-middle p-0 m-0",
+          cellClassName: "text-center align-middle pointer-events-auto p-0 m-0",
+          disableRowClick: true,
+        },
       },
       {
         accessorFn: (row) => row.first_name,

@@ -1,3 +1,4 @@
+import base64
 import random
 from sys import prefix
 import time
@@ -176,14 +177,12 @@ def get_items():
                     )
                 )
 
-        # Handle low_stock filter
+        # Handle low_stock filter - only applies to Products (Services have no stock)
         low_stock = request.args.get("low_stock")
         if low_stock == 'true':
             query = query.filter(
-                or_(
-                    Item.opening_stock <= 5,  # Products with low stock
-                    Item.opening_stock.is_(None)  # Services (NULL opening_stock)
-                )
+                Item.item_type_id == 1,          # Products only (not Services)
+                Item.opening_stock <= 5           # with low stock quantity
             )
 
         sort = request.args.get("sort", "created_at")  # Default sort by created_at
@@ -237,6 +236,15 @@ def get_items():
             item_type = item.item_type
             measuring_unit = item.measuring_unit
 
+            # Get the feature image, or the first image if no main is set
+            main_image_obj = next((img for img in (item.images or []) if img.is_main), None)
+            if not main_image_obj and item.images:
+                main_image_obj = item.images[0]
+                
+            image_base64 = None
+            if main_image_obj:
+                image_base64 = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+
             result.append({
                 "id": str(item.id),  # Convert to string for consistency
                 "uuid": str(item.id),  # Add uuid field for frontend compatibility
@@ -254,6 +262,7 @@ def get_items():
                 "description": item.description or "",
                 "measuring_unit": measuring_unit.name if measuring_unit else None,
                 "measuring_unit_id": item.measuring_unit_id,
+                "image": image_base64
             })
 
         response_data = {
@@ -339,7 +348,7 @@ def create_item():
     # if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
     #     print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
     #     return jsonify({
-    #         "message": "An item with this name already exists",
+    #         "message": "An item with this name already exit",
     #         "suggestion": "Please choose a different name"
     #     }), 400
     
@@ -347,7 +356,7 @@ def create_item():
     # Check for duplicate item_code (only among active items)
     if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
         return jsonify({
-            "message": "An Item code already exists",
+            "message": "An Item code already exit",
             "suggestion": "Please choose a different item code"
         }), 400
  
@@ -551,11 +560,12 @@ def get_item(item_id):
         if not item_id:
             return jsonify({"error": "Invalid item ID"}), 400
             
-        # Get item with related data in a single query using joins
+        # Get item with related data
         item = db.session.query(Item).options(
             db.joinedload(Item.category),
             db.joinedload(Item.item_type),
-            db.joinedload(Item.measuring_unit)
+            db.joinedload(Item.measuring_unit),
+            db.joinedload(Item.images)
         ).filter(
             Item.id == item_id,
             Item.is_deleted.is_(False)
@@ -581,6 +591,14 @@ def get_item(item_id):
             "description": item.description or "",
             "measuring_unit": item.measuring_unit.name if item.measuring_unit else None,
             "measuring_unit_id": item.measuring_unit_id,
+            "images": [
+                {
+                    "id": img.id,
+                    "url": f"data:image/png;base64,{base64.b64encode(img.image).decode('utf-8')}",
+                    "name": img.name if img.name else f"Image {img.id}",
+                    "is_main": img.is_main
+                } for img in item.images
+            ] if item.images else [],
             "created_at": item.created_at.isoformat() if item.created_at else None,
             "updated_at": item.updated_at.isoformat() if item.updated_at else None
         }
@@ -673,7 +691,7 @@ def update_item(item_id):
                 ).first()
                 if existing:
                     errors.setdefault("item_code", []).append(
-                        "Item code already exixts"
+                        "Item code already exit"
                     )      
                 else:
                     item.item_code = new_code
@@ -728,53 +746,6 @@ def update_item(item_id):
         }), 500
 
  
-@item_blueprint.route("/<uuid:item_id>", methods=["GET"])
-def get_item_by_uuid(item_id):
-    """
-    Get single item by UUID.
-    ---
-    tags:
-      - Items
-    parameters:
-      - name: item_id 
-        in: path
-        required: true
-        schema:
-          type: uuid
-    responses:
-      200:
-        description: Item details
-    """
-    item = Item.query.get_or_404(item_id)
- 
-    return jsonify({
-       "id": item.id,
- 
-        "item_name": item.item_name,
-        "item_type_id": item.item_type_id,
- 
-        # UUID stays UUID
-        "category_id": str(item.category_id),
- 
-        "measuring_unit_id": item.measuring_unit_id,
- 
-        "sales_price": float(item.sales_price or 0),
-        "purchase_price": (
-            float(item.purchase_price)
-            if item.purchase_price is not None else None
-        ),
-        "gst_tax_rate": float(item.gst_tax_rate or 0),
-        "opening_stock": (
-            float(item.opening_stock)
-            if item.opening_stock is not None else None
-        ),
- 
-        "item_code": item.item_code,
-        "hsn_code": item.hsn_code,
-        "description": item.description,
-    })
- 
-
 @item_blueprint.route("/<uuid:item_id>", methods=["DELETE"])
 def delete_item(item_id):
     """

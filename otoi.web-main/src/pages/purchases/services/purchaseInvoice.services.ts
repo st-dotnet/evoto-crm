@@ -112,12 +112,18 @@ export const getPurchaseInvoiceById = async (invoiceId: string) => {
  */
 export const recordPurchaseInvoicePayment = async (
   invoiceId: string,
-  payload: { amount: number; payment_mode?: string; notes?: string }
+  payload: { amount: number; payment_mode?: string; notes?: string; discount?: number }
 ) => {
   try {
+    // Redirection to PaymentOut service for centralizing outgoing payments
     const res = await axios.post(
-      `${API_URL}/purchase-invoices/${invoiceId}/record-payment`,
-      payload
+      `${API_URL}/payment-out/record-payment/${invoiceId}`,
+      {
+        amount_paid: payload.amount,
+        payment_mode: payload.payment_mode,
+        notes: payload.notes,
+        discount: payload.discount || 0
+      }
     );
     return { success: true, data: res.data };
   } catch (err: any) {
@@ -133,5 +139,16 @@ export const deletePurchaseInvoice = async (invoiceId: string) => {
     return { success: true, data: res.data };
   } catch (err: any) {
     return { success: false, error: err?.response?.data?.error || "Failed to delete purchase invoice" };
+  }
+};
+
+/** Update an existing purchase invoice. */
+export const updatePurchaseInvoice = async (invoiceId: string, payload: any) => {
+  try {
+    const res = await axios.put(`${API_URL}/purchase-invoices/${invoiceId}`, payload);
+    return { success: true, data: res.data };
+  } catch (err: any) {
+    const errData = err?.response?.data;
+    return { success: false, error: errData?.error || "Failed to update purchase invoice", data: errData };
   }
 };

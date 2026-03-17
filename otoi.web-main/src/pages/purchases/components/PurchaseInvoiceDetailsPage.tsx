@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import axios from "axios";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 interface PurchaseInvoiceItem {
   uuid: string;
@@ -76,7 +76,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
-  const [businessProfile, setBusinessProfile] = useState<any>(null);
+  const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
 
   // Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -90,31 +90,22 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchBusinessProfile = async () => {
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/user/profile`);
-        const user = response.data.data || response.data;
-        const business = user?.businesses?.[0] || user?.business_profile || user;
-
-        setBusinessProfile({
-          name: business?.company_name || business?.name || business?.business_name || user?.company_name || "Evoto Technologies",
-          email: business?.email || user?.email,
-          phone: business?.phone_number || business?.phone || business?.mobile || user?.phone || user?.mobile,
-          address: [business?.address || user?.address, user?.city, user?.state, user?.country].filter(Boolean).join(", "),
-          gst: business?.gst || business?.gstin || user?.gst || user?.gstin,
-        });
-      } catch (error) {
-        console.error("Failed to fetch business profile", error);
-      }
-    };
-    fetchBusinessProfile();
-  }, []);
-
-  useEffect(() => {
     if (id) {
       fetchInvoiceData();
+      fetchBrandingAssets();
     }
   }, [id]);
+
+  const fetchBrandingAssets = async () => {
+    try {
+      const response = await getGlobalAssets();
+      if (response.success && response.data) {
+        setBrandingAssets(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching branding assets:", error);
+    }
+  };
 
   const fetchInvoiceData = async () => {
     setIsLoading(true);
@@ -131,6 +122,48 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       toast.error("Failed to load invoice");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoiceData) return;
+    const downloadToast = toast.loading("Generating PDF...");
+    try {
+      const token = (() => {
+        try {
+          const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+          if (!authData) return null;
+          const parsedAuth = JSON.parse(authData);
+          return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+        } catch (error) {
+          return null;
+        }
+      })();
+
+      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-invoices/${invoiceData.uuid}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PurchaseInvoice-${invoiceData.invoice_number || "Draft"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully", { id: downloadToast });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF", { id: downloadToast });
     }
   };
 
@@ -170,6 +203,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
         amount: paymentForm.amount,
         payment_mode: paymentForm.mode,
         notes: paymentForm.notes,
+        discount: paymentForm.discount,
       });
 
       if (response.success) {
@@ -301,22 +335,64 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
 
   if (!invoiceData) return null;
 
-  const businessInfo = businessProfile || {
-    name: invoiceData.business?.company_name || "Evoto Technologies",
-    email: invoiceData.business?.email,
-    phone: invoiceData.business?.phone_number,
-    address: invoiceData.business?.address,
-    gst: invoiceData.business?.gst_number,
+  const getAuthBusinessInfo = () => {
+    const fetchedBusiness = invoiceData?.business;
+    if (fetchedBusiness) {
+      return {
+        name: fetchedBusiness.company_name || fetchedBusiness.name || fetchedBusiness.company || "Evoto Technologies",
+        email: fetchedBusiness.email || currentUser?.email,
+        phone: fetchedBusiness.phone_number || fetchedBusiness.phone || fetchedBusiness.mobile || currentUser?.phone,
+        address: fetchedBusiness.address || fetchedBusiness.billing_address || null,
+        gst: fetchedBusiness.gst_number || fetchedBusiness.gst || null,
+      };
+    }
+    try {
+      const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+      if (authData) {
+        const parsedAuth = JSON.parse(authData);
+        const business = parsedAuth.business || parsedAuth.business_profile || (parsedAuth.user?.businesses && parsedAuth.user.businesses[0]);
+        if (business) {
+          return {
+            name: business.company_name || business.name || business.company || "Evoto Technologies",
+            email: business.email || currentUser?.email,
+            address: business.address || null,
+            phone: business.phone_number || business.phone || business.mobile || currentUser?.phone || "",
+            gst: business.gst_number || business.gst || null,
+          };
+        }
+      }
+    } catch (e) { /* silent */ }
+    return {
+      name: "Evoto Technologies",
+      email: currentUser?.email || "",
+      address: null,
+      phone: currentUser?.phone || "",
+    };
   };
+
+  const businessInfo = getAuthBusinessInfo();
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative">
       <style>
         {`
           @media print {
-            .no-print { display: none !important; }
-            body { background-color: white !important; margin: 0 !important; }
-            #invoice-print-area { margin: 0 !important; box-shadow: none !important; width: 100% !important; padding: 20px !important; }
+            .sidebar, .header, .footer, .topbar, .no-print, [data-kt-app-sidebar-enabled="true"] .app-sidebar, [data-kt-app-header-enabled="true"] .app-header {
+              display: none !important;
+            }
+            body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+            .min-h-screen { min-height: auto !important; background: none !important; padding: 0 !important; }
+            #invoice-print-area {
+              margin: 0 !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              max-width: 100% !important;
+              width: 100% !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+            }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         `}
       </style>
@@ -336,9 +412,8 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
-              <Printer className="h-4 w-4" />Print / Save PDF
-            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             {invoiceData.balance_due > 0 && (
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
                 <CreditCard className="h-4 w-4" />Record Payment
@@ -352,15 +427,27 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       <div id="invoice-print-area" ref={invoiceRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm border border-gray-100">
         <div className="mb-12 flex justify-between items-start">
           <div className="mt-12">
-            <h1 className="text-2xl font-bold text-black uppercase">{businessInfo.name}</h1>
-            <p className="text-xs text-gray-600 mt-1">{businessInfo.address}</p>
-            <div className="flex gap-4 mt-1 text-xs text-gray-600">
-              {businessInfo.email && <span>Email: {businessInfo.email}</span>}
-              {businessInfo.phone && <span>Ph: {businessInfo.phone}</span>}
-            </div>
-            {businessInfo.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+            <h1 className="text-2xl font-semibold text-black">{businessInfo?.name || "Evoto Technologies"}</h1>
+            {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
+            {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
+            {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
+            {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
           </div>
-          <img src={toAbsoluteUrl("/media/app/Evoto-Logo.png")} className="h-32 w-auto object-contain" alt="Logo" />
+          <div className="flex flex-col items-end -mt-8">
+            {brandingAssets?.logo_path ? (
+              <img
+                src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                className="h-40 w-auto object-contain"
+                alt={businessInfo?.name || "Logo"}
+              />
+            ) : (
+              <img
+                src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                className="h-40 w-auto object-contain"
+                alt="Evoto Technologies"
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">

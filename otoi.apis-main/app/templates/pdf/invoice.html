@@ -44,7 +44,7 @@
         ══════════════════════════════ */
     .header-table {
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
 
     .company-name {
@@ -75,24 +75,23 @@
     .meta-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
     .meta-table th {
-      border: 1px solid #cccccc;
+      border: 1px solid #000000;
       background-color: #f5f5f5;
-      padding: 7px 12px;
-      font-size: 9px;
+      padding: 4px 12px;
+      font-size: 12px;
       font-weight: bold;
       text-transform: uppercase;
       text-align: left;
       color: #444444;
-      letter-spacing: 0.4px;
     }
 
     .meta-table td {
-      border: 1px solid #cccccc;
-      padding: 8px 12px;
+      border: 1px solid #000000;
+      padding: 4px 12px;
       font-size: 12px;
       text-align: left;
       color: #1a1a1a;
@@ -107,10 +106,8 @@
     }
 
     .address-section-title {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
       color: #444444;
       border-bottom: 1.5px solid #1a1a1a;
       padding-bottom: 5px;
@@ -125,7 +122,7 @@
     }
 
     .address-detail {
-      font-size: 10px;
+      font-size: 12px;
       color: #333333;
       line-height: 1.7;
     }
@@ -178,19 +175,18 @@
       border: 1px solid #cccccc;
       background-color: #f5f5f5;
       padding: 8px 10px;
-      font-size: 9px;
+      font-size: 12px;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
       color: #444444;
     }
 
     .items-table td {
       border: 1px solid #cccccc;
-      padding: 9px 10px;
-      font-size: 11px;
+      padding: 8px 10px;
+      font-size: 12px;
       color: #1a1a1a;
-      vertical-align: middle;
+      vertical-align: top;
     }
 
     .item-name {
@@ -243,14 +239,14 @@
     }
 
     .totals-table td {
-      padding: 5px 0;
+      padding: 2px 0;
       font-size: 11px;
     }
 
     .totals-label {
       color: #555555;
       text-align: left;
-      width: 60%;
+      width: 150px;
     }
 
     .totals-value {
@@ -330,6 +326,8 @@
 
     .text-muted {
       color: #888888;
+      display: inline;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -386,7 +384,7 @@
   <table class="address-table" cellpadding="0" cellspacing="0">
     <tr>
       <td style="width: 46%; vertical-align: top; padding-right: 15px;">
-        <div class="address-section-title">Bill To</div>
+        <div class="address-section-title">BILL TO</div>
         {% if customer %}
         <div class="address-customer-name">{{ customer.first_name }} {{ customer.last_name }}</div>
         <div class="address-detail">
@@ -411,7 +409,7 @@
       </td>
       <td style="width: 8%;"></td>
       <td style="width: 46%; vertical-align: top; padding-left: 15px;">
-        <div class="address-section-title">Ship To</div>
+        <div class="address-section-title">SHIP TO</div>
         {% if customer %}
         <div class="address-customer-name">{{ customer.first_name }} {{ customer.last_name }}</div>
         <div class="address-detail">
@@ -420,8 +418,7 @@
           {% if customer.gst %}<div><strong>GST:</strong> {{ customer.gst }}</div>{% endif %}
           <div><strong>Shipping Address:</strong>
             {% set ship_addr1 = customer.shipping_address1 or customer.address1 %}
-            {% set ship_addr2 = customer.shipping_address2 or customer.address2 %}
-            {{ ship_addr1 }}{% if ship_addr2 and ship_addr2 != ship_addr1 %}, {{ ship_addr2 }}{% endif %}
+            {{ ship_addr1 }}
           </div>
           <div>
             {% set ship_city = customer.shipping_city or customer.city %}
@@ -454,12 +451,13 @@
   <table class="items-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th style="width: 35%;" class="align-left">Item Description</th>
-        <th style="width: 9%;" class="align-center">Qty</th>
-        <th style="width: 14%;" class="align-right">Price/Item</th>
-        <th style="width: 10%;" class="align-right">Disc.</th>
-        <th style="width: 14%;" class="align-right">Tax</th>
-        <th style="width: 18%;" class="align-right">Total</th>
+        <th style="width: 26%;" class="align-left">Item Description</th>
+        <th style="width: 10%;" class="align-center">Image</th>
+        <th style="width: 7%;" class="align-center">Qty</th>
+        <th style="width: 13%;" class="align-center">Price/Item</th>
+        <th style="width: 13%;" class="align-center">Disc.</th>
+        <th style="width: 13%;" class="align-center">Tax</th>
+        <th style="width: 18%;" class="align-center">Total</th>
       </tr>
     </thead>
     <tbody>
@@ -471,37 +469,44 @@
           <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
           {% endif %}
         </td>
+        <td class="align-center">
+          {% if item.image %}
+          <img src="{{ item.image }}" width="40" height="40" style="object-fit: cover; border: 1px solid #eeeeee;">
+          {% else %}
+          <span class="text-muted">&mdash;</span>
+          {% endif %}
+        </td>
         <td class="align-center" style="white-space: nowrap;">
           {{ item.quantity }} <span class="text-muted" style="font-size:9px;">PCS</span>
         </td>
-        <td class="align-right">
+        <td class="align-center">
           Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
         </td>
-        <td class="align-right">
+        <td class="align-center">
           {% if item.discount and (item.discount.discount_percentage or item.discount.discount_amount) %}
           {% if item.discount.discount_amount %}
-          <div>-Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}</div>
+          -Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}
           {% endif %}
           {% if item.discount.discount_percentage %}
           <div style="font-size:9px;" class="text-muted">({{ item.discount.discount_percentage }}%)</div>
           {% endif %}
           {% else %}
-          <div>-Rs.&nbsp;0.00</div>
+          -Rs.&nbsp;0.00
           {% endif %}
         </td>
-        <td class="align-right">
+        <td class="align-center">
           {% if item.tax and (item.tax.tax_percentage or item.tax.tax_amount) %}
           {% if item.tax.tax_amount %}
-          <div>Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}</div>
+          Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}
           {% endif %}
           {% if item.tax.tax_percentage %}
           <div style="font-size:9px;" class="text-muted">({{ item.tax.tax_percentage }}%)</div>
           {% endif %}
           {% else %}
-          <div>Rs.&nbsp;0.00</div>
+          Rs.&nbsp;0.00
           {% endif %}
         </td>
-        <td class="align-right text-bold">
+        <td class="align-center text-bold">
           Rs.&nbsp;{{ "%.2f"|format(item.total_price) }}
         </td>
       </tr>
@@ -509,12 +514,12 @@
 
       <!-- SUBTOTAL ROW -->
       <tr class="subtotal-row">
-        <td colspan="2" class="align-right"
+        <td colspan="3" class="align-center"
           style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
-        <td class="align-right">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
+        <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
         <td class="align-center">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
         <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total) }}</td>
-        <td class="align-right">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal - charges.discount_total +
+        <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal - charges.discount_total +
           charges.tax_total) }}</td>
       </tr>
     </tbody>
@@ -620,7 +625,7 @@
           {% if invoice.payment_discount %}
           <tr>
             <td class="totals-label">Payment Discount</td>
-            <td class="totals-value">-Rs.&nbsp;{{ "%.2f"|format(invoice.payment_discount) }}</td>
+            <td class="totals-value">- Rs.&nbsp;{{ "%.2f"|format(invoice.payment_discount) }}</td>
           </tr>
           {% endif %}
           {% if invoice.balance_due %}
@@ -646,6 +651,12 @@
     <tr>
       <td style="width: 60%;"></td>
       <td style="width: 40%; text-align: right;">
+        {% if esign_data_uri %}
+        <div style="margin-bottom: 5px; text-align: center; width: 200px; display: inline-block;">
+          <img src="{{ esign_data_uri }}" width="120" style="max-height: 60px;">
+        </div>
+        <br>
+        {% endif %}
         <div class="signature-line">Authorized Signatory</div>
       </td>
     </tr>

@@ -16,7 +16,7 @@ Workflow
 """
 
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -26,8 +26,10 @@ from app.models.purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.inventory import Item
 from app.models.vendor import Vendor
+from app.services.pdf_service import generate_purchase_invoice_pdf
 
 purchase_invoice_blueprint = Blueprint("purchase_invoice", __name__)
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -531,8 +533,8 @@ def record_payment(invoice_id):
     """
     Record a payment against a purchase invoice.
 
-    ✅ When the invoice becomes fully paid (balance_due <= 0) and inventory
-       has not been updated yet, the items' opening_stock is incremented.
+   When the invoice becomes fully paid (balance_due <= 0) and inventory
+    has not been updated yet, the items' opening_stock is incremented.
 
     ---
     tags:
@@ -659,3 +661,79 @@ def soft_delete_purchase_invoice(invoice_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Failed to delete purchase invoice", "details": str(e)}), 500
+
+
+# ── DOWNLOAD PDF ──────────────────────────────────────────────────────────────
+
+@purchase_invoice_blueprint.route("/<uuid:invoice_id>/pdf", methods=["GET"])
+def download_purchase_invoice_pdf(invoice_id):
+    """
+    Download a purchase invoice as a PDF.
+    ---
+    tags:
+      - Purchase Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: PDF file download
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      404:
+        description: Purchase invoice not found
+      500:
+        description: PDF generation failed
+    """
+    try:
+        invoice = (
+            PurchaseInvoice.query
+            .options(selectinload(PurchaseInvoice.items))
+            .filter_by(uuid=invoice_id, is_deleted=False)
+            .first_or_404(description="Purchase invoice not found")
+        )
+
+        # Build items_data list
+        item_ids = [i.item_id for i in invoice.items if i.item_id]
+        product_map = (
+            {p.id: p for p in Item.query.filter(Item.id.in_(item_ids)).all()}
+            if item_ids else {}
+        )
+
+        items_data = []
+        for inv_item in invoice.items:
+            row = {
+                "description": inv_item.description,
+                "quantity": float(inv_item.quantity) if inv_item.quantity else 0,
+                "unit_price": float(inv_item.unit_price) if inv_item.unit_price else 0,
+                "discount": inv_item.discount or {},
+                "tax": inv_item.tax or {},
+                "total_price": float(inv_item.total_price) if inv_item.total_price else 0,
+            }
+            if inv_item.item_id and inv_item.item_id in product_map:
+                p = product_map[inv_item.item_id]
+                row["product_name"] = p.item_name
+                row["hsn_sac_code"] = p.hsn_code
+                row["measuring_unit_id"] = p.measuring_unit_id
+            else:
+                row["product_name"] = inv_item.description or "Item"
+            items_data.append(row)
+
+        pdf_buffer = generate_purchase_invoice_pdf(invoice, items_data)
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{invoice.invoice_number}.pdf",
+        )
+
+    except Exception as e:
+        return jsonify({"error": "PDF generation failed", "details": str(e)}), 500
+
