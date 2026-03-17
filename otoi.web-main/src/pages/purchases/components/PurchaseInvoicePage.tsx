@@ -408,7 +408,7 @@ const PurchaseInvoicePage = () => {
     ], [navigate]);
 
     return (
-        <div className="container-fluid p-6 bg-gray-50/50 min-h-screen">
+        <div className="container-fluid p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Purchase Invoices</h1>
                 <div className="flex items-center gap-2">
@@ -453,14 +453,13 @@ const PurchaseInvoicePage = () => {
                             <span className="sr-only sm:not-sr-only">Last 365 Days</span>
                         </Button>
                     </div>
-
                     <Button
                         size="sm"
-                        className="h-8 gap-1 bg-primary hover:bg-primary/90 text-white"
+                        className="h-8 gap-1"
                         onClick={() => navigate('/purchases/purchase-invoices/new')}
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only">Create PurchaseInvoice</span>
+                        <span className="sr-only sm:not-sr-only">Create Purchase Invoice</span>
                     </Button>
                 </div>
             </div>
@@ -471,18 +470,18 @@ const PurchaseInvoicePage = () => {
                         <div className="flex">
                             <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-9 w-80 justify-start px-3 text-sm font-normal text-gray-500" disabled={isDropdownLoading}>
+                                    <Button variant="outline" className="h-9 w-80 justify-start px-3" disabled={isDropdownLoading}>
                                         {isDropdownLoading ? (
-                                            <span className="flex items-center"><SpinnerDotted size={16} className="mr-2" color="#1B84FF" /> Loading...</span>
+                                            <span className="flex items-center"><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div> Loading...</span>
                                         ) : (
                                             searchTerm || (searchType === 'vendor_name' ? 'Search by vendor...' : 'Search by invoice #...')
                                         )}
-                                        <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                                    <DropdownMenuItem onClick={() => { setSearchTerm(''); }} className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}>
-                                        <span className="text-gray-400 italic">Show All {searchType === 'vendor_name' ? 'Vendors' : 'Invoices'}</span>
+                                    <DropdownMenuItem onClick={() => { setSearchTerm(''); setRefreshKey(prev => prev + 1); }} className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}>
+                                        <span className="text-gray-500 italic">Show All {searchType === 'vendor_name' ? 'Vendors' : 'Invoices'}</span>
                                     </DropdownMenuItem>
                                     {filteredSuggestions.map((item, idx) => (
                                         <DropdownMenuItem key={idx} onClick={() => { setSearchTerm(item); }} className={searchTerm === item ? "bg-blue-50 text-blue-600" : ""}>

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import axios from "axios";
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
-import { createPurchaseInvoiceFromPO } from "../services/purchaseInvoice.services";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -59,7 +58,6 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [fetchedData, setFetchedData] = useState<PurchaseOrderData | null>(null);
     const [businessProfile, setBusinessProfile] = useState<any>(null);
-    const [isConverting, setIsConverting] = useState(false);
     const [associatedInvoice, setAssociatedInvoice] = useState<any>(null);
     const poRef = useRef<HTMLDivElement>(null);
 
@@ -199,29 +197,21 @@ const PurchaseOrderPreviewPage: React.FC = () => {
 
     const totals = calculateTotals();
 
-    const handleConvertToInvoice = async () => {
-        if (!id || isConverting) return;
-        setIsConverting(true);
-        const res = await createPurchaseInvoiceFromPO(id);
-        setIsConverting(false);
-        if (res.success) {
-            toast.success(`Purchase Invoice ${res.data.invoice_number} created successfully.`);
-            setAssociatedInvoice({
-                uuid: res.data.invoice_uuid,
-                invoice_number: res.data.invoice_number,
-                payment_status: res.data.payment_status,
-                balance_due: res.data.total_amount
-            });
-        } else if (res.data?.invoice_uuid) {
-            toast.info(`Purchase Invoice already exists.`);
-            setAssociatedInvoice({
-                uuid: res.data.invoice_uuid,
-                invoice_number: res.data.invoice_number,
-                payment_status: "unpaid"
-            });
-        } else {
-            toast.error(res.error || "Failed to create purchase invoice");
+    const handleConvertToInvoice = () => {
+        const poId = id || location.state?.poId;
+        if (!poId) {
+            toast.error("Purchase order ID not found. Please save the purchase order first.");
+            return;
         }
+        
+        // Navigate to CreatePurchaseInvoicePage with PO data
+        navigate('/purchases/purchase-invoices/new', {
+            state: {
+                purchaseOrderId: poId,
+                purchaseOrderData: poData,
+                fromPurchaseOrder: true
+            }
+        });
     };
 
     const handlePrintPDF = () => {
@@ -432,15 +422,11 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={handleConvertToInvoice}
-                                disabled={isConverting || !id}
+                                disabled={!id}
                                 className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
                             >
-                                {isConverting ? (
-                                    <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <FileText className="h-4 w-4" />
-                                )}
-                                {isConverting ? "Converting..." : "Convert to Invoice"}
+                                <FileText className="h-4 w-4" />
+                                Convert to Invoice
                             </Button>
                         )}
                         <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
