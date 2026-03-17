@@ -548,13 +548,13 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
 
         {/* Image Preview Modal */}
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent className="max-w-4xl p-1 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center">
+          <DialogContent className="max-w-4xl p-1 overflow-hidden flex items-center justify-center">
             <div className="relative w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
               <button
                 onClick={() => setPreviewImage(null)}
                 className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition-colors"
               >
-                <FiX className="size-8" />
+                <FiX className="size-8 border border-gray-200 rounded-xl" />
               </button>
               <img
                 src={previewImage || ""}

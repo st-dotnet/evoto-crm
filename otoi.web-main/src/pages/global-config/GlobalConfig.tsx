@@ -59,8 +59,13 @@ const UploadCard: React.FC<UploadCardProps> = ({ title, desc, file, onFileChange
     e.preventDefault()
     setIsDragging(false)
     const droppedFile = e.dataTransfer.files?.[0]
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
+    const extension = droppedFile?.name.split('.').pop()?.toLowerCase();
+    
+    if (droppedFile && extension && allowedExtensions.includes(extension)) {
       validateAndUpload(droppedFile);
+    } else {
+      toast.error("Invalid file type. Only JPG, JPEG, and PNG are allowed.");
     }
   }
 
@@ -111,14 +116,13 @@ const UploadCard: React.FC<UploadCardProps> = ({ title, desc, file, onFileChange
               <KeenIcon icon="picture" className="text-xl" />
             </div>
             <p className="text-sm font-semibold text-slate-700">Drop image here</p>
-            <p className="text-[10px] text-slate-400 mt-1 font-bold tracking-widest">PNG, JPG up to {MAX_FILE_SIZE_KB}KB</p>
+            <p className="text-[10px] text-slate-400 mt-1 font-bold tracking-widest">PNG, JPG, JPEG up to {MAX_FILE_SIZE_KB}KB</p>
           </div>
         )}
       </div>
 
-      {/* Bottom Actions */}
       <div className="mt-6 flex items-center gap-3">
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        <input ref={inputRef} type="file" accept=".jpg, .jpeg, .png" className="hidden" onChange={handleFileChange} />
         
         <button
           onClick={handleUploadClick}
@@ -234,13 +238,10 @@ const GlobalConfig = () => {
             {/* Identity Configuration v1.0 */}
           </p>
           <div className="flex items-center gap-4">
-            <button className="text-xs font-bold text-slate-400 hover:text-slate-800 px-4 uppercase tracking-tighter transition-colors">
-              Discard
-            </button>
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || (!siteLogoFile && !esignFile)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-bold text-xs shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? "SAVING..." : "SAVE CHANGES"}

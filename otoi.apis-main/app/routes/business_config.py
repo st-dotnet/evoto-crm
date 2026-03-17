@@ -4,6 +4,7 @@ from app.extensions import db
 from app.models.business import Business, GlobalConfig
 from werkzeug.utils import secure_filename
 from app.utils.stamping import set_updated_fields, set_created_fields
+from app.utils.validators import is_allowed_image_file
 
 business_config_blueprint = Blueprint("business_config", __name__)
 
@@ -25,6 +26,10 @@ def update_global_assets():
     
     for key, file_obj in assets_to_update.items():
         if file_obj:
+            # Validate file extension
+            if not is_allowed_image_file(file_obj.filename):
+                return jsonify({"message": f"Invalid file type for {key}. Only JPG, JPEG, and PNG are allowed."}), 400
+            
             # Secure the filename
             original_filename = secure_filename(file_obj.filename)
             ext = os.path.splitext(original_filename)[1] or '.png' # Fallback to png if no extension

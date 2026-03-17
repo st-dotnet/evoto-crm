@@ -752,6 +752,7 @@ const CreateQuotationPage = () => {
             item_id: item.item_id || item.uuid,
             item_name:
               item.product_name || item.item_name || item.description || "Item",
+            image: item.image,
             description: item.description || item.item_description || "",
             quantity: Number(item.quantity) || 1,
             price_per_item:
@@ -1443,6 +1444,7 @@ const CreateQuotationPage = () => {
                 tax: item.tax,
                 amount: item.amount,
                 measuring_unit_id: item.measuring_unit_id,
+                image: item.image,
               })),
               notes,
               terms: termsAndConditions,

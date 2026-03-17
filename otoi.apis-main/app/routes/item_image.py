@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models import ItemImage
 from app.utils.stamping import set_created_fields, set_updated_fields
+from app.utils.validators import is_allowed_image_file
 
 item_image_blueprint = Blueprint("item_image", __name__, url_prefix="/item-images")
 
@@ -43,6 +44,10 @@ def upload_item_image():
     name = data.get("name")
     is_main = data.get("is_main", False)
     
+    # Validate filename if provided
+    if name and not is_allowed_image_file(name):
+        return jsonify({"message": "Invalid file type. Only JPG, JPEG, and PNG are allowed."}), 400
+
     # Strip base64 prefix if exists
     if "," in image_data:
         image_data = image_data.split(",")[1]

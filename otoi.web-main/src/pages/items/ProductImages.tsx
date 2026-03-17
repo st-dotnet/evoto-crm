@@ -32,7 +32,20 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
       return;
     }
 
-    const fileList = Array.from(files);
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
+    const fileList = Array.from(files).filter(file => {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const isAllowed = ext && allowedExtensions.includes(ext);
+      if (!isAllowed) {
+        toast.error(`File ${file.name} is not a supported image format. Only JPG, JPEG, and PNG are allowed.`);
+      }
+      return isAllowed;
+    });
+
+    if (fileList.length === 0) {
+      event.target.value = '';
+      return;
+    }
 
     // Notify user if they selected more than they can upload
     if (fileList.length > remainingSlots) {
@@ -121,7 +134,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept="image/*"
+          accept=".jpg, .jpeg, .png"
           multiple
           className="hidden"
         />
@@ -193,7 +206,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
               <KeenIcon icon="picture" className=" text-blue-500" />
             </div>
             <p className="text-[11px] md:text-[12px] font-bold text-gray-900 tracking-tight text-center uppercase mt-2">Add Photo</p>
-            <p className="text-[9px] md:text-[10px] text-gray-400 mt-1 text-center">PNG, JPG up to 5MB</p>
+            <p className="text-[9px] md:text-[10px] text-gray-400 mt-1 text-center">PNG, JPG, JPEG up to 5MB</p>
           </div>
         )}
       </div>
