@@ -14,6 +14,7 @@ class Config:
     # Asset Storage
     UPLOAD_BASE_PATH = os.path.join(os.getcwd(), 'static', 'uploads')
     BUSINESS_ASSETS_FOLDER = os.path.join(UPLOAD_BASE_PATH, 'business')
+    ITEM_IMAGES_FOLDER = os.path.join(os.getcwd(), 'static', 'itemImages')
 
     SWAGGER = {
         "title": "OTOI REST API",

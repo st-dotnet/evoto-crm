@@ -74,7 +74,20 @@ const ImageInput: FC<IImageInputProps> = ({
 
   const handleChange = async (files: FileList | null) => {
     if (!files) return;
-    const fileList = await getListFiles(files, DEFAULT_DATA_URL_KEY);
+
+    const allowedExtensions = acceptType || ['jpg', 'jpeg', 'png'];
+    const filteredFiles = Array.from(files).filter(file => {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const isAllowed = ext && allowedExtensions.includes(ext);
+      // We don't toast here as it might be annoying for generic component, 
+      // but we filter them out to ensure safety.
+      return isAllowed;
+    });
+
+    if (filteredFiles.length === 0) return;
+
+    // Convert filtered files to the expected format
+    const fileList = await getListFiles(filteredFiles as unknown as FileList, DEFAULT_DATA_URL_KEY);
     if (!fileList.length) return;
     let updatedFileList: TImageInputFiles;
     const updatedIndexes: number[] = [];

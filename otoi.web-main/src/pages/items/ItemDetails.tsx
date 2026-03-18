@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FiX } from "react-icons/fi";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 // Types
 export interface IItem {
@@ -220,7 +221,7 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
                 className="group relative w-24 h-24 rounded-lg overflow-hidden border bg-gray-50 shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
               >
                 <img
-                  src={img.url}
+                  src={resolveImageUrl(img.url)}
                   alt={img.name}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 />
@@ -235,16 +236,16 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
 
       {/* Image Preview Modal */}
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-4xl p-1 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center">
+        <DialogContent className="max-w-4xl p-1 overflow-hidden flex items-center justify-center [&>button:last-child]:hidden">
           <div className="relative w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setPreviewImage(null)}
-              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition-colors"
+              className="absolute top-1 right-1 p-2 bg-gray-300 rounded-xl hover:bg-gray-500 hover:text-white transition-colors flex items-center justify-center"
             >
-              <FiX className="size-8" />
+              <FiX className="size-4" />
             </button>
             <img
-              src={previewImage || ""}
+              src={resolveImageUrl(previewImage)}
               alt="Preview"
               className="max-w-full max-h-[85vh] object-contain rounded-lg"
             />

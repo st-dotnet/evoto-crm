@@ -426,14 +426,43 @@ export const LeadDetails = () => {
                     <DataField label="Email Address" value={lead.email} />
                     <DataField label="GST Number" value={lead.gst} />
                     <DataField label="Status" value={lead.status} />
-                    <DataField label="City" value={lead.city} />
                     <DataField label="Created Date" value={lead.created_at} />
                   </div>
                 </div>
               </div>
-
-              {/* Activity Totals Card */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between dark:bg-[#121214]">
+                  <h3 className="font-bold text-gray-900 text-lg">Address Details</h3>
+                  <KeenIcon icon="geolocation" className="text-gray-400 text-xl" />
+                </div>
+                <div className="p-8 dark:bg-[#121214]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                    <DataField label="Address 1" value={lead.address1} />
+                    <DataField label="Address 2" value={lead.address2} />
+                    <DataField label="City" value={lead.city} />
+                    <DataField label="State" value={lead.state} />
+                    <DataField label="Country" value={lead.country} />
+                    <DataField label="Pin Code" value={lead.pin} />
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+          )}
+
+          {activeTab === "activities" && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold">Recent Activities</h3>
+                <button className="text-sm text-blue-600 font-bold hover:underline">View All</button>
+              </div>
+              <div className="border border-dashed border-gray-200 rounded-2xl py-12 flex flex-col items-center justify-center text-gray-400">
+                <KeenIcon icon="chart-line-star" className="text-4xl mb-3 text-gray-200" />
+                <p className="text-sm">No recent activities found for this lead.</p>
+              </div>
+              {/* Activity Totals Card */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-4">
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between dark:bg-[#121214]">
                   <h3 className="font-bold text-gray-900 text-lg">Activity Summary</h3>
                   <KeenIcon icon="chart-line" className="text-gray-400 text-xl" />
@@ -454,19 +483,6 @@ export const LeadDetails = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "activities" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-[#121214]">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold">Recent Activities</h3>
-                <button className="text-sm text-blue-600 font-bold hover:underline">View All</button>
-              </div>
-              <div className="border border-dashed border-gray-200 rounded-2xl py-12 flex flex-col items-center justify-center text-gray-400">
-                <KeenIcon icon="chart-line-star" className="text-4xl mb-3 text-gray-200" />
-                <p className="text-sm">No recent activities found for this lead.</p>
               </div>
             </div>
           )}

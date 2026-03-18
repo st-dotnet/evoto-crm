@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { KeenIcon } from "@/components";
 import { toast } from "sonner";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface IProductImagesProps {
   formik: any;
@@ -32,7 +33,20 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
       return;
     }
 
-    const fileList = Array.from(files);
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
+    const fileList = Array.from(files).filter(file => {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const isAllowed = ext && allowedExtensions.includes(ext);
+      if (!isAllowed) {
+        toast.error(`File ${file.name} is not a supported image format. Only JPG, JPEG, and PNG are allowed.`);
+      }
+      return isAllowed;
+    });
+
+    if (fileList.length === 0) {
+      event.target.value = '';
+      return;
+    }
 
     // Notify user if they selected more than they can upload
     if (fileList.length > remainingSlots) {
@@ -42,30 +56,23 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
     const filesToUpload = fileList.slice(0, remainingSlots);
 
     const uploadPromises = filesToUpload.map(file => {
-      return new Promise((resolve) => {
-        // Check file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`File ${file.name} is too large. Max size is 5MB.`);
-          resolve(null);
-          return;
-        }
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File ${file.name} is too large. Max size is 5MB.`);
+        return null;
+      }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({
-            url: reader.result as string,
-            name: file.name,
-            size: file.size,
-            id: Date.now() + Math.random(),
-            is_main: false // initialized later
-          });
-        };
-        reader.readAsDataURL(file);
-      });
+      return {
+        url: URL.createObjectURL(file), // Local preview URL
+        file: file, // Store the actual File object for upload
+        name: file.name,
+        size: file.size,
+        id: Date.now() + Math.random(),
+        is_main: false
+      };
     });
 
-    const results = await Promise.all(uploadPromises);
-    const newValidImages = results.filter(img => img !== null);
+    const newValidImages = uploadPromises.filter(img => img !== null);
 
     if (newValidImages.length > 0) {
       const updatedImages = [...images, ...newValidImages];
@@ -121,7 +128,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept="image/*"
+          accept=".jpg, .jpeg, .png"
           multiple
           className="hidden"
         />
@@ -142,7 +149,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
           <div key={img.id || index} className="space-y-2 md:space-y-3 group">
             <div className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all shadow-sm ${index === 0 ? 'border-blue-500' : 'border-transparent bg-gray-50'}`}>
               <img
-                src={img.url}
+                src={resolveImageUrl(img.url)}
                 alt={img.name}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
@@ -193,7 +200,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
               <KeenIcon icon="picture" className=" text-blue-500" />
             </div>
             <p className="text-[11px] md:text-[12px] font-bold text-gray-900 tracking-tight text-center uppercase mt-2">Add Photo</p>
-            <p className="text-[9px] md:text-[10px] text-gray-400 mt-1 text-center">PNG, JPG up to 5MB</p>
+            <p className="text-[9px] md:text-[10px] text-gray-400 mt-1 text-center">PNG, JPG, JPEG up to 5MB</p>
           </div>
         )}
       </div>

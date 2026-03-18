@@ -43,6 +43,7 @@ import { SpinnerDotted } from 'spinners-react';
 import axios from "axios";
 import CreateItemModal from "./CreateItemModal";
 import { getItems, deleteItem, getItemById } from "../../pages/items/services/items.service";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 
 interface InventoryItem {
@@ -276,7 +277,11 @@ const MobileView = ({
 
             {item.image && (
               <div className="size-12 rounded-lg overflow-hidden border border-gray-100 mr-3 shrink-0">
-                <img src={item.image} alt={item.item_name} className="w-full h-full object-cover" />
+                <img 
+                  src={resolveImageUrl(item.image)} 
+                  alt={item.item_name} 
+                  className="w-full h-full object-cover" 
+                />
               </div>
             )}
 
@@ -579,7 +584,11 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         if (!image) return <div className="size-10 rounded bg-gray-50 border border-gray-100 flex items-center justify-center"><KeenIcon icon="picture" className="text-gray-300 size-5" /></div>;
         return (
           <div className="size-10 rounded overflow-hidden border border-gray-100">
-            <img src={image} alt="Product" className="w-full h-full object-cover" />
+            <img 
+              src={resolveImageUrl(image)} 
+              alt="Product" 
+              className="w-full h-full object-cover" 
+            />
           </div>
         );
       },

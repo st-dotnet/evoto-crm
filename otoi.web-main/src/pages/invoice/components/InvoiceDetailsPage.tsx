@@ -48,6 +48,7 @@ import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn
 import { cn } from "@/lib/utils";
 import { getCustomerById } from "@/pages/parties/services/customer.service";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface InvoiceItem {
   uuid: string;
@@ -827,7 +828,7 @@ const InvoiceDetailsPage: React.FC = () => {
                 <div className="flex flex-col items-end -mt-8">
                   {brandingAssets?.logo_path ? (
                     <img
-                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                      src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
                       className="h-40 w-auto object-contain"
                       alt={businessInfo?.name || "Logo"}
                     />
@@ -1003,7 +1004,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     {item.image ? (
                       <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-200">
                         <img
-                          src={item.image}
+                          src={resolveImageUrl(item.image)}
                           alt={item.product_name}
                           className="w-full h-full object-cover"
                         />
@@ -1193,7 +1194,7 @@ const InvoiceDetailsPage: React.FC = () => {
                 {brandingAssets?.esign_path && (
                   <div className="mb-2 flex justify-center">
                     <img
-                      src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.esign_path}?t=${Date.now()}`}
+                      src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
                       className="h-16 w-auto object-contain"
                       alt="Signature"
                     />
