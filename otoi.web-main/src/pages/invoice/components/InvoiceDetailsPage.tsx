@@ -13,6 +13,7 @@ import { getInvoiceById } from "../services/invoice.services";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import html2canvas from "html2canvas";
 import {
   Dialog,
   DialogContent,
@@ -227,7 +228,7 @@ const InvoiceDetailsPage: React.FC = () => {
 
 
   const handleDownloadPDF = async () => {
-    if (!invoiceRef.current) return;
+    if (!invoiceRef.current || !invoiceData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
       const token = (() => {
@@ -275,36 +276,36 @@ const InvoiceDetailsPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  // const handleShare = async () => {
-  //     if (!invoiceRef.current) return;
-  //     const shareToast = toast.loading("Preparing for share...");
-  //     try {
-  //         const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
-  //         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
-  //             if (b) resolve(b);
-  //             else reject(new Error("Failed to generate blob"));
-  //         }, "image/png"));
-  //         const file = new File([blob], `Invoice-${invoiceData?.invoice_number}.png`, { type: "image/png" });
+  const handleShare = async () => {
+    if (!invoiceRef.current) return;
+    const shareToast = toast.loading("Preparing for share...");
+    try {
+      const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to generate blob"));
+      }, "image/png"));
+      const file = new File([blob], `Invoice-${invoiceData?.invoice_number}.png`, { type: "image/png" });
 
-  //         if (navigator.share) {
-  //             await navigator.share({
-  //                 files: [file],
-  //                 title: `Invoice ${invoiceData?.invoice_number}`,
-  //                 text: `Check out our invoice: ${invoiceData?.invoice_number}`
-  //             });
-  //             toast.success("Shared successfully", { id: shareToast });
-  //         } else {
-  //             const url = URL.createObjectURL(blob);
-  //             const a = document.createElement("a");
-  //             a.href = url;
-  //             a.download = `Invoice-${invoiceData?.invoice_number}.png`;
-  //             a.click();
-  //             toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
-  //         }
-  //     } catch (error) {
-  //         toast.error("Failed to share", { id: shareToast });
-  //     }
-  // };
+      if (navigator.share) {
+        await navigator.share({
+          files: [file],
+          title: `Invoice ${invoiceData?.invoice_number}`,
+          text: `Check out our invoice: ${invoiceData?.invoice_number}`
+        });
+        toast.success("Shared successfully", { id: shareToast });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Invoice-${invoiceData?.invoice_number}.png`;
+        a.click();
+        toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+      }
+    } catch (error) {
+      toast.error("Failed to share", { id: shareToast });
+    }
+  };
 
   const handleRecordPayment = () => {
     if (!invoiceData) return;
@@ -720,6 +721,8 @@ const InvoiceDetailsPage: React.FC = () => {
       </div>
     );
   }
+
+  if (!invoiceData) return;
 
   if (!invoiceData) {
     return (
