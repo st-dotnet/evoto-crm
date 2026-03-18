@@ -348,7 +348,7 @@ def create_item():
     # if Item.query.filter_by(item_name=item_name, is_deleted=False).first():
     #     print("Duplicate item name found>>>>>>>>>>>>>>>>>>>>>", item_name)
     #     return jsonify({
-    #         "message": "An item with this name already exit",
+    #         "message": "An item with this name already exists",
     #         "suggestion": "Please choose a different name"
     #     }), 400
     
@@ -356,7 +356,7 @@ def create_item():
     # Check for duplicate item_code (only among active items)
     if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
         return jsonify({
-            "message": "An Item code already exit",
+            "message": "An item with this code already exists.",
             "suggestion": "Please choose a different item code"
         }), 400
  
@@ -691,7 +691,7 @@ def update_item(item_id):
                 ).first()
                 if existing:
                     errors.setdefault("item_code", []).append(
-                        "Item code already exit"
+                        "Item code already exists"
                     )      
                 else:
                     item.item_code = new_code

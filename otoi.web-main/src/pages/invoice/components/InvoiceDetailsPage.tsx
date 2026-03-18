@@ -226,7 +226,7 @@ const InvoiceDetailsPage: React.FC = () => {
 
 
   const handleDownloadPDF = async () => {
-    if (!invoiceRef.current) return;
+    if (!invoiceData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
       const token = (() => {
@@ -764,6 +764,7 @@ const InvoiceDetailsPage: React.FC = () => {
         `}
       </style>
       {/* Sticky Header Actions */}
+       {/* Sticky Header Actions */}
       <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
@@ -778,59 +779,14 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintPDF}
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="gap-2"
-            >
-              <Share className="h-4 w-4" />
-              Share
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              className="gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePaymentHistory}
-              className="gap-2"
-            >
-              <Clock className="h-4 w-4" />
-              Payment History
-            </Button>
-            {invoiceData.balance_due > 0 && (
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                onClick={handleRecordPayment}
-              >
-                <CreditCard className="h-4 w-4" />
-                Record Payment
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
+            {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
+            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
+            {Math.max(0, invoiceData.total_amount - (invoiceData.amount_paid + getTotalCreditNoteAmount())) > 0 && (
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
+                <CreditCard className="h-4 w-4" />Record Payment
               </Button>
             )}
           </div>
