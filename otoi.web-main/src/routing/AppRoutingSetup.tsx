@@ -405,6 +405,11 @@ const AppRoutingSetup = (): ReactElement => {
               <CreatePurchaseInvoicePage />
             </Suspense>
           } />
+          <Route path="/purchases/purchase-invoices/:id/edit" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreatePurchaseInvoicePage />
+            </Suspense>
+          } />
           <Route path="/purchases/purchase-invoices/:id" element={
             <Suspense fallback={<LoadingFallback />}>
               <PurchaseInvoiceDetailsPage />

@@ -49,6 +49,7 @@ class PurchaseInvoice(BaseMixin, db.Model):
     # Financials
     total_amount = Column(Numeric(12, 2), nullable=False)
     amount_paid = Column(Numeric(12, 2), default=0, nullable=False)
+    payment_discount = Column(Numeric(12, 2), default=0, nullable=False)
     balance_due = Column(Numeric(12, 2), default=0, nullable=False)
 
     # Charges JSON: { subtotal, tax_total, discount_total, additional_charges_total, round_off }

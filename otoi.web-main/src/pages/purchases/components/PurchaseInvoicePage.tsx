@@ -15,6 +15,7 @@ import {
     ChevronDown,
     MoreVertical,
     Eye,
+    Edit,
     Trash2,
     CreditCard,
     FileText,
@@ -386,6 +387,9 @@ const PurchaseInvoicePage = () => {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onSelect={() => { navigate(`/purchases/purchase-invoices/${row.original.id}`); setIsOpen(false); }}>
                                     <Eye className="mr-2 h-4 w-4" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => { navigate(`/purchases/purchase-invoices/${row.original.id}/edit`); setIsOpen(false); }}>
+                                    <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
                                 {row.original.payment_status !== 'paid' && (
                                     <DropdownMenuItem onSelect={() => { handleRecordPayment(row.original); setIsOpen(false); }}>

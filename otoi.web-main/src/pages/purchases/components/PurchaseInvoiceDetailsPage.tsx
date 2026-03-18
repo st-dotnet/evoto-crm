@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info } from "lucide-react";
+import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getPurchaseInvoiceById, recordPurchaseInvoicePayment } from "../services/purchaseInvoice.services";
@@ -412,6 +412,9 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/purchase-invoices/${id}/edit`)} className="gap-2 text-primary border-primary">
+              <Edit className="h-4 w-4" /> Edit Invoice
+            </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             {invoiceData.balance_due > 0 && (

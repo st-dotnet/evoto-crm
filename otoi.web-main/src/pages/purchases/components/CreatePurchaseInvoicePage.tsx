@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -242,28 +241,28 @@ const CreatePurchaseInvoicePage = () => {
         setIsFullyPaid(Number(data.balance_due) === 0);
 
         if (data.vendor_id) {
-            const vendorRes = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${data.vendor_id}`);
-            if (vendorRes.data) {
-                const v = vendorRes.data;
-                setSelectedVendor({
-                    id: v.uuid,
-                    uuid: v.uuid,
-                    name: v.vendor_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-                    first_name: v.first_name || v.vendor_name || "",
-                    last_name: v.last_name || "",
-                    company_name: v.company_name || "",
-                    contact_person: v.contact_person || v.first_name || "",
-                    mobile: v.mobile || "",
-                    email: v.email || null,
-                    gst: v.gst || "",
-                    address1: v.address1 || "",
-                    address2: v.address2 || "",
-                    city: v.city || "",
-                    state: v.state || "",
-                    country: v.country || "",
-                    pin: v.pin || "",
-                });
-            }
+          const vendorRes = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${data.vendor_id}`);
+          if (vendorRes.data) {
+            const v = vendorRes.data;
+            setSelectedVendor({
+              id: v.uuid,
+              uuid: v.uuid,
+              name: v.vendor_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
+              first_name: v.first_name || v.vendor_name || "",
+              last_name: v.last_name || "",
+              company_name: v.company_name || "",
+              contact_person: v.contact_person || v.first_name || "",
+              mobile: v.mobile || "",
+              email: v.email || null,
+              gst: v.gst || "",
+              address1: v.address1 || "",
+              address2: v.address2 || "",
+              city: v.city || "",
+              state: v.state || "",
+              country: v.country || "",
+              pin: v.pin || "",
+            });
+          }
         }
 
         if (data.items) {
@@ -302,6 +301,42 @@ const CreatePurchaseInvoicePage = () => {
       fetchPurchaseInvoice(id);
     }
   }, [id, isEditMode]);
+
+  // Handle incoming data from Purchase Order
+  useEffect(() => {
+    if (isFromPurchaseOrder && location.state?.purchaseOrderData && !isEditMode) {
+      const poData = location.state.purchaseOrderData;
+
+      if (poData.selectedVendor) {
+        const v = poData.selectedVendor;
+        setSelectedVendor({
+          ...v,
+          id: v.uuid || v.id,
+          name: v.vendor_name || v.company_name || v.name || "",
+        });
+      }
+
+      if (poData.poItems) {
+        const mappedItems = poData.poItems.map((item: any) => ({
+          ...item,
+          id: item.id || `po-item-${Date.now()}-${Math.random()}`,
+          item_name: item.item_name || item.product_name || "Item",
+        }));
+        setInvoiceItems(mappedItems);
+        if (mappedItems.length > 0) setTax(mappedItems[0].tax);
+      }
+
+      if (poData.notes) {
+        setNotes(poData.notes);
+        setShowNotesField(true);
+      }
+
+      if (poData.terms) {
+        setTermsAndConditions(poData.terms);
+        setShowTermsField(true);
+      }
+    }
+  }, [isFromPurchaseOrder, location.state, isEditMode]);
 
   const filteredVendors = vendors.filter((v) => {
     const q = searchQuery.toLowerCase();
@@ -389,7 +424,7 @@ const CreatePurchaseInvoicePage = () => {
       const disc = 0;
       const taxRate = item.gst_tax_rate || 18;
       const totalAmount = quantity * price * (1 - disc / 100) * (1 + taxRate / 100);
-      
+
       return {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
@@ -514,8 +549,8 @@ const CreatePurchaseInvoicePage = () => {
       }
 
       if (response.success) {
-        toast.success("Purchase Invoice created successfully!");
-        
+        toast.success(`Purchase Invoice ${isEditMode ? "updated" : "created"} successfully!`);
+
         // Mark purchase order as converted if this invoice was created from a PO
         const poState = location.state as any;
         if (poState?.fromPurchaseOrder && poState?.purchaseOrderId && !isEditMode) {
@@ -531,13 +566,13 @@ const CreatePurchaseInvoicePage = () => {
             // Don't show error to user as invoice was created successfully
           }
         }
-        
+
         navigate(`/purchases/purchase-invoices/${response.data.invoice_uuid}`);
       } else {
         toast.error(response.error || "Failed to save invoice");
       }
     } catch (err) {
-        console.error(err);
+      console.error(err);
       toast.error("An unexpected error occurred");
     } finally {
       setIsSaving(false);
@@ -560,7 +595,7 @@ const CreatePurchaseInvoicePage = () => {
     const elements: React.ReactNode[] = [];
     if (vendor.address1) elements.push(<span key="a1"><span className="font-medium">Address:</span> {vendor.address1}</span>);
     if (vendor.address2) elements.push(<span key="a2"><span className="font-medium">Line 2:</span> {vendor.address2}</span>);
-    
+
     const parts = [];
     if (vendor.city) parts.push(<span key="c"><span className="font-medium">City:</span> {vendor.city}</span>);
     if (vendor.state) parts.push(<span key="s"><span className="font-medium">State:</span> {vendor.state}</span>);
@@ -568,8 +603,8 @@ const CreatePurchaseInvoicePage = () => {
     if (vendor.country) parts.push(<span key="co"><span className="font-medium">Country:</span> {vendor.country}</span>);
 
     if (parts.length > 0) {
-        const joined = parts.reduce((acc: any[], curr, idx) => idx === 0 ? [curr] : [...acc, ", ", curr], []);
-        elements.push(<div key="bottom">{joined}</div>);
+      const joined = parts.reduce((acc: any[], curr, idx) => idx === 0 ? [curr] : [...acc, ", ", curr], []);
+      elements.push(<div key="bottom">{joined}</div>);
     }
     return elements;
   };
@@ -653,20 +688,20 @@ const CreatePurchaseInvoicePage = () => {
               <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
               {businessProfile ? (
                 <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
-                    <h4 className="font-medium text-gray-900">{businessProfile.name}</h4>
-                    <div className="mt-2 text-sm text-gray-700 space-y-1">
-                        {businessProfile.phone && (
-                            <p className="text-gray-600"><span className="font-medium">Phone:</span> {businessProfile.phone}</p>
-                        )}
-                        {businessProfile.gst && (
-                            <p className="text-gray-600"><span className="font-medium">GST:</span> {businessProfile.gst}</p>
-                        )}
-                        <p className="text-gray-600 line-clamp-3"><span className="font-medium">Address:</span> {businessProfile.address}</p>
-                    </div>
+                  <h4 className="font-medium text-gray-900">{businessProfile.name}</h4>
+                  <div className="mt-2 text-sm text-gray-700 space-y-1">
+                    {businessProfile.phone && (
+                      <p className="text-gray-600"><span className="font-medium">Phone:</span> {businessProfile.phone}</p>
+                    )}
+                    {businessProfile.gst && (
+                      <p className="text-gray-600"><span className="font-medium">GST:</span> {businessProfile.gst}</p>
+                    )}
+                    <p className="text-gray-600 line-clamp-3"><span className="font-medium">Address:</span> {businessProfile.address}</p>
+                  </div>
                 </div>
               ) : (
                 <div className="border-2 border-dashed rounded-xl h-[180px] bg-gray-50 flex items-center justify-center">
-                    <SpinnerDotted size={20} color="#1B84FF" />
+                  <SpinnerDotted size={20} color="#1B84FF" />
                 </div>
               )}
             </div>
@@ -741,11 +776,11 @@ const CreatePurchaseInvoicePage = () => {
                 <tr>
                   <td colSpan={10} className="px-4 py-20 text-center">
                     <div className="flex flex-col items-center gap-2">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                            <Plus className="h-6 w-6" />
-                        </div>
-                        <p className="text-sm text-gray-500">No items added. Click below to add items.</p>
-                        <Button size="sm" variant="outline" onClick={() => setShowAddItemModal(true)}>Add items from Inventory</Button>
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                        <Plus className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm text-gray-500">No items added. Click below to add items.</p>
+                      <Button size="sm" variant="outline" onClick={() => setShowAddItemModal(true)}>Add items from Inventory</Button>
                     </div>
                   </td>
                 </tr>
@@ -767,8 +802,8 @@ const CreatePurchaseInvoicePage = () => {
                       <textarea
                         value={item.description || ""}
                         onChange={(e) => {
-                            const val = e.target.value;
-                            setInvoiceItems(prev => prev.map(i => i.id === item.id ? {...i, description: val} : i));
+                          const val = e.target.value;
+                          setInvoiceItems(prev => prev.map(i => i.id === item.id ? { ...i, description: val } : i));
                         }}
                         placeholder="Add description..."
                         className="mt-1 w-full text-xs text-gray-500 bg-transparent border-0 focus:ring-0 p-0 resize-none hover:bg-gray-100 focus:bg-white rounded transition-colors"
@@ -776,52 +811,52 @@ const CreatePurchaseInvoicePage = () => {
                     </td>
                     <td className="px-4 py-4 border-r text-xs">{item.hsn_sac || "-"}</td>
                     <td className="px-4 py-4 border-r">
-                        <div className="flex items-center border rounded-lg bg-white h-9 shadow-inner focus-within:ring-1 focus-within:ring-blue-200">
-                            <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={e => handleUpdateQuantity(item.id, parseFloat(e.target.value) || 0)}
-                                className="w-full text-center text-sm border-0 focus:ring-0 bg-transparent"
-                            />
-                        </div>
+                      <div className="flex items-center border rounded-lg bg-white h-9 shadow-inner focus-within:ring-1 focus-within:ring-blue-200">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={e => handleUpdateQuantity(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full text-center text-sm border-0 focus:ring-0 bg-transparent"
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-4 border-r">
-                        <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">₹</span>
-                            <input
-                                type="number"
-                                value={item.price_per_item}
-                                onChange={e => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
-                                className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                            />
-                        </div>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">₹</span>
+                        <input
+                          type="number"
+                          value={item.price_per_item}
+                          onChange={e => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-4 border-r">
-                        <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
-                            <input
-                                type="number"
-                                value={item.discount}
-                                onChange={e => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
-                                className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                            />
-                        </div>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                        <input
+                          type="number"
+                          value={item.discount}
+                          onChange={e => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-4 border-r">
-                        <select
-                            value={item.tax}
-                            onChange={e => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
-                            className="w-full h-9 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                        >
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                        </select>
+                      <select
+                        value={item.tax}
+                        onChange={e => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
+                        className="w-full h-9 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
+                      >
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
                     </td>
                     <td className="px-4 py-4 text-right font-medium text-gray-900 border-r">
-                        ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => handleRemoveItem(item.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
@@ -831,13 +866,13 @@ const CreatePurchaseInvoicePage = () => {
               )}
             </tbody>
             {invoiceItems.length > 0 && (
-                <tfoot className="bg-gray-50 border-t-2">
-                    <tr className="font-semibold text-gray-700">
-                        <td colSpan={8} className="px-4 py-3 text-right text-xs uppercase border-r">Subtotal</td>
-                        <td className="px-4 py-3 text-right border-r">₹{calculateSubtotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
+              <tfoot className="bg-gray-50 border-t-2">
+                <tr className="font-semibold text-gray-700">
+                  <td colSpan={8} className="px-4 py-3 text-right text-xs uppercase border-r">Subtotal</td>
+                  <td className="px-4 py-3 text-right border-r">₹{calculateSubtotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
             )}
           </table>
         </div>
@@ -847,167 +882,167 @@ const CreatePurchaseInvoicePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Notes/Terms */}
         <div className="space-y-4">
-            <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
-                <div>
-                   {!showNotesField ? (
-                       <button onClick={() => setShowNotesField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                           <Plus className="h-4 w-4" /> Add Notes
-                       </button>
-                   ) : (
-                       <div className="space-y-2">
-                          <div className="flex justify-between items-center"><label className="text-sm font-medium">Notes</label><button onClick={() => setShowNotesField(false)}><X className="h-4 w-4 text-gray-400"/></button></div>
-                          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Internal remarks..." />
-                       </div>
-                   )}
+          <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
+            <div>
+              {!showNotesField ? (
+                <button onClick={() => setShowNotesField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                  <Plus className="h-4 w-4" /> Add Notes
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center"><label className="text-sm font-medium">Notes</label><button onClick={() => setShowNotesField(false)}><X className="h-4 w-4 text-gray-400" /></button></div>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Internal remarks..." />
                 </div>
-                <div>
-                   {!showTermsField ? (
-                       <button onClick={() => setShowTermsField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                           <Plus className="h-4 w-4" /> Add Terms & Conditions
-                       </button>
-                   ) : (
-                       <div className="space-y-2">
-                          <div className="flex justify-between items-center"><label className="text-sm font-medium">Terms & Conditions</label><button onClick={() => setShowTermsField(false)}><X className="h-4 w-4 text-gray-400"/></button></div>
-                          <textarea value={termsAndConditions} onChange={e => setTermsAndConditions(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Payment terms..." />
-                       </div>
-                   )}
-                </div>
+              )}
             </div>
+            <div>
+              {!showTermsField ? (
+                <button onClick={() => setShowTermsField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                  <Plus className="h-4 w-4" /> Add Terms & Conditions
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center"><label className="text-sm font-medium">Terms & Conditions</label><button onClick={() => setShowTermsField(false)}><X className="h-4 w-4 text-gray-400" /></button></div>
+                  <textarea value={termsAndConditions} onChange={e => setTermsAndConditions(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Payment terms..." />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Totals Summary */}
         <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
-            <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Taxable Amount</span>
-                    <span className="font-semibold">₹{(calculateSubtotal() - calculateDiscount()).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">SGST ({(tax/2)}%)</span>
-                    <span className="font-medium text-gray-500">₹{(calculateTax()/2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">CGST ({(tax/2)}%)</span>
-                    <span className="font-medium text-gray-500">₹{(calculateTax()/2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                {/* Additional Charges */}
-                {!showAdditionalChargesField ? (
-                    <button onClick={() => setShowAdditionalChargesField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3"/> Additional Charges</button>
-                ) : (
-                    <div className="flex gap-2 p-2 bg-gray-50 rounded-lg">
-                        <Input value={newChargeName} onChange={e => setNewChargeName(e.target.value)} className="h-8 text-xs" placeholder="Charge Name" />
-                        <Input type="number" value={newChargeAmount || ""} onChange={e => setNewChargeAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-24 text-right" placeholder="Amount" />
-                        <Button size="sm" onClick={handleAddAdditionalCharge} className="h-8">Add</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowAdditionalChargesField(false)}><X className="h-3 w-3"/></Button>
-                    </div>
-                )}
-                {additionalCharges.map((c, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-600 flex items-center gap-1">{c.name} <button onClick={() => handleRemoveAdditionalCharge(i)} className="text-red-400 hover:text-red-600"><X className="h-3 w-3"/></button></span>
-                        <span className="font-medium">₹{c.amount.toLocaleString("en-IN")}</span>
-                    </div>
-                ))}
-
-                {/* Overall Discount */}
-                {!showDiscountField ? (
-                    <button onClick={() => setShowDiscountField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3"/> Overall Discount</button>
-                ) : (
-                    <div className="flex items-center gap-2 pt-2 border-t">
-                        <span className="text-sm">Discount</span>
-                        <select value={discount.type} onChange={e => setDiscount(prev => ({...prev, type: e.target.value as any}))} className="h-8 text-xs border rounded px-1">
-                            <option value="percentage">%</option>
-                            <option value="amount">₹</option>
-                        </select>
-                        <Input type="number" value={discount.value || ""} onChange={e => setDiscount(prev => ({...prev, value: parseFloat(e.target.value) || 0}))} className="h-8 text-xs w-20 text-right" />
-                        <span className="text-sm font-medium text-red-500 ml-auto">- ₹{calculateOverallDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                        <button onClick={() => {setShowDiscountField(false); setDiscount({type:"percentage", value:0});}}><X className="h-4 w-4 text-gray-400"/></button>
-                    </div>
-                )}
-
-                {/* Round Off */}
-                <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center gap-2">
-                        <input type="checkbox" id="ar" checked={autoRoundOff} onChange={e => setAutoRoundOff(e.target.checked)} className="h-3.5 w-3.5" />
-                        <label htmlFor="ar" className="text-sm text-gray-600">Round Off</label>
-                    </div>
-                    {!autoRoundOff && (
-                        <Input type="number" value={roundOffAmount || ""} onChange={e => setRoundOffAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-20 text-right" />
-                    )}
-                </div>
-
-                {/* Final Total */}
-                <div className="flex justify-between pt-5 border-t-2 border-gray-300 items-baseline">
-                    <span className="text-lg font-bold text-gray-800">Grand Total</span>
-                    <span className="text-2xl font-bold text-blue-600">₹{calculateFinalTotal()?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                {/* Payment */}
-                <div className="pt-4 space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                    <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-gray-700">Amount Paid</label>
-                        <div className="flex items-center gap-2">
-                            <input type="checkbox" checked={isFullyPaid} onChange={e => setIsFullyPaid(e.target.checked)} id="full" className="h-4 w-4" />
-                            <label htmlFor="full" className="text-xs text-gray-500">Paid full</label>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                            <Input type="number" value={amountPaid} onChange={e => {setAmountPaid(parseFloat(e.target.value) || 0); setIsFullyPaid(false);}} className="h-10 pl-7 text-base font-medium" disabled={isFullyPaid} />
-                        </div>
-                        <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="h-10 text-sm border rounded-lg px-2 bg-white min-w-[100px]">
-                            <option>Cash</option>
-                            <option>UPI</option>
-                            <option>Bank Transfer</option>
-                            <option>Card</option>
-                            <option>Cheque</option>
-                        </select>
-                    </div>
-                    <div className="flex justify-between text-blue-700 pt-2 border-t border-blue-200">
-                        <span className="text-xs font-bold uppercase tracking-wider">Balance Due</span>
-                        <span className="text-lg font-bold">₹{Math.max(0, (calculateFinalTotal() - amountPaid)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                    </div>
-                </div>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Taxable Amount</span>
+              <span className="font-semibold">₹{(calculateSubtotal() - calculateDiscount()).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">SGST ({(tax / 2)}%)</span>
+              <span className="font-medium text-gray-500">₹{(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">CGST ({(tax / 2)}%)</span>
+              <span className="font-medium text-gray-500">₹{(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            {/* Additional Charges */}
+            {!showAdditionalChargesField ? (
+              <button onClick={() => setShowAdditionalChargesField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3" /> Additional Charges</button>
+            ) : (
+              <div className="flex gap-2 p-2 bg-gray-50 rounded-lg">
+                <Input value={newChargeName} onChange={e => setNewChargeName(e.target.value)} className="h-8 text-xs" placeholder="Charge Name" />
+                <Input type="number" value={newChargeAmount || ""} onChange={e => setNewChargeAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-24 text-right" placeholder="Amount" />
+                <Button size="sm" onClick={handleAddAdditionalCharge} className="h-8">Add</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowAdditionalChargesField(false)}><X className="h-3 w-3" /></Button>
+              </div>
+            )}
+            {additionalCharges.map((c, i) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-gray-600 flex items-center gap-1">{c.name} <button onClick={() => handleRemoveAdditionalCharge(i)} className="text-red-400 hover:text-red-600"><X className="h-3 w-3" /></button></span>
+                <span className="font-medium">₹{c.amount.toLocaleString("en-IN")}</span>
+              </div>
+            ))}
+
+            {/* Overall Discount */}
+            {!showDiscountField ? (
+              <button onClick={() => setShowDiscountField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3" /> Overall Discount</button>
+            ) : (
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <span className="text-sm">Discount</span>
+                <select value={discount.type} onChange={e => setDiscount(prev => ({ ...prev, type: e.target.value as any }))} className="h-8 text-xs border rounded px-1">
+                  <option value="percentage">%</option>
+                  <option value="amount">₹</option>
+                </select>
+                <Input type="number" value={discount.value || ""} onChange={e => setDiscount(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))} className="h-8 text-xs w-20 text-right" />
+                <span className="text-sm font-medium text-red-500 ml-auto">- ₹{calculateOverallDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                <button onClick={() => { setShowDiscountField(false); setDiscount({ type: "percentage", value: 0 }); }}><X className="h-4 w-4 text-gray-400" /></button>
+              </div>
+            )}
+
+            {/* Round Off */}
+            <div className="flex items-center justify-between pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="ar" checked={autoRoundOff} onChange={e => setAutoRoundOff(e.target.checked)} className="h-3.5 w-3.5" />
+                <label htmlFor="ar" className="text-sm text-gray-600">Round Off</label>
+              </div>
+              {!autoRoundOff && (
+                <Input type="number" value={roundOffAmount || ""} onChange={e => setRoundOffAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-20 text-right" />
+              )}
+            </div>
+
+            {/* Final Total */}
+            <div className="flex justify-between pt-5 border-t-2 border-gray-300 items-baseline">
+              <span className="text-lg font-bold text-gray-800">Grand Total</span>
+              <span className="text-2xl font-bold text-blue-600">₹{calculateFinalTotal()?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            {/* Payment */}
+            <div className="pt-4 space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700">Amount Paid</label>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={isFullyPaid} onChange={e => setIsFullyPaid(e.target.checked)} id="full" className="h-4 w-4" />
+                  <label htmlFor="full" className="text-xs text-gray-500">Paid full</label>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                  <Input type="number" value={amountPaid} onChange={e => { setAmountPaid(parseFloat(e.target.value) || 0); setIsFullyPaid(false); }} className="h-10 pl-7 text-base font-medium" disabled={isFullyPaid} />
+                </div>
+                <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="h-10 text-sm border rounded-lg px-2 bg-white min-w-[100px]">
+                  <option>Cash</option>
+                  <option>UPI</option>
+                  <option>Bank Transfer</option>
+                  <option>Card</option>
+                  <option>Cheque</option>
+                </select>
+              </div>
+              <div className="flex justify-between text-blue-700 pt-2 border-t border-blue-200">
+                <span className="text-xs font-bold uppercase tracking-wider">Balance Due</span>
+                <span className="text-lg font-bold">₹{Math.max(0, (calculateFinalTotal() - amountPaid)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Part Selection Dialog */}
       <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
-           <DialogHeader><DialogTitle>Choose Vendor</DialogTitle></DialogHeader>
-           <div className="p-4 space-y-4">
-               <div className="relative">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                   <Input placeholder="Search vendors..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" autoFocus />
-               </div>
-               <div className="max-h-[300px] overflow-y-auto border rounded-xl divide-y">
-                   {isVendorsLoading ? (
-                       <div className="py-10 text-center"><SpinnerDotted size={30} color="#1B84FF" /></div>
-                   ) : filteredVendors.length > 0 ? (
-                       filteredVendors.map(v => (
-                           <div key={v.uuid} onClick={() => handleSelectVendor(v)} className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center group">
-                               <div>
-                                   <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{v.name}</p>
-                                   <p className="text-xs text-gray-500">{v.company_name}</p>
-                                   <p className="text-[10px] text-gray-400 mt-1">{v.mobile || "No Mobile"}</p>
-                               </div>
-                               <div className="text-right">
-                                   {v.gst && <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">GST</span>}
-                                   <p className="text-[10px] text-gray-400 mt-1 uppercase">{v.city || "-"}</p>
-                               </div>
-                           </div>
-                       ))
-                   ) : (
-                       <div className="py-20 text-center text-gray-400 text-sm italic">No vendors found</div>
-                   )}
-               </div>
-           </div>
+          <DialogHeader><DialogTitle>Choose Vendor</DialogTitle></DialogHeader>
+          <div className="p-4 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input placeholder="Search vendors..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" autoFocus />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto border rounded-xl divide-y">
+              {isVendorsLoading ? (
+                <div className="py-10 text-center"><SpinnerDotted size={30} color="#1B84FF" /></div>
+              ) : filteredVendors.length > 0 ? (
+                filteredVendors.map(v => (
+                  <div key={v.uuid} onClick={() => handleSelectVendor(v)} className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center group">
+                    <div>
+                      <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{v.name}</p>
+                      <p className="text-xs text-gray-500">{v.company_name}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{v.mobile || "No Mobile"}</p>
+                    </div>
+                    <div className="text-right">
+                      {v.gst && <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">GST</span>}
+                      <p className="text-[10px] text-gray-400 mt-1 uppercase">{v.city || "-"}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-20 text-center text-gray-400 text-sm italic">No vendors found</div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
-      <AddItemPage open={showAddItemModal} onOpenChange={setShowAddItemModal} onAddItems={handleAddItems} onCreateNewItem={() => {setShowAddItemModal(false); setShowCreateItemModal(true);}} />
+      <AddItemPage open={showAddItemModal} onOpenChange={setShowAddItemModal} onAddItems={handleAddItems} onCreateNewItem={() => { setShowAddItemModal(false); setShowCreateItemModal(true); }} />
       <CreateItemModal open={showCreateItemModal} onOpenChange={setShowCreateItemModal} onSuccess={() => setShowCreateItemModal(false)} item={null} />
 
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>

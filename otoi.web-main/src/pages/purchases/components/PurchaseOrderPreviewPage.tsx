@@ -208,41 +208,41 @@ const PurchaseOrderPreviewPage: React.FC = () => {
         });
     };
 
-    const handleDownloadPDF = async () => {
-        if (!id) return;
-        const downloadToast = toast.loading("Generating PDF...");
-        try {
-            const token = (() => {
-                try {
-                    const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
-                    if (!authData) return null;
-                    const parsedAuth = JSON.parse(authData);
-                    return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
-                } catch { return null; }
-            })();
+    // const handleDownloadPDF = async () => {
+    //     if (!id) return;
+    //     const downloadToast = toast.loading("Generating PDF...");
+    //     try {
+    //         const token = (() => {
+    //             try {
+    //                 const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+    //                 if (!authData) return null;
+    //                 const parsedAuth = JSON.parse(authData);
+    //                 return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+    //             } catch { return null; }
+    //         })();
 
-            const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-orders/${id}/pdf`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+    //         const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-orders/${id}/pdf`, {
+    //             headers: { 'Authorization': `Bearer ${token}` }
+    //         });
 
-            if (!response.ok) throw new Error('Failed to generate PDF');
+    //         if (!response.ok) throw new Error('Failed to generate PDF');
 
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `PurchaseOrder-${poData.poNo || "Draft"}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
+    //         const blob = await response.blob();
+    //         const url = window.URL.createObjectURL(blob);
+    //         const a = document.createElement('a');
+    //         a.href = url;
+    //         a.download = `PurchaseOrder-${poData.poNo || "Draft"}.pdf`;
+    //         document.body.appendChild(a);
+    //         a.click();
+    //         a.remove();
+    //         window.URL.revokeObjectURL(url);
 
-            toast.success("PDF downloaded successfully", { id: downloadToast });
-        } catch (error) {
-            console.error("PDF generation error:", error);
-            toast.error("Failed to generate PDF", { id: downloadToast });
-        }
-    };
+    //         toast.success("PDF downloaded successfully", { id: downloadToast });
+    //     } catch (error) {
+    //         console.error("PDF generation error:", error);
+    //         toast.error("Failed to generate PDF", { id: downloadToast });
+    //     }
+    // };
 
     const handleDownloadPDF = async () => {
         if (!id) return;

@@ -16,7 +16,7 @@ Workflow
 """
 
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, g
 from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -61,15 +61,37 @@ def _credit_inventory(invoice: PurchaseInvoice) -> None:
     invoice.inventory_updated = True
 
 
+def _debit_inventory(invoice: PurchaseInvoice) -> None:
+    """
+    Decrease opening_stock for each Product item on the invoice.
+    Called if an invoice that was previously fully-paid is updated/deleted.
+    """
+    if not invoice.inventory_updated:
+        return
+    for inv_item in invoice.items:
+        if not inv_item.item_id:
+            continue
+        product = Item.query.get(inv_item.item_id)
+        if product and product.opening_stock is not None:
+            product.opening_stock = float(product.opening_stock or 0) - float(inv_item.quantity)
+    invoice.inventory_updated = False
+
+
 def _serialize_item(inv_item: PurchaseInvoiceItem, product_map: dict) -> dict:
+    discount_data = inv_item.discount or {}
+    tax_data = inv_item.tax or {}
     row = {
         "uuid": str(inv_item.uuid),
         "item_id": str(inv_item.item_id) if inv_item.item_id else None,
         "description": inv_item.description,
         "quantity": float(inv_item.quantity) if inv_item.quantity else 0,
         "unit_price": float(inv_item.unit_price) if inv_item.unit_price else 0,
-        "discount": inv_item.discount or {},
-        "tax": inv_item.tax or {},
+        "discount": discount_data,
+        "discount_percentage": float(discount_data.get("discount_percentage") or 0),
+        "discount_amount": float(discount_data.get("discount_amount") or 0),
+        "tax": tax_data,
+        "tax_percentage": float(tax_data.get("tax_percentage") or 0),
+        "tax_amount": float(tax_data.get("tax_amount") or 0),
         "total_price": float(inv_item.total_price) if inv_item.total_price else 0,
     }
     if inv_item.item_id and inv_item.item_id in product_map:
@@ -284,7 +306,7 @@ def create_purchase_invoice():
     business_id = request.headers.get("X-Business-Id") or 1  # Fallback for now
 
     try:
-        invoice_number = _generate_invoice_number()
+        invoice_number = data.get("invoice_number") or data.get("purchase_invoice_number") or _generate_invoice_number()
         today = datetime.utcnow().date()
 
         invoice_date_str = data.get("invoice_date")
@@ -301,7 +323,8 @@ def create_purchase_invoice():
 
         total_amount = float(data.get("total_amount", 0))
         amount_paid = float(data.get("amount_paid", 0))
-        balance_due = total_amount - amount_paid
+        payment_discount = float(data.get("payment_discount") or data.get("discount") or 0)
+        balance_due = total_amount - amount_paid - payment_discount
 
         invoice = PurchaseInvoice(
             invoice_number=invoice_number,
@@ -311,6 +334,7 @@ def create_purchase_invoice():
             due_date=due_date,
             total_amount=total_amount,
             amount_paid=amount_paid,
+            payment_discount=payment_discount,
             balance_due=balance_due,
             charges=data.get("charges", {}),
             payment_status="paid" if balance_due <= 0 else ("partial" if amount_paid > 0 else "unpaid"),
@@ -325,21 +349,73 @@ def create_purchase_invoice():
 
         # Add items
         for item in data.get("items", []):
-            pi_item = PurchaseInvoiceItem(
-                purchase_invoice_id=invoice.uuid,
-                item_id=item.get("item_id"),
-                description=item.get("description"),
-                quantity=item.get("quantity"),
-                unit_price=item.get("unit_price"),
-                discount=item.get("discount") or {},
-                tax=item.get("tax") or {},
-                total_price=item.get("total_price"),
-            )
-            db.session.add(pi_item)
+            item_id = item.get("item_id")
+            if not item_id:
+                continue
+                
+            unit_price = round(float(item.get("unit_price") or item.get("price_per_item") or 0), 2)
+            quantity = float(item.get("quantity") or 0)
+            
+            # Format discount
+            discount = item.get("discount")
+            if not isinstance(discount, dict):
+                discount = {
+                    "discount_percentage": float(item.get("discount_percentage") or item.get("discount") or 0),
+                    "discount_amount": float(item.get("discount_amount") or 0)
+                }
+            
+            # Format tax
+            tax = item.get("tax")
+            if not isinstance(tax, dict):
+                tax = {
+                    "tax_percentage": float(item.get("tax_percentage") or item.get("tax") or 0),
+                    "tax_amount": float(item.get("tax_amount") or 0)
+                }
 
-        # Trigger inventory update if fully paid
-        if invoice.payment_status == "paid":
+            pi_item = PurchaseInvoiceItem(
+                item_id=item_id,
+                description=item.get("description"),
+                quantity=quantity,
+                unit_price=unit_price,
+                discount=discount,
+                tax=tax,
+                total_price=round(float(item.get("total_price") or item.get("amount") or 0), 2),
+            )
+            invoice.items.append(pi_item)
+
+        # ── KEY BUSINESS RULE ────────────────────────────────────────────────
+        # Credit inventory ONLY when the invoice becomes fully paid AND
+        # inventory has not been updated yet for this invoice.
+        if invoice.payment_status == "paid" and not invoice.inventory_updated:
              _credit_inventory(invoice)
+        # ──────────────────────────────────────────────────────────────────────
+
+        # Create a PaymentOut record if there's an initial payment
+        if amount_paid > 0 or payment_discount > 0:
+            from app.models.paymentOut import PaymentOut
+            from app.routes.payment_out import generate_payment_out_number
+            from datetime import date
+            
+            vendor = Vendor.query.get(invoice.vendor_id) if invoice.vendor_id else None
+            party_name = vendor.vendor_name if vendor else "Initial Payment"
+            
+            po_record = PaymentOut(
+                payment_number      = generate_payment_out_number(),
+                payment_date        = date.today(),
+                purchase_invoice_id = invoice.uuid,
+                party_name          = party_name,
+                invoice_number      = invoice.invoice_number,
+                total_amount        = float(invoice.total_amount or 0),
+                amount_paid         = amount_paid,
+                balance_due         = round(balance_due, 2),
+                discount            = payment_discount,
+                payment_status      = invoice.payment_status,
+                payment_mode        = data.get("payment_mode", "cash"),
+                payment_notes       = "Initial payment during invoice creation",
+                business_id         = invoice.business_id,
+                created_by          = getattr(g, "current_user_id", None),
+            )
+            db.session.add(po_record)
 
         db.session.commit()
 
@@ -526,43 +602,15 @@ def get_purchase_invoice(invoice_id):
     }), 200
 
 
-# ── RECORD PAYMENT ────────────────────────────────────────────────────────────
 
-@purchase_invoice_blueprint.route("/<uuid:invoice_id>/record-payment", methods=["POST"])
-def record_payment(invoice_id):
+
+
+# ── UPDATE ───────────────────────────────────────────────────────────────────
+
+@purchase_invoice_blueprint.route("/<uuid:invoice_id>", methods=["PUT"])
+def update_purchase_invoice(invoice_id):
     """
-    Record a payment against a purchase invoice.
-
-   When the invoice becomes fully paid (balance_due <= 0) and inventory
-    has not been updated yet, the items' opening_stock is incremented.
-
-    ---
-    tags:
-      - Purchase Invoices
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required:
-              - amount
-            properties:
-              amount:
-                type: number
-                description: Payment amount
-              payment_mode:
-                type: string
-                description: Cash | Bank Transfer | UPI | Cheque | etc.
-              notes:
-                type: string
-    responses:
-      200:
-        description: Payment recorded; inventory updated if fully paid
-      400:
-        description: Overpayment / validation error
-      404:
-        description: Invoice not found
+    Update an existing purchase invoice.
     """
     invoice = (
         PurchaseInvoice.query
@@ -574,29 +622,81 @@ def record_payment(invoice_id):
     data = request.get_json() or {}
 
     try:
-        payment_amount = float(data.get("amount", 0))
-        if payment_amount <= 0:
-            return jsonify({"error": "Payment amount must be greater than 0"}), 400
+        # 0. Update invoice number if provided
+        if "invoice_number" in data or "purchase_invoice_number" in data:
+            invoice.invoice_number = data.get("invoice_number") or data.get("purchase_invoice_number")
 
-        current_paid = float(invoice.amount_paid or 0)
-        current_balance = float(invoice.balance_due or 0)
-        epsilon = 0.01  # 1 paisa tolerance
+        # 1. Reverse inventory if it was already updated
+        if invoice.inventory_updated:
+            _debit_inventory(invoice)
 
-        if payment_amount > current_balance + epsilon:
-            return jsonify({
-                "error": "Overpayment not allowed",
-                "details": f"Maximum allowed payment is ₹{current_balance:.2f}",
-                "max_allowed": current_balance,
-                "attempted_amount": payment_amount,
-            }), 400
+        # 2. Update basic fields
+        if "vendor_id" in data:
+            invoice.vendor_id = data["vendor_id"]
+        if "invoice_date" in data:
+            invoice.invoice_date = datetime.strptime(data["invoice_date"], "%Y-%m-%d").date()
+        if "due_date" in data:
+            invoice.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()
+        
+        invoice.additional_notes = {
+            "notes": data.get("notes", invoice.additional_notes.get("notes", "")),
+            "terms_and_conditions": data.get("terms_and_conditions", invoice.additional_notes.get("terms_and_conditions", "")),
+        }
 
-        # Update payment fields
-        invoice.amount_paid = current_paid + payment_amount
-        invoice.balance_due = max(0.0, float(invoice.total_amount) - float(invoice.amount_paid))
-        if data.get("payment_mode"):
-            invoice.payment_mode = data["payment_mode"]
+        # 3. Update items if provided
+        if "items" in data:
+            # Delete old items
+            for old_item in list(invoice.items):
+                db.session.delete(old_item)
+            
+            # Add new items
+            for item in data["items"]:
+                unit_price = float(item.get("unit_price") or item.get("price_per_item") or 0)
+                quantity = float(item.get("quantity") or 0)
+                
+                # Format discount
+                discount = item.get("discount")
+                if not isinstance(discount, dict):
+                    discount = {
+                        "discount_percentage": float(item.get("discount_percentage") or item.get("discount") or 0),
+                        "discount_amount": float(item.get("discount_amount") or 0)
+                    }
+                
+                # Format tax
+                tax = item.get("tax")
+                if not isinstance(tax, dict):
+                    tax = {
+                        "tax_percentage": float(item.get("tax_percentage") or item.get("tax") or 0),
+                        "tax_amount": float(item.get("tax_amount") or 0)
+                    }
 
-        # Determine new payment status
+                new_item = PurchaseInvoiceItem(
+                    item_id=item.get("item_id"),
+                    description=item.get("description"),
+                    quantity=quantity,
+                    unit_price=round(unit_price, 2),
+                    discount=discount,
+                    tax=tax,
+                    total_price=round(float(item.get("total_price") or item.get("amount") or 0), 2),
+                )
+                invoice.items.append(new_item)
+
+        # 4. Update Financials
+        invoice.total_amount = float(data.get("total_amount", invoice.total_amount))
+        # Keep amount_paid as is unless explicitly provided (usually handled by record-payment)
+        if "amount_paid" in data:
+            invoice.amount_paid = float(data["amount_paid"])
+        if "payment_discount" in data or "discount" in data:
+            invoice.payment_discount = float(data.get("payment_discount") or data.get("discount"))
+        
+        invoice.balance_due = max(0.0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount))
+        invoice.charges = {
+            "additional_charges": data.get("additional_charges", (invoice.charges or {}).get("additional_charges", 0)),
+            "overall_discount": data.get("overall_discount", (invoice.charges or {}).get("overall_discount", 0)),
+            "round_off": data.get("round_off", (invoice.charges or {}).get("round_off", 0)),
+        }
+
+        # 5. Update Payment Status
         if invoice.balance_due <= 0:
             invoice.payment_status = "paid"
         elif float(invoice.amount_paid) > 0:
@@ -604,35 +704,22 @@ def record_payment(invoice_id):
         else:
             invoice.payment_status = "unpaid"
 
-        # ── KEY BUSINESS RULE ────────────────────────────────────────────────
-        # Credit inventory ONLY when the invoice becomes fully paid AND
-        # inventory has not been updated yet for this invoice.
-        inventory_just_updated = False
+        # 6. Re-apply inventory if status is now "paid"
         if invoice.payment_status == "paid" and not invoice.inventory_updated:
             _credit_inventory(invoice)
-            inventory_just_updated = True
-        # ──────────────────────────────────────────────────────────────────────
 
-        db.session.flush()
         db.session.commit()
-        db.session.refresh(invoice)
 
         return jsonify({
-            "message": (
-                "Payment recorded and inventory updated successfully."
-                if inventory_just_updated
-                else "Payment recorded successfully. Inventory will be updated upon full payment."
-            ),
-            "amount_paid": float(invoice.amount_paid),
-            "balance_due": float(invoice.balance_due),
+            "message": "Purchase Invoice updated successfully",
+            "invoice_uuid": str(invoice.uuid),
             "payment_status": invoice.payment_status,
-            "inventory_updated": invoice.inventory_updated,
-            "inventory_just_updated": inventory_just_updated,
+            "inventory_updated": invoice.inventory_updated
         }), 200
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Failed to record payment", "details": str(e)}), 500
+        return jsonify({"error": "Failed to update purchase invoice", "details": str(e)}), 500
 
 
 # ── SOFT DELETE ───────────────────────────────────────────────────────────────

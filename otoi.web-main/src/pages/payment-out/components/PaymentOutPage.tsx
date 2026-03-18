@@ -51,7 +51,7 @@ import { SpinnerDotted } from "spinners-react";
 export const PaymentOutPage = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<"all" | "paid" | "partial">("all");
+  const [selectedStatus, setSelectedStatus] = useState<"all" | "paid" | "partially paid">("all");
   const [searchType, setSearchType] = useState<"party_name" | "payment_number">("party_name");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allPartyNames, setAllPartyNames] = useState<string[]>([]);
@@ -102,7 +102,7 @@ export const PaymentOutPage = () => {
         const response = await getPaymentOutList(
           params.pageIndex + 1,
           params.pageSize,
-          selectedStatus === "all" ? "" : selectedStatus,
+          selectedStatus === "all" ? "" : (selectedStatus === "partially paid" ? "partial" : selectedStatus),
           searchType === "party_name" ? searchTerm : "",
           searchType === "payment_number" ? searchTerm : "",
           selectedDateFilter,
@@ -128,16 +128,20 @@ export const PaymentOutPage = () => {
   };
 
   const confirmDelete = async () => {
-    if (!paymentToDelete) return;
+    const idToDelete = paymentToDelete;
+    if (!idToDelete) return;
+
     try {
-      const res = await deletePaymentOut(paymentToDelete);
+      const res = await deletePaymentOut(idToDelete);
       if (res.success) {
         toast.success("Payment deleted successfully");
         setRefreshKey((k) => k + 1);
+        fetchAutocompleteData();
       } else {
-        toast.error(res.error ?? "Failed to delete payment");
+        toast.error(res.error || "Failed to delete payment");
       }
-    } catch {
+    } catch (err: any) {
+      console.error("Delete error:", err);
       toast.error("An error occurred while deleting the payment");
     } finally {
       setPaymentToDelete(null);
@@ -299,13 +303,13 @@ export const PaymentOutPage = () => {
         const color =
           status === "paid"
             ? "text-green-700 bg-green-100"
-            : status === "partial"
+            : status === "partial" || status === "partially paid"
             ? "text-yellow-700 bg-yellow-100"
             : "text-red-700 bg-red-100";
         return (
           <div className="flex justify-center">
             <span className={`px-2 py-0.5 text-xs font-medium rounded capitalize ${color}`}>
-              {status}
+              {status === "partial" ? "partially paid" : status}
             </span>
           </div>
         );
@@ -318,6 +322,7 @@ export const PaymentOutPage = () => {
       meta: {
         headerClassName: "w-28",
         cellClassName: "text-gray-800 font-medium pointer-events-auto",
+        disableRowClick: true,
       },
       cell: ({ row }) => {
         const [isOpen, setIsOpen] = useState(false);
@@ -398,15 +403,15 @@ export const PaymentOutPage = () => {
                     <Filter className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate ml-1">
                       {selectedStatus === "all" && "All Payments"}
-                      {selectedStatus === "paid" && "Paid"}
-                      {selectedStatus === "partial" && "Partial"}
+                      {selectedStatus === "paid" && "Done Payments"}
+                      {selectedStatus === "partially paid" && "Pending Payments"}
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
-                {(["all", "paid", "partial"] as const).map((s) => (
+                {(["all", "paid", "partially paid"] as const).map((s) => (
                   <DropdownMenuItem
                     key={s}
                     onClick={() => setSelectedStatus(s)}
@@ -414,10 +419,12 @@ export const PaymentOutPage = () => {
                   >
                     <Circle
                       className={`h-4 w-4 ${
-                        s === "all" ? "text-gray-500" : s === "paid" ? "text-green-500" : "text-yellow-500"
+                        s === "all" ? "text-gray-400" : s === "paid" ? "text-emerald-500" : "text-amber-500"
                       }`}
                     />
-                    <span className="capitalize">{s === "all" ? "All Payments" : s}</span>
+                    <span className="capitalize">
+                      {s === "all" ? "All Payments" : s === "paid" ? "Done Payments" : "Pending Payments"}
+                    </span>
                     {selectedStatus === s && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
                 ))}

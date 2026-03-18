@@ -74,6 +74,21 @@ def _credit_inventory(invoice: PurchaseInvoice) -> None:
     invoice.inventory_updated = True
 
 
+def _debit_inventory(invoice: PurchaseInvoice) -> None:
+    """
+    Decrease opening_stock for each Product item on the invoice.
+    Called when a payment that made the invoice fully-paid is deleted.
+    """
+    for inv_item in invoice.items:
+        if not inv_item.item_id:
+            continue
+        product = Item.query.get(inv_item.item_id)
+        if product and product.opening_stock is not None:
+            product.opening_stock = float(product.opening_stock or 0) - float(inv_item.quantity)
+
+    invoice.inventory_updated = False
+
+
 # ── LIST ──────────────────────────────────────────────────────────────────────
 
 @payment_out_blueprint.route("/", methods=["GET"])
@@ -133,14 +148,22 @@ def list_payment_outs():
             )
             return jsonify([n[0] for n in numbers if n[0]]), 200
 
-        query = PaymentOut.query
+        business_id = getattr(g, "business_id", None)
+        query = (
+            PaymentOut.query
+            .outerjoin(PurchaseInvoice, PaymentOut.purchase_invoice_id == PurchaseInvoice.uuid)
+            .filter(PaymentOut.business_id == business_id)
+        )
 
         if party_name:
             query = query.filter(PaymentOut.party_name.ilike(f"%{party_name}%"))
         if payment_number:
             query = query.filter(PaymentOut.payment_number.ilike(f"%{payment_number}%"))
+        
+        # Filter based on CURRENT invoice status
         if payment_status and payment_status != "all":
-            query = query.filter(PaymentOut.payment_status == payment_status)
+            query = query.filter(PurchaseInvoice.payment_status == payment_status)
+            
         if date_filter and date_filter != "all":
             query = _date_filter_query(query, PaymentOut, date_filter)
 
@@ -149,6 +172,9 @@ def list_payment_outs():
 
         result = []
         for p in pagination.items:
+            # Use current invoice status from relationship if available
+            current_status = p.purchase_invoice.payment_status if p.purchase_invoice else p.payment_status
+            
             result.append({
                 "id":             str(p.uuid),
                 "payment_number": p.payment_number,
@@ -162,7 +188,7 @@ def list_payment_outs():
                 "balance_due":    float(p.balance_due) if p.balance_due else 0,
                 "payment_discount": float(p.discount) if p.discount else 0,
                 "payment_mode":   p.payment_mode,
-                "payment_status": p.payment_status,
+                "payment_status": current_status,
                 "payment_notes":  p.payment_notes,
                 "purchase_invoice_id": str(p.purchase_invoice_id),
                 "created_at":     p.created_at.isoformat() if p.created_at else None,
@@ -276,7 +302,7 @@ def record_payment_out(invoice_id):
         if invoice.payment_status == "paid":
             return jsonify({"error": "Invoice is already fully paid"}), 400
 
-        current_balance = float(invoice.balance_due or invoice.total_amount or 0)
+        current_balance = float(invoice.balance_due or 0)
         total_to_apply  = amount_to_pay + discount
 
         if total_to_apply > current_balance + 0.01:
@@ -287,13 +313,15 @@ def record_payment_out(invoice_id):
 
         # Update invoice financials
         new_amount_paid = float(invoice.amount_paid or 0) + amount_to_pay
-        new_balance_due = float(invoice.total_amount or 0) - new_amount_paid - float(invoice.charges.get("discount_total", 0) if isinstance(invoice.charges, dict) else 0)
-        new_balance_due = max(new_balance_due - discount, 0)
+        new_payment_discount = float(invoice.payment_discount or 0) + discount
+        new_balance_due = max(float(invoice.total_amount or 0) - new_amount_paid - new_payment_discount, 0)
 
         invoice.amount_paid   = round(new_amount_paid, 2)
+        invoice.payment_discount = round(new_payment_discount, 2)
         invoice.balance_due   = round(new_balance_due, 2)
         invoice.payment_mode  = payment_mode
-        if new_balance_due <= 0.01:
+        
+        if invoice.balance_due <= 0.01:
             invoice.payment_status = "paid"
         elif new_amount_paid > 0:
             invoice.payment_status = "partial"
@@ -408,15 +436,49 @@ def update_payment_out(payment_id):
 
 @payment_out_blueprint.route("/<uuid:payment_id>", methods=["DELETE"])
 def delete_payment_out(payment_id):
-    """Delete a payment-out record."""
-    p = PaymentOut.query.filter_by(uuid=payment_id).first_or_404()
+    """
+    Delete a payment-out record and revert financials on the associated invoice.
+    """
     try:
+        p = PaymentOut.query.filter_by(uuid=payment_id).first()
+        if not p:
+            return jsonify({"error": "Payment record not found"}), 404
+            
+        invoice = p.purchase_invoice
+        
+        if invoice:
+            # 1. Revert financial totals
+            # Convert Numeric to float safely
+            amt = float(p.amount_paid or 0)
+            dsc = float(p.discount or 0)
+            
+            curr_paid = float(invoice.amount_paid or 0)
+            curr_due  = float(invoice.balance_due or 0)
+            
+            invoice.amount_paid = round(curr_paid - amt, 2)
+            invoice.balance_due = round(curr_due + amt + dsc, 2)
+            
+            # 2. Update status
+            if float(invoice.amount_paid) <= 0.01:
+                invoice.payment_status = "unpaid"
+                invoice.amount_paid = 0
+            else:
+                invoice.payment_status = "partial"
+            
+            # 3. Handle Inventory Reversal
+            # If it was fully paid (inventory_updated=True) but now it's not, reverse stock
+            if invoice.inventory_updated and invoice.payment_status != "paid":
+                _debit_inventory(invoice)
+
         db.session.delete(p)
         db.session.commit()
         return jsonify({"message": "Payment-out deleted successfully"}), 200
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"error": "Failed to delete payment", "details": str(e)}), 500
 
 
 # ── VENDOR INVOICES ───────────────────────────────────────────────────────────

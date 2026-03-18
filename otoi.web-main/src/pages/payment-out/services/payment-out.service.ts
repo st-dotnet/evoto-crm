@@ -3,7 +3,19 @@ import axios from "axios";
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
 const getAuthToken = (): string | null => {
-  return localStorage.getItem("OTOI-auth-v1.0.0.1");
+  try {
+    const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    if (!authData) return null;
+    const parsedAuth = JSON.parse(authData);
+    return (
+      parsedAuth.token ||
+      parsedAuth.access_token ||
+      parsedAuth.accessToken ||
+      null
+    );
+  } catch {
+    return null;
+  }
 };
 
 interface ApiResponse {
