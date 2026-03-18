@@ -38,10 +38,23 @@ export type Lead = {
   mobile: string;
   email: string;
   gst: string;
-  address: string | undefined;
+  address?: string | undefined;
+  address1?: string;
+  address2?: string;
+  city: string;
+  state?: string;
+  country?: string;
+  pin?: string;
+  addresses?: Array<{
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pin?: string;
+  }>;
   activity_type: string | undefined;
   status: string; // only status kept
-  city: string;
   created_at: string | undefined;
   edit: string;
 };

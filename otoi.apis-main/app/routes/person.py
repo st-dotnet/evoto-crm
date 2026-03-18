@@ -210,15 +210,19 @@ def get_leads():
         result = []
         for lead in leads:
             addresses = []
+            first_address = None
             for la in lead.lead_addresses:
-                addresses.append({
+                addr_dict = {
                     "address1": la.address.address1,
                     "address2": la.address.address2,
                     "city": la.address.city,
                     "state": la.address.state,
                     "country": la.address.country,
                     "pin": la.address.pin,
-                })
+                }
+                addresses.append(addr_dict)
+                if not first_address:
+                    first_address = addr_dict
 
             result.append({
                 "uuid": str(lead.uuid),
@@ -230,6 +234,8 @@ def get_leads():
                 "status": STATUS_MAPPING.get(lead.status, str(lead.status)),
                 "reason": lead.reason,
                 "addresses": addresses,
+                "city": first_address["city"] if first_address else "--",
+                "created_at": lead.created_at.strftime("%Y-%m-%d") if lead.created_at else "--",
             })
 
         return jsonify({
@@ -652,6 +658,7 @@ def update_lead(lead_id):
                 set_updated_fields(customer)
 
         # Handle Address if status is Win (4)
+        address_data = None
         if status.lower() in ["win", "4"]:
             address_data = {
                 "address1": data.get("address1"),
@@ -703,23 +710,23 @@ def update_lead(lead_id):
                 db.session.add(new_la)
 
         # Sync lead to customer if status is "Win"
-        address_data = None
         if str(lead.status).strip().lower() in ["win", "4"]:
-            # Check for existing LeadAddress
-            lead_address = lead.lead_addresses[0] if lead.lead_addresses else None
-            if lead_address and lead_address.address:
-                addr = lead_address.address
-                address_data = {
-                    "address1": addr.address1,
-                    "address2": addr.address2,
-                    "city": addr.city,
-                    "state": addr.state,
-                    "country": addr.country,
-                    "pin": addr.pin,
-                }
+            if not address_data:
+                # Check for existing LeadAddress if address_data wasn't in request
+                lead_address = lead.lead_addresses[0] if lead.lead_addresses else None
+                if lead_address and lead_address.address:
+                    addr = lead_address.address
+                    address_data = {
+                        "address1": addr.address1,
+                        "address2": addr.address2,
+                        "city": addr.city,
+                        "state": addr.state,
+                        "country": addr.country,
+                        "pin": addr.pin,
+                    }
             
-        current_app.logger.info(f"Syncing updated lead {lead.uuid} with status {lead.status}")
-        sync_lead_to_customer(lead, address_data)
+            current_app.logger.info(f"Syncing updated lead {lead.uuid} with status {lead.status}")
+            sync_lead_to_customer(lead, address_data)
 
         set_updated_fields(lead)
         db.session.commit()
@@ -800,6 +807,8 @@ def get_lead_by_id(lead_id):
         }
         for la in lead.lead_addresses
     ]
+    
+    first_address = addresses[0] if addresses else None
 
     return jsonify({
         "uuid": str(lead.uuid),
@@ -811,6 +820,13 @@ def get_lead_by_id(lead_id):
         "status": STATUS_MAPPING.get(lead.status, str(lead.status)),
         "reason": lead.reason,
         "addresses": addresses,
+        "city": first_address["city"] if first_address else "--",
+        "state": first_address["state"] if first_address else "--",
+        "country": first_address["country"] if first_address else "--",
+        "pin": first_address["pin"] if first_address else "--",
+        "address1": first_address["address1"] if first_address else "--",
+        "address2": first_address["address2"] if first_address else "--",
+        "created_at": lead.created_at.strftime("%Y-%m-%d %H:%M:%S") if lead.created_at else "--",
     })
 
 

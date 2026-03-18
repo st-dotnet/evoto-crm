@@ -4,68 +4,54 @@ from app.models import ItemImage
 from app.utils.stamping import set_created_fields, set_updated_fields
 from app.utils.validators import is_allowed_image_file
 
-item_image_blueprint = Blueprint("item_image", __name__, url_prefix="/item-images")
+item_image_blueprint = Blueprint("item_image", __name__)
 
 @item_image_blueprint.route("/", methods=["POST"])
 def upload_item_image():
     """
     Upload an item image.
-    ---
-    tags:
-      - Item Images
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              item_id:
-                type: string
-                format: uuid
-                description: ID of the item
-              name:
-                type: string
-                description: Original filename of the image
-              image:
-                type: string
-                description: Base64 encoded image data
-              is_main:
-                type: boolean
-                description: Flag to indicate if this is the feature image
-    responses:
-      201:
-        description: Image uploaded successfully.
     """
-    import base64
+    import os
+    from flask import current_app
+    from werkzeug.utils import secure_filename
 
-    data = request.json
-    image_data = data["image"]
-    name = data.get("name")
-    is_main = data.get("is_main", False)
+    item_id = request.form.get("item_id")
+    is_main = request.form.get("is_main", "false").lower() == "true"
+    file = request.files.get("image")
+
+    if not item_id:
+        return jsonify({"message": "item_id is required"}), 400
     
-    # Validate filename if provided
-    if name and not is_allowed_image_file(name):
+    if not file:
+        return jsonify({"message": "No image file provided"}), 400
+
+    if not is_allowed_image_file(file.filename):
         return jsonify({"message": "Invalid file type. Only JPG, JPEG, and PNG are allowed."}), 400
 
-    # Strip base64 prefix if exists
-    if "," in image_data:
-        image_data = image_data.split(",")[1]
+    # Create folder for item if not exists
+    folder_path = os.path.join(current_app.config['ITEM_IMAGES_FOLDER'], str(item_id))
+    os.makedirs(folder_path, exist_ok=True)
     
-    decoded_image = base64.b64decode(image_data)
+    # Enforce 4-image limit per item
+    existing_count = ItemImage.query.filter_by(item_id=item_id).count()
+    if existing_count >= 4:
+        return jsonify({"message": "Maximum limit of 4 images reached for this product"}), 400
+    
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(folder_path, filename)
+    file.save(filepath)
     
     # If this image is set as main, unset all other images for this item as main
     if is_main:
-        ItemImage.query.filter_by(item_id=data["item_id"]).update({"is_main": False})
+        ItemImage.query.filter_by(item_id=item_id).update({"is_main": False})
     
     image = ItemImage(
-        item_id=data["item_id"],
-        name=name,
-        image=decoded_image,
+        item_id=item_id,
+        name=filename,
+        image=filename, 
         is_main=is_main
     )
     set_created_fields(image)
-    # Explicitly set updated_fields so that updated_by correctly reflects the user who recreated this image
     set_updated_fields(image)
 
     db.session.add(image)
@@ -77,45 +63,65 @@ def upload_item_image():
 def delete_item_image(id):
     """
     Delete an item image.
-    ---
-    tags:
-      - Item Images
-    parameters:
-      - name: id
-        in: path
-        description: ID of the item image to delete
-        required: true
-        schema:
-          type: integer
-    responses:
-      200:
-        description: Image deleted successfully.
     """
+    import os
+    from flask import current_app
+    
     image = ItemImage.query.get_or_404(id)
+    
+    # Remove file from filesystem
+    folder_path = os.path.join(current_app.config['ITEM_IMAGES_FOLDER'], str(image.item_id))
+    filepath = os.path.join(folder_path, image.image)
+    
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception as e:
+            current_app.logger.error(f"Failed to delete image file {filepath}: {e}")
+
     db.session.delete(image)
     db.session.commit()
-    return jsonify({"message": "Image deleted successfully"})
+    return jsonify({"message": "Image deleted successfully"}), 200
 
 
 @item_image_blueprint.route("/item/<uuid:item_id>", methods=["DELETE"])
 def delete_all_item_images(item_id):
     """
     Delete all images associated with a specific item.
-    ---
-    tags:
-      - Item Images
-    parameters:
-      - name: item_id
-        in: path
-        description: UUID of the item
-        required: true
-        schema:
-          type: string
-          format: uuid
-    responses:
-      200:
-        description: All item images deleted successfully.
     """
+    import shutil
+    import os
+    from flask import current_app
+
+    # Remove the whole directory for this item
+    folder_path = os.path.join(current_app.config['ITEM_IMAGES_FOLDER'], str(item_id))
+    if os.path.exists(folder_path):
+        try:
+            shutil.rmtree(folder_path)
+        except Exception as e:
+            current_app.logger.error(f"Failed to delete folder {folder_path}: {e}")
+
     ItemImage.query.filter_by(item_id=item_id).delete()
     db.session.commit()
     return jsonify({"message": "All item images deleted successfully"}), 200
+
+
+@item_image_blueprint.route("/<int:id>", methods=["PATCH"])
+def update_item_image_metadata(id):
+    """
+    Update image metadata (e.g., is_main).
+    """
+    image = ItemImage.query.get_or_404(id)
+    data = request.get_json()
+    
+    if 'is_main' in data:
+        is_main = bool(data['is_main'])
+        if is_main:
+            # Unset other images as main for this item
+            ItemImage.query.filter_by(item_id=image.item_id).update({"is_main": False})
+        image.is_main = is_main
+        
+    set_updated_fields(image)
+    db.session.commit()
+    
+    return jsonify({"message": "Image metadata updated successfully"}), 200

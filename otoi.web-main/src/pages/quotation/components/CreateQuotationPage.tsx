@@ -46,6 +46,7 @@ import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dia
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
 import { useAuthContext } from "@/auth/useAuthContext";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface Party {
   id: string;
@@ -2556,7 +2557,7 @@ const CreateQuotationPage = () => {
                       {item.image ? (
                         <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
                           <img
-                            src={item.image}
+                            src={resolveImageUrl(item.image)}
                             alt={item.item_name}
                             className="w-full h-full object-cover"
                             onError={(e) => {

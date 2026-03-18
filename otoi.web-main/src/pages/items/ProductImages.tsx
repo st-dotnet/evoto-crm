@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { KeenIcon } from "@/components";
 import { toast } from "sonner";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface IProductImagesProps {
   formik: any;
@@ -55,30 +56,23 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
     const filesToUpload = fileList.slice(0, remainingSlots);
 
     const uploadPromises = filesToUpload.map(file => {
-      return new Promise((resolve) => {
-        // Check file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`File ${file.name} is too large. Max size is 5MB.`);
-          resolve(null);
-          return;
-        }
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File ${file.name} is too large. Max size is 5MB.`);
+        return null;
+      }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({
-            url: reader.result as string,
-            name: file.name,
-            size: file.size,
-            id: Date.now() + Math.random(),
-            is_main: false // initialized later
-          });
-        };
-        reader.readAsDataURL(file);
-      });
+      return {
+        url: URL.createObjectURL(file), // Local preview URL
+        file: file, // Store the actual File object for upload
+        name: file.name,
+        size: file.size,
+        id: Date.now() + Math.random(),
+        is_main: false
+      };
     });
 
-    const results = await Promise.all(uploadPromises);
-    const newValidImages = results.filter(img => img !== null);
+    const newValidImages = uploadPromises.filter(img => img !== null);
 
     if (newValidImages.length > 0) {
       const updatedImages = [...images, ...newValidImages];
@@ -155,7 +149,7 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
           <div key={img.id || index} className="space-y-2 md:space-y-3 group">
             <div className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all shadow-sm ${index === 0 ? 'border-blue-500' : 'border-transparent bg-gray-50'}`}>
               <img
-                src={img.url}
+                src={resolveImageUrl(img.url)}
                 alt={img.name}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />

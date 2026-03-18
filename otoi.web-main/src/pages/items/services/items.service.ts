@@ -83,12 +83,20 @@ export const createItem = async (payload: any): Promise<ApiResponse> => {
   }
 
   try {
+    const isFormData = payload instanceof FormData;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const response = await axios.post(`${API_URL}/items/`, payload, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       withCredentials: true,
+      timeout: 30000,
     });
 
     return {
@@ -97,7 +105,6 @@ export const createItem = async (payload: any): Promise<ApiResponse> => {
       status: response.status,
     };
   } catch (error: any) {
-    // Let axios throw automatically on 400/500 - just extract error details
     const errorMessage =
       error?.response?.data?.message ||
       error.message ||
@@ -124,28 +131,21 @@ export const updateItem = async (
     };
   }
 
-  // Clean up the payload by removing undefined or empty strings
-  const cleanPayload = Object.entries(payload).reduce(
-    (acc, [key, value]) => {
-      if (value !== undefined && value !== "") {
-        acc[key] = value;
-      } else {
-        acc[key] = null;
-      }
-      return acc;
-    },
-    {} as Record<string, any>,
-  );
-
   try {
-    const response = await axios.put(`${API_URL}/items/${id}`, cleanPayload, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+    const isFormData = payload instanceof FormData;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const response = await axios.patch(`${API_URL}/items/${id}`, payload, {
+      headers,
       withCredentials: true,
-      timeout: 10000,
+      timeout: 30000, // Increase timeout for image uploads
     });
 
     return {
@@ -370,7 +370,7 @@ export const downloadBarcode = async (
   }
 };
 
-export const uploadItemImage = async (itemId: string, imageData: string, name: string = "", isMain: boolean = false): Promise<ApiResponse> => {
+export const uploadItemImage = async (itemId: string, imageFile: File, isMain: boolean = false): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
     return {
@@ -381,15 +381,15 @@ export const uploadItemImage = async (itemId: string, imageData: string, name: s
   }
 
   try {
-    const response = await axios.post(`${API_URL}/item_images/`, {
-      item_id: itemId,
-      image: imageData,
-      name: name,
-      is_main: isMain
-    }, {
+    const formData = new FormData();
+    formData.append("item_id", itemId);
+    formData.append("image", imageFile);
+    formData.append("is_main", String(isMain));
+
+    const response = await axios.post(`${API_URL}/item-images/`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        "Content-Type": "multipart/form-data",
       },
       withCredentials: true,
     });
@@ -413,6 +413,39 @@ export const uploadItemImage = async (itemId: string, imageData: string, name: s
   }
 };
 
+export const deleteItemImage = async (id: number): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+
+  try {
+    const response = await axios.delete(`${API_URL}/item-images/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      withCredentials: true,
+    });
+    return { success: true, data: response.data };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to delete image" };
+  }
+};
+
+export const updateItemImageMetadata = async (id: number, data: { is_main?: boolean }): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+
+  try {
+    const response = await axios.patch(`${API_URL}/item-images/${id}`, data, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      withCredentials: true,
+    });
+    return { success: true, data: response.data };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update image" };
+  }
+};
+
 export const deleteAllItemImages = async (itemId: string): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
@@ -424,7 +457,7 @@ export const deleteAllItemImages = async (itemId: string): Promise<ApiResponse> 
   }
 
   try {
-    const response = await axios.delete(`${API_URL}/item_images/item/${itemId}`, {
+    const response = await axios.delete(`${API_URL}/item-images/item/${itemId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

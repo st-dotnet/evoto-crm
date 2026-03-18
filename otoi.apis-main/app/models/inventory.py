@@ -125,7 +125,7 @@ class ItemImage(BaseMixin, db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
     item_id = Column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=True)
-    image = Column(LargeBinary, nullable=False)
+    image = Column(String(500), nullable=False)
     is_main = Column(Boolean, default=False)
 
     # Relationships

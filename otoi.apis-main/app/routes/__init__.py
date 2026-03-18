@@ -30,7 +30,7 @@ def register_blueprints(app):
     app.register_blueprint(lead_blueprint, url_prefix="/api/leads")
     app.register_blueprint(item_category_blueprint, url_prefix="/api/item-categories")
     app.register_blueprint(measuring_unit_blueprint, url_prefix="/api/measuring_units")
-    app.register_blueprint(item_image_blueprint, url_prefix="/api/item_images")
+    app.register_blueprint(item_image_blueprint, url_prefix="/api/item-images")
     app.register_blueprint(active_type_blueprint, url_prefix="/api/active-types")
     app.register_blueprint(status_list_blueprint, url_prefix="/api/status-list")
     app.register_blueprint(customer_blueprint, url_prefix="/api/customers")

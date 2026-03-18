@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FiX } from "react-icons/fi";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface InventoryItem {
   item_id: string;
@@ -348,8 +349,8 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
                             <div className="w-10 h-10 rounded overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
                               {item.image ? (
                                 <img
-                                  src={item.image}
-                                  onClick={() => setPreviewImage(item.image!)}
+                                  src={resolveImageUrl(item.image)}
+                                  onClick={() => setPreviewImage(resolveImageUrl(item.image))}
                                   alt={item.item_name}
                                   className="w-full h-full object-cover hover:scale-110 transition-transform cursor-pointer"
                                 />
@@ -449,8 +450,8 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
                         <div className="shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
                           {item.image ? (
                             <img
-                              src={item.image}
-                              onClick={() => setPreviewImage(item.image!)}
+                              src={resolveImageUrl(item.image)}
+                              onClick={() => setPreviewImage(resolveImageUrl(item.image))}
                               alt={item.item_name}
                               className="w-full h-full object-cover"
                             />
@@ -548,13 +549,13 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
 
         {/* Image Preview Modal */}
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent className="max-w-4xl p-1 overflow-hidden flex items-center justify-center">
+          <DialogContent className="max-w-4xl p-1 overflow-hidden flex items-center justify-center [&>button:last-child]:hidden">
             <div className="relative w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
               <button
                 onClick={() => setPreviewImage(null)}
-                className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition-colors"
+                className="absolute top-1 right-1 p-2 bg-gray-300 rounded-xl hover:bg-gray-500 hover:text-white transition-colors duration-200 flex items-center justify-center"
               >
-                <FiX className="size-8 border border-gray-200 rounded-xl" />
+                <FiX className="size-4" />
               </button>
               <img
                 src={previewImage || ""}
