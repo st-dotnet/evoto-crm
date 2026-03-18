@@ -36,6 +36,7 @@ import {
   getInvoiceById,
   updateInvoice,
 } from "../services/invoice.service";
+import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import AddItemPage from "../../quotation/components/AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
@@ -1026,6 +1027,21 @@ const CreateInvoicePage = () => {
 
       let response;
       if (isEditMode && id) {
+        // Check if credit notes exist for this invoice before allowing update
+        try {
+          const creditNoteResponse = await checkCreditNoteExistsForInvoice(id);
+          if (creditNoteResponse.success && creditNoteResponse.data && creditNoteResponse.data.hasCreditNote) {
+            const creditNotes = creditNoteResponse.data.creditNotes || [];
+            const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+            toast.error(`Cannot update invoice. Credit note already exist: ${creditNoteNumbers}. Please delete the credit note first.`);
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking credit notes:', error);
+          // Still allow update if check fails, but show warning
+          toast.warning('Unable to verify credit note status. Proceed with caution.');
+        }
+        
         response = await updateInvoice(id, submissionData);
       } else {
         response = await createInvoice(submissionData);
