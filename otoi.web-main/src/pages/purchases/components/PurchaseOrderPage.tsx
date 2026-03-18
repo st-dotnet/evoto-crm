@@ -301,49 +301,6 @@ const PurchaseOrderPage = () => {
     setIsDeleting(false);
   };
 
-  // ── Convert PO → Purchase Invoice ─────────────────────────────────────────
-  const handleConvertToInvoice = async (poId: string) => {
-    setIsConvertingId(poId);
-    const res = await createPurchaseInvoiceFromPO(poId);
-    if (res.success) {
-      const inv = res.data;
-      toast.success(`Purchase Invoice ${inv.invoice_number} created. Pay when ready to update inventory.`);
-      // Track invoice status for this PO
-      setInvoiceStatusMap((prev) => ({
-        ...prev,
-        [poId]: {
-          invoiceId: inv.invoice_uuid,
-          invoiceNumber: inv.invoice_number,
-          payment_status: inv.payment_status,
-          balance_due: inv.total_amount,
-        },
-      }));
-      setPaymentForm({
-        amount: inv.total_amount || 0,
-        discount: 0,
-        date: new Date(),
-        mode: "Cash",
-        notes: ""
-      });
-      setRefreshKey((prev) => prev + 1);
-    } else if (res.data?.invoice_uuid) {
-      // Already exists — surface the existing invoice for payment
-      toast.info(`Purchase Invoice ${res.data.invoice_number} already exists.`);
-      setInvoiceStatusMap((prev) => ({
-        ...prev,
-        [poId]: {
-          invoiceId: res.data.invoice_uuid,
-          invoiceNumber: res.data.invoice_number,
-          payment_status: "unpaid",
-          balance_due: 0,
-        },
-      }));
-    } else {
-      toast.error(res.error || "Failed to create purchase invoice");
-    }
-    setIsConvertingId(null);
-  };
-
   // ── Record Payment ─────────────────────────────────────────────────────────
   const handleRecordPaymentSubmit = async () => {
     if (!paymentModal) return;
@@ -542,49 +499,6 @@ const PurchaseOrderPage = () => {
         meta: { headerClassName: "min-w-[120px]" },
       },
       {
-        id: "invoice_status",
-        header: ({ column }) => (
-          <DataGridColumnHeader
-            title="Invoice / Payment"
-            column={column}
-            className="justify-center"
-          />
-        ),
-        cell: ({ row }) => {
-          const inv = invoiceStatusMap?.[row.original.id];
-          if (!inv) return <div className="text-center text-xs text-gray-400">—</div>;
-
-          const status = inv.payment_status;
-          return (
-            <div
-              className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (inv.invoiceId) {
-                  navigate(`/purchases/purchase-invoices/${inv.invoiceId}`);
-                }
-              }}
-              title="Click to view invoice details"
-            >
-              <span
-                className={`px-2 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wider ${status === "paid"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : status === "partial"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-rose-100 text-rose-800"
-                  }`}
-              >
-                {status}
-              </span>
-              <span className="text-[10px] text-gray-500 font-medium hover:text-primary transition-colors">
-                {inv.invoiceNumber}
-              </span>
-            </div>
-          );
-        },
-        meta: { headerClassName: "min-w-[140px]" },
-      },
-      {
         id: "actions",
         header: ({ column }) => (
           <DataGridColumnHeader
@@ -728,50 +642,6 @@ const PurchaseOrderPage = () => {
                   >
                     <Trash2 className="mr-2 h-4 w-4 text-red-500" />
                     <span className="text-red-500">Delete</span>
-                  </DropdownMenuItem>
-
-                  {/* ── Convert to Purchase Invoice ── */}
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsOpen(false);
-                      const inv = invoiceStatusMap?.[row.original.id];
-                      if (inv) {
-                        // Invoice already created — open payment modal
-                        setPaymentModal({
-                          open: true,
-                          invoiceId: inv.invoiceId,
-                          invoiceNumber: inv.invoiceNumber,
-                          balanceDue: inv.balance_due,
-                        });
-                        setPaymentForm({
-                          amount: inv.balance_due || 0,
-                          discount: 0,
-                          date: new Date(),
-                          mode: "Cash",
-                          notes: ""
-                        });
-                      } else {
-                        handleConvertToInvoice(row.original.id);
-                      }
-                    }}
-                    disabled={isConvertingId === row.original.id}
-                  >
-                    {isConvertingId === row.original.id ? (
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
-                    ) : invoiceStatusMap?.[row.original.id] ? (
-                      <CreditCard className="mr-2 h-4 w-4 text-green-600" />
-                    ) : (
-                      <FileText className="mr-2 h-4 w-4 text-blue-600" />
-                    )}
-                    <span className={invoiceStatusMap?.[row.original.id] ? "text-green-600" : "text-blue-600"}>
-                      {isConvertingId === row.original.id
-                        ? "Converting..."
-                        : invoiceStatusMap?.[row.original.id]
-                          ? "Record Payment"
-                          : "Convert to Invoice"}
-                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

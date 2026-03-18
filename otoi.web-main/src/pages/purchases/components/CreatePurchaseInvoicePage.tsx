@@ -583,6 +583,15 @@ const CreatePurchaseInvoicePage = () => {
     setShowConfirmModal(true);
   };
 
+  const handleConfirmLeave = () => {
+    setShowConfirmModal(false);
+    navigate(-1);
+  };
+
+  const handleCancelLeave = () => {
+    setShowConfirmModal(false);
+  };
+
   useEffect(() => {
     if (isFullyPaid) {
       setAmountPaid(Math.round(calculateFinalTotal()));
@@ -1046,14 +1055,45 @@ const CreatePurchaseInvoicePage = () => {
       <CreateItemModal open={showCreateItemModal} onOpenChange={setShowCreateItemModal} onSuccess={() => setShowCreateItemModal(false)} item={null} />
 
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Unsaved Changes</DialogTitle>
-            <DialogDescription>Are you sure you want to leave? Your changes will be lost.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => navigate(-1)}>Leave</Button>
+        <DialogContent className="sm:max-w-[400px] p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            Unsaved Changes
+          </DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mt-2">
+            You have unsaved changes. Are you sure you want to leave this page?
+          </DialogDescription>
+          <DialogFooter className="mt-6 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelLeave}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmLeave}
+              className="flex-1"
+            >
+              Leave Page
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -42,6 +42,7 @@ import {
 // import { updateInvoiceFromQuotation } from "@/pages/invoice/services/invoice.services";
 import AddItemPage from "./AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
+import { updateItem } from "../../items/services/items.service";
 import { DialogDescription as RadixDialogDescription } from "@radix-ui/react-dialog";
 import { ShippingAddressModal } from "@/pages/parties/blocks/customers/ShippingAddressModal";
 import { ShippingAddress } from "@/pages/parties/blocks/customers/customer-models";
@@ -1339,6 +1340,29 @@ const CreateQuotationPage = () => {
             ...prev,
             quotationNo: response.data.quotation_number,
           }));
+        }
+
+        // Update inventory items with the sales prices from the quotation
+        const itemsToUpdate = Array.from(
+          new Map(
+            quotationItems.map((item) => [
+              item.item_id,
+              { item_id: item.item_id, price: item.price_per_item },
+            ])
+          ).values()
+        );
+
+        for (const item of itemsToUpdate) {
+          try {
+            await updateItem(item.item_id, {
+              sales_price: item.price,
+            });
+          } catch (error) {
+            console.error(
+              `Failed to update sales price for item ${item.item_id}:`,
+              error
+            );
+          }
         }
 
         // if (isEditMode && id) {

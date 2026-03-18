@@ -39,6 +39,7 @@ import {
 } from "../services/purchaseOrder.services";
 import AddItemPage from "../../quotation/components/AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
+import { updateItem } from "../../items/services/items.service";
 import { useAuthContext } from "@/auth/useAuthContext";
 interface Vendor {
   id: string;
@@ -77,6 +78,7 @@ interface POItem {
   measuring_unit_id?: number;
   description?: string | null;
   descriptionError?: string;
+  purchasePriceMissing?: boolean;
 }
 
 interface InventoryItem {
@@ -244,6 +246,7 @@ const CreatePurchaseOrderPage = () => {
     { date: string; price: number }[]
   >([]);
   const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] = useState(false);
+  const [infoTooltipItemId, setInfoTooltipItemId] = useState<string | null>(null);
 
   const handleOpenPurchaseHistory = async (item: POItem) => {
     if (!selectedVendor?.uuid && !selectedVendor?.id) {
@@ -511,6 +514,17 @@ const CreatePurchaseOrderPage = () => {
     setIsVendorDialogOpen(false);
   };
 
+  // Update any existing items to reflect whether they have a purchase price for the selected vendor
+  useEffect(() => {
+    if (!selectedVendor) return;
+    setPoItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        purchasePriceMissing: !item.price_per_item,
+      })),
+    );
+  }, [selectedVendor]);
+
   const filteredVendors = vendors.filter((v) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -535,6 +549,8 @@ const CreatePurchaseOrderPage = () => {
   };
 
   const handleAddItems = (items: InventoryItem[]) => {
+    const shouldShowMissingPriceMessage = Boolean(selectedVendor?.uuid || selectedVendor?.id);
+
     const newItems: POItem[] = items.map((item, index) => {
       const quantity = item.quantity || 1;
       const price = item.purchase_price || 0;
@@ -544,6 +560,7 @@ const CreatePurchaseOrderPage = () => {
         Math.round(
           quantity * price * (1 - discount / 100) * (1 + taxRate / 100) * 100,
         ) / 100;
+
       return {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
@@ -555,9 +572,12 @@ const CreatePurchaseOrderPage = () => {
         tax: taxRate,
         amount,
         measuring_unit_id: item.measuring_unit_id,
+        purchasePriceMissing: shouldShowMissingPriceMessage && !item.purchase_price,
       };
     });
+
     setPoItems((prev) => [...prev, ...newItems]);
+    setInfoTooltipItemId(null);
     toast.success(`${items.length} item(s) added`);
   };
 
@@ -704,6 +724,32 @@ const CreatePurchaseOrderPage = () => {
         if (response.data?.po_number) {
           setFormData((prev) => ({ ...prev, poNo: response.data.po_number }));
         }
+
+        // Update inventory items with the purchase prices from the PO
+        if (selectedVendor) {
+          const itemsToUpdate = Array.from(
+            new Map(
+              poItems.map((item) => [
+                item.item_id,
+                { item_id: item.item_id, price: item.price_per_item },
+              ])
+            ).values()
+          );
+
+          for (const item of itemsToUpdate) {
+            try {
+              await updateItem(item.item_id, {
+                purchase_price: item.price,
+              });
+            } catch (error) {
+              console.error(
+                `Failed to update purchase price for item ${item.item_id}:`,
+                error
+              );
+            }
+          }
+        }
+
         if (navigateAfterSave && id) {
           navigate(`/purchases/purchase-orders/${id}`);
         }
@@ -1317,22 +1363,78 @@ const CreatePurchaseOrderPage = () => {
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
                             ₹
                           </span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.price_per_item}
-                            onKeyDown={(e) =>
-                              ["-", "+", "e", "E"].includes(e.key) &&
-                              e.preventDefault()
-                            }
-                            onChange={(e) =>
-                              handleUpdatePrice(
-                                item.id,
-                                parseFloat(e.target.value),
-                              )
-                            }
-                            className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
+                          {(item.purchasePriceMissing || !selectedVendor) ? (
+                            <TooltipProvider delayDuration={100}>
+                              <Tooltip
+                                open={infoTooltipItemId === item.id}
+                                onOpenChange={(isOpen) =>
+                                  setInfoTooltipItemId(isOpen ? item.id : null)
+                                }
+                              >
+                                <TooltipTrigger asChild>
+                                  {/* SAME INPUT wrapped */}
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={item.price_per_item}
+                                    onFocus={() => setInfoTooltipItemId(item.id)}
+                                    onKeyDown={(e) =>
+                                      ["-", "+", "e", "E"].includes(e.key) &&
+                                      e.preventDefault()
+                                    }
+                                    onChange={(e) =>
+                                      handleUpdatePrice(
+                                        item.id,
+                                        parseFloat(e.target.value),
+                                      )
+                                    }
+                                    className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
+                                  />
+                                </TooltipTrigger>
+
+                                <TooltipContent
+                                  side="top"
+                                  align="center"
+                                  sideOffset={8}
+                                  className="bg-gray-900 text-white text-xs px-3 py-2 rounded-md shadow-lg min-w-[240px]"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span>
+                                      {selectedVendor
+                                        ? "No purchase price found for this party in the last one year."
+                                        : "Select party to check pricing history."}
+                                    </span>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setInfoTooltipItemId(null)}
+                                      className="text-white/70 hover:text-white"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            // Normal input when no tooltip needed
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.price_per_item}
+                              onKeyDown={(e) =>
+                                ["-", "+", "e", "E"].includes(e.key) &&
+                                e.preventDefault()
+                              }
+                              onChange={(e) =>
+                                handleUpdatePrice(
+                                  item.id,
+                                  parseFloat(e.target.value),
+                                )
+                              }
+                              className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
+                            />
+                          )}
                         </div>
                         <div className="relative ml-2">
                           <TooltipProvider delayDuration={100}>

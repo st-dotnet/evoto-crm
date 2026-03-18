@@ -224,30 +224,30 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
     if (!invoiceData) return { subtotal: 0, totalDiscount: 0, totalTax: 0, taxableAmount: 0, totalCGST: 0, totalSGST: 0, effectiveTaxRate: 0 };
     const items = invoiceData.items || [];
     const subtotal = items.reduce((sum, item) => sum + (item.unit_price || 0) * (item.quantity || 0), 0);
-    
+
     const totalDiscount = items.reduce((sum, item) => {
-        const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
-        return sum + ((item.unit_price || 0) * (item.quantity || 0) * discPerc) / 100;
+      const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
+      return sum + ((item.unit_price || 0) * (item.quantity || 0) * discPerc) / 100;
     }, 0);
 
     const totalTax = items.reduce((sum, item) => {
-        const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
-        const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
-        const lineTaxable = (item.unit_price || 0) * (item.quantity || 0) * (1 - discPerc / 100);
-        return sum + (lineTaxable * taxPerc) / 100;
+      const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
+      const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
+      const lineTaxable = (item.unit_price || 0) * (item.quantity || 0) * (1 - discPerc / 100);
+      return sum + (lineTaxable * taxPerc) / 100;
     }, 0);
-    
+
     const taxableAmount = subtotal - totalDiscount;
     const effectiveTaxRate = taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
 
     return {
-        subtotal,
-        totalDiscount,
-        totalTax,
-        taxableAmount,
-        totalCGST: totalTax / 2,
-        totalSGST: totalTax / 2,
-        effectiveTaxRate
+      subtotal,
+      totalDiscount,
+      totalTax,
+      taxableAmount,
+      totalCGST: totalTax / 2,
+      totalSGST: totalTax / 2,
+      effectiveTaxRate
     };
   };
 
@@ -439,7 +439,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           <div className="flex flex-col items-end -mt-8">
             {brandingAssets?.logo_path ? (
               <img
-                src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
                 className="h-40 w-auto object-contain"
                 alt={businessInfo?.name || "Logo"}
               />
@@ -476,7 +476,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           </div>
           <p className="font-bold text-base text-black uppercase">{invoiceData.vendor?.vendor_name}</p>
           <div className="text-xs text-gray-700 mt-1 space-y-0.5">
-            {invoiceData.vendor?.company_name && <p className="font-medium">{invoiceData.vendor.company_name}</p>} 
+            {invoiceData.vendor?.company_name && <p className="font-medium">{invoiceData.vendor.company_name}</p>}
             {invoiceData.vendor?.gst && <p><span className="font-bold text-black uppercase text-[9px]">GSTIN:</span> {invoiceData.vendor.gst}</p>}
             {invoiceData.vendor?.mobile && <p><span className="font-bold text-black uppercase text-[9px]">Mobile:</span> {invoiceData.vendor.mobile}</p>}
             <p>{invoiceData.vendor?.address1}</p>
@@ -501,51 +501,51 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-black">
             {invoiceData.items.map((item, idx) => {
-                const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
-                const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
-                const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
-                const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
+              const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
+              const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
+              const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
+              const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
 
-                return (
-                    <tr key={idx}>
-                        <td className="p-2 border-r border-black align-top">
-                        <div className="flex items-start gap-1">
-                            <span className="font-medium text-sm text-black min-w-[20px]">{idx + 1}.</span>
-                            <div className="flex-1">
-                                <p className="font-semibold text-black leading-snug">{item.product_name}</p>
-                                {item.description && <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>}
-                                {item.hsn_sac_code && <p className="text-[9px] text-gray-400 mt-1">HSN/SAC: {item.hsn_sac_code}</p>}
-                            </div>
-                        </div>
-                        </td>
-                        <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
-                            {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
-                        </td>
-                        <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
-                        <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                            <div className="flex flex-col items-end">
-                                <span>-{formatCurrency(discAmt)}</span>
-                                {discPerc > 0 && <span className="text-[9px]">({discPerc}%)</span>}
-                            </div>
-                        </td>
-                        <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                            <div className="flex flex-col items-end">
-                                <span>{formatCurrency(taxAmt)}</span>
-                                <span className="text-[9px] block text-gray-500">({taxPerc}%)</span>
-                            </div>
-                        </td>
-                        <td className="p-2 text-right font-medium align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
-                    </tr>
-                );
+              return (
+                <tr key={idx}>
+                  <td className="p-2 border-r border-black align-top">
+                    <div className="flex items-start gap-1">
+                      <span className="font-medium text-sm text-black min-w-[20px]">{idx + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-black leading-snug">{item.product_name}</p>
+                        {item.description && <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>}
+                        {item.hsn_sac_code && <p className="text-[9px] text-gray-400 mt-1">HSN/SAC: {item.hsn_sac_code}</p>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
+                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                  </td>
+                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
+                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>-{formatCurrency(discAmt)}</span>
+                      {discPerc > 0 && <span className="text-[9px]">({discPerc}%)</span>}
+                    </div>
+                  </td>
+                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
+                    <div className="flex flex-col items-end">
+                      <span>{formatCurrency(taxAmt)}</span>
+                      <span className="text-[9px] block text-gray-500">({taxPerc}%)</span>
+                    </div>
+                  </td>
+                  <td className="p-2 text-right font-medium align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
+                </tr>
+              );
             })}
           </tbody>
           <tfoot>
             <tr className="border-t border-black bg-gray-50 font-bold">
-                <td colSpan={2} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
-                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
-                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
-                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
-                <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
+              <td colSpan={2} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
+              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
+              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
+              <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
             </tr>
           </tfoot>
         </table>
@@ -568,37 +568,37 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
 
           <div className="w-72 space-y-0 text-black">
             <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal uppercase">Taxable Amount</span>
-                <span className="text-sm font-bold">{formatCurrency(totals.taxableAmount)}</span>
+              <span className="text-xs font-normal uppercase">Taxable Amount</span>
+              <span className="text-sm font-bold">{formatCurrency(totals.taxableAmount)}</span>
             </div>
             <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal uppercase">CGST ({Math.round(totals.effectiveTaxRate / 2 * 100) / 100}%)</span>
-                <span className="text-sm font-bold">{formatCurrency(totals.totalCGST)}</span>
+              <span className="text-xs font-normal uppercase">CGST ({Math.round(totals.effectiveTaxRate / 2 * 100) / 100}%)</span>
+              <span className="text-sm font-bold">{formatCurrency(totals.totalCGST)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-black">
-                <span className="text-xs font-normal uppercase">SGST ({Math.round(totals.effectiveTaxRate / 2 * 100) / 100}%)</span>
-                <span className="text-sm font-bold">{formatCurrency(totals.totalSGST)}</span>
+              <span className="text-xs font-normal uppercase">SGST ({Math.round(totals.effectiveTaxRate / 2 * 100) / 100}%)</span>
+              <span className="text-sm font-bold">{formatCurrency(totals.totalSGST)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b-2 border-black">
-                <span className="text-sm font-bold">GRAND TOTAL</span>
-                <span className="text-xl font-bold">{formatCurrency(invoiceData.total_amount)}</span>
+              <span className="text-sm font-bold">GRAND TOTAL</span>
+              <span className="text-xl font-bold">{formatCurrency(invoiceData.total_amount)}</span>
             </div>
-            
+
             <div className="pt-2 text-right">
-                <p className="text-xs leading-tight">
-                    <span className="font-bold uppercase text-[12px]">In words:</span> {formatNumberInWords(invoiceData.total_amount)}
-                </p>
+              <p className="text-xs leading-tight">
+                <span className="font-bold uppercase text-[12px]">In words:</span> {formatNumberInWords(invoiceData.total_amount)}
+              </p>
             </div>
 
             <div className="mt-4 pt-4 border-t border-dashed border-gray-300 space-y-2 no-print">
-                <div className="flex justify-between text-xs text-green-700">
-                    <span className="font-medium uppercase">Amount Paid</span>
-                    <span className="font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
-                </div>
-                <div className="flex justify-between text-base text-red-700 font-bold">
-                    <span className="uppercase">Balance Due</span>
-                    <span>{formatCurrency(invoiceData.balance_due)}</span>
-                </div>
+              <div className="flex justify-between text-xs text-green-700">
+                <span className="font-medium uppercase">Amount Paid</span>
+                <span className="font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
+              </div>
+              <div className="flex justify-between text-base text-red-700 font-bold">
+                <span className="uppercase">Balance Due</span>
+                <span>{formatCurrency(invoiceData.balance_due)}</span>
+              </div>
             </div>
           </div>
         </div>

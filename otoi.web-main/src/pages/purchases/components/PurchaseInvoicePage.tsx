@@ -20,6 +20,7 @@ import {
     CreditCard,
     FileText,
     Info,
+    AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -681,18 +682,55 @@ const PurchaseInvoicePage = () => {
             </Dialog>
 
             {/* Delete Confirmation */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="sm:max-w-[400px]">
-                    <DialogTitle>Delete Purchase Invoice</DialogTitle>
-                    <DialogDescription>
-                        Are you sure you want to delete this invoice? This action cannot be undone.
-                    </DialogDescription>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
-                            {isDeleting ? "Deleting..." : "Delete"}
+            <Dialog
+                open={showDeleteDialog}
+                onOpenChange={(open) => {
+                    setShowDeleteDialog(open);
+                    if (!open) {
+                        setInvoiceToDelete(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-[420px] p-6">
+                    <DialogHeader className="flex flex-col items-center text-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                            <AlertCircle className="h-6 w-6 text-red-600" />
+                        </div>
+
+                        <DialogTitle className="text-lg font-semibold">
+                            Delete Purchase 
+                        </DialogTitle>
+
+                        <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                            Are you sure you want to delete this purchase invoice?
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <DialogFooter className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
                         </Button>
-                    </div>
+
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteConfirm}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting || !invoiceToDelete}
+                        >
+                            {isDeleting ? (
+                                <span className="flex items-center">
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                    Deleting...
+                                </span>
+                            ) : (
+                                'Delete'
+                            )}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

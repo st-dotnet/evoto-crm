@@ -219,7 +219,8 @@ export const PaymentInPage = () => {
       const response = await deletePaymentIn(paymentToDelete);
       if (response.success) {
         toast.success("Payment deleted successfully");
-        // DataGrid will automatically refresh on delete
+        // Remove the entry from the UI without page reload
+        setPayments(prev => prev.filter(p => p.id !== paymentToDelete && p.payment_number !== paymentToDelete));
       } else {
         toast.error(response.error || "Failed to delete payment");
       }

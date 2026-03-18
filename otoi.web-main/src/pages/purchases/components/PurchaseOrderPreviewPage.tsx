@@ -524,7 +524,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 <div className="flex flex-col items-end -mt-8">
                                     {brandingAssets?.logo_path ? (
                                         <img
-                                            src={`${import.meta.env.VITE_APP_API_URL.replace("/api", "")}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                                            src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
                                             className="h-40 w-auto object-contain"
                                             alt={getAuthBusinessInfo()?.name || "Logo"}
                                         />
