@@ -13,6 +13,7 @@ import {
   getPaymentById,
 } from "../services/payment-in.service";
 import { recordPayment } from "../../invoice/services/invoice.service";
+import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 // import { Button } from "@/components/ui/button";
 // import { Input } from "@/components/ui/input";
 import { SpinnerDotted } from "spinners-react";
@@ -44,6 +45,7 @@ export const CreatePaymentIn = () => {
   const [paymentDiscount, setPaymentDiscount] = useState("");
   const [paymentNumber, setPaymentNumber] = useState("");
   const [isFullyPaid, setIsFullyPaid] = useState(false);
+  const [creditNotes, setCreditNotes] = useState<any[]>([]);
 
   // Ref for dropdown container to handle click-outside
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -61,17 +63,24 @@ export const CreatePaymentIn = () => {
   };
 
   // Handle invoice selection
-  const handleInvoiceSelection = (invoiceId: string) => {
+  const handleInvoiceSelection = async (invoiceId: string) => {
     setSelectedInvoiceId(invoiceId);
     const selectedInvoice = partyInvoices.find((inv) => inv.id === invoiceId);
     if (selectedInvoice) {
       setPaymentNumber(selectedInvoice.invoice_number);
+      
+      // Fetch credit notes for this invoice
+      await fetchCreditNotesForInvoice(invoiceId);
+      
+      // Use the corrected pending amount calculation
+      const pendingAmount = getPendingAmount(selectedInvoice);
+      
       // Only set payment received if invoice has pending balance
       if (
-        selectedInvoice.balance_amount > 0 ||
+        pendingAmount > 0 ||
         selectedInvoice.status === "partially paid"
       ) {
-        setPaymentReceived(selectedInvoice.balance_amount.toString());
+        setPaymentReceived(pendingAmount.toString());
       } else {
         setPaymentReceived("");
       }
@@ -105,10 +114,10 @@ export const CreatePaymentIn = () => {
     const selectedInvoice = partyInvoices.find(
       (inv) => inv.id === selectedInvoiceId,
     );
-    const balanceAmount = selectedInvoice?.balance_amount || 0;
+    const pendingAmount = getPendingAmount(selectedInvoice);
     
-    if (totalAppliedAmount > balanceAmount + 0.01) {
-      toast.error("Total payment cannot exceed balance amount");
+    if (totalAppliedAmount > pendingAmount + 0.01) {
+      toast.error("Total payment cannot exceed pending amount (after credit notes)");
       return;
     }
 
@@ -252,6 +261,35 @@ export const CreatePaymentIn = () => {
     setPaymentDate(new Date().toISOString().split("T")[0]);
   };
 
+  // Fetch credit notes for selected invoice
+  const fetchCreditNotesForInvoice = async (invoiceId: string) => {
+    try {
+      const response = await checkCreditNoteExistsForInvoice(invoiceId);
+      if (response.success && response.data) {
+        setCreditNotes(response.data.creditNotes || []);
+      }
+    } catch (error) {
+      console.error("Error fetching credit notes:", error);
+      setCreditNotes([]);
+    }
+  };
+
+  const getTotalCreditNoteAmount = () => {
+    return creditNotes.reduce((total, creditNote) => total + (creditNote.total_amount || 0), 0);
+  };
+
+  const getPendingAmount = (invoice: any) => {
+    if (!invoice) return 0;
+    // Use backend's corrected balance_due which now includes credit notes
+    if (invoice.balance_due !== undefined) {
+      return Math.max(0, invoice.balance_due);
+    }
+    // Fallback calculation for backward compatibility
+    const creditNotesTotal = getTotalCreditNoteAmount();
+    const manualBalance = Math.max(0, invoice.total_amount - creditNotesTotal - (invoice.amount_paid || 0) - (invoice.payment_discount || 0));
+    return manualBalance;
+  };
+
   // Fetch invoices for selected party
   const fetchPartyInvoices = async (partyName: string) => {
     setIsInvoicesLoading(true);
@@ -281,7 +319,13 @@ export const CreatePaymentIn = () => {
           const singlePartialInvoice = partialInvoices[0];
           setSelectedInvoiceId(singlePartialInvoice.id);
           setPaymentNumber(singlePartialInvoice.invoice_number);
-          setPaymentReceived(singlePartialInvoice.balance_amount.toString());
+          
+          // Fetch credit notes for this invoice
+          await fetchCreditNotesForInvoice(singlePartialInvoice.id);
+          
+          // Use the corrected pending amount calculation
+          const pendingAmount = getPendingAmount(singlePartialInvoice);
+          setPaymentReceived(pendingAmount.toString());
           setPaymentDiscount("0");
         } else {
           // Reset selection if multiple partial invoices or none
@@ -289,17 +333,20 @@ export const CreatePaymentIn = () => {
           setPaymentNumber("");
           setPaymentReceived("");
           setPaymentDiscount("0");
+          setCreditNotes([]);
         }
       } else {
         toast.error(response.error || "Failed to fetch party invoices");
         setPartyInvoices([]);
         setIsFullyPaid(false);
+        setCreditNotes([]);
       }
     } catch (error) {
       console.error("Error fetching party invoices:", error);
       toast.error("Failed to fetch party invoices");
       setPartyInvoices([]);
       setIsFullyPaid(false);
+      setCreditNotes([]);
     } finally {
       setIsInvoicesLoading(false);
     }
@@ -775,6 +822,9 @@ export const CreatePaymentIn = () => {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Pending Amount
+            {getTotalCreditNoteAmount() > 0 && (
+              <span className="text-xs text-green-600 ml-2">(after credit notes)</span>
+            )}
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm z-10">
@@ -789,21 +839,21 @@ export const CreatePaymentIn = () => {
                 const selectedInvoice = partyInvoices.find(
                   (inv) => inv.id === selectedInvoiceId,
                 );
-                const balanceAmount = selectedInvoice?.balance_amount || 0;
+                const pendingAmount = getPendingAmount(selectedInvoice);
                 const currentDiscount = parseFloat(paymentDiscount) || 0;
                 
                 // Calculate the gross amount (actual payment + discount)
                 const grossAmount = actualPaymentAmount + currentDiscount;
                 
-                // Only allow if gross amount doesn't exceed balance amount
-                if (grossAmount <= balanceAmount + 0.01) {
+                // Only allow if gross amount doesn't exceed pending amount
+                if (grossAmount <= pendingAmount + 0.01) {
                   setPaymentReceived(actualPaymentAmount.toString());
                   setPaymentError(""); // Clear error when user changes amount
                 } else {
                   // Set to max allowed actual payment amount
-                  const maxActualPayment = Math.max(0, balanceAmount - currentDiscount);
+                  const maxActualPayment = Math.max(0, pendingAmount - currentDiscount);
                   setPaymentReceived(maxActualPayment.toString());
-                  setPaymentError(`Total payment cannot exceed balance amount`);
+                  setPaymentError(`Total payment cannot exceed pending amount (after credit notes)`);
                 }
               }}
               className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${
@@ -836,11 +886,11 @@ export const CreatePaymentIn = () => {
                 const selectedInvoice = partyInvoices.find(
                   (inv) => inv.id === selectedInvoiceId,
                 );
-                const balanceAmount = selectedInvoice?.balance_amount || 0;
+                const pendingAmount = getPendingAmount(selectedInvoice);
                 const currentActualPayment = parseFloat(paymentReceived) || 0;
                 
                 // Calculate max allowed actual payment amount
-                const maxActualPayment = Math.max(0, balanceAmount - newDiscount);
+                const maxActualPayment = Math.max(0, pendingAmount - newDiscount);
                 
                 // Adjust actual payment if it exceeds new maximum allowed
                 const adjustedActualPayment = Math.min(currentActualPayment, maxActualPayment);
@@ -860,6 +910,16 @@ export const CreatePaymentIn = () => {
       {paymentReceived && (
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="space-y-2">
+            {getTotalCreditNoteAmount() > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-green-700">
+                  Credit Note(s) Applied:
+                </span>
+                <span className="text-sm font-bold text-green-900">
+                  -₹{getTotalCreditNoteAmount().toLocaleString("en-IN")}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-blue-700">
                 Actual Payment Amount:
@@ -969,8 +1029,8 @@ export const CreatePaymentIn = () => {
         </div>
       )}
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+      {/* ── Header */}
+      <header className="sticky top-[70px] z-60 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

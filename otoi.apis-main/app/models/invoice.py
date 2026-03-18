@@ -38,6 +38,9 @@ class Invoice(BaseMixin, db.Model):
     # Payment status (unpaid, partial, paid)
     payment_status = Column(String(20), default="unpaid", nullable=False)
     
+    # Invoice status (unpaid, paid, refunded, cancelled)
+    status = Column(String(20), default="unpaid", nullable=False)
+    
     # Soft delete column
     is_deleted = Column(Boolean, default=False, nullable=False)
 

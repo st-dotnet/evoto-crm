@@ -10,6 +10,7 @@ from .inventory import ItemType, ItemCategory, MeasuringUnit, Item, ItemImage
 from .purchase import PurchaseEntry
 from .quotation import Quotation, QuotationItem
 from .invoice import Invoice, InvoiceItem
+from .creditIn import CreditNote, CreditNoteItem, CreditNotePayment
 from .location import Country, UnionTerritory
 from .paymentIn import PaymentIn
 from .paymentOut import PaymentOut
@@ -23,6 +24,7 @@ __all__ = [ "User", "Role", "Address",
            "BusinessRegistrationType", "BusinessType", "IndustryType",
            "Business", "user_business",
            "ItemType", "ItemCategory", "MeasuringUnit", "Item", "ItemImage", "PurchaseEntry",
-           "Quotation", "QuotationItem","Invoice", "InvoiceItem", "Country", "UnionTerritory", "PaymentIn", "PaymentOut",
+           "Quotation", "QuotationItem","Invoice", "InvoiceItem",
+           "CreditNote", "CreditNoteItem", "CreditNotePayment", "Country", "UnionTerritory", "PaymentIn", "PaymentOut",
            "PurchaseOrder", "PurchaseOrderItem",
            "PurchaseInvoice", "PurchaseInvoiceItem"]

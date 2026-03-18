@@ -197,9 +197,9 @@ const ShippingAddressModal = ({
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {/* <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-50"> */}
-        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[600px] p-0 rounded-lg shadow-lg z-50 max-h-[90vh] flex flex-col">
-          <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b">
-            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
+        <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-[99] max-h-[90vh] flex flex-col">
+          <DialogHeader className="bg-gray-50 p-6 border-b">
+            <DialogTitle className="text-lg font-semibold text-gray-800">
               {title ||
                 (address ? "Edit Shipping Address" : "Add Shipping Address")}
             </DialogTitle>

@@ -20,7 +20,8 @@ import {
     Trash2,
     CreditCard,
     FileText,
-    AlertCircle
+    AlertCircle,
+    Receipt
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -32,6 +33,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { getInvoices, deleteInvoice, getCustomerNamesDropdown, getInvoiceNumbersDropdown } from "../services/invoice.service";
+import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
@@ -43,6 +45,7 @@ interface Invoice {
     party_name: string;
     due_date: string;
     amount: number;
+    total_amount: number;
     amount_paid: number;
     balance_due: number;
     payment_status: string;
@@ -50,6 +53,8 @@ interface Invoice {
 
 const InvoicePage = () => {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [invoicesWithCreditNotes, setInvoicesWithCreditNotes] = useState<Set<string>>(new Set());
+    const [isCheckingCreditNote, setIsCheckingCreditNote] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -130,47 +135,44 @@ const InvoicePage = () => {
         }
     }, [searchTerm, searchType, allCustomerNames, allInvoiceNumbers]);
 
-    // Fetch invoices from database
-    const fetchInvoices = useCallback(async (params: TDataGridRequestParams) => {
-        setIsLoading(true);
-        try {
-            const response = await getInvoices(
-                searchTerm,
-                params.pageIndex + 1,
-                params.pageSize,
-                searchType === 'party_name' ? searchTerm : '',
-                searchType === 'invoice_number' ? searchTerm : '',
-                selectedStatus === 'all' ? '' : selectedStatus
-            );
+  // Fetch invoices from database
+  const fetchInvoices = useCallback(async (params: TDataGridRequestParams) => {
+    setIsLoading(true);
+    try {
+      const response = await getInvoices(
+        searchTerm,
+        params.pageIndex + 1,
+        params.pageSize,
+        searchType === 'party_name' ? searchTerm : '',
+        searchType === 'invoice_number' ? searchTerm : '',
+        selectedStatus === 'all' ? '' : selectedStatus
+      );
 
-            if (response.success && response.data) {
-                const invoicesData = response.data.data || response.data;
+      if (response.success && response.data) {
+        const invoicesData = response.data.data || response.data;
 
-                const transformedInvoices = invoicesData.map((item: any) => ({
-                    id: item.uuid,
-                    date: item.invoice_date || item.created_at,
-                    invoice_number: item.invoice_number,
-                    party_name: item.customer_name || 'N/A',
-                    due_date: item.due_date,
-                    amount: item.total_amount || 0,
-                    amount_paid: item.amount_paid || 0,
-                    balance_due: item.balance_due || 0,
-                    payment_status: item.payment_status || 'unpaid',
-                }));
-                setInvoices(transformedInvoices);
+        const transformedInvoices = invoicesData.map((item: any) => ({
+          id: item.uuid,
+          date: item.invoice_date || item.created_at,
+          invoice_number: item.invoice_number,
+          party_name: item.customer_name || 'N/A',
+          due_date: item.due_date,
+          amount: item.total_amount || 0,
+          total_amount: item.total_amount || 0,
+          amount_paid: item.amount_paid || 0,
+          balance_due: item.balance_due || 0,
+          payment_status: item.payment_status || 'unpaid',
+        }));
+        setInvoices(transformedInvoices);
 
-                // Return data for server-side DataGrid
-                return {
-                    data: transformedInvoices,
-                    totalCount: response.data.pagination?.total || transformedInvoices.length,
-                };
-            } else {
-                toast.error(response.error || 'Failed to fetch invoices');
-                setInvoices([]);
-                return {
-                    data: [],
-                    totalCount: 0,
-                };
+        // Check which invoices have credit notes
+        checkInvoicesForCreditNotes(transformedInvoices);
+
+        // Return data for server-side DataGrid
+        return {
+          data: transformedInvoices,
+          totalCount: response.data.pagination?.total || transformedInvoices.length,
+        };
             }
         } catch (error) {
             console.error('Error fetching invoices:', error);
@@ -279,6 +281,46 @@ const InvoicePage = () => {
         );
     };
 
+    // Check which invoices have credit notes
+    const checkInvoicesForCreditNotes = async (invoiceList: Invoice[]) => {      
+        const invoiceIds = invoiceList.map(inv => inv.id);
+        const creditNoteChecks = invoiceIds.map(async (invoiceId) => {
+            try {
+                const response = await checkCreditNoteExistsForInvoice(invoiceId);
+                return { invoiceId, hasCreditNote: response.success ? response.data.hasCreditNote : false };
+            } catch (error) {
+                console.error(`Error checking credit note for invoice ${invoiceId}:`, error);
+                return { invoiceId, hasCreditNote: false };
+            }
+        });
+
+        const results = await Promise.all(creditNoteChecks);
+        const invoicesWithNotes = new Set(
+            results.filter(result => result.hasCreditNote).map(result => result.invoiceId)
+        );
+        
+        setInvoicesWithCreditNotes(invoicesWithNotes);
+    };
+
+    // Listen for credit note updates to refresh invoice data
+    useEffect(() => {
+        const handleCreditNoteUpdate = (event: CustomEvent) => {
+            // Refresh the invoice data to show updated status
+            setRefreshKey(prev => prev + 1);
+            
+            // Also refresh credit note status for current invoices
+            if (invoices.length > 0) {
+                checkInvoicesForCreditNotes(invoices);
+            }
+        };
+
+        window.addEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
+        };
+    }, [invoices]);
+
     // Filter invoices by payment status (kept for compatibility but not used with server-side filtering)
     const filteredInvoices = useMemo(() => {
         return invoices;
@@ -292,6 +334,21 @@ const InvoicePage = () => {
         // Prevent any pending navigation
         window.event?.stopPropagation();
         window.event?.preventDefault();
+
+        // Check if credit notes exist for this invoice before allowing delete
+        try {
+            const response = await checkCreditNoteExistsForInvoice(id);
+            if (response.success && response.data && response.data.hasCreditNote) {
+                const creditNotes = response.data.creditNotes || [];
+                const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+                toast.error(`Cannot delete invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking credit notes:', error);
+            // Still allow delete if check fails, but show warning
+            toast.warning('Unable to verify credit note status. Proceed with caution.');
+        }
 
         setInvoiceToDelete(id);
         setShowDeleteDialog(true);
@@ -327,6 +384,7 @@ const InvoicePage = () => {
         };
         return styles[status] || 'bg-gray-100 text-gray-800';
     };
+
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
@@ -459,11 +517,11 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => {
-                const status = info.getValue() as string;
+                const invoice = info.row.original;
                 return (
                     <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(status)}`}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.payment_status)}`}>
+                            {invoice.payment_status.charAt(0).toUpperCase() + invoice.payment_status.slice(1)}
                         </span>
                     </div>
                 );
@@ -517,15 +575,75 @@ const InvoicePage = () => {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
-                                    onSelect={(e) => {
+                                    onSelect={async (e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        handleEdit(row.original.id);
+                                        
+                                        // Check if credit notes exist for this invoice before allowing edit
+                                        try {
+                                            const response = await checkCreditNoteExistsForInvoice(row.original.id);
+                                            if (response.success && response.data && response.data.hasCreditNote) {
+                                                const creditNotes = response.data.creditNotes || [];
+                                                const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+                                                toast.error(`Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+                                                setIsOpen(false);
+                                                return;
+                                            }
+                                        } catch (error) {
+                                            console.error('Error checking credit notes:', error);
+                                            // Still allow edit if check fails, but show warning
+                                            toast.warning('Unable to verify credit note status. Proceed with caution.');
+                                        }
+                                        
+                                        navigate(`/invoices/${row.original.id}/edit`);
                                         setIsOpen(false);
                                     }}
                                 >
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                    onSelect={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        
+                                        // CHECK IF CREDIT NOTE ALREADY EXISTS - RESTRICT TO ONE PER INVOICE
+                                        setIsCheckingCreditNote(true);
+                                        try {
+                                            const checkResponse = await checkCreditNoteExistsForInvoice(row.original.id);
+                                            
+                                            if (checkResponse.success && checkResponse.data.hasCreditNote) {
+                                                
+                                                // If credit note exists, navigate to edit the first one
+                                                const existingCreditNote = checkResponse.data.creditNotes[0];
+                                                toast.info(`Credit note ${existingCreditNote.credit_note_number} already exists. Opening for editing.`);
+                                                navigate(`/sales/credit-note/edit/${existingCreditNote.uuid}`);
+                                                setIsOpen(false);
+                                                return;
+                                            } else {
+                                                navigate(`/sales/credit-note/create?invoice_id=${row.original.id}`);
+                                                setIsOpen(false);
+                                                return;
+                                            }
+                                        } catch (error) {
+                                            console.error('Error checking credit note existence:', error);
+                                            toast.warning('Unable to verify credit note status. You can proceed, but please verify no duplicates exist.');
+                                            navigate(`/sales/credit-note/create?invoice_id=${row.original.id}`);
+                                            setIsOpen(false);
+                                            return;
+                                        } finally {
+                                            setIsCheckingCreditNote(false);
+                                        }
+                                    }}
+                                    disabled={isCheckingCreditNote}
+                                    className={isCheckingCreditNote ? 'opacity-70' : ''}
+                                >
+                                    <Receipt className="mr-2 h-4 w-4" />
+                                    Create Credit Note
+                                    {isCheckingCreditNote && (
+                                        <span className="ml-2 text-xs text-blue-600">(Checking...)</span>
+                                    )}
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem

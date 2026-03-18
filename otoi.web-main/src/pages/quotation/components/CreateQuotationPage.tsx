@@ -670,20 +670,20 @@ const CreateQuotationPage = () => {
         }
       } else {
         toast.error("Failed to load quotation details");
-        navigate("/quotes/list");
-      }
-    } catch (error) {
-      toast.error("Failed to load quotation details");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isEditMode && id) {
-      handleFetchQuotation(id);
-    }
-  }, [id, isEditMode]);
+        navigate("/quotes/list");                                                                                                                                                               
+      }                                                                                                                                                               
+    } catch (error) {                                                                                                                                                               
+      toast.error("Failed to load quotation details");                                                                                                                                                               
+    } finally {                                                                                                                                                               
+      setIsLoading(false);                                                                                                                                                               
+    }                                                                                                                                                               
+  };                                                                                                                                                               
+                                                                                                                                                               
+  useEffect(() => {                                                                                                                                                               
+    if (isEditMode && id) {                                                                                                                                                               
+      handleFetchQuotation(id);                                                                                                                                                               
+    }                                                                                                                                                               
+  }, [id, isEditMode]);                                                                                                                                                                                                                                                                                           
 
   // Handle duplicate mode data loading
   useEffect(() => {
@@ -1652,7 +1652,7 @@ const CreateQuotationPage = () => {
                               )}
                               {selectedCustomer.email && (
                                 <p className="text-gray-600">
-                                  <span className="font-medium">Email:</span>{" "}
+                                  <span className="font-medium">Email:</span>{" "}                                                                
                                   {selectedCustomer.email}
                                 </p>
                               )}
@@ -1771,11 +1771,11 @@ const CreateQuotationPage = () => {
                                     </p>
                                   )}
                                   {selectedCustomer.gst && (
-                                    <p className="text-gray-600">
+                                    <p className="text-gray-600"> 
                                       <span className="font-medium">GST:</span>{" "}
                                       {selectedCustomer.gst}
                                     </p>
-                                  )}
+                                  )}  
                                   <div className="mt-2 space-y-1">
                                     {selectedAddress.address1 && (
                                       <p className="text-gray-600">
