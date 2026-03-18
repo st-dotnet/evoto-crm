@@ -236,6 +236,21 @@ const InvoicePage = () => {
         window.event?.stopPropagation();
         window.event?.preventDefault();
 
+        // Check if credit notes exist for this invoice before allowing delete
+        try {
+            const response = await checkCreditNoteExistsForInvoice(id);
+            if (response.success && response.data && response.data.hasCreditNote) {
+                const creditNotes = response.data.creditNotes || [];
+                const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+                toast.error(`Cannot delete invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking credit notes:', error);
+            // Still allow delete if check fails, but show warning
+            toast.warning('Unable to verify credit note status. Proceed with caution.');
+        }
+
         setInvoiceToDelete(id);
         setShowDeleteDialog(true);
     };
@@ -461,9 +476,26 @@ const InvoicePage = () => {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
-                                    onSelect={(e) => {
+                                    onSelect={async (e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        
+                                        // Check if credit notes exist for this invoice before allowing edit
+                                        try {
+                                            const response = await checkCreditNoteExistsForInvoice(row.original.id);
+                                            if (response.success && response.data && response.data.hasCreditNote) {
+                                                const creditNotes = response.data.creditNotes || [];
+                                                const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+                                                toast.error(`Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+                                                setIsOpen(false);
+                                                return;
+                                            }
+                                        } catch (error) {
+                                            console.error('Error checking credit notes:', error);
+                                            // Still allow edit if check fails, but show warning
+                                            toast.warning('Unable to verify credit note status. Proceed with caution.');
+                                        }
+                                        
                                         navigate(`/invoices/${row.original.id}/edit`);
                                         setIsOpen(false);
                                     }}
