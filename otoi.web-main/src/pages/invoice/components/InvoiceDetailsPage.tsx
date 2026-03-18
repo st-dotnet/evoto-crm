@@ -394,7 +394,22 @@ const InvoiceDetailsPage: React.FC = () => {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
+    // Check if credit notes exist for this invoice before allowing edit
+    try {
+      const response = await checkCreditNoteExistsForInvoice(id!);
+      if (response.success && response.data && response.data.hasCreditNote) {
+        const creditNotes = response.data.creditNotes || [];
+        const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
+        toast.error(`Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking credit notes:', error);
+      // Still allow edit if check fails, but show warning
+      toast.warning('Unable to verify credit note status. Proceed with caution.');
+    }
+    
     navigate(`/invoices/${id}/edit`);
   };
 
