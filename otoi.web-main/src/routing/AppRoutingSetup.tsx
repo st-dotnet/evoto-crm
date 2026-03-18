@@ -102,6 +102,9 @@ const InvoiceDetailsPage = lazy(() => import('@/pages/invoice/components/Invoice
 const CreateInvoicePage = lazy(() => import('@/pages/invoice/components/CreateInvoicePage').then(module => ({ default: module.default })));
 const PaymentInPage = lazy(() => import('@/pages/payment-in/components/PaymentInPage').then(module => ({ default: module.PaymentInPage })));
 const CreatePaymentIn = lazy(() => import('@/pages/payment-in/components/CreatePaymentIn').then(module => ({ default: module.CreatePaymentIn })));
+const CreditInpage = lazy(() => import('@/pages/creditIn/components/CreditInpage').then(module => ({ default: module.CreditInpage })));
+const CreateCreditNotePage = lazy(() => import('@/pages/creditIn/components/CreateCreditNotePage').then(module => ({ default: module.CreateCreditNotePage })));
+const CreditInDetailsPage = lazy(() => import('@/pages/creditIn/components/CreditInDetailsPage').then(module => ({ default: module.default })));
 const PaymentOutPage = lazy(() => import('@/pages/payment-out/components/PaymentOutPage').then(module => ({ default: module.PaymentOutPage })));
 const CreatePaymentOut = lazy(() => import('@/pages/payment-out/components/CreatePaymentOut').then(module => ({ default: module.CreatePaymentOut })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
@@ -321,6 +324,26 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/payment-in/:id" element={
             <Suspense fallback={<LoadingFallback />}>
               <CreatePaymentIn />
+            </Suspense>
+          } />
+          <Route path="/sales/credit-note" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreditInpage />
+            </Suspense>
+          } />
+          <Route path="/sales/credit-note/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreditInDetailsPage />
+            </Suspense>
+          } />
+          <Route path="/sales/credit-note/create" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateCreditNotePage />
+            </Suspense>
+          } />
+          <Route path="/sales/credit-note/:id/edit" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateCreditNotePage />
             </Suspense>
           } />
 

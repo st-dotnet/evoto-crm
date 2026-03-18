@@ -4,9 +4,13 @@ from sqlalchemy import or_, func, desc, asc, and_
 from sqlalchemy.orm import selectinload
 import base64
 from app.extensions import db
-from app.models import Invoice, InvoiceItem, Quotation, Item, Customer
+from app.models.invoice import Invoice, InvoiceItem
+from app.models.customer import Customer
+from app.models.creditIn import CreditNote
+from app.models.inventory import Item
 from app.services.pdf_service import generate_invoice_pdf
-from app.utils.stamping import set_created_fields, set_updated_fields
+from app.utils.stamping import set_updated_fields
+from app.routes.creditIn import update_invoice_payment_status
 from app.utils.decorators import login_required
 import uuid
 from datetime import datetime, timedelta
@@ -292,6 +296,12 @@ def get_invoices():
         schema:
           type: boolean
         description: Return all unique customers (party names) for dropdown
+      - name: exclude_linked_to_credit_notes
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: Exclude invoices that are linked to credit notes
     responses:
       200:
         description: A paginated list of invoices.
@@ -304,6 +314,7 @@ def get_invoices():
         party_name = request.args.get('party_name', '').strip()
         invoice_number = request.args.get('invoice_number', '').strip()
         payment_status = request.args.get('payment_status', '').strip()
+        exclude_linked_to_credit_notes = request.args.get('exclude_linked_to_credit_notes', '').lower() == 'true'
         
         # Apply search filters with priority to search parameter
         if search:
@@ -343,6 +354,18 @@ def get_invoices():
         # Apply payment_status filter if provided
         if payment_status and payment_status != '':
             query = query.filter(Invoice.payment_status == payment_status)
+        
+        # Apply exclude_linked_to_credit_notes filter if provided
+        if exclude_linked_to_credit_notes:
+            # Find all invoices that are NOT linked to any credit notes
+            linked_invoice_subquery = db.select(
+                CreditNote.invoice_id
+            ).where(
+                CreditNote.invoice_id.isnot(None),
+                CreditNote.is_deleted == False
+            ).subquery()
+            
+            query = query.filter(~Invoice.uuid.in_(linked_invoice_subquery))
         
         # Handle sorting
         sort = request.args.get("sort", "created_at")  # Default sort by created_at
@@ -493,9 +516,40 @@ def get_invoices():
         customer_ids = [inv.customer_id for inv in invoices]
         customers = {c.uuid: c for c in Customer.query.filter(Customer.uuid.in_(customer_ids)).all()} if customer_ids else {}
 
+        # Get credit notes data for all invoices to calculate effective balance
+        invoice_ids = [str(inv.uuid) for inv in invoices]  # Convert to strings
+        credit_notes_by_invoice = {}
+        if invoice_ids:
+            credit_notes = CreditNote.query.filter(
+                CreditNote.invoice_id.in_(invoice_ids),
+                CreditNote.is_deleted == False
+            ).all()
+            for cn in credit_notes:
+                # Use string as key to match our lookup
+                invoice_key = str(cn.invoice_id)
+                if invoice_key not in credit_notes_by_invoice:
+                    credit_notes_by_invoice[invoice_key] = 0
+                credit_notes_by_invoice[invoice_key] += float(cn.total_amount)
+        
+        # Debug: Print final credit_notes_by_invoice
+
         # Shape response to match frontend expectations: { data: [...], pagination: { total, ... } }
         result = []
         for inv in invoices:
+            # Calculate effective balance due considering credit notes
+            credit_notes_total = credit_notes_by_invoice.get(str(inv.uuid), 0)
+            effective_balance_due = max(0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - credit_notes_total)
+            
+            # Debug: Print calculation for this invoice
+            
+            # Calculate effective payment status based on effective balance
+            if effective_balance_due <= 0:
+                effective_payment_status = "paid"
+            elif float(inv.amount_paid) > 0 or credit_notes_total > 0:
+                effective_payment_status = "partial"
+            else:
+                effective_payment_status = "unpaid"
+                        
             result.append({
                 "uuid": str(inv.uuid),
                 "invoice_number": inv.invoice_number,
@@ -506,9 +560,10 @@ def get_invoices():
                 "customer_name": f"{customers[inv.customer_id].first_name} {customers[inv.customer_id].last_name}" if inv.customer_id in customers else None,
                 "total_amount": float(inv.total_amount) if inv.total_amount else 0,
                 "amount_paid": float(inv.amount_paid) if inv.amount_paid else 0,
-                "balance_due": float(inv.balance_due) if inv.balance_due else 0,
+                "balance_due": effective_balance_due,  
                 "payment_discount": float(inv.payment_discount) if inv.payment_discount else 0,
-                "payment_status": inv.payment_status,
+                "credit_notes_total": credit_notes_total,  
+                "payment_status": effective_payment_status,  
                 "charges": inv.charges,
                 "created_at": inv.created_at.isoformat() if inv.created_at else None,
             })
@@ -560,6 +615,18 @@ def get_invoice(invoice_id):
     """
     invoice = Invoice.query.get_or_404(invoice_id)
     
+    # Get credit notes linked to this invoice
+    credit_notes_data = []
+    credit_notes = CreditNote.query.filter_by(invoice_id=invoice_id, is_deleted=False).all()
+    for credit_note in credit_notes:
+        credit_notes_data.append({
+            "uuid": str(credit_note.uuid),
+            "credit_note_number": credit_note.credit_note_number,
+            "total_amount": float(credit_note.total_amount) if credit_note.total_amount else 0,
+            "status": credit_note.status,
+            "credit_note_date": credit_note.credit_note_date.isoformat() if credit_note.credit_note_date else None,
+        })
+    
     # Get item details
     items_data = []
     for item in invoice.items:
@@ -592,6 +659,20 @@ def get_invoice(invoice_id):
         
         items_data.append(item_info)
 
+    # Calculate credit notes total (include all non-deleted credit notes, same as helper function)
+    credit_notes_total = sum(float(cn.total_amount) for cn in credit_notes)
+    
+    # Calculate effective balance due considering credit notes
+    effective_balance_due = max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total)
+    
+    # Calculate effective payment status based on effective balance
+    if effective_balance_due <= 0:
+        effective_payment_status = "paid"
+    elif float(invoice.amount_paid) > 0 or credit_notes_total > 0:
+        effective_payment_status = "partial"
+    else:
+        effective_payment_status = "unpaid"
+
     invoice_data = {
         "uuid": str(invoice.uuid),
         "invoice_number": invoice.invoice_number,
@@ -609,12 +690,14 @@ def get_invoice(invoice_id):
         "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
         "total_amount": float(invoice.total_amount) if invoice.total_amount else 0,
         "amount_paid": float(invoice.amount_paid) if invoice.amount_paid else 0,
-        "balance_due": float(invoice.balance_due) if invoice.balance_due else 0,
+        "balance_due": effective_balance_due, 
         "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0,
         "charges": invoice.charges or {},
-        "payment_status": invoice.payment_status,
+        "payment_status": effective_payment_status, 
         "additional_notes": invoice.additional_notes or {},
         "items": items_data,
+        "credit_notes": credit_notes_data,
+        "credit_notes_total": credit_notes_total, 
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "updated_at": invoice.updated_at.isoformat() if invoice.updated_at else None,
     }
@@ -977,7 +1060,13 @@ def record_payment(invoice_id):
         # Calculate maximum allowed payment to prevent overpayment
         current_total_paid = float(invoice.amount_paid or 0)
         current_discount = float(invoice.payment_discount or 0)
-        max_allowed_payment = float(invoice.total_amount) - current_total_paid - current_discount
+        
+        # Get credit notes for this invoice
+        credit_notes = CreditNote.query.filter_by(invoice_id=str(invoice.uuid), is_deleted=False).all()
+        total_credit_amount = sum(float(cn.total_amount) for cn in credit_notes)
+        
+        # Calculate maximum allowed payment considering credit notes
+        max_allowed_payment = float(invoice.total_amount) - current_total_paid - current_discount - total_credit_amount
         
         # Add small epsilon tolerance for floating-point precision
         epsilon = 0.01  # 1 paisa tolerance
@@ -1005,13 +1094,8 @@ def record_payment(invoice_id):
         # Cap balance at 0 to prevent negative values
         invoice.balance_due = max(0, calculated_balance)
         
-        # Update payment status - ensure proper status setting
-        if invoice.balance_due <= 0:
-            invoice.payment_status = "paid"
-        elif invoice.amount_paid > 0:
-            invoice.payment_status = "partial"
-        else:
-            invoice.payment_status = "unpaid"
+        # Use the helper function to update payment status (considers credit notes)
+        update_invoice_payment_status(str(invoice.uuid))
         
         # Force refresh the invoice object to ensure latest values
         db.session.flush()  # Ensure changes are written to session
@@ -1021,12 +1105,18 @@ def record_payment(invoice_id):
         # Refresh the invoice to get the latest committed values
         db.session.refresh(invoice)
         
+        # Calculate effective balance due considering credit notes for response
+        credit_notes = CreditNote.query.filter_by(invoice_id=str(invoice.uuid), is_deleted=False).all()
+        credit_notes_total = sum(float(cn.total_amount) for cn in credit_notes)
+        effective_balance_due = max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total)
+        
         return jsonify({
             "message": "Payment recorded successfully",
             "amount_paid": float(invoice.amount_paid),
-            "balance_due": float(invoice.balance_due),
+            "balance_due": effective_balance_due, 
             "payment_status": invoice.payment_status,
-            "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0
+            "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0,
+            "credit_notes_total": credit_notes_total  
         }), 200
         
     except Exception as e:
@@ -1089,6 +1179,126 @@ def soft_delete_invoice(invoice_id):
         return jsonify({
             "success": False,
             "error": "An error occurred while deleting the invoice",
+            "details": str(e)
+        }), 500
+
+
+@invoice_blueprint.route("/<invoice_id>/status", methods=["PUT"])
+@login_required
+def update_invoice_status(invoice_id):
+    """
+    Update invoice status
+    ---
+    tags:
+      - Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        description: Invoice UUID or invoice number (e.g., INV-1010)
+      - name: status
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: ["unpaid", "partially_paid", "paid", "refunded", "cancelled"]
+    responses:
+      200:
+        description: Invoice status updated successfully
+      404:
+        description: Invoice not found
+      400:
+        description: Invalid status
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    try:
+        # Handle both UUID and invoice number
+        if invoice_id.startswith("INV-"):
+            # It's an invoice number, look up by invoice_number
+            invoice = Invoice.query.filter_by(invoice_number=invoice_id, is_deleted=False).first()
+            if not invoice:
+                return jsonify({
+                    "success": False,
+                    "error": f"Invoice with number {invoice_id} not found"
+                }), 404
+        else:
+            # It's a UUID, look up by UUID
+            try:
+                from uuid import UUID as uuid_convert
+                uuid_obj = uuid_convert(invoice_id)
+                invoice = Invoice.query.filter_by(uuid=uuid_obj, is_deleted=False).first()
+                if not invoice:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Invoice with UUID {invoice_id} not found"
+                    }), 404
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "error": f"Invalid invoice ID format: {invoice_id}"
+                }), 400
+        
+        data = request.get_json()
+        new_status = data.get("status")
+        
+        if not new_status:
+            return jsonify({
+                "success": False,
+                "error": "Status is required"
+            }), 400
+        
+        valid_statuses = ["unpaid", "partially_paid", "paid", "refunded", "cancelled"]
+        if new_status not in valid_statuses:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            }), 400
+        
+        # Business logic validations
+        if new_status == "refunded":
+            # Allow refunding invoices that are paid, partially_paid, or unpaid
+            if invoice.status not in ["paid", "partially_paid", "unpaid"]:
+                return jsonify({
+                    "success": False,
+                    "error": f"Cannot refund invoice with status: {invoice.status}"
+                }), 400
+        
+        if new_status == "cancelled" and invoice.status == "refunded":
+            return jsonify({
+                "success": False,
+                "error": "Cannot cancel refunded invoice"
+            }), 400
+        
+        # Update status
+        old_status = invoice.status
+        invoice.status = new_status
+        set_updated_fields(invoice)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Invoice status updated successfully",
+            "data": {
+                "invoice_uuid": str(invoice.uuid),
+                "invoice_number": invoice.invoice_number,
+                "old_status": old_status,
+                "new_status": new_status
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": "An error occurred while updating invoice status",
             "details": str(e)
         }), 500
 
