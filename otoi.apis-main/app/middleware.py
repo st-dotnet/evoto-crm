@@ -37,7 +37,8 @@ def extract_jwt_info():
     # Other
         '/flasgger',
         '/flasgger/',
-        '/favicon.ico'
+        '/favicon.ico',
+        '/api/share-data'
     ]
     
     # Check if current endpoint is public or a static file

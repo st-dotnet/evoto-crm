@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
+import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock, Mail } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -10,6 +16,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getInvoiceById } from "../services/invoice.services";
+import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -130,6 +137,7 @@ const InvoiceDetailsPage: React.FC = () => {
   const [amountError, setAmountError] = useState("");
   const [updatedBalance, setUpdatedBalance] = useState(0);
   const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
+  const [isFetchingShareData, setIsFetchingShareData] = useState(false);
 
   const invoiceRef = useRef<HTMLDivElement>(null);
 
@@ -241,36 +249,46 @@ const InvoiceDetailsPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  // const handleShare = async () => {
-  //     if (!invoiceRef.current) return;
-  //     const shareToast = toast.loading("Preparing for share...");
-  //     try {
-  //         const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
-  //         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
-  //             if (b) resolve(b);
-  //             else reject(new Error("Failed to generate blob"));
-  //         }, "image/png"));
-  //         const file = new File([blob], `Invoice-${invoiceData?.invoice_number}.png`, { type: "image/png" });
+  const handleShareWhatsApp = async () => {
+    if (!invoiceData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Preparing share options...");
+    try {
+      const response = await getShareData(invoiceData.uuid, 'invoice');
+      if (response.success && response.data) {
+        const { message, contact } = response.data;
+        const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp...", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to fetch share data");
+      }
+    } catch (error: any) {
+      console.error("Share error:", error);
+      toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
 
-  //         if (navigator.share) {
-  //             await navigator.share({
-  //                 files: [file],
-  //                 title: `Invoice ${invoiceData?.invoice_number}`,
-  //                 text: `Check out our invoice: ${invoiceData?.invoice_number}`
-  //             });
-  //             toast.success("Shared successfully", { id: shareToast });
-  //         } else {
-  //             const url = URL.createObjectURL(blob);
-  //             const a = document.createElement("a");
-  //             a.href = url;
-  //             a.download = `Invoice-${invoiceData?.invoice_number}.png`;
-  //             a.click();
-  //             toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
-  //         }
-  //     } catch (error) {
-  //         toast.error("Failed to share", { id: shareToast });
-  //     }
-  // };
+  const handleShareEmail = async () => {
+    if (!invoiceData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Sending email...");
+    try {
+      const response = await sendShareEmail(invoiceData.uuid, 'invoice');
+      if (response.success) {
+        toast.success("Email sent successfully!", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      console.error("Email error:", error);
+      toast.error(error.message || "Failed to send email", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
 
   const handleRecordPayment = () => {
     if (!invoiceData) return;
@@ -728,7 +746,22 @@ const InvoiceDetailsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" /> Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
             <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
             {invoiceData.balance_due > 0 && (

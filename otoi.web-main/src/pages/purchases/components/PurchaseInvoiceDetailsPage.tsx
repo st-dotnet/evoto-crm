@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit } from "lucide-react";
+import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit, Share, Mail } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getPurchaseInvoiceById, recordPurchaseInvoicePayment } from "../services/purchaseInvoice.services";
+import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -76,6 +83,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const [isFetchingShareData, setIsFetchingShareData] = useState(false);
   const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
 
   // Payment Form State
@@ -122,6 +130,47 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       toast.error("Failed to load invoice");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!invoiceData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Preparing share options...");
+    try {
+      const response = await getShareData(invoiceData.uuid, 'purchase_invoice');
+      if (response.success && response.data) {
+        const { message, contact } = response.data;
+        const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp...", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to fetch share data");
+      }
+    } catch (error: any) {
+      console.error("Share error:", error);
+      toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
+
+  const handleShareEmail = async () => {
+    if (!invoiceData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Sending email...");
+    try {
+      const response = await sendShareEmail(invoiceData.uuid, 'purchase_invoice');
+      if (response.success) {
+        toast.success("Email sent successfully!", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      console.error("Email error:", error);
+      toast.error(error.message || "Failed to send email", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
     }
   };
 
@@ -417,6 +466,22 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" /> Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {invoiceData.balance_due > 0 && (
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
                 <CreditCard className="h-4 w-4" />Record Payment

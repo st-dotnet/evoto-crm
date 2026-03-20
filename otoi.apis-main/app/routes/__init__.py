@@ -21,6 +21,7 @@ from app.routes.invoice import invoice_blueprint
 from app.routes.purchase_invoice import purchase_invoice_blueprint
 from app.routes.business_config import business_config_blueprint
 from app.routes.payment_out import payment_out_blueprint
+from app.routes.share import share_blueprint
 
 
 
@@ -48,6 +49,7 @@ def register_blueprints(app):
     app.register_blueprint(purchase_invoice_blueprint, url_prefix="/api/purchase-invoices")
     app.register_blueprint(payment_out_blueprint, url_prefix="/api/payment-out")
     app.register_blueprint(business_config_blueprint, url_prefix="/api/business-config")
+    app.register_blueprint(share_blueprint, url_prefix="/api/share-data")
     # app.register_blueprint(quotation_item_blueprint, url_prefix="/api/quotation-items")
 
 
