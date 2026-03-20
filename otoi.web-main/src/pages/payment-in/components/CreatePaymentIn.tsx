@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft,
+import {
+  ArrowLeft,
   Save,
   User,
   FileText,
@@ -13,8 +14,7 @@ import {
   getPaymentById,
 } from "../services/payment-in.service";
 import { recordPayment } from "../../invoice/services/invoice.service";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
+import { resolveImageUrl } from "@/utils/imageUtils";
 import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
@@ -96,17 +96,17 @@ export const CreatePaymentIn = () => {
     const actualPaymentAmount = parseFloat(paymentReceived) || 0;
     const discountAmount = parseFloat(paymentDiscount) || 0;
     const totalAppliedAmount = actualPaymentAmount + discountAmount;
-    
+
     if (!paymentReceived || actualPaymentAmount <= 0) {
       toast.error("Please enter a valid payment amount");
       return;
     }
-    
+
     const selectedInvoice = partyInvoices.find(
       (inv) => inv.id === selectedInvoiceId,
     );
     const balanceAmount = selectedInvoice?.balance_amount || 0;
-    
+
     if (totalAppliedAmount > balanceAmount + 0.01) {
       toast.error("Total payment cannot exceed balance amount");
       return;
@@ -132,7 +132,7 @@ export const CreatePaymentIn = () => {
         setSelectedInvoiceId(null);
         setPaymentReceived("");
         setPaymentDiscount("");
-        setPaymentNumber(""); 
+        setPaymentNumber("");
         setNotes("");
 
         // Refresh party invoices to update the data
@@ -382,8 +382,8 @@ export const CreatePaymentIn = () => {
         );
         setPaymentReceived(
           paymentData.amount_paid?.toString() ||
-            paymentData.total_amount?.toString() ||
-            "",
+          paymentData.total_amount?.toString() ||
+          "",
         );
         setPaymentDiscount(paymentData.payment_discount?.toString() || "");
         setPaymentNumber(paymentData.invoice_number || "");
@@ -404,7 +404,7 @@ export const CreatePaymentIn = () => {
       } else {
         toast.error(response.error || "Failed to load payment data");
         navigate("/payment-in");
-      } 
+      }
     } catch (error) {
       console.error("Error loading payment for edit:", error);
       toast.error("Failed to load payment data");
@@ -791,10 +791,10 @@ export const CreatePaymentIn = () => {
                 );
                 const balanceAmount = selectedInvoice?.balance_amount || 0;
                 const currentDiscount = parseFloat(paymentDiscount) || 0;
-                
+
                 // Calculate the gross amount (actual payment + discount)
                 const grossAmount = actualPaymentAmount + currentDiscount;
-                
+
                 // Only allow if gross amount doesn't exceed balance amount
                 if (grossAmount <= balanceAmount + 0.01) {
                   setPaymentReceived(actualPaymentAmount.toString());
@@ -806,11 +806,10 @@ export const CreatePaymentIn = () => {
                   setPaymentError(`Total payment cannot exceed balance amount`);
                 }
               }}
-              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${
-                paymentError
-                  ? "border-red-100 focus:ring-red-200 focus:border-red-400"
-                  : "border-slate-100 focus:ring-blue-200 focus:border-blue-400"
-              }`}
+              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${paymentError
+                ? "border-red-100 focus:ring-red-200 focus:border-red-400"
+                : "border-slate-100 focus:ring-blue-200 focus:border-blue-400"
+                }`}
               readOnly={isFullyPaid}
             />
           </div>
@@ -838,13 +837,13 @@ export const CreatePaymentIn = () => {
                 );
                 const balanceAmount = selectedInvoice?.balance_amount || 0;
                 const currentActualPayment = parseFloat(paymentReceived) || 0;
-                
+
                 // Calculate max allowed actual payment amount
                 const maxActualPayment = Math.max(0, balanceAmount - newDiscount);
-                
+
                 // Adjust actual payment if it exceeds new maximum allowed
                 const adjustedActualPayment = Math.min(currentActualPayment, maxActualPayment);
-                
+
                 setPaymentDiscount(e.target.value);
                 setPaymentReceived(adjustedActualPayment.toString());
                 setPaymentError(""); // Clear error when user changes discount
@@ -885,7 +884,7 @@ export const CreatePaymentIn = () => {
               <span className="text-base font-bold text-blue-900">
                 ₹
                 {(
-                  (parseFloat(paymentReceived) || 0) + 
+                  (parseFloat(paymentReceived) || 0) +
                   (parseFloat(paymentDiscount) || 0)
                 ).toLocaleString("en-IN")}
               </span>
@@ -897,26 +896,23 @@ export const CreatePaymentIn = () => {
       {/* Show invoice status message */}
       {selectedParty && partyInvoices.length > 0 && (
         <div
-          className={`mt-4 p-3 rounded-lg ${
-            partyInvoices.every((invoice) => invoice.balance_amount === 0)
-              ? "bg-green-50 border border-green-200"
-              : "bg-yellow-50 border border-yellow-200"
-          }`}
+          className={`mt-4 p-3 rounded-lg ${partyInvoices.every((invoice) => invoice.balance_amount === 0)
+            ? "bg-green-50 border border-green-200"
+            : "bg-yellow-50 border border-yellow-200"
+            }`}
         >
           <div className="flex items-center gap-2">
             <div
-              className={`w-2 h-2 rounded-full ${
-                partyInvoices.every((invoice) => invoice.balance_amount === 0)
-                  ? "bg-green-500"
-                  : "bg-yellow-500"
-              }`}
+              className={`w-2 h-2 rounded-full ${partyInvoices.every((invoice) => invoice.balance_amount === 0)
+                ? "bg-green-500"
+                : "bg-yellow-500"
+                }`}
             ></div>
             <p
-              className={`text-sm font-medium ${
-                partyInvoices.every((invoice) => invoice.balance_amount === 0)
-                  ? "text-green-700"
-                  : "text-yellow-700"
-              }`}
+              className={`text-sm font-medium ${partyInvoices.every((invoice) => invoice.balance_amount === 0)
+                ? "text-green-700"
+                : "text-yellow-700"
+                }`}
             >
               {partyInvoices.every((invoice) => invoice.balance_amount === 0)
                 ? `All ${partyInvoices.length} invoices with this party are settled`
@@ -971,20 +967,20 @@ export const CreatePaymentIn = () => {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <button
                 onClick={handleBackClick}
-                className="flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
+                className="flex-shrink-0 flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">
                   {isEditMode ? "Edit Payment" : "Record Payment"}
                 </h1>
-                <p className="text-sm text-slate-500 mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">
                   {isEditMode
                     ? "Update payment information"
                     : "Create a new payment record"}
@@ -994,7 +990,7 @@ export const CreatePaymentIn = () => {
             <button
               onClick={handleSave}
               disabled={isSaving || !selectedParty}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <>
@@ -1013,8 +1009,8 @@ export const CreatePaymentIn = () => {
       </header>
 
       {/* ── Main Content ────────────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* ── Party Selection Card ─────────────────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
@@ -1078,7 +1074,7 @@ export const CreatePaymentIn = () => {
 
             <div className="p-6 space-y-6">
               {/* Date / Mode / Number */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Payment Date
@@ -1135,11 +1131,10 @@ export const CreatePaymentIn = () => {
                             setInvoiceFieldError(false); // Clear error when user selects
                             setIsShaking(false); // Stop shaking when user selects
                           }}
-                          className={`w-full h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-slate-50 disabled:text-slate-500 ${
-                            invoiceFieldError
-                              ? "border-red-500 bg-red-50"
-                              : "border-slate-300"
-                          } ${isShaking ? "animate-pulse" : ""}`}
+                          className={`w-full h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-slate-50 disabled:text-slate-500 ${invoiceFieldError
+                            ? "border-red-500 bg-red-50"
+                            : "border-slate-300"
+                            } ${isShaking ? "animate-pulse" : ""}`}
                           disabled={
                             !selectedParty || partyInvoices.length === 0
                           }
@@ -1231,7 +1226,8 @@ export const CreatePaymentIn = () => {
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="">
+                  {/* Desktop Table View (md and up) */}
+                  <div className="hidden md:block overflow-x-auto">
                     <DataGrid
                       key="payment-invoice-grid"
                       columns={invoiceColumns}
@@ -1255,6 +1251,99 @@ export const CreatePaymentIn = () => {
                       }}
                     />
                   </div>
+
+                  {/* Mobile Card View (below md) */}
+                  <div className="block md:hidden divide-y divide-slate-100">
+                    {partyInvoices.length > 0 ? (
+                      partyInvoices.map((invoice) => {
+                        const isSettled =
+                          invoice.balance_amount === 0 ||
+                          invoice.balance_amount === "0";
+                        const isSelected = selectedInvoiceId === invoice.id;
+
+                        return (
+                          <div
+                            key={invoice.id}
+                            className={`p-4 transition-colors cursor-not-allowed ${isSelected
+                              ? "bg-blue-50/50 border-l-4 border-blue-500"
+                              : "bg-white hover:bg-slate-50 active:bg-slate-100"
+                              } ${isSettled ? "opacity-75" : ""}`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-bold text-slate-900">
+                                  {invoice.invoice_number}
+                                </h4>
+                                <p className="text-xs text-slate-500 mt-1">
+                                  {new Date(
+                                    invoice.date,
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                {invoice.balance_amount === 0 &&
+                                  invoice.status === "paid" ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 rounded">
+                                    paid
+                                  </span>
+                                ) : (invoice.status === "partially paid" || invoice.status === "partial") ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded">
+                                    Partial
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-100 rounded">
+                                    Unpaid
+                                  </span>
+                                )}
+                                <div className="text-right">
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                    Balance
+                                  </p>
+                                  <p className="text-sm font-bold text-blue-600">
+                                    ₹
+                                    {(
+                                      parseFloat(invoice.balance_amount) || 0
+                                    ).toLocaleString("en-IN")}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                              <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                  Total Amount
+                                </p>
+                                <p className="text-sm font-semibold text-slate-700">
+                                  ₹
+                                  {(
+                                    parseFloat(invoice.invoice_amount) || 0
+                                  ).toLocaleString("en-IN")}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                  Applied
+                                </p>
+                                <p className="text-sm font-semibold text-slate-700">
+                                  ₹
+                                  {(
+                                    parseFloat(invoice.amount_received) || 0
+                                  ).toLocaleString("en-IN")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-8 text-center bg-slate-50/50">
+                        <p className="text-sm text-slate-500">
+                          No invoices found for this party
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1265,15 +1354,15 @@ export const CreatePaymentIn = () => {
       {/* ── Party Selection Modal ──────────────────────────────────────────── */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 px-2"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-md"
+            className="bg-white rounded-xl shadow-xl w-[calc(100%-1rem)] max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200">
               <h3 className="text-lg font-semibold text-slate-900">
                 Select Party
               </h3>
@@ -1286,7 +1375,7 @@ export const CreatePaymentIn = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Search Party
@@ -1313,7 +1402,7 @@ export const CreatePaymentIn = () => {
                     speed={100}
                     color="#1B84FF"
                   />
-                  <p className="ml-4 text-sm font-medium text-slate-600">
+                  <p className="mt-4 text-sm font-medium text-slate-600">
                     Loading details...
                   </p>
                 </div>

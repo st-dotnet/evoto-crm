@@ -713,30 +713,45 @@ const InvoiceDetailsPage: React.FC = () => {
         `}
       </style>
       {/* Sticky Header Actions */}
-      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/invoices")}><ArrowLeft className="h-4 w-4" /></Button>
-            <div>
-              <h1 className="text-xl font-semibold text-black">Invoice #{invoiceData.invoice_number}</h1>
-              <div className="flex items-center gap-2 mt-1">
+      <div className="bg-white px-4 md:px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-4 flex-wrap">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/invoices")}
+              className="md:h-10 md:w-10 h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-lg md:text-xl font-semibold text-black">
+                Invoice #{invoiceData.invoice_number}
+              </h1>
+              <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
                   {invoiceData.payment_status}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
-            {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
-            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
-            {invoiceData.balance_due > 0 && (
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
-                <CreditCard className="h-4 w-4" />Record Payment
+          <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 w-full md:w-auto self-stretch">
+                <Download className="h-4 w-4" />Download PDF
               </Button>
-            )}
+              <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 w-full md:w-auto self-stretch">
+                <Printer className="h-4 w-4" />Print PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2 w-full md:w-auto self-stretch">
+                <Clock className="h-4 w-4" />History
+              </Button>
+              {invoiceData.balance_due > 0 && (
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-full md:w-auto self-stretch" onClick={handleRecordPayment}>
+                  <CreditCard className="h-4 w-4" />Pay
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -745,14 +760,14 @@ const InvoiceDetailsPage: React.FC = () => {
       <div
         id="invoice-print-area"
         ref={invoiceRef}
-        className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm"
+        className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12 bg-white mt-4 md:mt-8 shadow-sm overflow-hidden"
       >
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-12">
+                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
                   <h1 className="text-2xl font-semibold text-black leading-tight">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
@@ -772,17 +787,17 @@ const InvoiceDetailsPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end -mt-8">
+                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
                   {brandingAssets?.logo_path ? (
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
-                      className="h-40 w-auto object-contain"
+                      className="h-24 md:h-40 w-auto object-contain"
                       alt={businessInfo?.name || "Logo"}
                     />
                   ) : (
                     <img
                       src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                      className="h-40 w-auto object-contain"
+                      className="h-24 md:h-40 w-auto object-contain"
                       alt="Evoto Technologies"
                     />
                   )}
@@ -792,51 +807,64 @@ const InvoiceDetailsPage: React.FC = () => {
           })()}
         </div>
 
-        {/* Invoice Details */}
-        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-          {/* Labels Row */}
-          <div className="px-4 py-1 border-b border-black bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
-          </div>
-          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
-          </div>
-          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
+        {/* Invoice Details Metadata Box */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0 mb-8 md:mb-12 border border-black overflow-hidden print:grid-cols-3 print:mb-12">
+          {/* Mobile Layout (Labels and values paired) */}
+          <div className="md:hidden divide-y divide-black">
+            <div className="px-4 py-2 flex justify-between h-auto">
+              <span className="text-[11px] font-bold text-black uppercase">Invoice No.</span>
+              <span className="text-sm font-normal text-black">{invoiceData.invoice_number}</span>
+            </div>
+            <div className="px-4 py-2 flex justify-between h-auto">
+              <span className="text-[11px] font-bold text-black uppercase">Invoice Date</span>
+              <span className="text-sm font-normal text-black">{new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}</span>
+            </div>
+            <div className="px-4 py-2 flex justify-between h-auto">
+              <span className="text-[11px] font-bold text-black uppercase">Due Date</span>
+              <span className="text-sm font-normal text-black">{new Date(invoiceData.due_date).toLocaleDateString("en-IN")}</span>
+            </div>
           </div>
 
-          {/* Values Row */}
-          <div className="px-4 py-1">
-            <p className="text-[14px] font-normal text-black">
-              {invoiceData.invoice_number}
-            </p>
-          </div>
-          <div className="px-4 py-1 border-x border-black text-center">
-            <p className="text-[14px] font-normal text-black">
-              {new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}
-            </p>
-          </div>
-          <div className="px-4 py-1 text-right">
-            <p className="text-[14px] font-normal text-black">
-              {new Date(invoiceData.due_date).toLocaleDateString("en-IN")}
-            </p>
+          {/* Desktop/Print Layout */}
+          <div className="hidden md:contents print:contents">
+            {/* Labels Row */}
+            <div className="px-4 py-1 border-b border-black bg-gray-100">
+              <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
+            </div>
+            <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+              <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
+            </div>
+            <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+              <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
+            </div>
+
+            {/* Values Row */}
+            <div className="px-4 py-1">
+              <p className="text-[14px] font-normal text-black">
+                {invoiceData.invoice_number}
+              </p>
+            </div>
+            <div className="px-4 py-1 border-x border-black text-center">
+              <p className="text-[14px] font-normal text-black">
+                {new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}
+              </p>
+            </div>
+            <div className="px-4 py-1 text-right">
+              <p className="text-[14px] font-normal text-black">
+                {new Date(invoiceData.due_date).toLocaleDateString("en-IN")}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12 print:grid-cols-2 print:gap-12">
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">BILL TO</h3>
             <div className="space-y-1 text-black text-sm">
               <p className="font-semibold text-lg mb-2">
                 {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
               </p>
               <div className="space-y-1">
-                <p className="font-medium">
-                  {/* {invoiceData.customer ?
-                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
-                                        'No customer selected'
-                                    } */}
-                </p>
                 {invoiceData.customer?.company_name && (
                   <p className="text-gray-600">{invoiceData.customer.company_name}</p>
                 )}
@@ -862,18 +890,12 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">SHIP TO</h3>
             <div className="text-black text-sm">
               <p className="font-semibold text-lg mb-2">
                 {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
               </p>
               <div className="space-y-1">
-                <p className="font-medium">
-                  {/* {invoiceData.customer ?
-                                        `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() :
-                                        'No customer selected'
-                                    } */}
-                </p>
                 {invoiceData.customer?.company_name && (
                   <p className="text-gray-600">{invoiceData.customer.company_name}</p>
                 )}
@@ -901,7 +923,97 @@ const InvoiceDetailsPage: React.FC = () => {
         </div>
 
         <div className="mb-4">
-          <table className="w-full border border-black">
+          {/* Mobile Card View (Matched to Quotation Style) */}
+          <div className="md:hidden space-y-4 mb-8 no-print">
+            {invoiceData.items?.map((item, index) => (
+              <div key={item.uuid} className="border border-black rounded-lg overflow-hidden border-b-2 bg-white">
+                {/* Card Header */}
+                <div className="grid grid-cols-[1fr,auto] gap-2 p-3 border-b border-black">
+                  <div>
+                    <p className="text-[10px] font-bold text-black uppercase mb-1">ITEM DESCRIPTION</p>
+                    <div className="flex items-start gap-1">
+                      <span className="text-sm font-bold text-black">{index + 1}.</span>
+                      <div>
+                        <p className="text-sm font-bold text-black leading-tight">{item.product_name}</p>
+                        {item.description && (
+                          <p className="text-[10px] text-gray-600 mt-1 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-16 h-16 border border-black rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {item.image ? (
+                      <img src={resolveImageUrl(item.image)} className="w-full h-full object-cover" alt={item.product_name} />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pricing Grid (3 Columns) */}
+                <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
+                  <div className="p-2 text-center">
+                    <p className="text-[9px] font-bold text-black uppercase mb-1">PRICE/ITEM</p>
+                    <p className="text-[11px] font-medium text-black">{formatCurrency(item.unit_price)}</p>
+                  </div>
+                  <div className="p-2 text-center">
+                    <p className="text-[9px] font-bold text-black uppercase mb-1">DISC.</p>
+                    <p className="text-[11px] font-medium text-black">-{formatCurrency(item.discount_amount)}</p>
+                    {item.discount_percentage > 0 && (
+                      <span className="text-[8px] block">({item.discount_percentage}%)</span>
+                    )}
+                  </div>
+                  <div className="p-2 text-center">
+                    <p className="text-[9px] font-bold text-black uppercase mb-1">TAX</p>
+                    <p className="text-[11px] font-medium text-black">
+                      {formatCurrency(item.tax_amount)}
+                      <span className="text-[8px] block">({item.tax_percentage}%)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card Footer (Totals) */}
+                <div className="grid grid-cols-2 p-3 bg-gray-50/50">
+                  <div>
+                    <p className="text-[11px] font-bold text-black uppercase">
+                      QTY: {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-bold text-black uppercase">
+                      TOTAL: {formatCurrency(item.total_price)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Mobile Subtotal Summary Card */}
+            <div className="bg-white border border-black rounded-lg overflow-hidden no-print">
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
+                  <span className="text-sm font-bold text-black">
+                    {formatCurrency(invoiceData.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0))}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-red-600">
+                  <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
+                  <span className="text-sm font-bold">-{formatCurrency(invoiceData.discount_total)}</span>
+                </div>
+                <div className="flex justify-between items-center text-black">
+                  <span className="text-xs font-bold uppercase">TOTAL TAX</span>
+                  <span className="text-sm font-bold">{formatCurrency(invoiceData.tax_total)}</span>
+                </div>
+                <div className="pt-2 border-t-2 border-black flex justify-between items-center">
+                  <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
+                  <span className="text-lg font-black text-black">{formatCurrency(invoiceData.total_amount)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <table className="hidden md:table print:table w-full border border-black">
             <thead>
               <tr className="border-b-2 border-black bg-gray-100">
                 <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
@@ -1025,15 +1137,15 @@ const InvoiceDetailsPage: React.FC = () => {
           </table>
         </div>
         {/* ===== Bottom Section (Two Column Layout) ===== */}
-        <div className="mt-16 grid grid-cols-2 gap-16">
+        <div className="mt-8 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 print:grid-cols-2 print:gap-16 print:mt-16">
 
           {/* ================= LEFT SIDE ================= */}
-          <div className="space-y-10">
+          <div className="space-y-10 md:col-span-1">
 
             {/* Notes */}
             {invoiceData.notes && (
               <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-full md:w-20 print:w-20">
                   Notes
                 </h4>
                 <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
@@ -1045,7 +1157,7 @@ const InvoiceDetailsPage: React.FC = () => {
             {/* Terms */}
             {invoiceData.terms_and_conditions && (
               <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-full md:w-40 print:w-40">
                   Terms & Conditions
                 </h4>
 
@@ -1064,41 +1176,50 @@ const InvoiceDetailsPage: React.FC = () => {
           </div>
 
           {/* ================= RIGHT SIDE ================= */}
-          <div>
+          <div className="md:col-span-1">
 
             {/* ===== Tax Summary ===== */}
-            <div className="space-y-0">
+            <div className="space-y-0 text-right">
 
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal text-black uppercase">
+              <div className="flex justify-between items-center py-1 gap-4">
+                <span className="text-xs font-bold text-black uppercase">
+                  SUBTOTAL
+                </span>
+                <span className="text-sm font-medium text-black">
+                  {formatCurrency(invoiceData.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0))}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 gap-4">
+                <span className="text-xs font-bold text-black uppercase">
                   Taxable Amount
                 </span>
-                <span className="text-sm font-bold text-black">
+                <span className="text-sm font-medium text-black">
                   {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
                 </span>
               </div>
 
               {invoiceData.tax_total > 0 && (
                 <>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-xs font-normal text-black uppercase">
+                  <div className="flex justify-between items-center py-1 gap-4">
+                    <span className="text-xs font-bold text-black uppercase">
                       CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
                         ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
                         : 0}%)
                     </span>
-                    <span className="text-sm font-bold text-black">
+                    <span className="text-sm font-medium text-black">
                       {formatCurrency(invoiceData.tax_total / 2)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center py-2 border-b border-black">
-                    <span className="text-xs font-normal text-black uppercase">
+                  <div className="flex justify-between items-center py-1 gap-4 border-b border-black">
+                    <span className="text-xs font-bold text-black uppercase">
                       {currentUser?.isUT ? 'UTGST' : 'SGST'}
                       ({invoiceData.subtotal - invoiceData.discount_total > 0
                         ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
                         : 0}%)
                     </span>
-                    <span className="text-sm font-bold text-black">
+                    <span className="text-sm font-medium text-black">
                       {formatCurrency(invoiceData.tax_total / 2)}
                     </span>
                   </div>
@@ -1106,18 +1227,18 @@ const InvoiceDetailsPage: React.FC = () => {
               )}
 
               {invoiceData.additional_charges_total > 0 && (
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-xs font-normal text-black uppercase">
+                <div className="flex justify-between items-center py-1 gap-4">
+                  <span className="text-xs font-bold text-black uppercase">
                     Additional Charges
                   </span>
-                  <span className="text-sm font-bold text-black">
+                  <span className="text-sm font-medium text-black">
                     {formatCurrency(invoiceData.additional_charges_total)}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center py-3 border-b-2 border-black">
-                <span className="text-sm font-bold text-black uppercase tracking-wider">
+              <div className="flex justify-between items-center py-2 border-b-2 border-black">
+                <span className="text-sm font-bold text-black uppercase">
                   Grand Total
                 </span>
                 <span className="text-xl font-bold text-black">
@@ -1126,29 +1247,29 @@ const InvoiceDetailsPage: React.FC = () => {
               </div>
 
               <div className="pt-2 text-right">
-                <p className="text-[10px] text-gray-500 uppercase font-medium">
-                  Amount in Words
-                </p>
-                <p className="text-xs font-bold text-black">
+                <p className="text-[10px] text-black leading-tight italic max-w-[250px] ml-auto">
+                  <span className="font-bold uppercase text-[10px] not-italic">
+                    IN WORDS:
+                  </span>{' '}
                   {formatNumberInWords(invoiceData.total_amount)}
                 </p>
               </div>
             </div>
 
             {/* ===== Signature ===== */}
-            <div className="mt-20 flex justify-end">
+            <div className="mt-12 md:mt-20 flex justify-end">
               <div className="text-center">
                 {brandingAssets?.esign_path && (
-                  <div className="mb-2 flex justify-center">
+                  <div className="mb-0 flex justify-center">
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                      className="h-16 w-auto object-contain"
+                      className="h-12 md:h-16 w-auto object-contain"
                       alt="Signature"
                     />
                   </div>
                 )}
-                <div className="w-48 border-b border-black mb-2"></div>
-                <p className="text-xs font-bold text-black uppercase">
+                <div className="w-48 border-b border-black mb-1"></div>
+                <p className="text-[10px] font-bold text-black uppercase tracking-wider">
                   Authorized Signatory
                 </p>
               </div>
@@ -1265,86 +1386,86 @@ const InvoiceDetailsPage: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
 
-          <DialogBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Form Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Amount Received <span className="text-red-500">*</span>
-                      </label>
+            <DialogBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Form Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount Received <span className="text-red-500">*</span>
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.amountReceived === null ||
+                            paymentForm.amountReceived === 0
+                            ? ""
+                            : roundToTwo(paymentForm.amountReceived)
+                        }
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
+                          const cappedAmount = Math.min(amount, maxAllowedAmount);
+                          setPaymentForm({
+                            ...paymentForm,
+                            amountReceived: roundToTwo(cappedAmount),
+                          });
+                          validateAmountReceived(cappedAmount);
+                        }}
+                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      {amountError && (
+                        <p className="text-xs text-red-600 font-medium">
+                          {amountError}
+                        </p>
+                      )}
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.amountReceived === null ||
-                        paymentForm.amountReceived === 0
-                          ? ""
-                          : roundToTwo(paymentForm.amountReceived)
-                      }
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - currentDiscount);
-                        const cappedAmount = Math.min(amount, maxAllowedAmount);
-                        setPaymentForm({
-                          ...paymentForm,
-                          amountReceived: roundToTwo(cappedAmount),
-                        });
-                        validateAmountReceived(cappedAmount);
-                      }}
-                      className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                    {amountError && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {amountError}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Payment Discount
-                      </label>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Payment Discount
+                        </label>
+                        <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.discount === null ||
+                            paymentForm.discount === 0
+                            ? ""
+                            : roundToTwo(paymentForm.discount)
+                        }
+                        onChange={(e) => {
+                          const newDiscount = parseFloat(e.target.value) || 0;
+                          const maxAmount = invoiceData?.balance_due || 0;
+                          const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
+                          const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
+
+                          // Adjust amount received if it exceeds the new maximum allowed
+                          const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
+
+                          setPaymentForm({
+                            ...paymentForm,
+                            discount: roundToTwo(newDiscount),
+                            amountReceived: roundToTwo(adjustedAmountReceived),
+                          });
+                          validateAmountReceived(adjustedAmountReceived);
+                        }}
+                        className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.discount === null ||
-                        paymentForm.discount === 0
-                          ? ""
-                          : roundToTwo(paymentForm.discount)
-                      }
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        const maxAmount = invoiceData?.balance_due || 0;
-                        const maxAllowedAmount = Math.max(0, maxAmount - newDiscount);
-                        const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
-                        
-                        // Adjust amount received if it exceeds the new maximum allowed
-                        const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
-                        
-                        setPaymentForm({
-                          ...paymentForm,
-                          discount: roundToTwo(newDiscount),
-                          amountReceived: roundToTwo(adjustedAmountReceived),
-                        });
-                        validateAmountReceived(adjustedAmountReceived);
-                      }}
-                      className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
                   </div>
-                </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
