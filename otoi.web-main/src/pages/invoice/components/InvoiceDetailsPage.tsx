@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { KeenIcon } from "@/components";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -345,7 +346,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const pendingAmount = getPendingAmount();
     const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
     const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
-    
+
     if (amount > maxAllowedAmount) {
       setAmountError(
         `Amount received cannot exceed ${formatCurrency(maxAllowedAmount)} (pending amount: ${formatCurrency(pendingAmount)} - discount: ${formatCurrency(currentDiscount)})`,
@@ -446,7 +447,7 @@ const InvoiceDetailsPage: React.FC = () => {
       // Still allow edit if check fails, but show warning
       toast.warning('Unable to verify credit note status. Proceed with caution.');
     }
-    
+
     navigate(`/invoices/${id}/edit`);
   };
 
@@ -808,7 +809,7 @@ const InvoiceDetailsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
@@ -817,7 +818,7 @@ const InvoiceDetailsPage: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
                   <Mail className="h-4 w-4" /> Email
@@ -1370,133 +1371,132 @@ const InvoiceDetailsPage: React.FC = () => {
               </SheetTitle>
             </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Summary Section */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-medium">
-                  Invoice Amount
-                </span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.total_amount)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
-                <span className="text-gray-500 font-medium tracking-tight">
-                  Initial Amount Received
-                </span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.amount_paid)}
-                </span>
-              </div>
-            </div>
-
-            {/* Payments List */}
-            <div className="space-y-4">
-              {invoiceData.amount_paid > 0 ? (
-                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-normal text-blue-600">
-                      Payment in #{invoiceData.invoice_number}
-                    </h4>
-                    <span className="text-sm font-bold text-gray-900">
-                      {formatCurrency(invoiceData.amount_paid)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                    <span>
-                      {new Date(invoiceData.invoice_date).toLocaleDateString(
-                        "en-IN",
-                      )}
-                    </span>
-                    <span className="capitalize">Cash</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center"></div>
-              )}
-            </div>
-
-            {/* Credit Note History */}
-            {creditNotes.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-bold text-gray-800 mb-3">
-                  Credit Note History
-                </h4>
-                <div className="space-y-2">
-                  {creditNotes.map((creditNote: any) => (
-                    <div
-                      key={creditNote.uuid}
-                      className="p-4 rounded-xl border border-green-100 bg-green-50/50 hover:bg-green-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-normal text-green-600">
-                          Credit Note #{creditNote.credit_note_number}
-                        </h4>
-                        <span className="text-sm font-bold text-green-600">
-                          {formatCurrency(creditNote.total_amount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                        <span>
-                          {new Date(creditNote.credit_note_date).toLocaleDateString(
-                            "en-IN",
-                          )}
-                        </span>
-                        <span className={`capitalize px-2 py-1 rounded-full text-xs ${
-                          creditNote.status === 'refunded' 
-                            ? 'bg-red-100 text-red-700' 
-                            : creditNote.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {creditNote.status || 'active'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar Footer */}
-          <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm font-medium">
-                <span className="text-gray-600">Total Amount Received</span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.amount_paid)}
-                </span>
-              </div>
-              {creditNotes.length > 0 && (
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Summary Section */}
+              <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-600">Credit Note(s) Applied</span>
-                  <span className="text-green-600">
-                    -{formatCurrency(getTotalCreditNoteAmount())}
+                  <span className="text-gray-500 font-medium">
+                    Invoice Amount
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.total_amount)}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-gray-600">Balance Amount</span>
-                <span className="text-red-600">
-                  {formatCurrency(getPendingAmount())}
-                </span>
+                <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium tracking-tight">
+                    Initial Amount Received
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.amount_paid)}
+                  </span>
+                </div>
               </div>
+
+              {/* Payments List */}
+              <div className="space-y-4">
+                {invoiceData.amount_paid > 0 ? (
+                  <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-normal text-blue-600">
+                        Payment in #{invoiceData.invoice_number}
+                      </h4>
+                      <span className="text-sm font-bold text-gray-900">
+                        {formatCurrency(invoiceData.amount_paid)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                      <span>
+                        {new Date(invoiceData.invoice_date).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </span>
+                      <span className="capitalize">Cash</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center"></div>
+                )}
+              </div>
+
+              {/* Credit Note History */}
+              {creditNotes.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-bold text-gray-800 mb-3">
+                    Credit Note History
+                  </h4>
+                  <div className="space-y-2">
+                    {creditNotes.map((creditNote: any) => (
+                      <div
+                        key={creditNote.uuid}
+                        className="p-4 rounded-xl border border-green-100 bg-green-50/50 hover:bg-green-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="text-sm font-normal text-green-600">
+                            Credit Note #{creditNote.credit_note_number}
+                          </h4>
+                          <span className="text-sm font-bold text-green-600">
+                            {formatCurrency(creditNote.total_amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                          <span>
+                            {new Date(creditNote.credit_note_date).toLocaleDateString(
+                              "en-IN",
+                            )}
+                          </span>
+                          <span className={`capitalize px-2 py-1 rounded-full text-xs ${creditNote.status === 'refunded'
+                              ? 'bg-red-100 text-red-700'
+                              : creditNote.status === 'active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                            {creditNote.status || 'active'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {getPendingAmount() > 0 && (
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
-                onClick={handleActualRecordPayment}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Record Payment In
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+            {/* Sidebar Footer */}
+            <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-600">Total Amount Received</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.amount_paid)}
+                  </span>
+                </div>
+                {creditNotes.length > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600">Credit Note(s) Applied</span>
+                    <span className="text-green-600">
+                      -{formatCurrency(getTotalCreditNoteAmount())}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm font-bold">
+                  <span className="text-gray-600">Balance Amount</span>
+                  <span className="text-red-600">
+                    {formatCurrency(getPendingAmount())}
+                  </span>
+                </div>
+              </div>
+
+              {getPendingAmount() > 0 && (
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
+                  onClick={handleActualRecordPayment}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Record Payment In
+                </Button>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Record Payment Modal */}
         <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
@@ -1508,88 +1508,88 @@ const InvoiceDetailsPage: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
 
-          <DialogBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Form Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Amount Received <span className="text-red-500">*</span>
-                      </label>
+            <DialogBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Form Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount Received <span className="text-red-500">*</span>
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.amountReceived === null ||
+                            paymentForm.amountReceived === 0
+                            ? ""
+                            : roundToTwo(paymentForm.amountReceived)
+                        }
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          // Use the calculated pending amount after credit notes
+                          const pendingAmount = getPendingAmount();
+                          const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
+                          const cappedAmount = Math.min(amount, maxAllowedAmount);
+                          setPaymentForm({
+                            ...paymentForm,
+                            amountReceived: roundToTwo(cappedAmount),
+                          });
+                          validateAmountReceived(cappedAmount);
+                        }}
+                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      {amountError && (
+                        <p className="text-xs text-red-600 font-medium">
+                          {amountError}
+                        </p>
+                      )}
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.amountReceived === null ||
-                        paymentForm.amountReceived === 0
-                          ? ""
-                          : roundToTwo(paymentForm.amountReceived)
-                      }
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        // Use the calculated pending amount after credit notes
-                        const pendingAmount = getPendingAmount();
-                        const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
-                        const cappedAmount = Math.min(amount, maxAllowedAmount);
-                        setPaymentForm({
-                          ...paymentForm,
-                          amountReceived: roundToTwo(cappedAmount),
-                        });
-                        validateAmountReceived(cappedAmount);
-                      }}
-                      className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                    {amountError && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {amountError}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Payment Discount
-                      </label>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Payment Discount
+                        </label>
+                        <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.discount === null ||
+                            paymentForm.discount === 0
+                            ? ""
+                            : roundToTwo(paymentForm.discount)
+                        }
+                        onChange={(e) => {
+                          const newDiscount = parseFloat(e.target.value) || 0;
+                          // Use the calculated pending amount after credit notes
+                          const pendingAmount = getPendingAmount();
+                          const maxAllowedAmount = Math.max(0, pendingAmount - newDiscount);
+                          const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
+
+                          // Adjust amount received if it exceeds the new maximum allowed
+                          const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
+
+                          setPaymentForm({
+                            ...paymentForm,
+                            discount: roundToTwo(newDiscount),
+                            amountReceived: roundToTwo(adjustedAmountReceived),
+                          });
+                          validateAmountReceived(adjustedAmountReceived);
+                        }}
+                        className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.discount === null ||
-                        paymentForm.discount === 0
-                          ? ""
-                          : roundToTwo(paymentForm.discount)
-                      }
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        // Use the calculated pending amount after credit notes
-                        const pendingAmount = getPendingAmount();
-                        const maxAllowedAmount = Math.max(0, pendingAmount - newDiscount);
-                        const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
-                        
-                        // Adjust amount received if it exceeds the new maximum allowed
-                        const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
-                        
-                        setPaymentForm({
-                          ...paymentForm,
-                          discount: roundToTwo(newDiscount),
-                          amountReceived: roundToTwo(adjustedAmountReceived),
-                        });
-                        validateAmountReceived(adjustedAmountReceived);
-                      }}
-                      className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
                   </div>
-                </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1696,60 +1696,60 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
 
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                    Payment Calculation
-                  </h4>
-                  <div className="space-y-2">
-                    {creditNotes.length > 0 && (
-                      <>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600 font-medium">
-                            Original Balance Due
-                          </span>
-                          <span className="text-gray-600">
-                            {formatCurrency(invoiceData.total_amount)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-600 font-medium">
-                            Credit Note(s) Applied
-                          </span>
-                          <span className="text-green-600">
-                            -{formatCurrency(getTotalCreditNoteAmount())}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-red-600 font-medium">
-                        Pending Amount
-                      </span>
-                      <span className="text-red-600 font-semibold">
-                        {formatCurrency(getPendingAmount())}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Amount Received</span>
-                      <span className="text-gray-900 font-medium">
-                        {formatCurrency(paymentForm.amountReceived)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="text-gray-900 font-medium">
-                        -{formatCurrency(paymentForm.discount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm font-semibold text-gray-800">
-                        New Balance
-                      </span>
-                      <span className="text-base font-bold text-blue-600">
-                        {formatCurrency(
-                          Math.max(
-                            0,
-                            getPendingAmount() -
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                      Payment Calculation
+                    </h4>
+                    <div className="space-y-2">
+                      {creditNotes.length > 0 && (
+                        <>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">
+                              Original Balance Due
+                            </span>
+                            <span className="text-gray-600">
+                              {formatCurrency(invoiceData.total_amount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-green-600 font-medium">
+                              Credit Note(s) Applied
+                            </span>
+                            <span className="text-green-600">
+                              -{formatCurrency(getTotalCreditNoteAmount())}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-600 font-medium">
+                          Pending Amount
+                        </span>
+                        <span className="text-red-600 font-semibold">
+                          {formatCurrency(getPendingAmount())}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Amount Received</span>
+                        <span className="text-gray-900 font-medium">
+                          {formatCurrency(paymentForm.amountReceived)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Discount</span>
+                        <span className="text-gray-900 font-medium">
+                          -{formatCurrency(paymentForm.discount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                        <span className="text-sm font-semibold text-gray-800">
+                          New Balance
+                        </span>
+                        <span className="text-base font-bold text-blue-600">
+                          {formatCurrency(
+                            Math.max(
+                              0,
+                              getPendingAmount() -
                               paymentForm.amountReceived -
                               paymentForm.discount,
                             ),

@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { KeenIcon } from "@/components";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
 import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
@@ -364,7 +365,7 @@ const QuotationPreviewPage: React.FC = () => {
   const handleShareWhatsApp = async () => {
     const quotationId = id || location.state?.quotationId;
     if (!quotationId || !quotationData) return;
-    
+
     setIsFetchingShareData(true);
     const fetchToast = toast.loading("Preparing share options...");
     try {
@@ -388,7 +389,7 @@ const QuotationPreviewPage: React.FC = () => {
   const handleShareEmail = async () => {
     const quotationId = id || location.state?.quotationId;
     if (!quotationId || !quotationData) return;
-    
+
     setIsFetchingShareData(true);
     const fetchToast = toast.loading("Sending email...");
     try {
@@ -756,7 +757,7 @@ const QuotationPreviewPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
@@ -765,7 +766,7 @@ const QuotationPreviewPage: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
                   <Mail className="h-4 w-4" /> Email

@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { KeenIcon } from "@/components";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getPurchaseInvoiceById, recordPurchaseInvoicePayment } from "../services/purchaseInvoice.services";
@@ -14,6 +15,7 @@ import { getShareData, sendShareEmail, ShareData } from "@/services/share.servic
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { resolveImageUrl } from "@/utils/imageUtils";
 import {
   Dialog,
   DialogContent,
@@ -461,12 +463,8 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/purchase-invoices/${id}/edit`)} className="gap-2 text-primary border-primary">
-              <Edit className="h-4 w-4" /> Edit Invoice
-            </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
@@ -475,7 +473,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
                   <Mail className="h-4 w-4" /> Email
@@ -504,7 +502,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           <div className="flex flex-col items-end -mt-8">
             {brandingAssets?.logo_path ? (
               <img
-                src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
                 className="h-40 w-auto object-contain"
                 alt={businessInfo?.name || "Logo"}
               />
@@ -668,10 +666,21 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-24 flex justify-end">
+        <div className="mt-12 md:mt-20 flex justify-end">
           <div className="text-center">
+            {brandingAssets?.esign_path && (
+              <div className="mb-0 flex justify-center">
+                <img
+                  src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
+                  className="h-12 md:h-16 w-auto object-contain"
+                  alt="Signature"
+                />
+              </div>
+            )}
             <div className="w-48 border-b border-black mb-1"></div>
-            <p className="text-[10px] font-bold uppercase tracking-wider">Authorized Signatory</p>
+            <p className="text-[10px] font-bold text-black uppercase tracking-wider">
+              Authorized Signatory
+            </p>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { KeenIcon } from "@/components";
 import { toast } from "sonner";
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
 import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
@@ -15,7 +16,7 @@ import { useAuthContext } from "@/auth/useAuthContext";
 import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
-
+import { resolveImageUrl } from "@/utils/imageUtils";
 interface PurchaseOrderItem {
     id: string;
     item_id: string;
@@ -205,7 +206,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
             toast.error("Purchase order ID not found. Please save the purchase order first.");
             return;
         }
-        
+
         // Navigate to CreatePurchaseInvoicePage with PO data
         navigate('/purchases/purchase-invoices/new', {
             state: {
@@ -522,7 +523,29 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {associatedInvoice ? (
+                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2">
+                            <Download className="h-4 w-4" />Download PDF
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
+                            <Printer className="h-4 w-4" />Print PDF
+                        </Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                                    <Share className="h-4 w-4" /> Share
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                                    <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                                    <Mail className="h-4 w-4" /> Email
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                         {associatedInvoice ? (
                             <button
                                 onClick={() => navigate(`/purchases/purchase-invoices/${associatedInvoice.uuid}`)}
                                 className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md mr-2 hover:bg-emerald-100 transition-colors"
@@ -545,28 +568,6 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 Convert to Invoice
                             </Button>
                         )}
-                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2">
-                            <Download className="h-4 w-4" />Download PDF
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
-                            <Printer className="h-4 w-4" />Print PDF
-                        </Button>
-                        
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
-                                    <Share className="h-4 w-4" /> Share
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                                    <span className="flex items-center gap-2">📱 WhatsApp</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
-                                    <Mail className="h-4 w-4" /> Email
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </div>
                 </div>
             </div>
@@ -589,7 +590,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 <div className="flex flex-col items-end -mt-8">
                                     {brandingAssets?.logo_path ? (
                                         <img
-                                            src={`${import.meta.env.VITE_APP_API_URL}/static/uploads/business/${brandingAssets.logo_path}?t=${Date.now()}`}
+                                            src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
                                             className="h-40 w-auto object-contain"
                                             alt={getAuthBusinessInfo()?.name || "Logo"}
                                         />
@@ -757,10 +758,21 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-20 flex justify-end">
+                        <div className="mt-12 md:mt-20 flex justify-end">
                             <div className="text-center">
-                                <div className="w-48 border-b border-black mb-2"></div>
-                                <p className="text-xs font-bold text-black uppercase">Authorized Signatory</p>
+                                {brandingAssets?.esign_path && (
+                                    <div className="mb-0 flex justify-center">
+                                        <img
+                                            src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
+                                            className="h-12 md:h-16 w-auto object-contain"
+                                            alt="Signature"
+                                        />
+                                    </div>
+                                )}
+                                <div className="w-48 border-b border-black mb-1"></div>
+                                <p className="text-[10px] font-bold text-black uppercase tracking-wider">
+                                    Authorized Signatory
+                                </p>
                             </div>
                         </div>
                     </div>
