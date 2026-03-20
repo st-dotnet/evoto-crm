@@ -19,7 +19,7 @@ export const resolveImageUrl = (path: string | null | undefined): string => {
   
   // Strip /api (and optional trailing slash) from the base URL
   // We use this because static files are usually served from the root, not /api
-  const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+  const baseUrl = apiUrl;
   
   // Ensure we don't have double slashes
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
