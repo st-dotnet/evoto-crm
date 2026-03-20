@@ -714,31 +714,32 @@ const QuotationPreviewPage: React.FC = () => {
           }
         `}
       </style>
-      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
+      <div className="bg-white px-4 md:px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate("/quotes/list")}
+              className="md:h-10 md:w-10 h-8 w-8"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-black">
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-lg md:text-xl font-semibold text-black">
                 Quotation #{quotationData.quotationNo || "1"}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            {/* <Button variant="outline" size="sm" onClick={handleShare} className="gap-2"><Share className="h-4 w-4" />Share</Button> */}
+          <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 w-full md:w-auto self-stretch"><Download className="h-4 w-4" />Download PDF</Button>
+              <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 w-full md:w-auto self-stretch"><Printer className="h-4 w-4" />Print PDF</Button>
+            </div>
 
-            {/* Show Convert to Invoice - temporarily always visible for debugging */}
             {(!linkedInvoiceId || quotationData.status === 'open') && (
               <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-full md:w-auto"
                 onClick={handleConvertToInvoice}
                 disabled={isConverting}
               >
@@ -753,14 +754,14 @@ const QuotationPreviewPage: React.FC = () => {
       <div
         id="quotation-print-area"
         ref={quotationRef}
-        className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm"
+        className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12 bg-white mt-4 md:mt-8 shadow-sm overflow-hidden"
       >
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-12">
+                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
                   <h1 className="text-2xl font-semibold text-black leading-tight">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
@@ -780,17 +781,17 @@ const QuotationPreviewPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end -mt-8">
+                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
                   {brandingAssets?.logo_path ? (
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
-                      className="h-40 w-auto object-contain"
+                      className="h-24 md:h-40 w-auto object-contain"
                       alt={businessInfo?.name || "Logo"}
                     />
                   ) : (
                     <img
                       src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                      className="h-40 w-auto object-contain"
+                      className="h-24 md:h-40 w-auto object-contain"
                       alt="Evoto Technologies"
                     />
                   )}
@@ -800,45 +801,66 @@ const QuotationPreviewPage: React.FC = () => {
           })()}
         </div>
 
-        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-          {/* Labels Row */}
-          <div className="px-4 py-1 border-b border-black bg-gray-100">
+        {/* Metadata section - Mobile Bordered Box vs Desktop/Print Grid */}
+        <div className="md:grid md:grid-cols-3 gap-0 mb-8 md:mb-12 border border-black overflow-hidden print:grid print:grid-cols-3 print:mb-12">
+          {/* Desktop/Print Labels Row */}
+          <div className="px-4 py-1 border-b border-black md:border-r-0 bg-gray-100 hidden md:block print:block">
             <p className="text-[11px] font-semibold text-black uppercase">
               Quotation No.
             </p>
           </div>
-          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100 hidden md:block print:block">
             <p className="text-[11px] font-semibold text-black uppercase">
               Quotation Date
             </p>
           </div>
-          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+          <div className="px-4 py-1 border-b border-black text-right bg-gray-100 hidden md:block print:block">
             <p className="text-[11px] font-semibold text-black uppercase">
               Expiry Date
             </p>
           </div>
 
-          {/* Values Row */}
-          <div className="px-4 py-1">
-            <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
+          {/* Desktop/Print Values or Mobile Box */}
+          <div className="md:contents hidden print:contents">
+            <div className="px-4 py-1 border-r border-black">
+              <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
+            </div>
+            <div className="px-4 py-1 border-r border-black text-center">
+              <p className="text-[14px] font-normal text-black">
+                {new Date(quotationData.quotationDate).toLocaleDateString("en-IN")}
+              </p>
+            </div>
+            <div className="px-4 py-1 text-right">
+              <p className="text-[14px] font-normal text-black">
+                {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
+              </p>
+            </div>
           </div>
-          <div className="px-4 py-1 border-x border-black text-center">
-            <p className="text-[14px] font-normal text-black">
-              {new Date(quotationData.quotationDate).toLocaleDateString(
-                "en-IN",
-              )}
-            </p>
-          </div>
-          <div className="px-4 py-1 text-right">
-            <p className="text-[14px] font-normal text-black">
-              {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
-            </p>
+
+          {/* Mobile-only Bordered Box */}
+          <div className="block md:hidden print:hidden">
+            <div className="flex justify-between px-4 py-2 border-b border-black">
+              <p className="text-[12px] font-bold text-black uppercase">Quotation NO.:</p>
+              <p className="text-[12px] font-medium text-black">{quotationData.quotationNo}</p>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-b border-black">
+              <p className="text-[12px] font-bold text-black uppercase">Date:</p>
+              <p className="text-[12px] font-medium text-black">
+                {new Date(quotationData.quotationDate).toLocaleDateString("en-IN")}
+              </p>
+            </div>
+            <div className="flex justify-between px-4 py-2">
+              <p className="text-[12px] font-bold text-black uppercase">Expiry:</p>
+              <p className="text-[12px] font-medium text-black">
+                {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8 md:mb-12 print:grid-cols-2 print:gap-12 print:mb-12">
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">
               BILL TO
             </h3>
             <div className="space-y-1 text-black text-sm">
@@ -886,7 +908,7 @@ const QuotationPreviewPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">
               SHIP TO
             </h3>
             <div className="text-black text-sm">
@@ -932,8 +954,9 @@ const QuotationPreviewPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4">
-          <table className="w-full border border-black">
+        {/* Desktop/Print Table */}
+        <div className="mb-4 hidden md:block print:block">
+          <table className="w-full border border-black print:min-w-full">
             <thead>
               <tr className="border-b-2 border-black bg-gray-100">
                 <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
@@ -1064,16 +1087,93 @@ const QuotationPreviewPage: React.FC = () => {
           </table>
         </div>
 
+        {/* Mobile-only Card View */}
+        <div className="md:hidden print:hidden space-y-4 mb-8">
+          {quotationData.quotationItems?.map((item, index) => (
+            <div key={item.id} className="border border-black rounded-lg overflow-hidden border-b-2">
+              {/* Card Header */}
+              <div className="grid grid-cols-[1fr,auto] gap-2 p-3 border-b border-black">
+                <div>
+                  <p className="text-[10px] font-bold text-black uppercase mb-1">ITEM DESCRIPTION</p>
+                  <div className="flex items-start gap-1">
+                    <span className="text-sm font-bold text-black">{index + 1}.</span>
+                    <p className="text-sm font-bold text-black leading-tight">{item.item_name}</p>
+                  </div>
+                </div>
+                <div className="w-16 h-16 border border-black rounded flex items-center justify-center overflow-hidden">
+                  {item.image ? (
+                    <img src={resolveImageUrl(item.image)} className="w-full h-full object-cover" alt={item.item_name} />
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Pricing Row */}
+              <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
+                <div className="p-2 text-center">
+                  <p className="text-[9px] font-bold text-black uppercase mb-1">PRICE/ITEM</p>
+                  <p className="text-[11px] font-medium text-black">{formatCurrency(item.price_per_item)}</p>
+                </div>
+                <div className="p-2 text-center">
+                  <p className="text-[9px] font-bold text-black uppercase mb-1">DISC.</p>
+                  <p className="text-[11px] font-medium text-black">-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</p>
+                </div>
+                <div className="p-2 text-center">
+                  <p className="text-[9px] font-bold text-black uppercase mb-1">TAX</p>
+                  <p className="text-[11px] font-medium text-black">
+                    {formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}
+                    <span className="text-[8px] block">({item.tax}%)</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Totals Row */}
+              <div className="grid grid-cols-2 p-3 bg-gray-50/50">
+                <div>
+                  <p className="text-[11px] font-bold text-black">QTY: {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-bold text-black">TOTAL: {formatCurrency(item.amount)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Mobile Subtotal Summary Card */}
+          <div className="bg-white border border-black rounded-lg overflow-hidden no-print">
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(totals.subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-red-600">
+                <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
+                <span className="text-sm font-bold">-{formatCurrency(totals.totalDiscount)}</span>
+              </div>
+              <div className="flex justify-between items-center text-black">
+                <span className="text-xs font-bold uppercase">TOTAL TAX</span>
+                <span className="text-sm font-bold">{formatCurrency(totals.totalTax)}</span>
+              </div>
+              <div className="pt-2 border-t-2 border-black flex justify-between items-center">
+                <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
+                <span className="text-lg font-black text-black">{formatCurrency(totals.totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ===== Bottom Section (Two Column Layout) ===== */}
-        <div className="mt-16 grid grid-cols-2 gap-16">
+        <div className="mt-8 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 print:grid-cols-2 print:gap-16 print:mt-16">
 
           {/* ================= LEFT SIDE ================= */}
-          <div className="space-y-10">
-
+          <div className="space-y-10 md:col-span-1">
             {/* Notes */}
             {quotationData.notes && (
               <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-full md:w-20 print:w-20">
                   Notes
                 </h4>
                 <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">
@@ -1085,7 +1185,7 @@ const QuotationPreviewPage: React.FC = () => {
             {/* Terms */}
             {quotationData.terms && (
               <div>
-                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">
+                <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-full md:w-40 print:w-40">
                   Terms & Conditions
                 </h4>
 
@@ -1101,44 +1201,52 @@ const QuotationPreviewPage: React.FC = () => {
                 </div>
               </div>
             )}
-
           </div>
 
           {/* ================= RIGHT SIDE ================= */}
-          <div>
+          <div className="space-y-12 md:space-y-20 md:col-span-1">
 
             {/* ===== Tax Summary ===== */}
-            <div className="space-y-0">
+            <div className="space-y-0 text-right">
 
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal text-black uppercase">
+              <div className="flex justify-between items-center py-1 gap-4">
+                <span className="text-xs font-bold text-black uppercase">
+                  SUBTOTAL
+                </span>
+                <span className="text-sm font-medium text-black">
+                  {formatCurrency(totals.subtotal)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 gap-4">
+                <span className="text-xs font-bold text-black uppercase">
                   Taxable Amount
                 </span>
-                <span className="text-sm font-bold text-black">
+                <span className="text-sm font-medium text-black">
                   {formatCurrency(totals.subtotal - totals.totalDiscount)}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-normal text-black uppercase">
+              <div className="flex justify-between items-center py-1 gap-4">
+                <span className="text-xs font-bold text-black uppercase">
                   CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
                 </span>
-                <span className="text-sm font-bold text-black">
+                <span className="text-sm font-medium text-black">
                   {formatCurrency(totals.totalCGST)}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-2 border-b border-black">
-                <span className="text-xs font-normal text-black uppercase">
+              <div className="flex justify-between items-center py-1 gap-4 border-b border-black md:border-b">
+                <span className="text-xs font-bold text-black uppercase">
                   {currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)
                 </span>
-                <span className="text-sm font-bold text-black">
+                <span className="text-sm font-medium text-black">
                   {formatCurrency(totals.totalTax / 2)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center py-2 border-b-2 border-black">
-                <span className="text-sm font-bold text-black">
+                <span className="text-sm font-bold text-black uppercase">
                   GRAND TOTAL
                 </span>
                 <span className="text-xl font-bold text-black">
@@ -1147,9 +1255,9 @@ const QuotationPreviewPage: React.FC = () => {
               </div>
 
               <div className="pt-2 text-right">
-                <p className="text-xs text-black leading-tight">
-                  <span className="font-bold uppercase text-[12px]">
-                    In words:
+                <p className="text-[10px] text-black leading-tight italic max-w-[250px] ml-auto">
+                  <span className="font-bold uppercase text-[10px] not-italic">
+                    IN WORDS:
                   </span>{' '}
                   {formatNumberInWords(totals.totalAmount)}
                 </p>
@@ -1158,19 +1266,19 @@ const QuotationPreviewPage: React.FC = () => {
             </div>
 
             {/* ===== Signature ===== */}
-            <div className="mt-20 flex justify-end">
+            <div className="flex justify-end">
               <div className="text-center">
                 {brandingAssets?.esign_path && (
-                  <div className="mb-2 flex justify-center">
+                  <div className="mb-0 flex justify-center">
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                      className="h-16 w-auto object-contain"
+                      className="h-12 md:h-16 w-auto object-contain"
                       alt="Signature"
                     />
                   </div>
                 )}
-                <div className="w-48 border-b border-black mb-2"></div>
-                <p className="text-xs font-bold text-black uppercase">
+                <div className="w-full md:w-48 border-b border-black mb-1 print:w-48"></div>
+                <p className="text-[10px] font-bold text-black uppercase tracking-wider">
                   Authorized Signatory
                 </p>
               </div>

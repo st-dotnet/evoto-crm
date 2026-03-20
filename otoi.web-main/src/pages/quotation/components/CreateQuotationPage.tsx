@@ -1417,7 +1417,7 @@ const CreateQuotationPage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="sticky rounded-xl z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm gap-3 sm:gap-0">
+      <div className="sticky rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm gap-3 md:gap-0 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Button
             type="button"
@@ -1501,8 +1501,8 @@ const CreateQuotationPage = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 pb-4">
-        <div className="lg:col-span-4 bg-white border rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5 min-w-0">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 pb-4">
+        <div className="xl:col-span-4 bg-white border rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5 min-w-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
             <div className="space-y-3 min-w-0">
               <h3 className="text-sm font-semibold text-gray-700">Bill To</h3>
@@ -1841,7 +1841,7 @@ const CreateQuotationPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full sm:w-auto mt-3 sm:mt-0">
+                    <div className="flex flex-col sm:flex-row lg:flex-row xl:flex-col gap-2 w-full sm:w-auto mt-3 sm:mt-0">
                       <Button
                         variant="outline"
                         size="sm"
@@ -1876,7 +1876,7 @@ const CreateQuotationPage = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-1 bg-white border rounded-xl p-4 sm:p-5 shadow-sm min-w-0">
+        <div className="xl:col-span-1 bg-white border rounded-xl p-4 sm:p-5 shadow-sm min-w-0">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">
             Quotation Details
           </h3>
@@ -2495,34 +2495,34 @@ const CreateQuotationPage = () => {
           <table className="min-w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-12">
                   No.
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-20">
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
                   Image
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[250px]">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[200px] min-w-[150px]">
                   Item/Service Details
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
                   HSN/SAC
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
                   Quantity
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
                   PRICE/ITEM (₹)
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
                   Discount
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
                   Tax
                 </th>
-                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-36">
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
                   AMOUNT (₹)
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-16">
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-12">
                   Action
                 </th>
               </tr>
@@ -2912,7 +2912,7 @@ const CreateQuotationPage = () => {
                         <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
                           {item.image ? (
                             <img
-                              src={item.image}
+                              src={resolveImageUrl(item.image)}
                               alt={item.item_name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
@@ -3426,21 +3426,6 @@ const CreateQuotationPage = () => {
                 </div>
               </div>
             )}
-
-            <div className="bg-white border rounded-lg p-5 sm:p-8">
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 text-right">
-                  Authorized signatory for{" "}
-                  <span className="font-semibold">XYZ</span>
-                </p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center min-h-[120px]">
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Signature
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

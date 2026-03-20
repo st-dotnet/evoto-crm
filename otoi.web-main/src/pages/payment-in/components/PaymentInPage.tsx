@@ -262,8 +262,8 @@ export const PaymentInPage = () => {
                   {new Date(payment.date).toLocaleDateString()}
                 </span>
               </div>
-              <span className="text-sm font-medium text-gray-700 mb-0.5">{payment.party_name}</span>
-              <div className="flex items-center gap-3 text-[11px] text-gray-500">
+              <span className="text-sm font-medium text-gray-700 mb-1">{payment.party_name}</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
                 <span className="flex items-center gap-1">
                   <Wallet className="h-3 w-3 text-gray-400" />
                   {payment.payment_mode}
@@ -274,8 +274,21 @@ export const PaymentInPage = () => {
                   </span>
                 )}
               </div>
-              <div className="mt-2 font-bold text-gray-900 text-sm">
-                ₹{payment.amount_received?.toLocaleString('en-IN') || '0.00'}
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 uppercase font-medium">Received</span>
+                  <span className="font-bold text-blue-600 text-sm">
+                    ₹{payment.amount_received?.toLocaleString('en-IN') || '0.00'}
+                  </span>
+                </div>
+                {(payment.total_amount_settled ?? 0) > 0 && (
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-gray-400 uppercase font-medium">Settled</span>
+                    <span className="font-semibold text-gray-700 text-sm">
+                      ₹{payment.total_amount_settled?.toLocaleString('en-IN') || '0.00'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -557,124 +570,126 @@ export const PaymentInPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-semibold">Payment In</h1>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Status Filter Dropdown */}
-          <div className="w-full sm:w-44">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                  <div className="flex items-center overflow-hidden">
-                    <Filter className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate ml-1">
-                      {selectedStatus === 'all' && 'All Payments'}
-                      {selectedStatus === 'paid' && 'Paid Payments'}
-                      {selectedStatus === 'partially paid' && 'Pending Payments'}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('all')}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-gray-500" />
-                  <span>All Payments</span>
-                  {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('paid')}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-green-500" />
-                  <span>Done Payments</span>
-                  {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('partially paid')}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-yellow-500" />
-                  <span>Pending Payments</span>
-                  {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {/* Date Filter Dropdown */}
-          <div className="w-full sm:w-44">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                  <div className="flex items-center overflow-hidden">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate ml-1">
-                      {selectedDateFilter === 'all' && 'All Dates'}
-                      {selectedDateFilter === 'today' && 'Today'}
-                      {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
-                      {selectedDateFilter === 'day_after_tomorrow' && 'Day After Tomorrow'}
-                      {selectedDateFilter === 'this_week' && 'This Week'}
-                      {selectedDateFilter === 'last_week' && 'Last Week'}
-                      {selectedDateFilter === 'this_month' && 'This Month'}
-                      {selectedDateFilter === 'last_month' && 'Last Month'}
-                      {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('all')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span>All Dates</span>
-                  {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('today')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                  <span>Today</span>
-                  {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('tomorrow')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-green-500" />
-                  <span>Tomorrow</span>
-                  {selectedDateFilter === 'tomorrow' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('day_after_tomorrow')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-purple-500" />
-                  <span>Day After Tomorrow</span>
-                  {selectedDateFilter === 'day_after_tomorrow' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_week')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-orange-500" />
-                  <span>This Week</span>
-                  {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_week')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-yellow-500" />
-                  <span>Last Week</span>
-                  {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_month')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-indigo-500" />
-                  <span>This Month</span>
-                  {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_month')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-pink-500" />
-                  <span>Last Month</span>
-                  {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_365_days')} className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-red-500" />
-                  <span>Last 365 Days</span>
-                  {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex flex-row sm:flex-row items-center gap-2 w-full sm:w-auto">
+            {/* Status Filter Dropdown */}
+            <div className="flex-1 sm:w-44 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                    <div className="flex items-center overflow-hidden">
+                      <Filter className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate ml-1 text-xs sm:text-sm">
+                        {selectedStatus === 'all' && 'All'}
+                        {selectedStatus === 'paid' && 'Paid'}
+                        {selectedStatus === 'partially paid' && 'Pending'}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuItem
+                    onClick={() => setSelectedStatus('all')}
+                    className="flex items-center gap-2"
+                  >
+                    <Circle className="h-4 w-4 text-gray-500" />
+                    <span>All Payments</span>
+                    {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedStatus('paid')}
+                    className="flex items-center gap-2"
+                  >
+                    <Circle className="h-4 w-4 text-green-500" />
+                    <span>Done Payments</span>
+                    {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedStatus('partially paid')}
+                    className="flex items-center gap-2"
+                  >
+                    <Circle className="h-4 w-4 text-yellow-500" />
+                    <span>Pending Payments</span>
+                    {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {/* Date Filter Dropdown */}
+            <div className="flex-1 sm:w-44 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                    <div className="flex items-center overflow-hidden">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate ml-1 text-xs sm:text-sm">
+                        {selectedDateFilter === 'all' && 'All Dates'}
+                        {selectedDateFilter === 'today' && 'Today'}
+                        {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
+                        {selectedDateFilter === 'day_after_tomorrow' && 'D+2'}
+                        {selectedDateFilter === 'this_week' && 'This Wk'}
+                        {selectedDateFilter === 'last_week' && 'Last Wk'}
+                        {selectedDateFilter === 'this_month' && 'This Mo'}
+                        {selectedDateFilter === 'last_month' && 'Last Mo'}
+                        {selectedDateFilter === 'last_365_days' && 'Year'}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('all')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span>All Dates</span>
+                    {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('today')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                    <span>Today</span>
+                    {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('tomorrow')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-500" />
+                    <span>Tomorrow</span>
+                    {selectedDateFilter === 'tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('day_after_tomorrow')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-purple-500" />
+                    <span>Day After Tomorrow</span>
+                    {selectedDateFilter === 'day_after_tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('this_week')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-orange-500" />
+                    <span>This Week</span>
+                    {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_week')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-yellow-500" />
+                    <span>Last Week</span>
+                    {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('this_month')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-indigo-500" />
+                    <span>This Month</span>
+                    {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_month')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-pink-500" />
+                    <span>Last Month</span>
+                    {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_365_days')} className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-red-500" />
+                    <span>Last 365 Days</span>
+                    {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <Button
             size="sm"
-            className="h-9 gap-1 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+            className="h-9 gap-1 w-full bg-blue-600 hover:bg-blue-700 text-white mt-1 sm:mt-0 sm:w-auto"
             onClick={() => navigate("/payment-in/create")}
           >
             <Plus className="h-4 w-4" />
@@ -688,18 +703,20 @@ export const PaymentInPage = () => {
       <div className="bg-white rounded-lg border overflow-hidden">
         {/* Search Bar */}
         <div className="p-4 border-b">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative w-full sm:w-80">
               <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-10 w-full justify-start px-3" disabled={isDropdownLoading}>
+                  <Button variant="outline" className="h-10 w-full justify-start px-3 py-2 text-sm" disabled={isDropdownLoading}>
                     {isDropdownLoading ? (
                       <span className="flex items-center">
                         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
                         Loading...
                       </span>
                     ) : (
-                      searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by payment number...')
+                      <span className="truncate">
+                        {searchTerm || (searchType === 'party_name' ? 'Search by party...' : 'Search by payment #...')}
+                      </span>
                     )}
                     {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0" />}
                   </Button>
@@ -744,16 +761,18 @@ export const PaymentInPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto"
+                  className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto flex items-center justify-between sm:justify-center"
                 >
-                  <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
-                  <span className="truncate max-w-[150px]">
-                    {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Payment'}: ${searchTerm}` : 'Filter by'}
-                  </span>
+                  <div className="flex items-center truncate min-w-0">
+                    <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
+                    <span className="truncate">
+                      {searchTerm ? (searchType === 'party_name' ? 'Party' : 'No.') : 'Search by'}
+                    </span>
+                  </div>
                   <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
+              <DropdownMenuContent className="w-48" align="end">
                 <DropdownMenuItem
                   onClick={() => {
                     handleSearchTypeChange('party_name');
@@ -842,14 +861,14 @@ export const PaymentInPage = () => {
             </div>
           )}
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden"
+            className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <FileText className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-800">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
                   Payment Details
                 </h3>
               </div>
@@ -857,6 +876,7 @@ export const PaymentInPage = () => {
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={closeModal}
               >
                 <X className="h-4 w-4" />
@@ -864,7 +884,7 @@ export const PaymentInPage = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               {modalLoading ? (
                 <div className="flex items-center justify-center py-10">
                   <SpinnerDotted
@@ -880,14 +900,14 @@ export const PaymentInPage = () => {
               ) : selectedPayment ? (
                 <div className="space-y-6">
                   {/* Payment Summary */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="flex items-start sm:items-center gap-2">
+                        <User className="h-4 w-4 text-gray-600 mt-0.5 sm:mt-0" />
+                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
                           Party Name:
                         </span>
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm text-gray-900 break-words">
                           {selectedPayment.party_name}
                         </span>
                       </div>
@@ -933,7 +953,7 @@ export const PaymentInPage = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-700">
@@ -1012,31 +1032,33 @@ export const PaymentInPage = () => {
 
                   {/* Related Invoices */}
                   {paymentInvoices.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-semibold-400 text-gray-800 mb-4">
+                    <div className="space-y-4">
+                      <h4 className="text-md font-semibold text-gray-800">
                         Other Related Invoices with {selectedPayment.party_name}
                       </h4>
-                      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl mx-auto max-h-[98vh] overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
+
+                      {/* Desktop Table View */}
+                      <div className="hidden sm:block bg-white rounded-lg border overflow-hidden">
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200">
+                          <table className="w-full text-sm min-w-[600px]">
                             <thead className="bg-gray-50 border-b">
                               <tr>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Date
                                 </th>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Invoice Number
                                 </th>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Amount
                                 </th>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Paid
                                 </th>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Balance
                                 </th>
-                                <th className="px-4 py-3 text-center font-medium text-gray-700">
+                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
                                   Status
                                 </th>
                               </tr>
@@ -1047,81 +1069,27 @@ export const PaymentInPage = () => {
                                   key={invoice.id}
                                   className="hover:bg-gray-50 cursor-pointer"
                                   onClick={() => {
-                                    // Fetch individual invoice data instead of navigating
-                                    const token =
-                                      localStorage.getItem(
-                                        "OTOI-auth-v1.0.0.1",
-                                      );
-                                    const API_URL = import.meta.env
-                                      .VITE_APP_API_URL;
-
-                                    fetch(`${API_URL}/invoices/${invoice.id}`, {
-                                      headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        "Content-Type": "application/json",
-                                      },
-                                      credentials: "same-origin",
-                                    })
-                                      .then((response) => {
-                                        if (!response.ok) {
-                                          throw new Error(
-                                            `HTTP error! status: ${response.status}`,
-                                          );
-                                        }
-                                        return response.json();
-                                      })
-                                      .then((data) => {
-                                        if (data.success) {
-                                          const invoiceData = data.data;
-                                          // Individual invoice data received
-                                        } else {
-                                          // Error fetching invoice
-                                        }
-                                      })
-                                      .catch((error) => {
-                                        // Error fetching invoice
-                                      });
+                                    /* Invoice click logic */
                                   }}
                                 >
-                                  <td className="px-4 py-4 text-center text-gray-900">
+                                  <td className="px-3 py-4 text-center text-gray-900 whitespace-nowrap">
                                     {new Date(
                                       invoice.date,
                                     ).toLocaleDateString()}
                                   </td>
-                                  <td className="px-4 py-4 text-center font-medium text-blue-600">
+                                  <td className="px-3 py-4 text-center font-medium text-blue-600 whitespace-nowrap">
                                     {invoice.invoice_number}
                                   </td>
-                                  <td className="px-4 py-4 text-center font-medium">
-                                    ₹
-                                    {invoice.invoice_amount?.toLocaleString(
-                                      "en-IN",
-                                      {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      }
-                                    ) || "0.00"}
+                                  <td className="px-3 py-4 text-center font-medium whitespace-nowrap">
+                                    ₹{invoice.invoice_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                   </td>
-                                  <td className="px-4 py-4 text-center font-medium text-green-600">
-                                    ₹
-                                    {invoice.amount_received?.toLocaleString(
-                                      "en-IN",
-                                      {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      }
-                                    ) || "0.00"}
+                                  <td className="px-3 py-4 text-center font-medium text-green-600 whitespace-nowrap">
+                                    ₹{invoice.amount_received?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                   </td>
-                                  <td className="px-4 py-4 text-center font-medium">
-                                    ₹
-                                    {invoice.balance_amount?.toLocaleString(
-                                      "en-IN",
-                                      {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      }
-                                    ) || "0.00"}
+                                  <td className="px-3 py-4 text-center font-medium whitespace-nowrap">
+                                    ₹{invoice.balance_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                   </td>
-                                  <td className="px-4 py-4 text-center">
+                                  <td className="px-3 py-4 text-center whitespace-nowrap">
                                     <span
                                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${invoice.status === "paid"
                                         ? "bg-green-100 text-green-800"
@@ -1138,6 +1106,44 @@ export const PaymentInPage = () => {
                             </tbody>
                           </table>
                         </div>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="sm:hidden space-y-3">
+                        {paymentInvoices.map((invoice) => (
+                          <div
+                            key={invoice.id}
+                            className="bg-gray-50 border border-gray-100 rounded-lg p-3 space-y-2 active:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="text-blue-600 font-semibold text-sm">{invoice.invoice_number}</span>
+                              <span className="text-[11px] text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-gray-400 font-medium uppercase text-[10px]">Amount</p>
+                                <p className="font-semibold text-gray-700">₹{invoice.invoice_amount?.toLocaleString("en-IN")}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-gray-400 font-medium uppercase text-[10px]">Paid</p>
+                                <p className="font-semibold text-green-600">₹{invoice.amount_received?.toLocaleString("en-IN")}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 font-medium uppercase text-[10px]">Balance</p>
+                                <p className="font-semibold text-red-600">₹{invoice.balance_amount?.toLocaleString("en-IN")}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-gray-400 font-medium uppercase text-[10px]">Status</p>
+                                <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                  invoice.status === 'partially paid' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-200 text-gray-800'
+                                  }`}>
+                                  {invoice.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
