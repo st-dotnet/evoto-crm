@@ -104,10 +104,12 @@ const ProductImages = ({ formik }: IProductImagesProps) => {
   };
 
   const handleSetMainImage = (index: number) => {
-    const newImages = images.map((img: any, i: number) => ({
-      ...img,
-      is_main: i === index
-    }));
+    const selectedImage = { ...images[index], is_main: true };
+    const otherImages = images
+      .filter((_: any, i: number) => i !== index)
+      .map((img: any) => ({ ...img, is_main: false }));
+    
+    const newImages = [selectedImage, ...otherImages];
     formik.setFieldValue('images', newImages);
     toast.success("Feature image updated");
   };

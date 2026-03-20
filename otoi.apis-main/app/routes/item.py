@@ -411,16 +411,22 @@ def create_item():
                     file_path = os.path.join(item_dir, filename)
                     file.save(file_path)
                     
-                    # Check if this should be the main image
-                    # For creation, the first image is main by default unless specified
+                    # Determine if this should be the main image
                     is_main = False
                     if "images" in data:
                         # Find matching entry in data["images"] by name
+                        # We use original_filename to match with the name property from frontend
                         match = next((img for img in data["images"] if img.get("name") == original_filename), None)
                         if match:
                             is_main = match.get("is_main", False)
                     elif i == 0:
+                        # Fallback: if no metadata provided, first image is main
                         is_main = True
+
+                    # If this one is being set to main, ensure others of this item (if any yet) are not main
+                    if is_main:
+                        from app.models import ItemImage
+                        ItemImage.query.filter_by(item_id=item.id).update({"is_main": False})
 
                     new_img = ItemImage(
                         item_id=item.id,
@@ -723,7 +729,17 @@ def update_item(item_id):
             item.purchase_price = None
             item.opening_stock = None
 
-        # 4. Handle New Image Uploads (Atomic)
+        # 4. Handle sync of "is_main" flag
+        has_main_selection = False
+        if "images" in data:
+            has_main_selection = any(img.get("is_main") for img in data["images"])
+
+        # If we have a clear selection for main image, unset any current main image
+        if has_main_selection:
+            from app.models import ItemImage
+            ItemImage.query.filter_by(item_id=item_id).update({"is_main": False})
+
+        # 5. Handle New Image Uploads (Atomic)
         if new_files:
             import os
             from app.config import Config
@@ -747,22 +763,30 @@ def update_item(item_id):
                     file_path = os.path.join(item_dir, filename)
                     file.save(file_path)
                     
+                    # Determine is_main for this new file
+                    is_main = False
+                    if "images" in data:
+                        match = next((img for img in data["images"] if img.get("name") == original_filename), None)
+                        if match:
+                            is_main = match.get("is_main", False)
+                    
                     new_img = ItemImage(
                         item_id=item_id,
                         image=filename,
                         name=original_filename,
-                        is_main=False # Will handle is_main separately if needed
+                        is_main=is_main
                     )
                     db.session.add(new_img)
                     current_count += 1
 
-        # 5. Sync is_main flag if provided in data
+        # 6. Final Sync of is_main flag for existing images (that are still in DB)
         if "images" in data:
-            # Expecting a list of objects with {id, is_main} or {name, is_main}
             from app.models import ItemImage
             for img_info in data["images"]:
-                if "id" in img_info:
-                    db_img = ItemImage.query.get(img_info["id"])
+                img_id = img_info.get("id")
+                # Only process images that already had an ID
+                if img_id:
+                    db_img = ItemImage.query.get(img_id)
                     if db_img and db_img.item_id == item_id:
                         db_img.is_main = img_info.get("is_main", False)
 

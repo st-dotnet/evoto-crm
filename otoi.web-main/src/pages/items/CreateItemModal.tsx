@@ -198,11 +198,11 @@ export default function CreateItemModal({
                     const itemData = {
                         ...postData,
                         images_to_delete: imagesToDelete,
-                        // Include metadata updates for existing images (e.g., is_main change)
+                        // Include metadata updates for all images
                         images: currentImages
-                            .filter((img: any) => img.id && !img.file)
                             .map((img: any) => ({
-                                id: img.id,
+                                id: img.id || null,
+                                name: img.name || null,
                                 is_main: img.is_main
                             }))
                     };
