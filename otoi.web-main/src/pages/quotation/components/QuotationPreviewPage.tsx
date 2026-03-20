@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, FileText, Receipt } from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, Receipt, Share, Mail } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createQuotation, getQuotationById, updateQuotation } from "../services/quotation.services";
+import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
 import { SpinnerDotted } from "spinners-react";
@@ -69,6 +76,7 @@ const QuotationPreviewPage: React.FC = () => {
   const [fetchedData, setFetchedData] = useState<QuotationData | null>(null);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
   const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
+  const [isFetchingShareData, setIsFetchingShareData] = useState(false);
   const quotationRef = useRef<HTMLDivElement>(null);
 
   const quotationData: QuotationData = fetchedData ||
@@ -353,36 +361,50 @@ const QuotationPreviewPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  // const handleShare = async () => {
-  //   if (!quotationRef.current) return;
-  //   const shareToast = toast.loading("Preparing for share...");
-  //   try {
-  //     const canvas = await html2canvas(quotationRef.current, { scale: 2 });
-  //     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
-  //       if (b) resolve(b);
-  //       else reject(new Error("Failed to generate blob"));
-  //     }, "image/png"));
-  //     const file = new File([blob], `Quotation-${quotationData.quotationNo}.png`, { type: "image/png" });
+  const handleShareWhatsApp = async () => {
+    const quotationId = id || location.state?.quotationId;
+    if (!quotationId || !quotationData) return;
+    
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Preparing share options...");
+    try {
+      const response = await getShareData(quotationId, 'quotation');
+      if (response.success && response.data) {
+        const { message, contact } = response.data;
+        const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp...", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to fetch share data");
+      }
+    } catch (error: any) {
+      console.error("Share error:", error);
+      toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
 
-  //     if (navigator.share) {
-  //       await navigator.share({
-  //         files: [file],
-  //         title: `Quotation ${quotationData.quotationNo}`,
-  //         text: `Check out our quotation: ${quotationData.quotationNo}`
-  //       });
-  //       toast.success("Shared successfully", { id: shareToast });
-  //     } else {
-  //       const url = URL.createObjectURL(blob);
-  //       const a = document.createElement("a");
-  //       a.href = url;
-  //       a.download = `Quotation-${quotationData.quotationNo}.png`;
-  //       a.click();
-  //       toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
-  //     }
-  //   } catch (error) {
-  //     toast.error("Failed to share", { id: shareToast });
-  //   }
-  // };
+  const handleShareEmail = async () => {
+    const quotationId = id || location.state?.quotationId;
+    if (!quotationId || !quotationData) return;
+    
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Sending email...");
+    try {
+      const response = await sendShareEmail(quotationId, 'quotation');
+      if (response.success) {
+        toast.success("Email sent successfully!", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      console.error("Email error:", error);
+      toast.error(error.message || "Failed to send email", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return `₹ ${amount.toFixed(2)}`;
@@ -731,12 +753,27 @@ const QuotationPreviewPage: React.FC = () => {
               </h1>
             </div>
           </div>
-          <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
-            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
-              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 w-full md:w-auto self-stretch"><Download className="h-4 w-4" />Download PDF</Button>
-              <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 w-full md:w-auto self-stretch"><Printer className="h-4 w-4" />Print PDF</Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" /> Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                  <span className="flex items-center gap-2">📱 WhatsApp</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
+            {/* Show Convert to Invoice - temporarily always visible for debugging */}
             {(!linkedInvoiceId || quotationData.status === 'open') && (
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-full md:w-auto"

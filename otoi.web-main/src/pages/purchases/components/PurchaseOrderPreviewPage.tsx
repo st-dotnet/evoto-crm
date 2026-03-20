@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, FileText, CreditCard } from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, CreditCard, Share, Mail } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
+import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -58,6 +65,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [fetchedData, setFetchedData] = useState<PurchaseOrderData | null>(null);
     const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
+    const [isFetchingShareData, setIsFetchingShareData] = useState(false);
     const [isConverting, setIsConverting] = useState(false);
     const [associatedInvoice, setAssociatedInvoice] = useState<any>(null);
     const poRef = useRef<HTMLDivElement>(null);
@@ -287,6 +295,47 @@ const PurchaseOrderPreviewPage: React.FC = () => {
         document.title = originalTitle;
     };
 
+    const handleShareWhatsApp = async () => {
+        if (!id || !poData) return;
+        setIsFetchingShareData(true);
+        const fetchToast = toast.loading("Preparing share options...");
+        try {
+            const response = await getShareData(id, 'purchase_order');
+            if (response.success && response.data) {
+                const { message, contact } = response.data;
+                const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+                window.open(whatsappUrl, "_blank");
+                toast.success("Opening WhatsApp...", { id: fetchToast });
+            } else {
+                throw new Error(response.error || "Failed to fetch share data");
+            }
+        } catch (error: any) {
+            console.error("Share error:", error);
+            toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+        } finally {
+            setIsFetchingShareData(false);
+        }
+    };
+
+    const handleShareEmail = async () => {
+        if (!id || !poData) return;
+        setIsFetchingShareData(true);
+        const fetchToast = toast.loading("Sending email...");
+        try {
+            const response = await sendShareEmail(id, 'purchase_order');
+            if (response.success) {
+                toast.success("Email sent successfully!", { id: fetchToast });
+            } else {
+                throw new Error(response.error || "Failed to send email");
+            }
+        } catch (error: any) {
+            console.error("Email error:", error);
+            toast.error(error.message || "Failed to send email", { id: fetchToast });
+        } finally {
+            setIsFetchingShareData(false);
+        }
+    };
+
     const formatCurrency = (amount: number) => {
         return `₹ ${amount.toFixed(2)}`;
     };
@@ -502,6 +551,22 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
                             <Printer className="h-4 w-4" />Print PDF
                         </Button>
+                        
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                                    <Share className="h-4 w-4" /> Share
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                                    <span className="flex items-center gap-2">📱 WhatsApp</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                                    <Mail className="h-4 w-4" /> Email
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
             </div>

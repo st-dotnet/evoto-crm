@@ -98,3 +98,31 @@ If you didn't request a password reset, you can safely ignore this email.
     except Exception as e:
         print(f"Error sending email: {str(e)}")
         return False
+def send_email(to_email, subject, html_content, text_content=None):
+    mail_server = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    mail_port = int(os.getenv("MAIL_PORT", 587))
+    sender_email = os.getenv("MAIL_SENDER")
+    sender_password = os.getenv("MAIL_PASSWORD")
+
+    if not sender_email or not sender_password:
+        print("Error: MAIL_SENDER or MAIL_PASSWORD not set in environment")
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = sender_email
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    if text_content:
+        msg.attach(MIMEText(text_content, "plain"))
+    msg.attach(MIMEText(html_content, "html"))
+
+    try:
+        with smtplib.SMTP(mail_server, mail_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False

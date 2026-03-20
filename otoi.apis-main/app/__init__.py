@@ -33,8 +33,8 @@ def create_app():
     # Enable CORS for both /api/* and /static/*
     frontend_url = app.config.get("FRONTEND_URL", "*")
     CORS(app, resources={
-        r"/api/*": {"origins": [frontend_url]},
-        r"/static/*": {"origins": "*"}
+        r"/api/.*": {"origins": [frontend_url]},
+        r"/static/.*": {"origins": [frontend_url]}
     }, supports_credentials=True, allow_headers=["Content-Type", "Authorization"], expose_headers=["Authorization"], methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     # authentication barrier
