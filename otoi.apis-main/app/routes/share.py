@@ -15,6 +15,25 @@ import traceback
 import base64
 import datetime
 
+def get_base_url():
+    """
+    Build the correct base URL, honouring reverse-proxy headers.
+    Priority:
+      1. BASE_URL env variable (most explicit, set this on the live server)
+      2. X-Forwarded-Proto header (set by Nginx/IIS/Apache)
+      3. request.host_url (Flask default, always http:// locally)
+    """
+    base_url = os.getenv("BASE_URL")
+    if base_url:
+        return base_url.rstrip('/')
+    
+    proto = request.headers.get("X-Forwarded-Proto", "")
+    if proto:
+        host = request.headers.get("X-Forwarded-Host") or request.host
+        return f"{proto}://{host}"
+    
+    return request.host_url.rstrip('/')
+
 share_blueprint = Blueprint('share', __name__)
 
 def get_serializer():
@@ -97,9 +116,9 @@ def get_share_data(uuid):
         if not entity:
             return jsonify({"success": False, "error": f"{obj_type} not found"}), 404
 
-        # Generate Public Secure Link
+        # Generate Public Secure Link (HTTPS-aware for reverse proxy)
         token = generate_pdf_token(uuid, obj_type)
-        api_base_url = request.host_url.rstrip('/')
+        api_base_url = get_base_url()
         public_pdf_url = f"{api_base_url}/api/share-data/public/pdf/{token}"
         
         contact = entity.customer if obj_type in ['invoice', 'quotation'] else entity.vendor
@@ -222,9 +241,9 @@ def send_share_email():
         doc_number = getattr(entity, number_field, "N/A")
         total_amount = float(getattr(entity, 'total_amount', 0))
         
-        # Generate Public Secure Link
+        # Generate Public Secure Link (HTTPS-aware for reverse proxy)
         token = generate_pdf_token(uuid, obj_type)
-        api_base_url = request.host_url.rstrip('/')
+        api_base_url = get_base_url()
         public_pdf_url = f"{api_base_url}/api/share-data/public/pdf/{token}"
         
         subject = f"{display_type} #{doc_number} from Evoto Technologies"

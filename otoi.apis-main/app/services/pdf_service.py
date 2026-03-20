@@ -130,8 +130,11 @@ def _render_pdf(template_name: str, context: dict) -> BytesIO:
         A BytesIO buffer containing the generated PDF.
     """
     html_string = render_template(template_name, **context)
+    # xhtml2pdf (pisa) requires a bytes-like object, not str.
+    # Encode the rendered HTML to UTF-8 bytes before handing it to pisa.
+    html_bytes = html_string.encode("utf-8")
     buffer = BytesIO()
-    pisa_status = pisa.CreatePDF(html_string, dest=buffer, encoding="utf-8")
+    pisa_status = pisa.CreatePDF(html_bytes, dest=buffer)
 
     if pisa_status.err:
         raise RuntimeError(f"PDF generation failed with {pisa_status.err} error(s)")
