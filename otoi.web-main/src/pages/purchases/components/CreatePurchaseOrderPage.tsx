@@ -234,7 +234,7 @@ const CreatePurchaseOrderPage = () => {
   const [showDiscountField, setShowDiscountField] = useState(false);
   const [autoRoundOff] = useState(false);
   const [roundOffAmount] = useState(0);
-  const [tax] = useState(18);
+  const [tax, setTax] = useState(18);
 
   // ── Purchase History ────────────────────────────────────────────────────────
   const [purchaseHistoryItem, setPurchaseHistoryItem] = useState<{
@@ -386,6 +386,7 @@ const CreatePurchaseOrderPage = () => {
             };
           });
           setPoItems(mappedItems);
+          if (mappedItems.length > 0) setTax(mappedItems[0].tax);
         }
 
         const resolvedNotes = data.notes || data.additional_notes?.notes || "";
@@ -442,6 +443,7 @@ const CreatePurchaseOrderPage = () => {
             measuring_unit_id: Number(item.measuring_unit_id) || 1,
           })),
         );
+        if (dupData.poItems.length > 0) setTax(dupData.poItems[0].tax || 18);
       }
       if (dupData.notes) {
         setNotes(dupData.notes);
@@ -652,7 +654,8 @@ const CreatePurchaseOrderPage = () => {
       ),
     );
 
-  const handleUpdateTax = (itemId: string, taxRate: number) =>
+  const handleUpdateTax = (itemId: string, taxRate: number) => {
+    setTax(taxRate);
     setPoItems((prev) =>
       prev.map((item) =>
         item.id === itemId
@@ -671,6 +674,7 @@ const CreatePurchaseOrderPage = () => {
           : item,
       ),
     );
+  };
 
   const handleAddAdditionalCharge = () => {
     if (newChargeName.trim() && newChargeAmount > 0) {
@@ -1798,14 +1802,9 @@ const CreatePurchaseOrderPage = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">SGST@{tax / 2}</span>
+                  <span className="text-gray-700">{(currentUser as any)?.isUT ? 'UTGST' : 'SGST'}@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹{" "}
-                    {(
-                      ((calculateSubtotal() - calculateDiscount()) *
-                        (tax / 2)) /
-                      100
-                    ).toLocaleString("en-IN", {
+                    ₹ {((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -1814,12 +1813,7 @@ const CreatePurchaseOrderPage = () => {
                 <div className="flex justify-between items-center text-sm py-2">
                   <span className="text-gray-700">CGST@{tax / 2}</span>
                   <span className="font-medium">
-                    ₹{" "}
-                    {(
-                      ((calculateSubtotal() - calculateDiscount()) *
-                        (tax / 2)) /
-                      100
-                    ).toLocaleString("en-IN", {
+                    ₹ {((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}

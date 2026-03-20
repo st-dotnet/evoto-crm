@@ -857,7 +857,7 @@ const CreatePurchaseInvoicePage = () => {
                         onChange={e => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
                         className="w-full h-9 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
                       >
-                        <option value="0">0%</option>
+                        <option value="None">None</option>
                         <option value="5">5%</option>
                         <option value="12">12%</option>
                         <option value="18">18%</option>

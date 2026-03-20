@@ -603,13 +603,12 @@ const CreditInDetailsPage: React.FC = () => {
       <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/sales/credit-notes")}
+            <button
+              onClick={() => navigate('/sales/credit-note')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <div>
               <h1 className="text-xl font-semibold text-black">
                 Credit Note #{creditNoteData.credit_note_number}
