@@ -41,25 +41,37 @@ def get_business_asset_data_uri(business_id, key):
     """
     Fetch a business asset (logo or e-sign) from GlobalConfig, 
     decode the file, and return as a base64 data URI.
+    Supports robust fallbacks for local and incomplete environments.
     """
+    # 1. Primary: Try specified business_id
     config = GlobalConfig.query.filter_by(business_id=business_id, key=key).first()
-    if not config:
-        return None
-        
-    # Construct the absolute path on the filesystem
-    # config.value is something like 'site_logo_1.png'
-    asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.value)
     
-    if os.path.exists(asset_path):
+    # 2. Secondary: Fallback to ANY record for this key (useful for local dev with 1 business)
+    if not config and business_id:
+        config = GlobalConfig.query.filter_by(key=key).first()
+        
+    asset_path = None
+    if config and config.value:
+        asset_path = os.path.join(Config.BUSINESS_ASSETS_FOLDER, config.value)
+        
+    # 3. Tertiary: Try common filename patterns if still missing (last resort for local setup)
+    if not asset_path or not os.path.exists(asset_path):
+        # Common filenames like e_sign_1.png, site_logo_1.png or e_sign.png
+        possible_names = [f"{key}_{business_id}.png", f"{key}_1.png", f"{key}.png", f"{key}.jpg", f"{key}.jpeg"]
+        for fname in possible_names:
+            p = os.path.join(Config.BUSINESS_ASSETS_FOLDER, fname)
+            if os.path.exists(p):
+                asset_path = p
+                break
+
+    if asset_path and os.path.exists(asset_path):
         try:
             with Image.open(asset_path) as img:
                 # Determine format based on extension
                 ext = os.path.splitext(asset_path)[1].lower()
                 mime = "image/png" if ext == ".png" else "image/jpeg"
                 
-                # If transparent PNG, might need conversion for some PDF engines, 
-                # but xhtml2pdf handles PNG well. 
-                # For consistency with existing logic:
+                # If transparent PNG, might need conversion for some PDF engines
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGBA")
                     background = Image.new("RGBA", img.size, (255, 255, 255))
@@ -68,7 +80,6 @@ def get_business_asset_data_uri(business_id, key):
                     mime = "image/jpeg"
                 
                 buffer = BytesIO()
-                # Save back to buffer to get base64
                 if mime == "image/jpeg":
                     img.save(buffer, format="JPEG", quality=95)
                 else:
@@ -77,11 +88,11 @@ def get_business_asset_data_uri(business_id, key):
                 encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
                 return f"data:{mime};base64,{encoded_string}"
         except Exception as e:
-            print(f"Error processing PDF asset {key}: {e}")
+            # Fallback: raw read if PIL fails
             try:
-                # Fallback: just read the raw bytes if PIL fails
                 with open(asset_path, "rb") as f:
-                    encoded_string = base64.b64encode(f.read()).decode("utf-8")
+                    data = f.read()
+                    encoded_string = base64.b64encode(data).decode("utf-8")
                     ext = os.path.splitext(asset_path)[1].lower()
                     mime = "image/png" if ext == ".png" else "image/jpeg"
                     return f"data:{mime};base64,{encoded_string}"

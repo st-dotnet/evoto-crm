@@ -76,8 +76,43 @@ def _get_items_data(entity):
                 main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
                 if not main_image_obj and inventory_item.images:
                     main_image_obj = inventory_item.images[0]
-                if main_image_obj:
-                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+                if main_image_obj and main_image_obj.image:
+                    img_raw = main_image_obj.image
+                    # Robust handling for bytes vs string paths/data
+                    if isinstance(img_raw, str):
+                        if img_raw.startswith("data:"):
+                            item_info["image"] = img_raw
+                        else:
+                            # Item images are nested: static/itemImages/<item_uuid>/<filename>
+                            images_dir = current_app.config.get('ITEM_IMAGES_FOLDER')
+                            if images_dir:
+                                item_uuid = str(main_image_obj.item_id)
+                                # Primary: try standard nested path
+                                p = os.path.join(images_dir, item_uuid, img_raw)
+                                
+                                # Fallback: scan all subfolders for the filename (robust for manual uploads)
+                                if not os.path.exists(p):
+                                    for folder in os.listdir(images_dir):
+                                        candidate_p = os.path.join(images_dir, folder, img_raw)
+                                        if os.path.exists(candidate_p):
+                                            p = candidate_p
+                                            break
+                                
+                                # Final verification
+                                if os.path.exists(p):
+                                    print(f"--- PDF Item Image Debug ---")
+                                    print(f"Found image: {p}")
+                                    with open(p, "rb") as f:
+                                        encoded_string = base64.b64encode(f.read()).decode("utf-8")
+                                        ext = os.path.splitext(p)[1].lower()
+                                        mime = "image/png" if ext == ".png" else "image/jpeg"
+                                        item_info["image"] = f"data:{mime};base64,{encoded_string}"
+                                else:
+                                    print(f"--- PDF Item Image MISSING ---")
+                                    print(f"Key: {img_raw}, Tried: {p}")
+                    else:
+                        # It's already bytes (binary column)
+                        item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(img_raw).decode('utf-8')}"
         
         items_data.append(item_info)
     return items_data

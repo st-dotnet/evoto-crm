@@ -12,9 +12,11 @@ class Config:
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
     # Asset Storage
-    UPLOAD_BASE_PATH = os.path.join(os.getcwd(), 'static', 'uploads')
+    # Corrected: Move UP one level from 'app' directory to reach the root static folder
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    UPLOAD_BASE_PATH = os.path.join(BASE_DIR, 'static', 'uploads')
     BUSINESS_ASSETS_FOLDER = os.path.join(UPLOAD_BASE_PATH, 'business')
-    ITEM_IMAGES_FOLDER = os.path.join(os.getcwd(), 'static', 'itemImages')
+    ITEM_IMAGES_FOLDER = os.path.join(BASE_DIR, 'static', 'itemImages')
 
     SWAGGER = {
         "title": "OTOI REST API",
