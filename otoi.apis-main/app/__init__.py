@@ -19,7 +19,7 @@ import os
 def create_app():
     # Use absolute path for the static folder (sibling to 'app')
     static_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
-    app = Flask(__name__, static_folder=static_folder, static_url_path="/api/static")
+    app = Flask(__name__, static_folder=static_folder, static_url_path="/static")
     app.config.from_object("app.config.Config")
     
     # Disable strict slash matching to prevent 308 redirects
@@ -31,10 +31,10 @@ def create_app():
     # Enable CORS
     # CORS(app)
     # Enable CORS for both /api/* and /static/*
-    frontend_url = app.config.get("FRONTEND_URL", "http://localhost:5173")
+    frontend_url = app.config.get("FRONTEND_URL", "*")
     CORS(app, resources={
         r"/api/*": {"origins": [frontend_url]},
-        r"/static/*": {"origins": [frontend_url]}
+        r"/static/*": {"origins": "*"}
     }, supports_credentials=True, allow_headers=["Content-Type", "Authorization"], expose_headers=["Authorization"], methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     # authentication barrier
@@ -95,6 +95,17 @@ def create_app():
 
     # Initialize query profiler
     init_profiler(app, slow_query_threshold=0.1)
+
+    # Ensure required directories exist
+    with app.app_context():
+        required_dirs = [
+            app.config.get('UPLOAD_BASE_PATH'),
+            app.config.get('BUSINESS_ASSETS_FOLDER'),
+            app.config.get('ITEM_IMAGES_FOLDER')
+        ]
+        for directory in required_dirs:
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
 
     return app
 

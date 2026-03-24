@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import clsx from "clsx";
@@ -6,7 +6,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFoo
 import { Button } from "@/components/ui/button";
 import { Alert, KeenIcon } from "@/components";
 import { toast } from "sonner";
-import { createItem, createItemCategory, getItemById, getItemCategories, updateItem, uploadItemImage, deleteAllItemImages } from "./services/items.service";
+import { createItem, createItemCategory, getItemById, getItemCategories, updateItem } from "./services/items.service";
 import StockDetails from "./StockDetails";
 import PricingDetails from "./PricingDetails";
 import ProductImages from "./ProductImages";
@@ -127,6 +127,18 @@ export default function CreateItemModal({
 }: ICreateItemModalProps) {
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<ICategory[]>([]);
+    const [originalImages, setOriginalImages] = useState<any[]>([]);
+    const originalImagesRef = useRef<any[]>([]);
+    const itemRef = useRef<any>(null);
+
+    // Keep refs in sync with state/props
+    useEffect(() => {
+        originalImagesRef.current = originalImages;
+    }, [originalImages]);
+
+    useEffect(() => {
+        itemRef.current = item;
+    }, [item]);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState("");
     const [activeSection, setActiveSection] = useState("basic");
@@ -169,45 +181,80 @@ export default function CreateItemModal({
                     postData.opening_stock = Number(values.opening_stock || 0);
                 }
 
-                const currentItemId = item?.item_id || item?.item_id;
+                const currentItem = itemRef.current;
+                const currentItemId = currentItem?.id || currentItem?.item_id || (currentItem as any)?.uuid;
 
                 if (currentItemId) {
-                    // EDITING an existing item
-                    const response = await updateItem(currentItemId.toString(), postData);
-                    if (response?.success) {
-                        // 1. Delete all existing images first to prevent duplicates
-                        await deleteAllItemImages(currentItemId.toString());
+                    // UNIFIED MULTIPART UPDATE
+                    const formData = new FormData();
+                    
+                    // Identify images to delete (those in original but not in current)
+                    const currentImages = values.images || [];
+                    const imagesToDelete = originalImagesRef.current
+                        .filter(orig => !currentImages.some((cur: any) => cur.id === orig.id))
+                        .map(img => img.id);
 
-                        // 2. Upload the current set of images from the form
-                        if (values.images && values.images.length > 0) {
-                            await Promise.all(values.images.map((img: any) =>
-                                uploadItemImage(currentItemId.toString(), img.url, img.name, img.is_main)
-                            ));
+                    // Prepare item data JSON
+                    const itemData = {
+                        ...postData,
+                        images_to_delete: imagesToDelete,
+                        // Include metadata updates for existing images (e.g., is_main change)
+                        images: currentImages
+                            .filter((img: any) => img.id && !img.file)
+                            .map((img: any) => ({
+                                id: img.id,
+                                is_main: img.is_main
+                            }))
+                    };
+
+                    formData.append('item_data', JSON.stringify(itemData));
+
+                    // Append new files
+                    let filesAdded = 0;
+                    const existingInDBCount = currentImages.filter((img: any) => img.id && !img.file).length;
+                    
+                    currentImages.forEach((img: any) => {
+                        if (img.file && (existingInDBCount + filesAdded < 4)) {
+                            formData.append('images', img.file);
+                            filesAdded++;
                         }
+                    });
 
+                    const response = await updateItem(currentItemId.toString(), formData);
+                    
+                    if (response?.success) {
                         toast.success(response.data?.message || "Item updated successfully");
+                        fetchItemDetails(currentItemId.toString()); // Re-sync state
                         onSuccess();
                         onOpenChange(false);
                     } else {
-                        // Throw an error with the error message from the response
-                        const error = new Error(response?.error || "Failed to update item");
-                        // @ts-ignore - Add response data to the error object
-                        error.response = { data: { message: response?.error } };
-                        throw error;
+                        throw new Error(response?.error || "Failed to update item");
                     }
                 } else {
-                    // Creating a new item
-                    const response = await createItem(postData);
-                    if (response?.success) {
-                        const newItemId = response.data?.item?.id;
+                    // UNIFIED MULTIPART CREATION
+                    const formData = new FormData();
+                    
+                    const itemData = {
+                        ...postData,
+                        images: (values.images || []).map((img: any) => ({
+                            name: img.name,
+                            is_main: img.is_main
+                        }))
+                    };
 
-                        // Upload images if any
-                        if (newItemId && values.images && values.images.length > 0) {
-                            await Promise.all(values.images.map((img: any) =>
-                                uploadItemImage(newItemId.toString(), img.url, img.name, img.is_main)
-                            ));
+                    formData.append('item_data', JSON.stringify(itemData));
+
+                    // Append images
+                    const currentImages = values.images || [];
+                    currentImages.slice(0, 4).forEach((img: any) => {
+                        if (img.file) {
+                            formData.append('images', img.file);
                         }
+                    });
 
+                    const response = await createItem(formData);
+                    
+                    if (response?.success) {
                         toast.success(response.data?.message || "Item created successfully");
                         onSuccess();
                         resetForm();
@@ -283,41 +330,44 @@ export default function CreateItemModal({
             }
         }
     }, [formik.values.item_type_id, isEditing]);
+    
+    const fetchItemDetails = async (itemId: string) => {
+        if (!itemId) return;
+        setLoading(true);
+        try {
+            const response = await getItemById(itemId);
+            if (response?.success && response.data) {
+                const fullItem = response.data;
+                formik.resetForm({
+                    values: {
+                        item_type_id: fullItem.item_type_id ?? 1,
+                        category_id: fullItem.category_id || null,
+                        measuring_unit_id: fullItem.measuring_unit_id ?? 1,
+                        item_name: fullItem.item_name ?? "",
+                        item_code: fullItem.item_code ?? (fullItem.item_type_id === 2 ? "" : null),
+                        sales_price: fullItem.sales_price ?? 0,
+                        gst_tax_rate: fullItem.gst_tax_rate ?? 0,
+                        purchase_price: fullItem.item_type_id === 1 ? fullItem.purchase_price ?? 0 : null,
+                        opening_stock: fullItem.item_type_id === 1 ? fullItem.opening_stock ?? 0 : null,
+                        hsn_code: fullItem.item_type_id === 1 ? fullItem.hsn_code ?? null : null,
+                        description: fullItem.description ?? null,
+                        show_in_online_store: fullItem.show_in_online_store ?? false,
+                        tax_type: fullItem.tax_type ?? "with_tax",
+                        images: fullItem.images ?? [],
+                    },
+                });
+                setOriginalImages(fullItem.images ?? []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch item details:", error);
+            toast.error("Failed to load full item details");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Update the useEffect hook to reset the active section and form values
     useEffect(() => {
-        const fetchItemDetails = async (itemId: string) => {
-            setLoading(true);
-            try {
-                const response = await getItemById(itemId);
-                if (response?.success && response.data) {
-                    const fullItem = response.data;
-                    formik.resetForm({
-                        values: {
-                            item_type_id: fullItem.item_type_id ?? 1,
-                            category_id: fullItem.category_id || null,
-                            measuring_unit_id: fullItem.measuring_unit_id ?? 1,
-                            item_name: fullItem.item_name ?? "",
-                            item_code: fullItem.item_code ?? (fullItem.item_type_id === 2 ? "" : null),
-                            sales_price: fullItem.sales_price ?? 0,
-                            gst_tax_rate: fullItem.gst_tax_rate ?? 0,
-                            purchase_price: fullItem.item_type_id === 1 ? fullItem.purchase_price ?? 0 : null,
-                            opening_stock: fullItem.item_type_id === 1 ? fullItem.opening_stock ?? 0 : null,
-                            hsn_code: fullItem.item_type_id === 1 ? fullItem.hsn_code ?? null : null,
-                            description: fullItem.description ?? null,
-                            show_in_online_store: fullItem.show_in_online_store ?? false,
-                            tax_type: fullItem.tax_type ?? "with_tax",
-                            images: fullItem.images ?? [],
-                        },
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to fetch item details:", error);
-                toast.error("Failed to load full item details");
-            } finally {
-                setLoading(false);
-            }
-        };
 
         if (open) {
             if (item) {
@@ -341,6 +391,7 @@ export default function CreateItemModal({
                         images: item.images ?? [],
                     },
                 });
+                setOriginalImages(item.images ?? []);
 
                 // 2. Fetch full details (images etc.) in the background
                 const currentItemId = item.id || item.item_id;

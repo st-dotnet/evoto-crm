@@ -3,7 +3,7 @@ from datetime import timedelta
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "mysecret")
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://postgres:Sss1234!@localhost:5432/otoidb")
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://postgres:root@localhost:5433/test")
     #SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://evototec_tech:formless@5.189.145.124:5432/staging_evoto")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "myjwtsecret")
@@ -14,6 +14,7 @@ class Config:
     # Asset Storage
     UPLOAD_BASE_PATH = os.path.join(os.getcwd(), 'static', 'uploads')
     BUSINESS_ASSETS_FOLDER = os.path.join(UPLOAD_BASE_PATH, 'business')
+    ITEM_IMAGES_FOLDER = os.path.join(os.getcwd(), 'static', 'itemImages')
 
     SWAGGER = {
         "title": "OTOI REST API",

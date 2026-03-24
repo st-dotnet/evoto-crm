@@ -600,6 +600,7 @@ const QuotationPage = () => {
                   id: '', // Remove existing ID
                   item_id: item.item_id,
                   item_name: item.product_name || item.description || "Item",
+                  image: item.image,
                   description: item.description,
                   quantity: item.quantity,
                   price_per_item: item.unit_price,

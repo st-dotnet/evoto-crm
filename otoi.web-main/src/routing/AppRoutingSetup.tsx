@@ -105,6 +105,9 @@ const CreatePaymentIn = lazy(() => import('@/pages/payment-in/components/CreateP
 const CreditInpage = lazy(() => import('@/pages/creditIn/components/CreditInpage').then(module => ({ default: module.CreditInpage })));
 const CreateCreditNotePage = lazy(() => import('@/pages/creditIn/components/CreateCreditNotePage').then(module => ({ default: module.CreateCreditNotePage })));
 const CreditInDetailsPage = lazy(() => import('@/pages/creditIn/components/CreditInDetailsPage').then(module => ({ default: module.default })));
+const DebitNotePage = lazy(() => import('@/pages/debitNote/components/DebitNotePage').then(module => ({ default: module.default })));
+const CreateDebitNotePage = lazy(() => import('@/pages/debitNote/components/CreateDebitNotePage').then(module => ({ default: module.default })));
+const DebitNoteDetailsPage = lazy(() => import('@/pages/debitNote/components/DebitNoteDetailsPage').then(module => ({ default: module.default })));
 const PaymentOutPage = lazy(() => import('@/pages/payment-out/components/PaymentOutPage').then(module => ({ default: module.PaymentOutPage })));
 const CreatePaymentOut = lazy(() => import('@/pages/payment-out/components/CreatePaymentOut').then(module => ({ default: module.CreatePaymentOut })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
@@ -344,6 +347,28 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/sales/credit-note/:id/edit" element={
             <Suspense fallback={<LoadingFallback />}>
               <CreateCreditNotePage />
+            </Suspense>
+          } />
+
+          {/* Debit Note Routes */}
+          <Route path="/debit-note/create" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateDebitNotePage />
+            </Suspense>
+          } />
+          <Route path="/debit-note/view/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <DebitNoteDetailsPage />
+            </Suspense>
+          } />
+          <Route path="/debit-note/edit/:id" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CreateDebitNotePage />
+            </Suspense>
+          } />
+          <Route path="/debit-note" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <DebitNotePage />
             </Suspense>
           } />
 

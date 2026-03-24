@@ -204,6 +204,7 @@ def login():
         description: Invalid credentials
     """
     try:
+        
         # Handle both JSON and form data
         if request.is_json:
             data = request.get_json()
@@ -211,10 +212,12 @@ def login():
             data = request.form.to_dict()
         else:
             # Try to get JSON as fallback
-            data = request.get_json() or {}        
+            data = request.get_json() or {}
+        
         # Handle OAuth2 password flow - it might send username instead of email
         email = data.get("email") or data.get("username", "")
         password = data.get("password", "")
+        
         
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
@@ -341,7 +344,8 @@ def forgot_password():
     # Base64 encode email for obfuscation in URL
     encoded_email = base64.urlsafe_b64encode(user.email.encode()).decode().rstrip("=")
 
-    frontend_url = current_app.config["FRONTEND_URL"] #change URL based on diff environments
+    # Get frontend URL dynamically from request Origin, fallback to config
+    frontend_url = request.headers.get('Origin') or current_app.config.get("FRONTEND_URL", "http://localhost:5173")
     reset_link = f"{frontend_url}/auth/reset-password/change?token={token}&e={encoded_email}"
     
     if send_reset_password_email(user.email, reset_link, user.firstName):

@@ -16,6 +16,7 @@ from .paymentIn import PaymentIn
 from .paymentOut import PaymentOut
 from .purchase_order import PurchaseOrder, PurchaseOrderItem
 from .purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
+from .debit_note import DebitNote, DebitNoteItem, DebitNotePayment
 
 __all__ = [ "User", "Role", "Address", 
            "Lead", "LeadAddress", 
@@ -27,4 +28,5 @@ __all__ = [ "User", "Role", "Address",
            "Quotation", "QuotationItem","Invoice", "InvoiceItem",
            "CreditNote", "CreditNoteItem", "CreditNotePayment", "Country", "UnionTerritory", "PaymentIn", "PaymentOut",
            "PurchaseOrder", "PurchaseOrderItem",
-           "PurchaseInvoice", "PurchaseInvoiceItem"]
+           "PurchaseInvoice", "PurchaseInvoiceItem",
+           "DebitNote", "DebitNoteItem", "DebitNotePayment"]

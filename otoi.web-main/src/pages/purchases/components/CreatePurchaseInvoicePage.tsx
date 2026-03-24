@@ -419,7 +419,7 @@ const CreatePurchaseInvoicePage = () => {
 
   const handleAddItems = (items: InventoryItem[]) => {
     const newItems: InvoiceItem[] = items.map((item, index) => {
-      const quantity = 1;
+      const quantity = item.quantity || 1; // Use the quantity from item modal, fallback to 1
       const price = item.purchase_price || 0;
       const disc = 0;
       const taxRate = item.gst_tax_rate || 18;
@@ -560,7 +560,6 @@ const CreatePurchaseInvoicePage = () => {
             await updatePurchaseOrder(poState.purchaseOrderId, {
               status: 'converted'
             });
-            console.log("Purchase order marked as converted");
           } catch (error) {
             console.error("Failed to mark purchase order as converted:", error);
             // Don't show error to user as invoice was created successfully

@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from sqlalchemy.orm import selectinload
 import base64
+import os
 from app.extensions import db
 from app.models.invoice import Invoice, InvoiceItem
 from app.models.customer import Customer
@@ -14,6 +15,7 @@ from app.routes.creditIn import update_invoice_payment_status
 from app.utils.decorators import login_required
 import uuid
 from datetime import datetime, timedelta
+from app.config import Config
 
 
 invoice_blueprint = Blueprint("invoice", __name__)
@@ -655,7 +657,8 @@ def get_invoice(invoice_id):
                 if not main_image_obj and inventory_item.images:
                     main_image_obj = inventory_item.images[0]
                 if main_image_obj:
-                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+                    # Return the path for the frontend (handled by resolveImageUrl)
+                    item_info["image"] = f"/static/itemImages/{main_image_obj.item_id}/{main_image_obj.image}"
         
         items_data.append(item_info)
 
@@ -1355,7 +1358,18 @@ def download_invoice_pdf(invoice_id):
                     if not main_image_obj and inventory_item.images:
                         main_image_obj = inventory_item.images[0]
                     if main_image_obj:
-                        item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+                        # Resolve absolute path for PDF generation
+                        image_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(main_image_obj.item_id), main_image_obj.image)
+                        if os.path.exists(image_path):
+                            try:
+                                with open(image_path, "rb") as img_file:
+                                    encoded_string = base64.b64encode(img_file.read()).decode('utf-8')
+                                    extension = os.path.splitext(image_path)[1].lower()
+                                    mime_type = "image/png" if extension == ".png" else "image/jpeg"
+                                    item_info["image"] = f"data:{mime_type};base64,{encoded_string}"
+                            except Exception as e:
+                                print(f"Error encoding image for PDF: {e}")
+                                item_info["image"] = None
             items_data.append(item_info)
 
         pdf_buffer = generate_invoice_pdf(invoice, items_data)

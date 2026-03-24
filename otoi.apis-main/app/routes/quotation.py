@@ -1,4 +1,5 @@
 import base64
+import os
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, send_file
 from flask_cors import cross_origin
@@ -14,6 +15,7 @@ from app.models.user import User
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
 from app.services.pdf_service import generate_quotation_pdf
+from app.config import Config
 
 
 quotation_blueprint = Blueprint("quotation", __name__)
@@ -275,9 +277,6 @@ def get_quotations():
         # Check and update quotation status based on valid_till date
         check_and_update_quotation_status()
         
-        # Log the incoming request parameters for debugging
-        # print(f"DEBUG: get_quotations called with args: {dict(request.args)}")
-        
         # Start with base query
         query = Quotation.query
         
@@ -487,8 +486,6 @@ def get_quotations():
             },
         }
 
-        # print(f"DEBUG: API Response - Total: {response_data['pagination']['total']}, Pages: {response_data['pagination']['last_page']}, Current Page: {response_data['pagination']['current_page']}")
-                
         return jsonify(response_data), 200
 
     except Exception as e:
@@ -565,7 +562,8 @@ def get_quotation(quotation_id):
                 if not main_image_obj and inv.images:
                     main_image_obj = inv.images[0]
                 if main_image_obj:
-                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+                    # Return the path for the frontend (handled by resolveImageUrl)
+                    item_info["image"] = f"/static/itemImages/{main_image_obj.item_id}/{main_image_obj.image}"
 
             items_data.append(item_info)
 
@@ -999,7 +997,18 @@ def download_quotation_pdf(quotation_id):
                 if not main_image_obj and inv.images:
                     main_image_obj = inv.images[0]
                 if main_image_obj:
-                    item_info["image"] = f"data:image/jpeg;base64,{base64.b64encode(main_image_obj.image).decode('utf-8')}"
+                    # Resolve absolute path for PDF generation
+                    image_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(main_image_obj.item_id), main_image_obj.image)
+                    if os.path.exists(image_path):
+                        try:
+                            with open(image_path, "rb") as img_file:
+                                encoded_string = base64.b64encode(img_file.read()).decode('utf-8')
+                                extension = os.path.splitext(image_path)[1].lower()
+                                mime_type = "image/png" if extension == ".png" else "image/jpeg"
+                                item_info["image"] = f"data:{mime_type};base64,{encoded_string}"
+                        except Exception as e:
+                            print(f"Error encoding image for PDF: {e}")
+                            item_info["image"] = None
             items_data.append(item_info)
 
         pdf_buffer = generate_quotation_pdf(quotation, items_data)

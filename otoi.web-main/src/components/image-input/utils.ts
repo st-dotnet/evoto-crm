@@ -11,7 +11,7 @@ export const openFileDialog = (inputRef: MutableRefObject<HTMLInputElement | nul
 export const getAcceptTypeString = (acceptType?: string[], allowNonImageType?: boolean) => {
   if (acceptType?.length) return acceptType.map((item) => `.${item}`).join(', ');
   if (allowNonImageType) return '';
-  return 'image/*';
+  return '.jpg, .jpeg, .png';
 };
 
 export const getBase64 = async (file: File): Promise<string> => {
