@@ -8,7 +8,6 @@ from app.models.purchase_invoice import PurchaseInvoice
 from app.models.vendor import Vendor
 from app.models.inventory import Item
 
-
 payment_out_blueprint = Blueprint("payment_out", __name__)
 
 
@@ -26,19 +25,25 @@ def generate_payment_out_number() -> str:
     return "POUT-1001"
 
 
+
+
+
 def _date_filter_query(query, model, date_filter: str):
     """Apply common date filters to a query."""
     today = date.today()
     if date_filter == "today":
         query = query.filter(model.payment_date == today)
+
     elif date_filter == "this_week":
         start = today - __import__("datetime").timedelta(days=today.weekday())
         query = query.filter(model.payment_date >= start, model.payment_date <= today)
+
     elif date_filter == "last_week":
         import datetime as _dt
         start = today - _dt.timedelta(days=today.weekday() + 7)
         end   = start + _dt.timedelta(days=6)
         query = query.filter(model.payment_date >= start, model.payment_date <= end)
+
     elif date_filter == "this_month":
         query = query.filter(
             db.extract("month", model.payment_date) == today.month,
@@ -97,7 +102,7 @@ def list_payment_outs():
     List payment-out records with pagination, search, and date filters.
     ---
     tags:
-      - Payment Out
+     - Payment Out
     parameters:
       - name: page
         in: query
@@ -155,11 +160,13 @@ def list_payment_outs():
             .filter(PaymentOut.business_id == business_id)
         )
 
+
         if party_name:
             query = query.filter(PaymentOut.party_name.ilike(f"%{party_name}%"))
         if payment_number:
             query = query.filter(PaymentOut.payment_number.ilike(f"%{payment_number}%"))
         
+
         # Filter based on CURRENT invoice status
         if payment_status and payment_status != "all":
             query = query.filter(PurchaseInvoice.payment_status == payment_status)
@@ -247,8 +254,8 @@ def create_payment_out():
         db.session.commit()
 
         return jsonify({
-            "message":        "Payment-out created successfully",
-            "uuid":           str(po.uuid),
+            "message": "Payment-out created successfully",
+            "uuid": str(po.uuid),
             "payment_number": po.payment_number,
         }), 201
 
@@ -288,9 +295,9 @@ def record_payment_out(invoice_id):
     data = request.get_json() or {}
     try:
         amount_to_pay = float(data.get("amount_paid", 0))
-        payment_mode  = data.get("payment_mode", "cash")
-        notes         = data.get("notes", "")
-        discount      = float(data.get("discount", 0))
+        payment_mode = data.get("payment_mode", "cash")
+        notes = data.get("notes", "")
+        discount = float(data.get("discount", 0))
 
         if amount_to_pay <= 0:
             return jsonify({"error": "Payment amount must be greater than 0"}), 400
@@ -305,9 +312,10 @@ def record_payment_out(invoice_id):
         current_balance = float(invoice.balance_due or 0)
         total_to_apply  = amount_to_pay + discount
 
+
         if total_to_apply > current_balance + 0.01:
             return jsonify({
-                "error": f"Overpayment not allowed. Max allowed: ₹{current_balance:.2f}",
+                "error": f"Overpayment not allowed. Max allowed: ₹{current_balance:.2f}. Adjust the amount.",
                 "max_allowed": current_balance,
             }), 400
 
@@ -361,6 +369,15 @@ def record_payment_out(invoice_id):
             _credit_inventory(invoice)
         # ──────────────────────────────────────────────────────────────────────
 
+
+
+        # Update purchase invoice payment status to include debit notes in calculation
+
+        from app.routes.purchase_invoice import update_purchase_invoice_payment_status
+        update_purchase_invoice_payment_status(invoice.uuid)
+  
+        # Refresh invoice to get the updated values
+        db.session.refresh(invoice)
         db.session.commit()
 
         return jsonify({
@@ -375,11 +392,10 @@ def record_payment_out(invoice_id):
         db.session.rollback()
         return jsonify({"error": "Failed to record payment", "details": str(e)}), 500
 
-
 # ── GET ONE ───────────────────────────────────────────────────────────────────
-
 @payment_out_blueprint.route("/<uuid:payment_id>", methods=["GET"])
 def get_payment_out(payment_id):
+
     """Get a single payment-out record."""
     try:
         p = PaymentOut.query.filter_by(uuid=payment_id).first_or_404()
@@ -404,10 +420,17 @@ def get_payment_out(payment_id):
         return jsonify({"error": str(e)}), 500
 
 
+
+
+
 # ── UPDATE ────────────────────────────────────────────────────────────────────
 
+
+
 @payment_out_blueprint.route("/<uuid:payment_id>", methods=["PUT"])
+
 def update_payment_out(payment_id):
+
     """
     Update an existing payment-out record (notes, mode, etc.).
     Total amount and amount paid are usually kept as is for history integrity.
@@ -480,16 +503,15 @@ def delete_payment_out(payment_id):
         print(traceback.format_exc())
         return jsonify({"error": "Failed to delete payment", "details": str(e)}), 500
 
-
-# ── VENDOR INVOICES ───────────────────────────────────────────────────────────
+ # ── VENDOR INVOICES ───────────────────────────────────────────────────────────
 
 @payment_out_blueprint.route("/vendor-invoices", methods=["GET"])
 def get_vendor_invoices():
     """
-    Get purchase invoices for a specific vendor that have a pending balance.
+   Get purchase invoices for a specific vendor that have a pending balance.
     Used to populate the invoice selection in Create Payment Out.
     ---
-    tags:
+   tags:
       - Payment Out
     parameters:
       - name: vendor_name
@@ -531,10 +553,22 @@ def get_vendor_invoices():
             if v:
                 vname = v.vendor_name or v.company_name or ""
 
-            balance = float(inv.balance_due or 0)
             amt_paid = float(inv.amount_paid or 0)
             total = float(inv.total_amount or 0)
-
+            payment_discount = float(inv.payment_discount or 0)
+            
+            # Get debit notes for this invoice
+            from app.models.debit_note import DebitNote
+            debit_notes = DebitNote.query.filter_by(
+                invoice_id=inv.uuid,
+                is_deleted=False
+            ).all()
+            
+            # Calculate total debit note amount
+            total_debit_amount = sum(float(dn.total_amount) for dn in debit_notes)
+           
+            # Calculate correct balance including discount and debit notes
+            balance = max(0.0, total - amt_paid - payment_discount - total_debit_amount)
             status = "unpaid"
             if balance <= 0 and amt_paid > 0:
                 status = "paid"
@@ -553,7 +587,8 @@ def get_vendor_invoices():
                 "amount_paid":    amt_paid,
                 "balance_amount": balance,
                 "balance_due":    balance,
-                "discount":       0,
+                "discount":       payment_discount,
+                "applied_debit_note": total_debit_amount,
                 "payment_status": status,
                 "status":         status,
             })
@@ -562,3 +597,4 @@ def get_vendor_invoices():
 
     except Exception as e:
         return jsonify({"error": "Failed to fetch vendor invoices", "details": str(e)}), 500
+

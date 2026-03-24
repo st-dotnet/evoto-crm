@@ -187,6 +187,46 @@ const InvoicePage = () => {
         }
     }, [searchTerm, searchType, selectedStatus]);
 
+    // Check which invoices have credit notes
+    const checkInvoicesForCreditNotes = async (invoiceList: Invoice[]) => {      
+        const invoiceIds = invoiceList.map(inv => inv.id);
+        const creditNoteChecks = invoiceIds.map(async (invoiceId) => {
+            try {
+                const response = await checkCreditNoteExistsForInvoice(invoiceId);
+                return { invoiceId, hasCreditNote: response.success ? response.data.hasCreditNote : false };
+            } catch (error) {
+                console.error(`Error checking credit note for invoice ${invoiceId}:`, error);
+                return { invoiceId, hasCreditNote: false };
+            }
+        });
+
+        const results = await Promise.all(creditNoteChecks);
+        const invoicesWithNotes = new Set(
+            results.filter(result => result.hasCreditNote).map(result => result.invoiceId)
+        );
+        
+        setInvoicesWithCreditNotes(invoicesWithNotes);
+    };
+
+    // Listen for credit note updates to refresh invoice data
+    useEffect(() => {
+        const handleCreditNoteUpdate = (event: CustomEvent) => {
+            // Refresh the invoice data to show updated status
+            setRefreshKey(prev => prev + 1);
+            
+            // Also refresh credit note status for current invoices
+            if (invoices.length > 0) {
+                checkInvoicesForCreditNotes(invoices);
+            }
+        };
+
+        window.addEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
+        };
+    }, [invoices]);
+
     const MobileView = ({
         onEdit,
         onDetails,
@@ -280,46 +320,6 @@ const InvoicePage = () => {
             </div>
         );
     };
-
-    // Check which invoices have credit notes
-    const checkInvoicesForCreditNotes = async (invoiceList: Invoice[]) => {      
-        const invoiceIds = invoiceList.map(inv => inv.id);
-        const creditNoteChecks = invoiceIds.map(async (invoiceId) => {
-            try {
-                const response = await checkCreditNoteExistsForInvoice(invoiceId);
-                return { invoiceId, hasCreditNote: response.success ? response.data.hasCreditNote : false };
-            } catch (error) {
-                console.error(`Error checking credit note for invoice ${invoiceId}:`, error);
-                return { invoiceId, hasCreditNote: false };
-            }
-        });
-
-        const results = await Promise.all(creditNoteChecks);
-        const invoicesWithNotes = new Set(
-            results.filter(result => result.hasCreditNote).map(result => result.invoiceId)
-        );
-        
-        setInvoicesWithCreditNotes(invoicesWithNotes);
-    };
-
-    // Listen for credit note updates to refresh invoice data
-    useEffect(() => {
-        const handleCreditNoteUpdate = (event: CustomEvent) => {
-            // Refresh the invoice data to show updated status
-            setRefreshKey(prev => prev + 1);
-            
-            // Also refresh credit note status for current invoices
-            if (invoices.length > 0) {
-                checkInvoicesForCreditNotes(invoices);
-            }
-        };
-
-        window.addEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
-        
-        return () => {
-            window.removeEventListener('creditNoteUpdated', handleCreditNoteUpdate as EventListener);
-        };
-    }, [invoices]);
 
     // Filter invoices by payment status (kept for compatibility but not used with server-side filtering)
     const filteredInvoices = useMemo(() => {

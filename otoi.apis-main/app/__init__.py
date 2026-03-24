@@ -19,7 +19,7 @@ import os
 def create_app():
     # Use absolute path for the static folder (sibling to 'app')
     static_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
-    app = Flask(__name__, static_folder=static_folder, static_url_path="/api/static")
+    app = Flask(__name__, static_folder=static_folder, static_url_path="/static")
     app.config.from_object("app.config.Config")
     
     # Disable strict slash matching to prevent 308 redirects

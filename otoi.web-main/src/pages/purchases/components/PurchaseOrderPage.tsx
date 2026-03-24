@@ -122,7 +122,7 @@ const PurchaseOrderPage = () => {
     first_page_url: null,
   });
 
-  // ── Purchase Invoice state ──────────────────────────────────────────────────
+  // ── Purchase Invoice state ──
   const [isConvertingId, setIsConvertingId] = useState<string | null>(null);
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean;

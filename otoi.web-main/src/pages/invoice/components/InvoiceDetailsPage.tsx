@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock, Mail } from "lucide-react";
 import {
@@ -21,6 +21,7 @@ import { getShareData, sendShareEmail, ShareData } from "@/services/share.servic
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import html2canvas from "html2canvas";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn
 import { cn } from "@/lib/utils";
 import { getCustomerById } from "@/pages/parties/services/customer.service";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
+import { resolveImageUrl } from "@/utils/imageUtils";
 import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface InvoiceItem {
@@ -236,7 +238,7 @@ const InvoiceDetailsPage: React.FC = () => {
 
 
   const handleDownloadPDF = async () => {
-    if (!invoiceData) return;
+    if (!invoiceRef.current || !invoiceData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
       const token = (() => {
@@ -739,6 +741,8 @@ const InvoiceDetailsPage: React.FC = () => {
       </div>
     );
   }
+
+  if (!invoiceData) return;
 
   if (!invoiceData) {
     return (
@@ -1498,6 +1502,15 @@ const InvoiceDetailsPage: React.FC = () => {
           </SheetContent>
         </Sheet>
 
+        {/* Record Payment Modal */}
+        <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
+            <DialogHeader className="px-6 py-4 border-b border-gray-200">
+              <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-gray-600" />
+                Record Payment For Invoice #{invoiceData.invoice_number}
+              </DialogTitle>
+            </DialogHeader>
         {/* Record Payment Modal */}
         <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
           <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">

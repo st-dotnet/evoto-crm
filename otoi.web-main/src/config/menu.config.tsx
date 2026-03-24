@@ -81,7 +81,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
       },
       {
         title: "Debit Note",
-        path: "/purchases/debit-note"
+        path: "/debit-note"
       }
     ]
   },

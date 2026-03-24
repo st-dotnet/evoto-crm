@@ -56,6 +56,7 @@ class Business(db.Model):
     addresses = relationship("Address", back_populates="business", cascade="all, delete-orphan")
     active_types = relationship("ActiveType", back_populates="business")
     global_configs = relationship("GlobalConfig", back_populates="business", cascade="all, delete-orphan")
+    debit_notes = relationship("DebitNote", back_populates="business")
 
 
 class GlobalConfig(db.Model):

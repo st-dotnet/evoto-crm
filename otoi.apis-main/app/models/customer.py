@@ -60,4 +60,4 @@ class Customer(db.Model):
     @property
     def default_shipping(self):
         """Helper to get the default shipping address."""
-        return next((addr for addr in self.shipping_addresses if addr.is_default), None)    
+        return next((addr for addr in self.shipping_addresses if addr.is_default), None)

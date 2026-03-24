@@ -277,9 +277,6 @@ def get_quotations():
         # Check and update quotation status based on valid_till date
         check_and_update_quotation_status()
         
-        # Log the incoming request parameters for debugging
-        # print(f"DEBUG: get_quotations called with args: {dict(request.args)}")
-        
         # Start with base query
         query = Quotation.query
         
@@ -489,8 +486,6 @@ def get_quotations():
             },
         }
 
-        # print(f"DEBUG: API Response - Total: {response_data['pagination']['total']}, Pages: {response_data['pagination']['last_page']}, Current Page: {response_data['pagination']['current_page']}")
-                
         return jsonify(response_data), 200
 
     except Exception as e:

@@ -20,12 +20,16 @@ from flask import Blueprint, request, jsonify, send_file, g
 from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+from app.utils.decorators import login_required
+from flask_jwt_extended import jwt_required, get_jwt
+from app.models.debit_note import DebitNote
 
 from app.extensions import db
 from app.models.purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.inventory import Item
 from app.models.vendor import Vendor
+from app.models.debit_note import DebitNote
 from app.services.pdf_service import generate_purchase_invoice_pdf
 
 purchase_invoice_blueprint = Blueprint("purchase_invoice", __name__)
@@ -34,12 +38,18 @@ purchase_invoice_blueprint = Blueprint("purchase_invoice", __name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _generate_invoice_number() -> str:
-    last = PurchaseInvoice.query.order_by(PurchaseInvoice.created_at.desc()).first()
+def _generate_invoice_number():
+    """Generate a sequential purchase invoice number."""
+    # Find the highest invoice number from ALL records (including deleted) to generate next unique number
+    last = PurchaseInvoice.query.order_by(desc(PurchaseInvoice.created_at)).first()
     if last and last.invoice_number:
         try:
             num = int(last.invoice_number.split("-")[1])
-            return f"PINV-{num + 1}"
+            next_num = num + 1
+            # Make sure this number doesn't exist (check both active and deleted)
+            while PurchaseInvoice.query.filter_by(invoice_number=f"PINV-{next_num}").first():
+                next_num += 1
+            return f"PINV-{next_num}"
         except (IndexError, ValueError):
             pass
     return "PINV-1001"
@@ -79,7 +89,8 @@ def _debit_inventory(invoice: PurchaseInvoice) -> None:
 
 def _serialize_item(inv_item: PurchaseInvoiceItem, product_map: dict) -> dict:
     discount_data = inv_item.discount or {}
-    tax_data = inv_item.tax or {}
+    tax_data = inv_item.tax or {}   
+    
     row = {
         "uuid": str(inv_item.uuid),
         "item_id": str(inv_item.item_id) if inv_item.item_id else None,
@@ -219,6 +230,7 @@ def create_from_purchase_order(po_id):
         } if item_ids else {}
 
         for poi in po.items:
+            
             pi_item = PurchaseInvoiceItem(
                 purchase_invoice_id=invoice.uuid,
                 item_id=poi.item_id,
@@ -230,6 +242,7 @@ def create_from_purchase_order(po_id):
                 total_price=poi.total_price,
             )
             db.session.add(pi_item)
+            
 
         # Mark PO as "received" (goods expected/received; payment pending)
         po.status = "received"
@@ -319,7 +332,8 @@ def create_purchase_invoice():
     business_id = request.headers.get("X-Business-Id") or 1  # Fallback for now
 
     try:
-        invoice_number = data.get("invoice_number") or data.get("purchase_invoice_number") or _generate_invoice_number()
+        # Always generate a new invoice number to avoid duplicates
+        invoice_number = _generate_invoice_number()
         today = datetime.utcnow().date()
 
         invoice_date_str = data.get("invoice_date")
@@ -368,6 +382,7 @@ def create_purchase_invoice():
                 
             unit_price = round(float(item.get("unit_price") or item.get("price_per_item") or 0), 2)
             quantity = float(item.get("quantity") or 0)
+            
             
             # Format discount
             discount = item.get("discount")
@@ -420,7 +435,7 @@ def create_purchase_invoice():
                 invoice_number      = invoice.invoice_number,
                 total_amount        = float(invoice.total_amount or 0),
                 amount_paid         = amount_paid,
-                balance_due         = round(balance_due, 2),
+                balance_due         = max(0.0, float(total_amount) - float(amount_paid) - float(payment_discount)),
                 discount            = payment_discount,
                 payment_status      = invoice.payment_status,
                 payment_mode        = data.get("payment_mode", "cash"),
@@ -477,6 +492,7 @@ def list_purchase_invoices():
         vendor_name = request.args.get("vendor_name", "").strip()
         invoice_number = request.args.get("invoice_number", "").strip()
         payment_status = request.args.get("payment_status", "").strip()
+        include_debit_notes = request.args.get("include_debit_notes", "false").lower() == "true"
 
         if search:
             query = query.filter(
@@ -518,11 +534,66 @@ def list_purchase_invoices():
             {v.uuid: v for v in Vendor.query.filter(Vendor.uuid.in_(vendor_ids)).all()}
             if vendor_ids else {}
         )
+        
+        # Batch-fetch debit notes if requested
+        debit_notes_summary = {}
+        if include_debit_notes:
+            invoice_ids = [inv.uuid for inv in invoices]
+            debit_notes_map = {}
+            if invoice_ids:
+                from app.models.debit_note import DebitNote
+                debit_notes = DebitNote.query.filter(
+                    DebitNote.invoice_id.in_(invoice_ids),
+                    DebitNote.is_deleted == False
+                ).all()
+                
+                for dn in debit_notes:
+                    if dn.invoice_id not in debit_notes_summary:
+                        debit_notes_summary[dn.invoice_id] = []
+                    debit_notes_summary[dn.invoice_id].append({
+                        "uuid": str(dn.uuid),
+                        "debit_note_number": dn.debit_note_number,
+                        "total_amount": float(dn.total_amount),
+                        "status": dn.status
+                    })
 
         result = []
         for inv in invoices:
+            # Update status for each invoice to ensure up-to-date values
+            try:
+                update_purchase_invoice_payment_status(inv.uuid)
+                # Refresh to get updated values
+                db.session.refresh(inv)
+            except Exception as e:
+                pass
+            
+            # Get debit notes for this invoice to include in balance calculation
+            try:
+                debit_notes = DebitNote.query.filter_by(
+                    invoice_id=inv.uuid,
+                    is_deleted=False
+                ).all()
+                
+                # Calculate total debit note amount
+                total_debit_amount = sum(float(dn.total_amount) for dn in debit_notes)
+                
+                # Force recalculate balance_due to ensure discount and debit notes are included
+                calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - total_debit_amount)
+                
+                
+            except Exception as e:
+                import sys
+                # Fallback to simple calculation without debit notes
+                calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0))
+                total_debit_amount = 0.0
+            
+            if float(inv.balance_due) != calculated_balance:
+                inv.balance_due = calculated_balance
+                db.session.commit()
+                db.session.refresh(inv)
+            
             v = vendor_map.get(inv.vendor_id)
-            result.append({
+            invoice_data = {
                 "uuid": str(inv.uuid),
                 "invoice_number": inv.invoice_number,
                 "purchase_order_id": str(inv.purchase_order_id) if inv.purchase_order_id else None,
@@ -532,11 +603,22 @@ def list_purchase_invoices():
                 "due_date": inv.due_date.isoformat() if inv.due_date else None,
                 "total_amount": float(inv.total_amount),
                 "amount_paid": float(inv.amount_paid),
-                "balance_due": float(inv.balance_due),
-                "payment_status": inv.payment_status,
+                "balance_amount": float(calculated_balance),  # Use calculated balance
+                "balance_due": float(calculated_balance),  # Use calculated balance
+                "discount": float(inv.payment_discount or 0),  # Add discount field
+                "payment_status": inv.payment_status,  # This will now be UPDATED
                 "inventory_updated": inv.inventory_updated,
                 "created_at": inv.created_at.isoformat() if inv.created_at else None,
-            })
+            }
+            
+            # Add debit notes summary if requested
+            if include_debit_notes and str(inv.uuid) in debit_notes_summary:
+                invoice_data["debit_notes_applied"] = debit_notes_summary[str(inv.uuid)]
+            
+            result.append(invoice_data)
+        
+        # Commit all status updates
+        db.session.commit()
 
         return jsonify({
             "data": result,
@@ -574,6 +656,36 @@ def get_purchase_invoice(invoice_id):
         .first_or_404(description="Purchase invoice not found")
     )
 
+        
+    # Trigger status calculation BEFORE preparing response
+    update_purchase_invoice_payment_status(invoice_id)
+    
+    # Force commit to ensure status updates are saved immediately
+    db.session.commit()
+    
+    # Refresh the invoice to get updated values BEFORE preparing response
+    db.session.refresh(invoice)
+    
+    # Get debit notes for this invoice to include in balance calculation
+    debit_notes = DebitNote.query.filter_by(
+        invoice_id=invoice.uuid,
+        is_deleted=False
+    ).all()
+    
+    # Calculate total debit note amount
+    total_debit_amount = sum(float(dn.total_amount) for dn in debit_notes)
+    
+    # Force recalculate balance_due to ensure discount and debit notes are included
+    calculated_balance = max(0.0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - total_debit_amount)
+    
+    
+    if float(invoice.balance_due) != calculated_balance:
+        invoice.balance_due = calculated_balance
+        db.session.commit()
+        db.session.refresh(invoice)
+    
+
+    # NOW prepare the response with updated values
     item_ids = [i.item_id for i in invoice.items if i.item_id]
     product_map = (
         {p.id: p for p in Item.query.filter(Item.id.in_(item_ids)).all()}
@@ -581,7 +693,9 @@ def get_purchase_invoice(invoice_id):
     )
 
     v = invoice.vendor
-    return jsonify({
+    
+    # Create response with UPDATED values
+    response_data = {
         "uuid": str(invoice.uuid),
         "invoice_number": invoice.invoice_number,
         "purchase_order_id": str(invoice.purchase_order_id) if invoice.purchase_order_id else None,
@@ -603,16 +717,21 @@ def get_purchase_invoice(invoice_id):
         "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
         "total_amount": float(invoice.total_amount),
         "amount_paid": float(invoice.amount_paid),
-        "balance_due": float(invoice.balance_due),
+        "balance_amount": float(invoice.balance_due),  # Add balance_amount for frontend
+        "balance_due": float(invoice.balance_due),  # This will now be UPDATED
+        "discount": float(invoice.payment_discount or 0),  # Add discount field
         "charges": invoice.charges or {},
-        "payment_status": invoice.payment_status,
+        "payment_status": invoice.payment_status,  # This will now be UPDATED
         "payment_mode": invoice.payment_mode,
         "inventory_updated": invoice.inventory_updated,
         "additional_notes": invoice.additional_notes or {},
         "items": [_serialize_item(i, product_map) for i in invoice.items],
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "updated_at": invoice.updated_at.isoformat() if invoice.updated_at else None,
-    }), 200
+    }
+    
+    
+    return jsonify(response_data), 200
 
 
 
@@ -845,4 +964,246 @@ def download_purchase_invoice_pdf(invoice_id):
 
     except Exception as e:
         return jsonify({"error": "PDF generation failed", "details": str(e)}), 500
+
+
+# ── DEBUG: Manual Status Update Trigger ────────────────────────────────────────────────────────
+
+@purchase_invoice_blueprint.route("/<uuid:invoice_id>/recalculate-status", methods=["POST"])
+@login_required
+@jwt_required()
+def recalculate_purchase_invoice_status(invoice_id):
+    """
+    Debug endpoint to manually trigger status recalculation
+    """
+    try:
+        result = update_purchase_invoice_payment_status(invoice_id)
+        if result:
+            return jsonify({
+                "success": True,
+                "message": "Status recalculated successfully"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Failed to recalculate status"
+            }), 500
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@purchase_invoice_blueprint.route("/<uuid:invoice_id>/force-refresh", methods=["POST"])
+@login_required
+@jwt_required()
+def force_refresh_purchase_invoice(invoice_id):
+    """
+    Force refresh invoice data to bypass any caching issues
+    """
+    try:
+        invoice = PurchaseInvoice.query.filter_by(uuid=invoice_id, is_deleted=False).first()
+        if not invoice:
+            return jsonify({"error": "Purchase invoice not found"}), 404
+        
+        # Force status calculation and commit
+        update_purchase_invoice_payment_status(invoice_id)
+        
+        # Force database commit and refresh
+        db.session.commit()
+        db.session.refresh(invoice)
+        
+        # Return updated data
+        return jsonify({
+            "success": True,
+            "message": "Invoice refreshed successfully",
+            "data": {
+                "uuid": str(invoice.uuid),
+                "invoice_number": invoice.invoice_number,
+                "balance_due": float(invoice.balance_due),
+                "payment_status": invoice.payment_status,
+                "amount_paid": float(invoice.amount_paid),
+                "total_amount": float(invoice.total_amount)
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# ── Purchase Invoice Status Management ───────────────────────────────────────────────────────────
+
+def update_purchase_invoice_payment_status(invoice_id):
+    """
+    Update purchase invoice payment status based on debit notes and payments
+    This function calculates the effective payment status considering:
+    - Original payments made to the invoice
+    - Debit notes issued against the invoice
+    """
+    try:
+        invoice = PurchaseInvoice.query.filter_by(uuid=invoice_id).first()
+        if not invoice:
+            return False
+        
+        # Get all debit notes for this invoice
+        debit_notes = DebitNote.query.filter_by(
+            invoice_id=invoice_id, 
+            is_deleted=False
+        ).all()
+        
+        # Only include debit notes that are active (not cancelled or rejected)
+        # Debit notes are typically created with 'Unpaid' status and should affect balance immediately
+        active_debit_notes = [dn for dn in debit_notes if dn.status not in ['cancelled', 'rejected']]
+        total_debit_amount = sum(float(dn.total_amount) for dn in active_debit_notes)
+        
+        
+        # Calculate effective balance
+        original_balance = float(invoice.balance_due) + float(invoice.amount_paid)
+        adjusted_balance = float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - total_debit_amount
+        
+        
+        # Update payment status based on effective balance
+        if adjusted_balance <= 0:
+            invoice.payment_status = "paid"
+        elif float(invoice.amount_paid) > 0 or total_debit_amount > 0:
+            invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
+        
+        # Update balance due
+        invoice.balance_due = adjusted_balance
+        
+        # Set updated fields
+        from app.utils.stamping import set_updated_fields
+        set_updated_fields(invoice)
+        db.session.commit()
+        
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        return False
+
+
+@purchase_invoice_blueprint.route("/<uuid:invoice_id>/status", methods=["PATCH"])
+@login_required
+@jwt_required()
+def update_purchase_invoice_status(invoice_id):
+    """
+    Update purchase invoice payment status
+    ---
+    tags:
+      - Purchase Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - payment_status
+            properties:
+              payment_status:
+                type: string
+                enum: [paid, unpaid, partial]
+    responses:
+      200:
+        description: Status updated successfully
+      404:
+        description: Purchase invoice not found
+      400:
+        description: Invalid status or business logic violation
+    """
+    try:
+        # Get JWT claims
+        jwt_claims = get_jwt()
+        if isinstance(jwt_claims, str):
+            business_id = 1
+        else:
+            business_id = jwt_claims.get('business_id', 1)
+        
+        invoice = PurchaseInvoice.query.filter_by(
+            uuid=invoice_id, 
+            business_id=business_id,
+            is_deleted=False
+        ).first()
+        
+        if not invoice:
+            return jsonify({
+                "success": False,
+                "error": "Purchase invoice not found",
+                "code": "INVOICE_NOT_FOUND"
+            }), 404
+        
+        data = request.get_json()
+        new_status = data.get("payment_status")
+        
+        if not new_status:
+            return jsonify({
+                "success": False,
+                "error": "Payment status is required",
+                "code": "STATUS_REQUIRED"
+            }), 400
+        
+        # Validate status
+        valid_statuses = ["paid", "unpaid", "partial"]
+        if new_status not in valid_statuses:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}",
+                "code": "INVALID_STATUS"
+            }), 400
+        
+        # Business logic validation
+        if invoice.payment_status == "paid" and new_status != "paid":
+            return jsonify({
+                "success": False,
+                "error": "Cannot change status from paid",
+                "code": "INVOICE_ALREADY_PAID",
+                "details": {
+                    "current_status": invoice.payment_status,
+                    "requested_status": new_status
+                }
+            }), 400
+        
+        # Update status
+        old_status = invoice.payment_status
+        invoice.payment_status = new_status
+        
+        # Set updated fields
+        from app.utils.stamping import set_updated_fields
+        set_updated_fields(invoice)
+        db.session.commit()
+        
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "uuid": str(invoice.uuid),
+                "invoice_number": invoice.invoice_number,
+                "payment_status": invoice.payment_status,
+                "amount_paid": float(invoice.amount_paid),
+                "total_amount": float(invoice.total_amount),
+                "balance_due": float(invoice.balance_due),
+                "updated_at": invoice.updated_at.isoformat() if invoice.updated_at else None
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": "Failed to update purchase invoice status",
+            "details": str(e)
+        }), 500
 

@@ -117,6 +117,7 @@ class Item(BaseMixin, db.Model):
     category = relationship("ItemCategory", back_populates="items")
     measuring_unit = relationship("MeasuringUnit", back_populates="items")
     images = relationship("ItemImage", back_populates="item")
+    debit_note_items = relationship("DebitNoteItem", back_populates="item")
 
 
 class ItemImage(BaseMixin, db.Model):

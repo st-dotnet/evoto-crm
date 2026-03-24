@@ -21,6 +21,7 @@ import {
     FileText,
     Info,
     AlertCircle,
+    FileMinus,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -48,9 +49,18 @@ import { getAllVendorsDropdown } from "../services/purchaseOrder.services";
 
 interface PurchaseInvoice {
     id: string;
+    uuid: string;
     date: string;
     invoice_number: string;
+    vendor_id: string | null;
     vendor_name: string;
+    vendor?: {
+        uuid: string;
+        vendor_name: string;
+        company_name?: string;
+        mobile: string;
+        email?: string;
+    };
     amount: number;
     amount_paid: number;
     balance_due: number;
@@ -149,6 +159,33 @@ const PurchaseInvoicePage = () => {
     useEffect(() => {
         setRefreshKey(prev => prev + 1);
     }, [debouncedSearchTerm]);
+
+    // Listen for debit note updates to refresh invoice data
+    useEffect(() => {
+        const handleDebitNoteUpdate = (event: CustomEvent) => {
+            // Refresh the invoice data to show updated status
+            setRefreshKey(prev => prev + 1);
+        };
+
+        const handleInvoiceStatusUpdate = (event: CustomEvent) => {
+            // Refresh the invoice data to show updated status and balance
+            setRefreshKey(prev => prev + 1);
+        };
+
+        window.addEventListener('debitNoteDeleted', handleDebitNoteUpdate as EventListener);
+        window.addEventListener('debitNoteCreated', handleDebitNoteUpdate as EventListener);
+        window.addEventListener('debitNoteAccepted', handleDebitNoteUpdate as EventListener);
+        window.addEventListener('invoiceStatusUpdated', handleInvoiceStatusUpdate as EventListener);
+        window.addEventListener('paymentRecorded', handleDebitNoteUpdate as EventListener);
+
+        return () => {
+            window.removeEventListener('debitNoteDeleted', handleDebitNoteUpdate as EventListener);
+            window.removeEventListener('debitNoteCreated', handleDebitNoteUpdate as EventListener);
+            window.removeEventListener('debitNoteAccepted', handleDebitNoteUpdate as EventListener);
+            window.removeEventListener('invoiceStatusUpdated', handleInvoiceStatusUpdate as EventListener);
+            window.removeEventListener('paymentRecorded', handleDebitNoteUpdate as EventListener);
+        };
+    }, []);
 
     const fetchInvoices = useCallback(async (params: TDataGridRequestParams) => {
         setIsLoading(true);
@@ -256,6 +293,12 @@ const PurchaseInvoicePage = () => {
             unpaid: 'bg-red-100 text-red-800',
         };
         return styles[status] || 'bg-gray-100 text-gray-800';
+    };
+
+    const handleCreateDebitNote = (invoice: PurchaseInvoice) => {
+        // Navigate to debit note creation page with prefilled data
+        const vendorId = invoice.vendor?.uuid || invoice.vendor_id;
+        navigate(`/debit-note/create?invoice_id=${invoice.id}&vendor_id=${vendorId}`);
     };
 
     const columns = useMemo<ColumnDef<PurchaseInvoice>[]>(() => [
@@ -391,6 +434,9 @@ const PurchaseInvoicePage = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => { navigate(`/purchases/purchase-invoices/${row.original.id}/edit`); setIsOpen(false); }}>
                                     <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => { handleCreateDebitNote(row.original); setIsOpen(false); }}>
+                                    <FileMinus className="mr-2 h-4 w-4" /> Create Debit Note
                                 </DropdownMenuItem>
                                 {row.original.payment_status !== 'paid' && (
                                     <DropdownMenuItem onSelect={() => { handleRecordPayment(row.original); setIsOpen(false); }}>

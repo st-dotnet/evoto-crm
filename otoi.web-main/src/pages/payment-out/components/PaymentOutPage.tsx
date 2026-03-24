@@ -212,7 +212,7 @@ export const PaymentOutPage = () => {
         <DataGridColumnHeader title="Payment Number" column={column} className="justify-center" />
       ),
       cell: (info) => (
-        <div className="text-sm font-medium text-center text-violet-600">
+        <div className="text-sm font-medium text-center text-blue-600">
           #{info.getValue() as string}
         </div>
       ),
@@ -366,7 +366,7 @@ export const PaymentOutPage = () => {
                     setIsOpen(false);
                   }}
                 >
-                  <Eye className="mr-2 h-4 w-4 text-violet-500" />
+                  <Eye className="mr-2 h-4 w-4 text-blue-500" />
                   <span>View Details</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -384,8 +384,8 @@ export const PaymentOutPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center">
-            <ArrowUpFromLine className="h-5 w-5 text-violet-600" />
+          <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Payment Out</h1>
@@ -478,7 +478,7 @@ export const PaymentOutPage = () => {
 
           <Button
             size="sm"
-            className="h-9 gap-1 w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white"
+            className="h-9 gap-1 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => navigate("/payment-out/create")}
           >
             <Plus className="h-4 w-4" />
@@ -497,7 +497,7 @@ export const PaymentOutPage = () => {
                   <Button variant="outline" className="h-10 w-full justify-start px-3" disabled={isDropdownLoading}>
                     {isDropdownLoading ? (
                       <span className="flex items-center">
-                        <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mr-2" />
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
                         Loading...
                       </span>
                     ) : (
@@ -515,7 +515,7 @@ export const PaymentOutPage = () => {
                       setSearchTerm("");
                       setRefreshKey((k) => k + 1);
                     }}
-                    className={!searchTerm ? "bg-violet-50 text-violet-600" : ""}
+                    className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
                   >
                     <span className="text-gray-500">
                       Show All {searchType === "party_name" ? "Vendors" : "Payments"}
@@ -528,7 +528,7 @@ export const PaymentOutPage = () => {
                         setSearchTerm(item);
                         setRefreshKey((k) => k + 1);
                       }}
-                      className={searchTerm === item ? "bg-violet-50 text-violet-600" : ""}
+                      className={searchTerm === item ? "bg-blue-50 text-blue-600" : ""}
                     >
                       {item}
                     </DropdownMenuItem>
@@ -540,7 +540,7 @@ export const PaymentOutPage = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto">
-                  <Filter className="h-3.5 w-3.5 mr-1 text-violet-500 shrink-0" />
+                  <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
                   <span className="truncate max-w-[150px]">
                     {searchTerm
                       ? `${searchType === "party_name" ? "Vendor" : "Payment"}: ${searchTerm}`
@@ -552,14 +552,14 @@ export const PaymentOutPage = () => {
               <DropdownMenuContent className="w-48">
                 <DropdownMenuItem
                   onClick={() => handleSearchTypeChange("party_name")}
-                  className={searchType === "party_name" ? "bg-violet-50 text-violet-600" : ""}
+                  className={searchType === "party_name" ? "bg-blue-50 text-blue-600" : ""}
                 >
                   <Filter className="h-3.5 w-3.5 mr-2" />
                   Vendor Name
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleSearchTypeChange("payment_number")}
-                  className={searchType === "payment_number" ? "bg-violet-50 text-violet-600" : ""}
+                  className={searchType === "payment_number" ? "bg-blue-50 text-blue-600" : ""}
                 >
                   <Filter className="h-3.5 w-3.5 mr-2" />
                   Payment Number
@@ -598,8 +598,8 @@ export const PaymentOutPage = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gray-50/50">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-violet-100 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-violet-600" />
+                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Payment Out Details</h3>
@@ -637,12 +637,12 @@ export const PaymentOutPage = () => {
                         </div>
                         <span className="text-sm font-semibold text-gray-900">{selectedPayment.payment_mode}</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-violet-50/50 border border-violet-100">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50/50 border border-blue-100">
                         <div className="flex items-center gap-3">
-                          <CreditCard className="h-4 w-4 text-violet-500" />
-                          <span className="text-sm font-medium text-violet-700">Total Amount</span>
+                          <CreditCard className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-700">Total Amount</span>
                         </div>
-                        <span className="text-sm font-bold text-violet-900">
+                        <span className="text-sm font-bold text-blue-900">
                           ₹{selectedPayment.total_amount_settled?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -663,7 +663,7 @@ export const PaymentOutPage = () => {
                           <FileText className="h-4 w-4 text-gray-400" />
                           <span className="text-sm font-medium text-gray-600">Ref No.</span>
                         </div>
-                        <span className="text-sm font-semibold text-violet-600">#{selectedPayment.payment_number}</span>
+                        <span className="text-sm font-semibold text-blue-600">#{selectedPayment.payment_number}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/50 border border-emerald-100">
                         <div className="flex items-center gap-3">
@@ -745,7 +745,7 @@ export const PaymentOutPage = () => {
                                 <td className="px-4 py-3 text-gray-600">
                                   {new Date(inv.date).toLocaleDateString()}
                                 </td>
-                                <td className="px-4 py-3 font-medium text-violet-600">#{inv.invoice_number}</td>
+                                <td className="px-4 py-3 font-medium text-blue-600">#{inv.invoice_number}</td>
                                 <td className="px-4 py-3 text-right text-gray-900">
                                   ₹{inv.total_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                 </td>
@@ -777,7 +777,7 @@ export const PaymentOutPage = () => {
             <div className="p-6 border-t bg-gray-50/50 flex justify-end gap-3">
               <Button variant="outline" onClick={closeModal}>Close</Button>
               <Button 
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
                   if (selectedPayment) {
                     navigate(`/payment-out/${selectedPayment.id}`);

@@ -204,6 +204,7 @@ def login():
         description: Invalid credentials
     """
     try:
+        
         # Handle both JSON and form data
         if request.is_json:
             data = request.get_json()
@@ -211,10 +212,12 @@ def login():
             data = request.form.to_dict()
         else:
             # Try to get JSON as fallback
-            data = request.get_json() or {}        
+            data = request.get_json() or {}
+        
         # Handle OAuth2 password flow - it might send username instead of email
         email = data.get("email") or data.get("username", "")
         password = data.get("password", "")
+        
         
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400

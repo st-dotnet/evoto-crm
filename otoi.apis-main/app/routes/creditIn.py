@@ -12,16 +12,84 @@ from datetime import datetime, timedelta
 credit_note_blueprint = Blueprint("credit_note", __name__)
 
 
-def generate_credit_note_number():
-    """Generate a unique credit note number like CN-1001"""
-    last_credit_note = CreditNote.query.order_by(CreditNote.created_at.desc()).first()
-    if last_credit_note and last_credit_note.credit_note_number:
+def generate_credit_note_number(max_retries=3):
+    """Generate a unique credit note number like CN-1834 with 4 digits"""
+    import time
+    
+    for attempt in range(max_retries):
         try:
-            last_num = int(last_credit_note.credit_note_number.split('-')[1])
-            return f"CN-{last_num + 1}"
-        except (IndexError, ValueError):
-            pass
-    return "CN-1001"
+            # Get the maximum number from existing credit notes
+            result = db.session.execute(
+                db.text("""
+                    SELECT MAX(CAST(SUBSTRING(credit_note_number FROM 5) AS INTEGER)) as max_num 
+                    FROM credit_notes 
+                    WHERE credit_note_number LIKE 'CN-%' 
+                    AND credit_note_number ~ 'CN-[0-9]{4}$'
+                    AND is_deleted = FALSE
+                """)
+            )
+            max_num = result.scalar()
+            
+            if max_num and max_num >= 1000:
+                # Start from max_num + 1, but keep it 4 digits
+                new_num = max_num + 1
+                # Ensure it doesn't exceed 9999
+                if new_num > 9999:
+                    new_num = 1000  # Reset to 1000 if we exceed 9999
+            else:
+                new_num = 1000  # Start from CN-1000
+            
+            # Format as 4-digit number
+            new_credit_note_number = f"CN-{new_num:04d}"
+            
+            # Quick check to see if this number exists
+            existing = CreditNote.query.filter_by(
+                credit_note_number=new_credit_note_number,
+                is_deleted=False
+            ).first()
+            
+            if existing:
+                # If it exists, try the next number
+                new_num += 1
+                if new_num > 9999:
+                    new_num = 1000  # Reset if we exceed 9999
+                new_credit_note_number = f"CN-{new_num:04d}"
+                
+                # Check one more time
+                existing = CreditNote.query.filter_by(
+                    credit_note_number=new_credit_note_number,
+                    is_deleted=False
+                ).first()
+                
+                if existing:
+                    continue
+                
+            return new_credit_note_number
+            
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Error generating credit note number (attempt {attempt + 1}): {str(e)}")
+            
+            # Rollback any partial transaction to clean up state
+            try:
+                db.session.rollback()
+            except:
+                pass  # Ignore rollback errors
+            
+            if attempt == max_retries - 1:
+                # Last attempt, use a simple 4-digit fallback
+                timestamp = int(time.time())
+                fallback_num = timestamp % 9000 + 1000  # Ensure 4-digit number between 1000-9999
+                return f"CN-{fallback_num:04d}"
+            
+            # Brief delay before retry
+            time.sleep(0.1)
+            continue
+    
+    # Ultimate fallback - 4-digit number
+    timestamp = int(time.time())
+    fallback_num = timestamp % 9000 + 1000
+    return f"CN-{fallback_num:04d}"
 
 
 def update_invoice_payment_status(invoice_id):
@@ -282,6 +350,7 @@ def create_credit_note():
     """
     try:
         data = request.get_json()
+        print(f"Received request data: {data}")
         
         # Validate required fields
         if not data.get("customer_id") or not data.get("business_id"):
@@ -336,21 +405,43 @@ def create_credit_note():
         
         # Handle credit note number - use user-provided or auto-generate
         user_credit_note_number = data.get("credit_note_number", "").strip()
+        print(f"Received credit_note_number from request: '{user_credit_note_number}'")
+        print(f"Credit note number is empty: {not user_credit_note_number}")
+        
         if user_credit_note_number:
+            print(f"Using user-provided credit note number: {user_credit_note_number}")
             # Validate uniqueness of user-provided credit note number
             existing_credit_note = CreditNote.query.filter_by(
                 credit_note_number=user_credit_note_number, 
                 is_deleted=False
             ).first()
+            print(f"Existing credit note with this number: {existing_credit_note}")
+            
             if existing_credit_note:
+                print(f"Credit note number '{user_credit_note_number}' already exists, returning error")
                 return jsonify({
                     "success": False,
                     "error": f"Credit note number '{user_credit_note_number}' already exists"
                 }), 400
             credit_note_number = user_credit_note_number
+            print(f"Final credit note number (user provided): {credit_note_number}")
         else:
+            print("No user credit note number provided, generating auto number")
             # Generate auto number only when not provided
-            credit_note_number = generate_credit_note_number()
+            # Using 4-digit sequential generation
+            try:
+                credit_note_number = generate_credit_note_number()
+                print(f"Generated credit note number: {credit_note_number}")
+            except Exception as e:
+                print(f"Error in generate_credit_note_number: {str(e)}")
+                # Even this should not fail, but if it does, create a manual 4-digit number
+                import time
+                timestamp = int(time.time())
+                fallback_num = timestamp % 9000 + 1000  # Ensure 4-digit number between 1000-9999
+                credit_note_number = f"CN-{fallback_num:04d}"
+                print(f"Using manual fallback: {credit_note_number}")
+        
+        print(f"Final credit note number to be used: {credit_note_number}")
         
         # Create credit note with backend-calculated charges
         credit_note = CreditNote(
@@ -410,6 +501,43 @@ def create_credit_note():
             }
         }), 201
         
+    except IntegrityError as e:
+        db.session.rollback()
+        # Check if this is a duplicate credit_note_number error
+        if "credit_notes_credit_note_number_key" in str(e):
+            # Try to generate a new number and retry once
+            try:
+                # Clear session state before retry
+                db.session.rollback()
+                import time
+                timestamp = int(time.time())
+                fallback_num = timestamp % 9000 + 1000  # Ensure 4-digit number between 1000-9999
+                new_credit_note_number = f"CN-{fallback_num:04d}"
+                credit_note.credit_note_number = new_credit_note_number
+                db.session.add(credit_note)
+                db.session.commit()
+                
+                return jsonify({
+                    "message": "Credit note created successfully",
+                    "data": {
+                        "uuid": str(credit_note.uuid),
+                        "credit_note_number": credit_note.credit_note_number,
+                        "total_amount": float(credit_note.total_amount),
+                        "status": credit_note.status
+                    }
+                }), 201
+            except Exception as retry_error:
+                db.session.rollback()
+                return jsonify({
+                    "success": False, 
+                    "error": "Failed to generate unique credit note number. Please try again."
+                }), 500
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Database constraint violation",
+                "details": str(e)
+            }), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": "An error occurred", "details": str(e)}), 500
