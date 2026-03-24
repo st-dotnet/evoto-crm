@@ -41,6 +41,8 @@ import AddItemPage from "../../quotation/components/AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { updateItem } from "../../items/services/items.service";
 import { useAuthContext } from "@/auth/useAuthContext";
+import { resolveImageUrl } from "@/utils/imageUtils";
+
 interface Vendor {
   id: string;
   name: string;
@@ -69,6 +71,7 @@ interface POItem {
   id: string;
   item_id: string;
   item_name: string;
+  image?: string | null;
   hsn_sac?: string;
   quantity: number;
   price_per_item: number;
@@ -93,6 +96,7 @@ interface InventoryItem {
   gst_tax_rate?: number;
   measuring_unit_id?: number;
   quantity?: number;
+  image?: string | null;
 }
 
 const addDays = (date: string | number | Date, days: number) => {
@@ -376,6 +380,7 @@ const CreatePurchaseOrderPage = () => {
                 item.item_name ||
                 item.description ||
                 "Item",
+                image: item.image,
               description: item.description || "",
               quantity: Number(item.quantity) || 1,
               price_per_item: Number(item.unit_price) || 0,
@@ -434,6 +439,7 @@ const CreatePurchaseOrderPage = () => {
             id: `dup-${Date.now()}-${Math.random()}`,
             item_id: item.item_id || item.uuid,
             item_name: item.item_name || item.product_name || "Item",
+            image: item.image,
             description: item.description || "",
             quantity: Number(item.quantity) || 1,
             price_per_item: Number(item.unit_price || item.price_per_item) || 0,
@@ -567,6 +573,7 @@ const CreatePurchaseOrderPage = () => {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
         item_name: item.item_name,
+        image: item.image,
         hsn_sac: item.hsn_code || "",
         quantity,
         price_per_item: price,
@@ -1199,6 +1206,9 @@ const CreatePurchaseOrderPage = () => {
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase border-r border-gray-200 w-16">
                   No.
                 </th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase border-r border-gray-200 w-20">
+                  Image
+                </th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase border-r border-gray-200 w-[250px]">
                   Item / Service Details
                 </th>
@@ -1273,6 +1283,29 @@ const CreatePurchaseOrderPage = () => {
                     <td className="px-3 py-2 text-sm font-medium text-gray-600 border-r border-gray-200">
                       {index + 1}
                     </td>
+
+                    {/* Image Column */}
+                    <td className="px-3 py-2 text-center border-r border-gray-200">
+                      {item.image ? (
+                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
+                          <img
+                            src={resolveImageUrl(item.image)}
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/40x40?text=No+Img';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
+                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </td>
+
                     <td className="px-3 py-2 border-r border-gray-200">
                       <div
                         className="space-y-1"
@@ -1616,7 +1649,7 @@ const CreatePurchaseOrderPage = () => {
             <tfoot className="bg-gray-50 border-t-2 border-gray-200">
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="px-4 py-4 border-r border-gray-200"
                 ></td>
                 <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">

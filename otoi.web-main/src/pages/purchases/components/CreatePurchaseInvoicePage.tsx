@@ -34,6 +34,7 @@ import {
 import AddItemPage from "../../quotation/components/AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { useAuthContext } from "@/auth/useAuthContext";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface Vendor {
   id: string;
@@ -797,14 +798,26 @@ const CreatePurchaseInvoicePage = () => {
                 invoiceItems.map((item, index) => (
                   <tr key={item.id} className="hover:bg-gray-50/70 group transition-colors">
                     <td className="px-4 py-4 text-sm text-gray-500 border-r">{index + 1}</td>
-                    <td className="px-4 py-4 text-center border-r">
-                      <div className="w-10 h-10 border rounded mx-auto overflow-hidden bg-gray-50 flex items-center justify-center">
-                        {item.image ? (
-                          <img src={item.image} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Plus className="h-4 w-4 text-gray-200" />
-                        )}
-                      </div>
+                    {/* Image Column */}
+                    <td className="px-3 py-2 text-center border-r border-gray-200">
+                      {item.image ? (
+                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
+                          <img
+                            src={resolveImageUrl(item.image)}
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/40x40?text=No+Img';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
+                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 border-r">
                       <p className="text-sm font-medium text-gray-900">{item.item_name}</p>
@@ -875,11 +888,30 @@ const CreatePurchaseInvoicePage = () => {
               )}
             </tbody>
             {invoiceItems.length > 0 && (
-              <tfoot className="bg-gray-50 border-t-2">
-                <tr className="font-semibold text-gray-700">
-                  <td colSpan={8} className="px-4 py-3 text-right text-xs uppercase border-r">Subtotal</td>
-                  <td className="px-4 py-3 text-right border-r">₹{calculateSubtotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                  <td></td>
+              <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-4 border-r border-gray-200"
+                  ></td>
+                  <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
+                    Subtotal
+                  </td>
+                  <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
+                    {calculateDiscount() > 0 &&
+                      `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  </td>
+                  <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
+                    {calculateTax() > 0 &&
+                      `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
+                    ₹
+                    {calculateFinalTotal().toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="px-4 py-4"></td>
                 </tr>
               </tfoot>
             )}

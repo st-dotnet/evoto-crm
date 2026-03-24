@@ -40,7 +40,10 @@
     }
 
     /* ══ HEADER ══ */
-    .header-table { width: 100%; margin-bottom: 10px; }
+    .header-table {
+      width: 100%;
+      margin-bottom: 10px;
+    }
 
     .company-name {
       font-size: 22px;
@@ -89,7 +92,9 @@
     }
 
     /* ══ VENDOR DETAILS ══ */
-    .vendor-section { margin-bottom: 22px; }
+    .vendor-section {
+      margin-bottom: 22px;
+    }
 
     .vendor-section-title {
       font-size: 12px;
@@ -143,8 +148,16 @@
       vertical-align: top;
     }
 
-    .item-name { font-weight: bold; font-size: 11px; }
-    .item-desc { font-size: 9px; color: #888888; margin-top: 2px; }
+    .item-name {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .item-desc {
+      font-size: 9px;
+      color: #888888;
+      margin-top: 2px;
+    }
 
     .subtotal-row td {
       background-color: #f5f5f5;
@@ -154,7 +167,10 @@
     }
 
     /* ══ BOTTOM ══ */
-    .bottom-table { width: 100%; margin-top: 4px; }
+    .bottom-table {
+      width: 100%;
+      margin-top: 4px;
+    }
 
     .notes-title {
       font-size: 10px;
@@ -174,11 +190,27 @@
       margin-bottom: 18px;
     }
 
-    .totals-table { width: 100%; border-collapse: collapse; }
-    .totals-table td { padding: 2px 0; font-size: 11px; }
+    .totals-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-    .totals-label { color: #555555; text-align: left; width: 150px; }
-    .totals-value { font-weight: bold; text-align: right; color: #1a1a1a; }
+    .totals-table td {
+      padding: 2px 0;
+      font-size: 11px;
+    }
+
+    .totals-label {
+      color: #555555;
+      text-align: left;
+      width: 150px;
+    }
+
+    .totals-value {
+      font-weight: bold;
+      text-align: right;
+      color: #1a1a1a;
+    }
 
     .totals-divider {
       border: none;
@@ -186,8 +218,19 @@
       margin: 6px 0;
     }
 
-    .grand-total-label { font-size: 14px; font-weight: bold; color: #1a1a1a; text-align: left; }
-    .grand-total-value { font-size: 18px; font-weight: bold; color: #1a1a1a; text-align: right; }
+    .grand-total-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: left;
+    }
+
+    .grand-total-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: right;
+    }
 
     .in-words {
       font-size: 9px;
@@ -199,7 +242,10 @@
     }
 
     /* ══ SIGNATURE ══ */
-    .signature-section { width: 100%; margin-top: 50px; }
+    .signature-section {
+      width: 100%;
+      margin-top: 50px;
+    }
 
     .signature-line {
       border-top: 1.5px solid #1a1a1a;
@@ -215,11 +261,27 @@
     }
 
     /* ══ UTILS ══ */
-    .align-right  { text-align: right; }
-    .align-center { text-align: center; }
-    .align-left   { text-align: left; }
-    .text-bold    { font-weight: bold; }
-    .text-muted   { color: #888888; display: inline; white-space: nowrap; }
+    .align-right {
+      text-align: right;
+    }
+
+    .align-center {
+      text-align: center;
+    }
+
+    .align-left {
+      text-align: left;
+    }
+
+    .text-bold {
+      font-weight: bold;
+    }
+
+    .text-muted {
+      color: #888888;
+      display: inline;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -235,7 +297,8 @@
           {% if business.phone_number %}<div>{{ business.phone_number }}</div>{% endif %}
           {% if business_address %}
           <div>
-            {{ business_address.address1 }}{% if business_address.address2 %}, {{ business_address.address2 }}{% endif %},
+            {{ business_address.address1 }}{% if business_address.address2 %}, {{ business_address.address2 }}{% endif
+            %},
             {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }},
             {{ business_address.country }}
           </div>
@@ -254,7 +317,9 @@
   <hr class="divider">
 
   <!-- ══ PO LABEL ══ -->
-  <div style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">Purchase Order</div>
+  <div
+    style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">
+    Purchase Order</div>
 
   <!-- ══ PO META ══ -->
   <table class="meta-table" cellpadding="0" cellspacing="0">
@@ -290,8 +355,10 @@
       <div>
         {% if vendor.city %}<strong>City:</strong> {{ vendor.city }}{% endif %}
         {% if vendor.state %}{% if vendor.city %}, {% endif %}<strong>State:</strong> {{ vendor.state }}{% endif %}
-        {% if vendor.country %}{% if vendor.city or vendor.state %}, {% endif %}<strong>Country:</strong> {{ vendor.country }}{% endif %}
-        {% if vendor.pin %}{% if vendor.city or vendor.state or vendor.country %}, {% endif %}<strong>PIN:</strong> {{ vendor.pin }}{% endif %}
+        {% if vendor.country %}{% if vendor.city or vendor.state %}, {% endif %}<strong>Country:</strong> {{
+        vendor.country }}{% endif %}
+        {% if vendor.pin %}{% if vendor.city or vendor.state or vendor.country %}, {% endif %}<strong>PIN:</strong> {{
+        vendor.pin }}{% endif %}
       </div>
     </div>
   </div>
@@ -301,12 +368,13 @@
   <table class="items-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th style="width: 36%;" class="align-left">Item Description</th>
+        <th style="width: 35%;" class="align-left">Item Description</th>
+        <th style="width: 10%;" class="align-center">Image</th>
         <th style="width: 7%;" class="align-center">Qty</th>
-        <th style="width: 15%;" class="align-center">Price/Item</th>
-        <th style="width: 14%;" class="align-center">Disc.</th>
-        <th style="width: 14%;" class="align-center">Tax</th>
-        <th style="width: 14%;" class="align-center">Total</th>
+        <th style="width: 14%;" class="align-center">Price/Item</th>
+        <th style="width: 12%;" class="align-center">Disc.</th>
+        <th style="width: 11%;" class="align-center">Tax</th>
+        <th style="width: 11%;" class="align-center">Total</th>
       </tr>
     </thead>
     <tbody>
@@ -315,14 +383,21 @@
         <td>
           <div class="item-name">{{ loop.index }}. &nbsp;{{ item.product_name or '&mdash;' }}</div>
           {% if item.description %}
-          <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
+          <div class="item-desc">{{ item.description }}</div>
           {% endif %}
           {% if item.hsn_sac_code %}
           <div style="font-size:9px; color:#aaaaaa; margin-top:2px;">HSN/SAC: {{ item.hsn_sac_code }}</div>
           {% endif %}
         </td>
+        <td class="align-center" style="vertical-align: middle;">
+          {% if item.image %}
+          <img src="{{ item.image }}" width="35" height="35">
+          {% else %}
+          <span style="color: #aaaaaa;">&mdash;</span>
+          {% endif %}
+        </td>
         <td class="align-center" style="white-space: nowrap;">
-          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">PCS</span>
+          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">{{ item.measuring_unit_name or 'PCS' }}</span>
         </td>
         <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}</td>
         <td class="align-center">
@@ -351,7 +426,7 @@
 
       <!-- SUBTOTAL ROW -->
       <tr class="subtotal-row">
-        <td colspan="2" class="align-center"
+        <td colspan="3" class="align-center"
           style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
         <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
         <td class="align-center">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>
@@ -438,7 +513,8 @@
         <div style="font-size:9px; color:#888; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
           For Vendor Acceptance
         </div>
-        <div style="border-top: 1.5px solid #1a1a1a; width: 200px; padding-top: 7px; font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.6px; color:#1a1a1a; display:inline-block;">
+        <div
+          style="border-top: 1.5px solid #1a1a1a; width: 200px; padding-top: 7px; font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.6px; color:#1a1a1a; display:inline-block;">
           Vendor Signature
         </div>
       </td>
@@ -463,4 +539,5 @@
   </div>
 
 </body>
+
 </html>

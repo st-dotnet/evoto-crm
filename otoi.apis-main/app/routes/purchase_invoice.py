@@ -99,6 +99,19 @@ def _serialize_item(inv_item: PurchaseInvoiceItem, product_map: dict) -> dict:
         row["product_name"] = p.item_name
         row["hsn_sac_code"] = p.hsn_code
         row["measuring_unit_id"] = p.measuring_unit_id
+        row["measuring_unit_name"] = p.measuring_unit.name if p.measuring_unit else "PCS"
+        
+        # Add product image
+        main_image_obj = next((img for img in (p.images or []) if img.is_main), None)
+        if not main_image_obj and p.images:
+            main_image_obj = p.images[0]
+            
+        if main_image_obj:
+            row["product_image"] = f"/static/itemImages/{p.id}/{main_image_obj.image}"
+            row["image"]          = row["product_image"]  # Consistency with frontend
+        else:
+            row["product_image"] = None
+            row["image"]          = None
     return row
 
 
@@ -808,6 +821,15 @@ def download_purchase_invoice_pdf(invoice_id):
                 row["product_name"] = p.item_name
                 row["hsn_sac_code"] = p.hsn_code
                 row["measuring_unit_id"] = p.measuring_unit_id
+                row["measuring_unit_name"] = p.measuring_unit.name if p.measuring_unit else "PCS"
+                
+                # Add image for PDF (base64 data URI)
+                from app.services.pdf_service import get_item_image_data_uri
+                main_image_obj = next((img for img in (p.images or []) if img.is_main), None)
+                if not main_image_obj and p.images:
+                    main_image_obj = p.images[0]
+                if main_image_obj:
+                    row["image"] = get_item_image_data_uri(p.id, main_image_obj.image)
             else:
                 row["product_name"] = inv_item.description or "Item"
             items_data.append(row)

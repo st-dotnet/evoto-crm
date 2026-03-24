@@ -28,7 +28,9 @@ interface PurchaseOrderItem {
     tax: number;
     amount: number;
     measuring_unit_id?: number;
+    measuring_unit_name?: string;
     description?: string | null;
+    image?: string | null;
 }
 
 interface Vendor {
@@ -132,12 +134,14 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                     item_id: item.item_id || item.uuid,
                                     item_name: item.product_name || item.description || "Item",
                                     description: item.description,
+                                    image: item.product_image || item.image || null,
                                     quantity: item.quantity || 0,
                                     price_per_item: item.unit_price || 0,
                                     discount: discount,
                                     tax: tax,
                                     amount: item.total_price || 0,
                                     measuring_unit_id: item.measuring_unit_id || 1,
+                                    measuring_unit_name: item.measuring_unit_name,
                                 };
                             }),
                             notes: data.notes,
@@ -455,14 +459,15 @@ const PurchaseOrderPreviewPage: React.FC = () => {
         return elements;
     };
 
-    const getMeasuringUnit = (unitId?: number) => {
+    const getMeasuringUnit = (item: PurchaseOrderItem) => {
+        if (item.measuring_unit_name) return item.measuring_unit_name;
         const units: { [key: number]: string } = {
             1: "PCS",
             2: "KG",
             3: "LTR",
             4: "MTR",
         };
-        return units[unitId || 1] || "PCS";
+        return units[item.measuring_unit_id || 1] || "PCS";
     };
 
     return (
@@ -545,7 +550,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                         {associatedInvoice ? (
+                        {associatedInvoice ? (
                             <button
                                 onClick={() => navigate(`/purchases/purchase-invoices/${associatedInvoice.uuid}`)}
                                 className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md mr-2 hover:bg-emerald-100 transition-colors"
@@ -573,29 +578,33 @@ const PurchaseOrderPreviewPage: React.FC = () => {
             </div>
 
             <div id="po-print-area" ref={poRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
-                <div className="mb-8 flex justify-between items-start">
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
                     {(() => {
                         const businessInfo = getAuthBusinessInfo();
                         return (
                             <>
-                                <div className="mt-12">
+                                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
                                     <h1 className="text-2xl font-semibold text-black leading-tight">
                                         {businessInfo?.name}
                                     </h1>
                                     {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
                                     {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                                    {businessInfo?.gst && <p className="text-xs text-gray-600 mt-1 font-medium">GST: {businessInfo.gst}</p>}
+                                    {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
                                     {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
                                 </div>
-                                <div className="flex flex-col items-end -mt-8">
+                                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
                                     {brandingAssets?.logo_path ? (
                                         <img
                                             src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
-                                            className="h-40 w-auto object-contain"
+                                            className="h-24 md:h-40 w-auto object-contain"
                                             alt={getAuthBusinessInfo()?.name || "Logo"}
                                         />
                                     ) : (
-                                        <img src={toAbsoluteUrl("/media/app/Evoto-Logo.png")} className="h-40 w-auto object-contain" alt="Evoto Technologies" />
+                                        <img
+                                            src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                                            className="h-24 md:h-40 w-auto object-contain"
+                                            alt="Evoto Technologies"
+                                        />
                                     )}
                                 </div>
                             </>
@@ -659,6 +668,9 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                 <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
                                     Item DESCRIPTION
                                 </th>
+                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
+                                    IMAGE
+                                </th>
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
                                 <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
@@ -678,8 +690,21 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                                             </div>
                                         </div>
                                     </td>
+                                    <td className="px-3 py-2 text-center align-top border-r border-black">
+                                        {item.image ? (
+                                            <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-200">
+                                                <img
+                                                    src={resolveImageUrl(item.image)}
+                                                    alt={item.item_name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] text-gray-500">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item)}</span>
                                     </td>
                                     <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                                         {formatCurrency(item.price_per_item)}
@@ -704,7 +729,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         </tbody>
                         <tfoot>
                             <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
+                                <td colSpan={3} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>

@@ -125,6 +125,24 @@ def get_logo_data_uri(business_id=None):
 def get_esign_data_uri(business_id):
     return get_business_asset_data_uri(business_id, 'e_sign')
 
+def get_item_image_data_uri(item_id, image_name):
+    """
+    Fetch an item image, decode the file, and return as a base64 data URI.
+    """
+    image_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(item_id), image_name)
+    
+    if os.path.exists(image_path):
+        try:
+            with open(image_path, "rb") as f:
+                data = f.read()
+                encoded_string = base64.b64encode(data).decode("utf-8")
+                ext = os.path.splitext(image_path)[1].lower()
+                mime = "image/png" if ext == ".png" else "image/jpeg"
+                return f"data:{mime};base64,{encoded_string}"
+        except:
+            pass
+    return None
+
 def get_font_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.abspath(os.path.join(current_dir, "../templates/pdf/Roboto-Regular.ttf"))
@@ -584,6 +602,7 @@ def generate_purchase_invoice_pdf(invoice, items_data: list) -> BytesIO:
             "discount": fixed_discount,
             "tax": fixed_tax,
             "total_price": item.get("total_price", 0),
+            "measuring_unit_id": item.get("measuring_unit_id")
         })
 
     # Calculate tax totals from items if not in charges
@@ -741,12 +760,14 @@ def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
         items.append({
             "product_name": item.get("product_name", ""),
             "description":  item.get("description", ""),
+            "image":        item.get("image", ""),
             "hsn_sac_code": item.get("hsn_sac_code", ""),
             "quantity":     qty,
             "unit_price":   item.get("unit_price", 0),
             "discount":     fixed_discount,
             "tax":          fixed_tax,
             "total_price":  item.get("total_price", 0),
+            "measuring_unit_id": item.get("measuring_unit_id")
         })
 
     # Totals — prefer charges JSON, fall back to per-item calculation

@@ -367,7 +367,9 @@
   <hr class="divider">
 
   <!-- ══ PURCHASE INVOICE LABEL ══ -->
-  <div style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">Purchase Invoice</div>
+  <div
+    style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">
+    Purchase Invoice</div>
 
   <!-- ══ INVOICE META ══ -->
   <table class="meta-table" cellpadding="0" cellspacing="0">
@@ -403,8 +405,10 @@
       <div>
         {% if vendor.city %}<strong>City:</strong> {{ vendor.city }}{% endif %}
         {% if vendor.state %}{% if vendor.city %}, {% endif %}<strong>State:</strong> {{ vendor.state }}{% endif %}
-        {% if vendor.country %}{% if vendor.city or vendor.state %}, {% endif %}<strong>Country:</strong> {{ vendor.country }}{% endif %}
-        {% if vendor.pin %}{% if vendor.city or vendor.state or vendor.country %}, {% endif %}<strong>PIN:</strong> {{ vendor.pin }}{% endif %}
+        {% if vendor.country %}{% if vendor.city or vendor.state %}, {% endif %}<strong>Country:</strong> {{
+        vendor.country }}{% endif %}
+        {% if vendor.pin %}{% if vendor.city or vendor.state or vendor.country %}, {% endif %}<strong>PIN:</strong> {{
+        vendor.pin }}{% endif %}
       </div>
     </div>
   </div>
@@ -423,12 +427,13 @@
   <table class="items-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th style="width: 36%;" class="align-left">Item Description</th>
+        <th style="width: 35%;" class="align-left">Item Description</th>
+        <th style="width: 10%;" class="align-center">Image</th>
         <th style="width: 7%;" class="align-center">Qty</th>
-        <th style="width: 15%;" class="align-center">Price/Item</th>
-        <th style="width: 14%;" class="align-center">Disc.</th>
-        <th style="width: 14%;" class="align-center">Tax</th>
-        <th style="width: 14%;" class="align-center">Total</th>
+        <th style="width: 14%;" class="align-center">Price/Item</th>
+        <th style="width: 12%;" class="align-center">Disc.</th>
+        <th style="width: 11%;" class="align-center">Tax</th>
+        <th style="width: 11%;" class="align-center">Total</th>
       </tr>
     </thead>
     <tbody>
@@ -437,14 +442,22 @@
         <td>
           <div class="item-name">{{ loop.index }}. &nbsp;{{ item.product_name or '&mdash;' }}</div>
           {% if item.description %}
-          <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
+          <div class="item-desc">{{ item.description }}</div>
           {% endif %}
           {% if item.hsn_sac_code %}
           <div style="font-size:9px; color:#aaaaaa; margin-top:2px;">HSN/SAC: {{ item.hsn_sac_code }}</div>
           {% endif %}
         </td>
+        <td class="align-center" style="vertical-align: middle;">
+          {% if item.image %}
+          <img src="{{ item.image }}" width="35" height="35">
+          {% else %}
+          <span style="color: #aaaaaa;">&mdash;</span>
+          {% endif %}
+        </td>
         <td class="align-center" style="white-space: nowrap;">
-          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">PCS</span>
+          {{ item.quantity }} <span class="text-muted" style="font-size:9px;">{{ item.measuring_unit_name or 'PCS'
+            }}</span>
         </td>
         <td class="align-center">
           Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
@@ -481,7 +494,7 @@
 
       <!-- SUBTOTAL ROW -->
       <tr class="subtotal-row">
-        <td colspan="2" class="align-center"
+        <td colspan="3" class="align-center"
           style="font-size:10px; color:#555555; text-transform:uppercase; letter-spacing:0.4px;">Subtotal</td>
         <td class="align-center">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal) }}</td>
         <td class="align-center">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total) }}</td>

@@ -45,6 +45,8 @@ interface PurchaseInvoiceItem {
   total_price: number;
   hsn_sac_code?: string;
   measuring_unit_id?: number;
+  measuring_unit_name?: string;
+  product_image?: string | null;
 }
 
 interface Vendor {
@@ -357,11 +359,12 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
     return result + " Only";
   };
 
-  const getMeasuringUnit = (unitId?: number) => {
+  const getMeasuringUnit = (item: PurchaseInvoiceItem) => {
+    if (item.measuring_unit_name) return item.measuring_unit_name;
     const units: { [key: number]: string } = {
       1: "PCS", 2: "KG", 3: "LTR", 4: "MTR",
     };
-    return units[unitId || 1] || "PCS";
+    return units[item.measuring_unit_id || 1] || "PCS";
   };
 
   const getPaymentStatusBadge = (status: string) => {
@@ -491,29 +494,35 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
 
       {/* Invoice Content */}
       <div id="invoice-print-area" ref={invoiceRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm border border-gray-100">
-        <div className="mb-12 flex justify-between items-start">
-          <div className="mt-12">
-            <h1 className="text-2xl font-semibold text-black">{businessInfo?.name || "Evoto Technologies"}</h1>
-            {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-            {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-            {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
-            {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
-          </div>
-          <div className="flex flex-col items-end -mt-8">
-            {brandingAssets?.logo_path ? (
-              <img
-                src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
-                className="h-40 w-auto object-contain"
-                alt={businessInfo?.name || "Logo"}
-              />
-            ) : (
-              <img
-                src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                className="h-40 w-auto object-contain"
-                alt="Evoto Technologies"
-              />
-            )}
-          </div>
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+          {(() => {
+            return (
+              <>
+                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
+                  <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
+                  {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
+                  {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
+                  {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
+                  {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+                </div>
+                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
+                  {brandingAssets?.logo_path ? (
+                    <img
+                      src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
+                      className="h-24 md:h-40 w-auto object-contain"
+                      alt={businessInfo?.name || "Logo"}
+                    />
+                  ) : (
+                    <img
+                      src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                      className="h-24 md:h-40 w-auto object-contain"
+                      alt="Evoto Technologies"
+                    />
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
@@ -555,6 +564,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           <thead>
             <tr className="bg-gray-100 border-b border-black">
               <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-1/2">Item Description</th>
+              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">IMAGE</th>
               <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">QTY</th>
               <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Price/Item</th>
               <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Disc.</th>
@@ -581,8 +591,21 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                       </div>
                     </div>
                   </td>
+                  <td className="p-2 text-center border-r border-black align-top">
+                    {item.product_image ? (
+                      <div className="w-10 h-10 mx-auto rounded border border-gray-200 overflow-hidden flex-shrink-0">
+                        <img
+                          src={resolveImageUrl(item.product_image)}
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-500">—</span>
+                    )}
+                  </td>
                   <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
-                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item)}</span>
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
@@ -604,7 +627,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           </tbody>
           <tfoot>
             <tr className="border-t border-black bg-gray-50 font-bold">
-              <td colSpan={2} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+              <td colSpan={3} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
               <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
               <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
               <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>

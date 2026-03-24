@@ -698,7 +698,7 @@ const PurchaseInvoicePage = () => {
                         </div>
 
                         <DialogTitle className="text-lg font-semibold">
-                            Delete Purchase 
+                            Delete Purchase
                         </DialogTitle>
 
                         <DialogDescription className="text-sm text-muted-foreground leading-relaxed">

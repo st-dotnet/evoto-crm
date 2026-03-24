@@ -47,6 +47,7 @@ export interface PurchaseInvoiceDetail extends PurchaseInvoiceSummary {
     total_price: number;
     hsn_sac_code?: string;
     measuring_unit_id?: number;
+    product_image?: string | null;
   }[];
   updated_at: string | null;
 }

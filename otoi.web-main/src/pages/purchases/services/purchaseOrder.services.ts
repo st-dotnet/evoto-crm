@@ -23,6 +23,7 @@ export interface PurchaseOrderItem {
   amount: number;
   measuring_unit_id?: number;
   description?: string | null;
+  product_image?: string | null;
 }
 
 // Frontend PurchaseOrderData structure
