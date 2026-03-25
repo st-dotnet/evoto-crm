@@ -242,9 +242,7 @@ def get_items():
                 main_image_obj = item.images[0]
                 
             image_url = None
-            image_url = None
             if main_image_obj:
-                image_url = f"/static/itemImages/{item.id}/{main_image_obj.image}"
                 image_url = f"/static/itemImages/{item.id}/{main_image_obj.image}"
 
             result.append({
@@ -264,7 +262,6 @@ def get_items():
                 "description": item.description or "",
                 "measuring_unit": measuring_unit.name if measuring_unit else None,
                 "measuring_unit_id": item.measuring_unit_id,
-                "image": image_url
                 "image": image_url
             })
 
@@ -295,40 +292,6 @@ def get_items():
 
 @item_blueprint.route("/", methods=["POST"])
 def create_item():
-    try:
-        # Support both JSON and multipart/form-data for unified creation
-        if request.content_type and 'multipart/form-data' in request.content_type:
-            item_data_str = request.form.get('item_data')
-            if not item_data_str:
-                return jsonify({"error": "item_data field is required in multipart request"}), 400
-            
-            import json
-            try:
-                data = json.loads(item_data_str)
-            except json.JSONDecodeError:
-                return jsonify({"error": "Invalid JSON in item_data field"}), 400
-                
-            new_files = request.files.getlist('images')
-        else:
-            data = request.json or {}
-            new_files = []
-
-        # Validate required fields
-        item_name = data.get("item_name", "").strip()
-        item_code = data.get("item_code", "").strip()
-     
-        if not item_name:
-            return jsonify({"message": "Item Name is required"}), 400
-        if not item_code:
-            return jsonify({"message": "Item Code is required"}), 400
-     
-        # Check for duplicate item_code (only among active items)
-        if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
-            return jsonify({
-                "message": "An Item code already exists",
-                "suggestion": "Please choose a different item code"
-            }), 400
-     
     try:
         # Support both JSON and multipart/form-data for unified creation
         if request.content_type and 'multipart/form-data' in request.content_type:
@@ -397,7 +360,6 @@ def create_item():
         if not measuring_unit:
             measuring_unit = MeasuringUnit.query.filter_by(name="PCS").first()
      
-     
         if not measuring_unit:
             return jsonify({
                 "message": "No valid measuring unit provided",
@@ -409,15 +371,12 @@ def create_item():
         item_type_id = data.get('item_type_id', 1)  # Default to Product
         item_type = "Service" if item_type_id == 2 else "Product"
      
-     
         if item_type_id == 2:  # Service
             purchase_price = None
             opening_stock = None
         else:  # Product
             purchase_price = data.get('purchase_price')
             opening_stock = data.get('opening_stock')
-     
-        # Create item
      
         # Create item
         item = Item(
@@ -429,7 +388,6 @@ def create_item():
             gst_tax_rate=data.get("gst_tax_rate", 0),
             purchase_price=purchase_price,
             opening_stock=opening_stock,
-            item_code=item_code,
             item_code=item_code,
             hsn_code=data.get("hsn_code") if item_type == "Product" else None,
             description=data.get("description") or ""
@@ -489,7 +447,6 @@ def create_item():
         return jsonify({
             "message": "Item created successfully",
             "item": {
-                "id": str(item.id),
                 "id": str(item.id),
                 "item_name": item.item_name,
                 "item_code": item.item_code,
@@ -653,7 +610,6 @@ def get_item(item_id):
                 {
                     "id": img.id,
                     "url": f"/static/itemImages/{item.id}/{img.image}",
-                    "url": f"/static/itemImages/{item.id}/{img.image}",
                     "name": img.name if img.name else f"Image {img.id}",
                     "is_main": img.is_main
                 } for img in item.images
@@ -673,34 +629,10 @@ def get_item(item_id):
 
 
 @item_blueprint.route("/<uuid:item_id>", methods=["PUT", "PATCH"])
-@item_blueprint.route("/<uuid:item_id>", methods=["PUT", "PATCH"])
 def update_item(item_id):
     try:
         if not isinstance(item_id, uuid.UUID):
             return jsonify({"error": "Invalid item UUID"}), 400
-            
-        # Support both JSON and multipart/form-data for unified update
-        if request.content_type and 'multipart/form-data' in request.content_type:
-            # Handle multipart/form-data
-            item_data_str = request.form.get('item_data')
-            if not item_data_str:
-                return jsonify({"error": "item_data field is required in multipart request"}), 400
-            
-            import json
-            try:
-                data = json.loads(item_data_str)
-            except json.JSONDecodeError:
-                return jsonify({"error": "Invalid JSON in item_data field"}), 400
-                
-            new_files = request.files.getlist('images')
-            images_to_delete = data.get('images_to_delete', [])
-        else:
-            # Traditional JSON request
-            data = request.get_json() or {}
-            new_files = []
-            images_to_delete = []
-
-        if not data and not new_files and not images_to_delete:
             
         # Support both JSON and multipart/form-data for unified update
         if request.content_type and 'multipart/form-data' in request.content_type:
@@ -733,12 +665,10 @@ def update_item(item_id):
         errors = {}
 
         # 1. Validation for text fields
-        # 1. Validation for text fields
         if "item_name" in data:
             new_name = data["item_name"].strip()
             if not new_name:
                 errors.setdefault("item_name", []).append("Item name cannot be empty")
-        
         
         if "item_code" in data:
             new_code = str(data["item_code"]).strip()
@@ -748,12 +678,9 @@ def update_item(item_id):
                 existing = db.session.query(Item).filter(
                     Item.item_code == new_code,
                     Item.id != item_id,
-                    Item.id != item_id,
                     Item.is_deleted.is_(False)
                 ).first()
                 if existing:
-                    errors.setdefault("item_code", []).append("Item code already exists")
-                    
                     errors.setdefault("item_code", []).append("Item code already exists")
                     
         if errors:
@@ -781,55 +708,14 @@ def update_item(item_id):
                     db.session.delete(img_obj)
 
         # 3. Handle Text Updates
-            return jsonify({"error": "Validation error", "details": errors}), 400
-
-        # Start Item Update
-        # 2. Handle Image Deletions (Atomic)
-        if images_to_delete:
-            import os
-            from app.config import Config
-            from app.models import ItemImage
-            
-            for img_id in images_to_delete:
-                img_obj = ItemImage.query.get(img_id)
-                if img_obj and img_obj.item_id == item_id:
-                    # Remove file from disk
-                    full_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(item_id), img_obj.image)
-                    if os.path.exists(full_path):
-                        try:
-                            os.remove(full_path)
-                        except Exception as e:
-                            print(f"Failed to remove file {full_path}: {e}")
-                    
-                    # Remove from DB
-                    db.session.delete(img_obj)
-
-        # 3. Handle Text Updates
         update_fields = [
-            "item_name", "item_type_id", "sales_price", "purchase_price",
-            "gst_tax_rate", "opening_stock", "description", "hsn_code"
             "item_name", "item_type_id", "sales_price", "purchase_price",
             "gst_tax_rate", "opening_stock", "description", "hsn_code"
         ]
         
-        
         for field in update_fields:
             if field in data:
                 setattr(item, field, data[field])
-        
-        if "category_id" in data:
-            if not data["category_id"]:
-                item.category_id = None
-            else:
-                category = ItemCategory.query.filter_by(uuid=data["category_id"]).first()
-                if category:
-                    item.category_id = category.uuid
-                    
-        if "measuring_unit_id" in data:
-            if data["measuring_unit_id"]:
-                measuring_unit = MeasuringUnit.query.get(data["measuring_unit_id"])
-                if measuring_unit:
-                    item.measuring_unit_id = measuring_unit.id
         
         if "category_id" in data:
             if not data["category_id"]:
@@ -915,13 +801,10 @@ def update_item(item_id):
 
         return jsonify({
             "success": True,
-            "success": True,
             "message": "Item updated successfully",
             "item": {
                 "id": str(item.id),
-                "id": str(item.id),
                 "item_name": item.item_name,
-                "item_code": item.item_code
                 "item_code": item.item_code
             }
         }), 200

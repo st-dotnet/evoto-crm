@@ -17,6 +17,59 @@ purchase_order_blueprint = Blueprint("purchase_order", __name__)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+def _date_filter_query(query, model_class, date_filter):
+    """
+    Helper to apply date-based filtering to a SQLAlchemy query.
+    Assumes model_class has a 'created_at' or 'po_date' field.
+    """
+    if not date_filter or date_filter == "all":
+        return query
+
+    now = datetime.now()
+    
+    # Try to use 'po_date' if available, otherwise 'created_at'
+    date_col = getattr(model_class, 'po_date', None)
+    if date_col is None:
+        date_col = getattr(model_class, 'created_at', None)
+    
+    if date_col is None:
+        return query
+
+    from datetime import timedelta
+    if date_filter == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "this_week":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "last_week":
+        start_date = now - timedelta(days=now.weekday() + 7)
+        end_date = start_date + timedelta(days=6)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return query.filter(date_col.between(start_date, end_date))
+    
+    elif date_filter == "this_month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "last_month":
+        first_of_this_month = now.replace(day=1)
+        last_of_last_month = first_of_this_month - timedelta(days=1)
+        first_of_last_month = last_of_last_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_of_last_month = last_of_last_month.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return query.filter(date_col.between(first_of_last_month, last_of_last_month))
+    
+    elif date_filter == "last_365":
+        start_date = now - timedelta(days=365)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+
+    return query
+
 def generate_po_number():
     """Generate a unique PO number like PO-1001."""
     last = PurchaseOrder.query.order_by(PurchaseOrder.created_at.desc()).first()
@@ -355,6 +408,10 @@ def get_purchase_orders():
         vendor_name = request.args.get("vendor_name", "").strip()
         po_number   = request.args.get("po_number", "").strip()
         status      = request.args.get("status", "").strip()
+        date_filter = request.args.get("date_filter", "last_365").strip()
+
+        # Apply date filter
+        query = _date_filter_query(query, PurchaseOrder, date_filter)
 
         if search:
             query = query.filter(

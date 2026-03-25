@@ -142,6 +142,7 @@ const PurchaseOrderPage = () => {
   const [invoiceStatusMap, setInvoiceStatusMap] = useState<
     Record<string, { invoiceId: string; invoiceNumber: string; payment_status: string; balance_due: number }>
   >();
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365');
 
   const navigate = useNavigate();
 
@@ -197,7 +198,7 @@ const PurchaseOrderPage = () => {
   // Refresh data when search changes
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [debouncedSearchTerm, searchType]);
+  }, [debouncedSearchTerm, searchType, selectedDateFilter]);
 
   // Fetch purchase orders
   const fetchPurchaseOrders = useCallback(
@@ -210,6 +211,7 @@ const PurchaseOrderPage = () => {
           vendor_name: searchType === "vendor_name" ? searchTerm : "",
           po_number: searchType === "po_number" ? searchTerm : "",
           status: selectedStatus === "all" ? "" : selectedStatus,
+          date_filter: selectedDateFilter,
           page: params.pageIndex + 1,
           per_page: params.pageSize,
           sort: "delivery_date",

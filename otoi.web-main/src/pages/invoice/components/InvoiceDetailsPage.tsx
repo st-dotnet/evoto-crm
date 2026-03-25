@@ -58,7 +58,6 @@ import { cn } from "@/lib/utils";
 import { getCustomerById } from "@/pages/parties/services/customer.service";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
-import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface InvoiceItem {
   uuid: string;
@@ -1501,16 +1500,6 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
           </SheetContent>
         </Sheet>
-
-        {/* Record Payment Modal */}
-        <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
-          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-            <DialogHeader className="px-6 py-4 border-b border-gray-200">
-              <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-gray-600" />
-                Record Payment For Invoice #{invoiceData.invoice_number}
-              </DialogTitle>
-            </DialogHeader>
         {/* Record Payment Modal */}
         <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
           <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">

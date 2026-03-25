@@ -110,8 +110,6 @@ const CreditInDetailsPage = lazy(() => import('@/pages/creditIn/components/Credi
 const DebitNotePage = lazy(() => import('@/pages/debitNote/components/DebitNotePage').then(module => ({ default: module.default })));
 const CreateDebitNotePage = lazy(() => import('@/pages/debitNote/components/CreateDebitNotePage').then(module => ({ default: module.default })));
 const DebitNoteDetailsPage = lazy(() => import('@/pages/debitNote/components/DebitNoteDetailsPage').then(module => ({ default: module.default })));
-const PaymentOutPage = lazy(() => import('@/pages/payment-out/components/PaymentOutPage').then(module => ({ default: module.PaymentOutPage })));
-const CreatePaymentOut = lazy(() => import('@/pages/payment-out/components/CreatePaymentOut').then(module => ({ default: module.CreatePaymentOut })));
 const UserDetails = lazy(() => import('@/pages/userManagement/UserDetails').then(module => ({ default: module.UserDetails })));
 const UserEdit = lazy(() => import('@/pages/userManagement/UserEdit').then(module => ({ default: module.UserEdit })));
 const PartiesUsersPage = lazy(() => import('@/pages/userManagement/PartiesUsers').then(module => ({ default: module.PartiesUsersPage })));

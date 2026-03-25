@@ -151,6 +151,7 @@ export const getPurchaseOrders = async (params?: {
   per_page?: number;
   sort?: string;
   order?: string;
+  date_filter?: string;
 }): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token)
@@ -166,6 +167,7 @@ export const getPurchaseOrders = async (params?: {
     query.append("per_page", String(params?.per_page || 5));
     if (params?.sort) query.append("sort", params.sort);
     if (params?.order) query.append("order", params.order);
+    if (params?.date_filter) query.append("date_filter", params.date_filter);
 
     const response = await axios.get(
       `${API_URL}/purchase-orders?${query.toString()}`,

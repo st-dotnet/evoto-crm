@@ -84,6 +84,7 @@ const PurchaseInvoicePage = () => {
     const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365');
 
     // Record Payment State
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -102,7 +103,7 @@ const PurchaseInvoicePage = () => {
     // Refresh when status changes (search changes trigger refreshKey in their handlers)
     useEffect(() => {
         setRefreshKey(prev => prev + 1);
-    }, [selectedStatus]);
+    }, [selectedStatus, selectedDateFilter]);
 
     // Fetch vendor names for autocomplete suggestions
     const fetchAutocompleteData = useCallback(async () => {
@@ -196,7 +197,8 @@ const PurchaseInvoicePage = () => {
                 search: debouncedSearchTerm,
                 vendor_name: searchType === 'vendor_name' ? debouncedSearchTerm : '',
                 invoice_number: searchType === 'invoice_number' ? debouncedSearchTerm : '',
-                payment_status: selectedStatus === 'all' ? '' : selectedStatus
+                payment_status: selectedStatus === 'all' ? '' : selectedStatus,
+                date_filter: selectedDateFilter
             });
 
             if (response.success && response.data) {
@@ -227,7 +229,7 @@ const PurchaseInvoicePage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchTerm, searchType, selectedStatus]);
+    }, [debouncedSearchTerm, searchType, selectedStatus, selectedDateFilter]);
 
 
     const handleDeleteConfirm = async () => {
@@ -498,11 +500,33 @@ const PurchaseInvoicePage = () => {
                         </DropdownMenu>
                     </div>
 
-                    <div className="w-36">
-                        <Button variant="outline" size="sm" className="h-8 w-full gap-1 text-gray-600">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only">Last 365 Days</span>
-                        </Button>
+                    <div className="w-44">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 w-full gap-1 text-gray-600">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span className="truncate">
+                                        {selectedDateFilter === 'today' && 'Today'}
+                                        {selectedDateFilter === 'this_week' && 'This Week'}
+                                        {selectedDateFilter === 'last_week' && 'Last Week'}
+                                        {selectedDateFilter === 'this_month' && 'This Month'}
+                                        {selectedDateFilter === 'last_month' && 'Last Month'}
+                                        {selectedDateFilter === 'last_365' && 'Last 365 Days'}
+                                        {selectedDateFilter === 'all' && 'All Time'}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[180px]">
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('today')}>Today</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_week')}>This Week</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_week')}>Last Week</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_month')}>This Month</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_month')}>Last Month</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_365')}>Last 365 Days</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedDateFilter('all')}>All Time</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     <Button
                         size="sm"

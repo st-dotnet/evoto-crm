@@ -88,6 +88,7 @@ export const listPurchaseInvoices = async (params: {
   vendor_name?: string;
   invoice_number?: string;
   payment_status?: string;
+  date_filter?: string;
 }) => {
   try {
     const res = await axios.get(`${API_URL}/purchase-invoices/`, { params });

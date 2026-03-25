@@ -19,7 +19,6 @@ import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
-import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface QuotationItem {
   id: string;
