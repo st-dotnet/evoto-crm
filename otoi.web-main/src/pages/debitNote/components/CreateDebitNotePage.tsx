@@ -18,6 +18,7 @@ import AddItemPage from '../../quotation/components/AdditemPage';
 import CreateItemModal from '../../items/CreateItemModal';
 import { ShippingAddressModal } from '@/pages/parties/blocks/customers/ShippingAddressModal';
 import type { ShippingAddress } from '@/pages/parties/blocks/customers/customer-models';
+import { ModalVendor } from '@/pages/parties/blocks/vendors/ModalVendor';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { getCustomerNamesDropdown, getAllCustomersDropdown, getInvoicesForParty, createDebitNote, getDebitNoteById, updateDebitNote, getDebitNotes, getVendorById, getCustomerById, checkDebitNoteExistsForInvoice, updatePurchaseInvoiceStatus } from '../service/debitNote.service';
@@ -93,7 +94,7 @@ const CreateDebitNotePage = () => {
     const urlParams = new URLSearchParams(location.search);
     const invoiceId = urlParams.get('invoice_id');
     const vendorId = urlParams.get('vendor_id');
-
+    
     // Business profile state
     const [businessProfile, setBusinessProfile] = useState({
         name: "Evoto Technologies",
@@ -113,10 +114,12 @@ const CreateDebitNotePage = () => {
     const [showAddItemPage, setShowAddItemPage] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
+    const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isPartiesLoading, setIsPartiesLoading] = useState(false);
     const [isCreatingParty, setIsCreatingParty] = useState(false);
     const [vendors, setVendors] = useState<any[]>([]);
+    const [parties, setParties] = useState<any[]>([]);
     const [selectedParty, setSelectedParty] = useState<Party | null>(null);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [debitNoteShippingAddressId, setDebitNoteShippingAddressId] = useState<string | null>(null);
@@ -370,6 +373,7 @@ const CreateDebitNotePage = () => {
     };
 
     const handleCustomerSelect = (vendor: Party) => {
+        console.log('Selected vendor:', vendor);
         setSelectedParty(vendor);
         setSelectedCustomer(vendor.customerData || null);
         setIsPartyDialogOpen(false);
@@ -524,6 +528,20 @@ const CreateDebitNotePage = () => {
         return matches;
     });
 
+    // Filter parties based on search query
+    const filteredParties = parties.filter((p) => {
+        const q = searchQuery.toLowerCase();
+        const matches = p.name.toLowerCase().includes(q) || (p.mobile && p.mobile.toLowerCase().includes(q));
+        return matches;
+    });
+
+    // Function to handle vendor creation success
+    const handleVendorCreated = () => {
+        setIsVendorModalOpen(false);
+        // Refresh the vendors list
+        fetchParties();
+    };
+
     // Function to fetch vendors
     const fetchParties = async () => {
         setIsPartiesLoading(true);
@@ -536,11 +554,21 @@ const CreateDebitNotePage = () => {
                     name: vendor.company_name || vendor.vendor_name || 'Unknown Vendor',
                     balance: 0,
                     mobile: vendor.mobile,
+                    email: vendor.email,
+                    address1: vendor.address1,
+                    address2: vendor.address2,
+                    city: vendor.city,
+                    state: vendor.state,
+                    country: vendor.country,
+                    pin: vendor.pin,
+                    gst: vendor.gst,
                     customerData: vendor,
                 }));
                 setVendors(vendorsList);
+                setParties(vendorsList);
             } else {
                 setVendors([]);
+                setParties([]);
             }
         } catch (error) {
             console.error('Error fetching vendors:', error);
@@ -852,6 +880,27 @@ const CreateDebitNotePage = () => {
                     if (response.success && response.data) {
                         const invoice = response.data;
                         
+                        // Set vendor/customer from invoice or URL parameter
+                        const invoiceVendorId = invoice.vendor_id || invoice.vendor?.uuid;
+                        const finalVendorId = vendorId || invoiceVendorId;
+                        
+                        if (finalVendorId) {
+                            // Find and select the vendor
+                            const vendor = parties.find(party => party.uuid === finalVendorId);
+                            if (vendor) {
+                                setSelectedCustomer(vendor);
+                                setSelectedParty(vendor);
+                            }
+                        }
+                        
+                        // Set invoice linking details
+                        setDebitNoteData(prev => ({
+                            ...prev,
+                            linkToInvoice: invoice.invoice_number,
+                            linkToInvoiceId: invoice.uuid || invoiceId,
+                            status: 'credited'
+                        }));
+                        
                         const transformedItems = response.data.items.map((item: any) => ({
                             uuid: item.uuid || Date.now().toString() + Math.random(),
                             item_id: item.item_id,
@@ -879,7 +928,19 @@ const CreateDebitNotePage = () => {
             
             handleInvoiceFromParam();
         }
-    }, [invoiceId, isEditMode]);
+    }, [invoiceId, isEditMode, parties, vendorId]);
+
+    // Handle vendor_id parameter for creating debit note from purchase invoice without invoice_id
+    useEffect(() => {
+        if (vendorId && !invoiceId && !isEditMode && parties.length > 0) {
+            // When creating debit note with just vendor_id, find and select the vendor
+            const vendor = parties.find(party => party.uuid === vendorId);
+            if (vendor) {
+                setSelectedCustomer(vendor);
+                setSelectedParty(vendor);
+            }
+        }
+    }, [vendorId, invoiceId, isEditMode, parties]);
 
     // Simple edit mode loader - load debit note data when in edit mode
     useEffect(() => {
@@ -1256,31 +1317,31 @@ const CreateDebitNotePage = () => {
                                                 </div>
                                                 <div className="mt-2 space-y-1">
                                                     <p>
-                                                        {(selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city) && (
+                                                        {(selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city) ? (
                                                             <span>
                                                                 <span className="font-medium">City:</span>{" "}
                                                                 {selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city},{" "}
                                                             </span>
-                                                        )}
-                                                        {(selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state) && (
+                                                        ) : null}
+                                                        {(selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state) ? (
                                                             <span>
                                                                 <span className="font-medium">State:</span>{" "}
                                                                 {selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state},{" "}
                                                             </span>
-                                                        )}
-                                                        {(selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin) && (
+                                                        ) : null}
+                                                        {(selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin) ? (
                                                             <span>
                                                                 <span className="font-medium">PIN:</span>{" "}
                                                                 {selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin}
                                                             </span>
-                                                        )}
-                                                        {(selectedParty.vendor?.country || selectedParty.country || selectedParty.customerData?.country) && (
+                                                        ) : null}
+                                                        {(selectedParty.vendor?.country || selectedParty.country || selectedParty.customerData?.country) ? (
                                                             <span>
                                                                 ,{" "}
                                                                 <span className="font-medium">Country:</span>{" "}
                                                                 {selectedParty.vendor?.country || selectedParty.country || selectedParty.customerData?.country}
                                                             </span>
-                                                        )}
+                                                        ) : null}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1950,7 +2011,18 @@ const CreateDebitNotePage = () => {
                                                     <UserPlus className="h-5 w-5 text-gray-600" />
                                                 </div>
                                                 <h3 className="mt-3 text-sm font-medium text-gray-900">No vendors found</h3>
-                                                <p className="mt-1 text-sm text-gray-500">Try adjusting your search query.</p>
+                                                <p className="mt-1 text-sm text-gray-500">Try adjusting your search query or create a new vendor.</p>
+                                                <Button
+                                                    onClick={() => {
+                                                        setIsPartyDialogOpen(false);
+                                                        setIsVendorModalOpen(true);
+                                                    }}
+                                                    className="mt-4"
+                                                    variant="outline"
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Create New Vendor
+                                                </Button>
                                             </div>
                                         ) : (
                                             <ul className="divide-y divide-gray-100">
@@ -1989,11 +2061,19 @@ const CreateDebitNotePage = () => {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3 pt-2">
-                                <Button variant="outline" onClick={() => setIsPartyDialogOpen(false)}>
-                                    Cancel
+                            
+                            {/* Create New Vendor Button */}
+                            <div className="pt-2 border-t">
+                                <Button
+                                    onClick={() => {
+                                        setIsPartyDialogOpen(false);
+                                        setIsVendorModalOpen(true);
+                                    }}
+                                    className="w-full"
+                                    variant="outline"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Create New Vendor
                                 </Button>
                             </div>
                         </div>
@@ -2255,6 +2335,19 @@ const CreateDebitNotePage = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Vendor Creation Modal */}
+                <ModalVendor
+                    open={isVendorModalOpen}
+                    onOpenChange={(open) => {
+                        setIsVendorModalOpen(open);
+                        if (!open) {
+                            // When modal is closed after successful creation, refresh vendors
+                            fetchParties();
+                        }
+                    }}
+                    vendor={null}
+                />
 
             </div>
         </div>

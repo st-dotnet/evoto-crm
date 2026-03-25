@@ -297,7 +297,10 @@ const PurchaseInvoicePage = () => {
     const handleCreateDebitNote = (invoice: PurchaseInvoice) => {
         // Navigate to debit note creation page with prefilled data
         const vendorId = invoice.vendor?.uuid || invoice.vendor_id;
-        navigate(`/debit-note/create?invoice_id=${invoice.id}&vendor_id=${vendorId}`);
+        const url = vendorId 
+            ? `/debit-note/create?invoice_id=${invoice.id}&vendor_id=${vendorId}`
+            : `/debit-note/create?invoice_id=${invoice.id}`;
+        navigate(url);
     };
 
     const columns = useMemo<ColumnDef<PurchaseInvoice>[]>(() => [
