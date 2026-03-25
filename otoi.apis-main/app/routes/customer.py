@@ -737,21 +737,21 @@ def update_customer(customer_id):
 
        # ---------------- BILLING ADDRESS VALIDATION ----------------
         # has_billing_updates = any(field in data for field in ["address1", "city", "state", "country", "pin"])
-        has_billing_updates = any(field in data for field in [
-        "billing_address1",
-        "billing_address2",
-        "billing_city",
-        "billing_state",
-        "billing_country",
-        "billing_pin"
+         has_billing_updates = any(field in data for field in [
+        "billing_address1", "address1",
+        "billing_address2", "address2",
+        "billing_city", "city",
+        "billing_state", "state",
+        "billing_country", "country",
+        "billing_pin", "pin"
         ])
-        if is_address_required and has_billing_updates:
-            customer.address1 = data.get("billing_address1", customer.address1)
-            customer.address2 = data.get("billing_address2", customer.address2)
-            customer.city = data.get("billing_city", customer.city)
-            customer.state = data.get("billing_state", customer.state)
-            customer.country = data.get("billing_country", customer.country)
-            customer.pin = data.get("billing_pin", customer.pin)
+        if has_billing_updates:
+            customer.address1 = data.get("billing_address1") or data.get("address1", customer.address1)
+            customer.address2 = data.get("billing_address2") or data.get("address2", customer.address2)
+            customer.city = data.get("billing_city") or data.get("city", customer.city)
+            customer.state = data.get("billing_state") or data.get("state", customer.state)
+            customer.country = data.get("billing_country") or data.get("country", customer.country)
+            customer.pin = data.get("billing_pin") or data.get("pin", customer.pin)
 
         # ---------------- SHIPPING UPDATE ----------------
         # Check if we're adding/updating shipping addresses
