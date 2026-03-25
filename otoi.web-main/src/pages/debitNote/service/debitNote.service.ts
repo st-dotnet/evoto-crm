@@ -581,7 +581,7 @@ export const getVendorsDropdown = async (): Promise<ApiResponse> => {
 
   try {
     const response = await axios.get(
-      `${API_URL}/vendors/`,
+      `${API_URL}/vendors/?items_per_page=1000`, // Get all vendors for dropdown
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -612,7 +612,7 @@ export const getInvoicesForParty = async (partyId: string): Promise<ApiResponse>
     params.append('vendor_id', partyId);
     
     // Add pagination parameters to get all invoices for this vendor
-    params.append('per_page', '1000'); // Get all invoices for this vendor
+    params.append('per_page', '5'); // Get all invoices for this vendor
 
     const response = await axios.get(
       `${API_URL}/purchase-invoices/?${params.toString()}`,
