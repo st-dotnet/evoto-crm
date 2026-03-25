@@ -13,14 +13,20 @@ export const resolveImageUrl = (path: string | null | undefined): string => {
     return path;
   }
 
-  // Get API base URL from env (e.g. "http://host/api")
+  // Get API base URL from env (e.g. "http://host/api" or "https://domain.com/api")
   const apiUrl = import.meta.env.VITE_APP_API_URL || '';
 
   // Ensure we don't have double slashes
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  // Flask serves static files at /static/... (static_url_path="/static")
-  // Strip /api from apiUrl to get the server root, then append /static path
+  // Flask now serves static files at /api/static/... (static_url_path="/api/static")
+  // So for /static/ paths, use the full apiUrl (which already contains /api)
+  if (cleanPath.startsWith('/static/')) {
+    const baseUrl = apiUrl.replace(/\/api$/, '').replace(/\/api\/$/, '');
+    return `${baseUrl}/api${cleanPath}`;
+  }
+
+  // For non-static paths, strip /api to get the server root
   const baseUrl = apiUrl.replace(/\/api$/, '').replace(/\/api\/$/, '');
   return `${baseUrl}${cleanPath}`;
 };

@@ -737,7 +737,7 @@ def update_customer(customer_id):
 
        # ---------------- BILLING ADDRESS VALIDATION ----------------
         # has_billing_updates = any(field in data for field in ["address1", "city", "state", "country", "pin"])
-         has_billing_updates = any(field in data for field in [
+        has_billing_updates = any(field in data for field in [
         "billing_address1", "address1",
         "billing_address2", "address2",
         "billing_city", "city",

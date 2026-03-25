@@ -19,7 +19,7 @@ import os
 def create_app():
     # Use absolute path for the static folder (sibling to 'app')
     static_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
-    app = Flask(__name__, static_folder=static_folder, static_url_path="/static")
+    app = Flask(__name__, static_folder=static_folder, static_url_path="/api/static")
     app.config.from_object("app.config.Config")
     
     # Disable strict slash matching to prevent 308 redirects
@@ -106,6 +106,14 @@ def create_app():
         for directory in required_dirs:
             if directory and not os.path.exists(directory):
                 os.makedirs(directory, exist_ok=True)
+
+    from flask import send_from_directory
+    @app.route('/static/<path:filename>')
+    def serve_static_fallback(filename):
+        # Fallback route in case Nginx strips the /api/ prefix and passes /static/... 
+        # to the backend instead of /api/static/...
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static')
+        return send_from_directory(static_dir, filename)
 
     return app
 
