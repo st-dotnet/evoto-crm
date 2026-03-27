@@ -639,7 +639,7 @@ const CreditInDetailsPage: React.FC = () => {
               onClick={() => navigate("/sales/credit-note")}
             >
               <ArrowLeft className="h-5 w-5" />
-            </button>
+            </Button>
             <div>
               <h1 className="text-xl font-semibold text-black">
                 Credit Note #{creditNoteData.credit_note_number}

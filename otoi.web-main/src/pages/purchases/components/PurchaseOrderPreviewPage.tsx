@@ -1,810 +1,1288 @@
 import React, { useState, useEffect, useRef } from "react";
+
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, FileText, CreditCard, Share, Mail } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+import { ArrowLeft, Download, Printer, FileText, CreditCard } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { KeenIcon } from "@/components";
+
 import { toast } from "sonner";
+
+import axios from "axios";
+
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
-import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
+
+import { createPurchaseInvoiceFromPO } from "../services/purchaseInvoice.services";
+
 import { useAuthContext } from "@/auth/useAuthContext";
+
 import { SpinnerDotted } from "spinners-react";
+
 import { toAbsoluteUrl } from "@/utils/Assets";
-import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
-import { resolveImageUrl } from "@/utils/imageUtils";
+
+
+
 interface PurchaseOrderItem {
+
     id: string;
+
     item_id: string;
+
     item_name: string;
+
     hsn_sac?: string;
+
     quantity: number;
+
     price_per_item: number;
+
     discount: number;
+
     tax: number;
+
     amount: number;
+
     measuring_unit_id?: number;
-    measuring_unit_name?: string;
+
     description?: string | null;
-    image?: string | null;
+
 }
+
+
 
 interface Vendor {
+
     uuid: string;
+
     vendor_name: string;
+
     company_name?: string;
+
     mobile: string;
+
     email?: string | null;
+
     gst?: string;
+
     pin?: string;
+
     address1?: string;
+
     address2?: string;
+
     city?: string;
+
     state?: string;
+
     country?: string;
+
 }
+
+
 
 interface PurchaseOrderData {
+
     poNo: string;
+
     poDate: string;
+
     deliveryDate: string;
+
     status: string;
+
     selectedVendor: Vendor | null;
+
     poItems: PurchaseOrderItem[];
+
     notes?: string;
+
     terms?: string;
+
     business?: any;
+
 }
 
+
+
 const PurchaseOrderPreviewPage: React.FC = () => {
+
     const navigate = useNavigate();
+
     const location = useLocation();
+
     const { id } = useParams();
+
     const { currentUser } = useAuthContext();
+
     const [isLoading, setIsLoading] = useState(false);
+
     const [fetchedData, setFetchedData] = useState<PurchaseOrderData | null>(null);
-    const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
-    const [isFetchingShareData, setIsFetchingShareData] = useState(false);
+
+    const [businessProfile, setBusinessProfile] = useState<any>(null);
+
     const [isConverting, setIsConverting] = useState(false);
+
     const [associatedInvoice, setAssociatedInvoice] = useState<any>(null);
+
     const poRef = useRef<HTMLDivElement>(null);
 
+
+
     const poData: PurchaseOrderData = fetchedData ||
+
         location.state?.poData || {
+
         poNo: "",
+
         poDate: "",
+
         deliveryDate: "",
+
         status: "",
+
         selectedVendor: null,
+
         poItems: [],
+
     };
 
+
+
     useEffect(() => {
-        const fetchBrandingAssets = async () => {
+
+        const fetchBusinessProfile = async () => {
+
             try {
-                const response = await getGlobalAssets();
-                if (response.success && response.data) {
-                    setBrandingAssets(response.data);
-                }
+
+                const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/user/profile`);
+
+                const user = response.data.data || response.data;
+
+                const business = user?.businesses?.[0] || user?.business_profile || user;
+
+
+
+                setBusinessProfile({
+
+                    name: business?.company_name || business?.name || business?.business_name || user?.company_name || "Evoto Technologies",
+
+                    email: business?.email || user?.email,
+
+                    phone: business?.phone_number || business?.phone || business?.mobile || user?.phone || user?.mobile,
+
+                    address: [business?.address || user?.address, user?.city, user?.state, user?.country].filter(Boolean).join(", "),
+
+                    gst: business?.gst || business?.gstin || user?.gst || user?.gstin,
+
+                });
+
             } catch (error) {
-                console.error("Failed to fetch branding assets", error);
+
+                console.error("Failed to fetch full business profile via API", error);
+
             }
+
         };
-        fetchBrandingAssets();
+
+        fetchBusinessProfile();
+
     }, []);
 
+
+
     useEffect(() => {
+
         if (id && !location.state?.poData) {
+
             const fetchData = async () => {
+
                 setIsLoading(true);
+
                 try {
+
                     const response = await getPurchaseOrderById(id);
+
                     if (response.success && response.data) {
+
                         const data = response.data;
 
+
+
                         const transformedData: PurchaseOrderData = {
+
                             poNo: data.po_number,
+
                             poDate: data.po_date,
+
                             deliveryDate: data.delivery_date,
+
                             status: data.status,
+
                             selectedVendor: data.vendor,
+
                             poItems: data.items.map((item: any) => {
+
                                 // Extract discount percentage correctly
+
                                 let discount = 0;
+
                                 if (typeof item.discount === 'object' && item.discount !== null) {
+
                                     discount = item.discount.discount_percentage || 0;
+
                                 } else {
+
                                     discount = item.discount_percentage || item.discount || 0;
+
                                 }
+
+
 
                                 // Extract tax percentage correctly
+
                                 let tax = 0;
+
                                 if (typeof item.tax === 'object' && item.tax !== null) {
+
                                     tax = item.tax.tax_percentage || 0;
+
                                 } else {
+
                                     tax = item.tax_percentage || item.tax || 0;
+
                                 }
 
+
+
                                 return {
+
                                     id: item.uuid,
+
                                     item_id: item.item_id || item.uuid,
+
                                     item_name: item.product_name || item.description || "Item",
+
                                     description: item.description,
-                                    image: item.product_image || item.image || null,
+
                                     quantity: item.quantity || 0,
+
                                     price_per_item: item.unit_price || 0,
+
                                     discount: discount,
+
                                     tax: tax,
+
                                     amount: item.total_price || 0,
+
                                     measuring_unit_id: item.measuring_unit_id || 1,
-                                    measuring_unit_name: item.measuring_unit_name,
+
                                 };
+
                             }),
+
                             notes: data.notes,
+
                             terms: data.terms_and_conditions,
+
                             business: data.business,
+
                         };
+
                         setFetchedData(transformedData);
+
                         if (data.invoice) {
+
                             setAssociatedInvoice(data.invoice);
+
                         }
+
                     }
+
                 } catch (error) {
+
                     toast.error("Failed to load purchase order details");
+
                 } finally {
+
                     setIsLoading(false);
+
                 }
+
             };
+
             fetchData();
+
         }
+
     }, [id, location.state]);
 
+
+
     const calculateTotals = () => {
+
         const items = poData.poItems || [];
+
         const subtotal = items.reduce(
+
             (sum, item) => sum + item.price_per_item * item.quantity,
+
             0,
+
         );
+
         const totalDiscount = items.reduce(
+
             (sum, item) =>
+
                 sum + (item.price_per_item * item.quantity * item.discount) / 100,
+
             0,
+
         );
+
         const totalTax = items.reduce(
+
             (sum, item) =>
+
                 sum +
+
                 (item.price_per_item *
+
                     item.quantity *
+
                     (1 - item.discount / 100) *
+
                     item.tax) /
+
                 100,
+
             0,
+
         );
+
         const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
+
+
         const taxableAmount = subtotal - totalDiscount;
+
         const effectiveTaxRate =
+
             taxableAmount > 0 ? (totalTax / taxableAmount) * 100 : 0;
 
+
+
         return {
+
             subtotal,
+
             totalDiscount,
+
             totalTax,
+
             totalAmount,
+
             totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+
             totalCGST: totalTax / 2,
+
             totalSGST: totalTax / 2,
+
             primaryTax: effectiveTaxRate,
+
         };
+
     };
+
+
 
     const totals = calculateTotals();
 
-    const handleConvertToInvoice = () => {
-        const poId = id || location.state?.poId;
-        if (!poId) {
-            toast.error("Purchase order ID not found. Please save the purchase order first.");
-            return;
-        }
 
-        // Navigate to CreatePurchaseInvoicePage with PO data
-        navigate('/purchases/purchase-invoices/new', {
-            state: {
-                purchaseOrderId: poId,
-                purchaseOrderData: poData,
-                fromPurchaseOrder: true
-            }
-        });
-    };
 
-    // const handleDownloadPDF = async () => {
-    //     if (!id) return;
-    //     const downloadToast = toast.loading("Generating PDF...");
-    //     try {
-    //         const token = (() => {
-    //             try {
-    //                 const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
-    //                 if (!authData) return null;
-    //                 const parsedAuth = JSON.parse(authData);
-    //                 return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
-    //             } catch { return null; }
-    //         })();
+    const handleConvertToInvoice = async () => {
 
-    //         const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-orders/${id}/pdf`, {
-    //             headers: { 'Authorization': `Bearer ${token}` }
-    //         });
+        if (!id || isConverting) return;
 
-    //         if (!response.ok) throw new Error('Failed to generate PDF');
+        setIsConverting(true);
 
-    //         const blob = await response.blob();
-    //         const url = window.URL.createObjectURL(blob);
-    //         const a = document.createElement('a');
-    //         a.href = url;
-    //         a.download = `PurchaseOrder-${poData.poNo || "Draft"}.pdf`;
-    //         document.body.appendChild(a);
-    //         a.click();
-    //         a.remove();
-    //         window.URL.revokeObjectURL(url);
+        const res = await createPurchaseInvoiceFromPO(id);
 
-    //         toast.success("PDF downloaded successfully", { id: downloadToast });
-    //     } catch (error) {
-    //         console.error("PDF generation error:", error);
-    //         toast.error("Failed to generate PDF", { id: downloadToast });
-    //     }
-    // };
+        setIsConverting(false);
 
-    const handleDownloadPDF = async () => {
-        if (!id) return;
-        const downloadToast = toast.loading("Generating PDF...");
-        try {
-            const token = (() => {
-                try {
-                    const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
-                    if (!authData) return null;
-                    const parsedAuth = JSON.parse(authData);
-                    return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
-                } catch { return null; }
-            })();
+        if (res.success) {
 
-            const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/purchase-orders/${id}/pdf`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            toast.success(`Purchase Invoice ${res.data.invoice_number} created successfully.`);
+
+            setAssociatedInvoice({
+
+                uuid: res.data.invoice_uuid,
+
+                invoice_number: res.data.invoice_number,
+
+                payment_status: res.data.payment_status,
+
+                balance_due: res.data.total_amount
+
             });
 
-            if (!response.ok) throw new Error('Failed to generate PDF');
+        } else if (res.data?.invoice_uuid) {
 
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `PurchaseOrder-${poData.poNo || "Draft"}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
+            toast.info(`Purchase Invoice already exists.`);
 
-            toast.success("PDF downloaded successfully", { id: downloadToast });
-        } catch (error) {
-            console.error("PDF generation error:", error);
-            toast.error("Failed to generate PDF", { id: downloadToast });
+            setAssociatedInvoice({
+
+                uuid: res.data.invoice_uuid,
+
+                invoice_number: res.data.invoice_number,
+
+                payment_status: "unpaid"
+
+            });
+
+        } else {
+
+            toast.error(res.error || "Failed to create purchase invoice");
+
         }
+
     };
+
+
 
     const handlePrintPDF = () => {
+
         const originalTitle = document.title;
+
         document.title = `PurchaseOrder-${poData.poNo || "Draft"}`;
+
         window.print();
+
         document.title = originalTitle;
+
     };
 
-    const handleShareWhatsApp = async () => {
-        if (!id || !poData) return;
-        setIsFetchingShareData(true);
-        const fetchToast = toast.loading("Preparing share options...");
-        try {
-            const response = await getShareData(id, 'purchase_order');
-            if (response.success && response.data) {
-                const { message, contact } = response.data;
-                const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
-                window.open(whatsappUrl, "_blank");
-                toast.success("Opening WhatsApp...", { id: fetchToast });
-            } else {
-                throw new Error(response.error || "Failed to fetch share data");
-            }
-        } catch (error: any) {
-            console.error("Share error:", error);
-            toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
-        } finally {
-            setIsFetchingShareData(false);
-        }
-    };
 
-    const handleShareEmail = async () => {
-        if (!id || !poData) return;
-        setIsFetchingShareData(true);
-        const fetchToast = toast.loading("Sending email...");
-        try {
-            const response = await sendShareEmail(id, 'purchase_order');
-            if (response.success) {
-                toast.success("Email sent successfully!", { id: fetchToast });
-            } else {
-                throw new Error(response.error || "Failed to send email");
-            }
-        } catch (error: any) {
-            console.error("Email error:", error);
-            toast.error(error.message || "Failed to send email", { id: fetchToast });
-        } finally {
-            setIsFetchingShareData(false);
-        }
-    };
 
     const formatCurrency = (amount: number) => {
+
         return `₹ ${amount.toFixed(2)}`;
+
     };
+
+
 
     const formatNumberInWords = (num: number) => {
+
         if (!Number.isFinite(num)) return "Zero Rupees";
+
         const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+
         const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+
         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
 
+
+
         const twoDigits = (value: number) => {
+
             if (value === 0) return "";
+
             if (value < 10) return units[value];
+
             if (value < 20) return teens[value - 10];
+
             const ten = Math.floor(value / 10);
+
             const unit = value % 10;
+
             return unit ? `${tens[ten]} ${units[unit]}` : tens[ten];
+
         };
+
+
 
         const threeDigits = (value: number) => {
+
             if (value === 0) return "";
+
             const hundred = Math.floor(value / 100);
+
             const rest = value % 100;
+
             if (hundred === 0) return twoDigits(rest);
+
             if (rest === 0) return `${units[hundred]} Hundred`;
+
             return `${units[hundred]} Hundred ${twoDigits(rest)}`;
+
         };
+
+
 
         const toIndianWords = (value: number) => {
+
             if (value === 0) return "Zero";
+
             let remainder = value;
+
             const parts: string[] = [];
 
+
+
             const crore = Math.floor(remainder / 10000000);
+
             if (crore) {
+
                 parts.push(`${threeDigits(crore)} Crore`);
+
                 remainder %= 10000000;
+
             }
+
             const lakh = Math.floor(remainder / 100000);
+
             if (lakh) {
+
                 parts.push(`${threeDigits(lakh)} Lakh`);
+
                 remainder %= 100000;
+
             }
+
             const thousand = Math.floor(remainder / 1000);
+
             if (thousand) {
+
                 parts.push(`${threeDigits(thousand)} Thousand`);
+
                 remainder %= 1000;
+
             }
+
             const rest = remainder;
+
             if (rest) parts.push(threeDigits(rest));
+
             return parts.join(" ");
+
         };
+
+
 
         const totalPaise = Math.round(Math.abs(num) * 100);
+
         if (totalPaise === 0) return "Zero Rupees";
+
         const rupees = Math.floor(totalPaise / 100);
+
         const paise = totalPaise % 100;
+
         let result = `${toIndianWords(rupees)} Rupees`;
+
         if (paise) result += ` and ${toIndianWords(paise)} Paise`;
+
         return result;
+
     };
+
+
 
     const getAuthBusinessInfo = () => {
+
+        if (businessProfile) return businessProfile;
+
+
+
         const fetchedBusiness = poData?.business;
+
         if (fetchedBusiness) {
+
             return {
+
                 name: fetchedBusiness.company_name || fetchedBusiness.name || "Evoto Technologies",
+
                 email: fetchedBusiness.email || currentUser?.email,
+
                 phone: fetchedBusiness.phone_number || fetchedBusiness.phone || currentUser?.phone,
+
                 address: fetchedBusiness.address || null,
-                gst: fetchedBusiness.gst_number || fetchedBusiness.gst || null,
+
             };
+
         }
+
+
 
         try {
+
             const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+
             if (authData) {
+
                 const parsedAuth = JSON.parse(authData);
+
                 const user = parsedAuth.user;
+
                 const business = parsedAuth.business || (user?.businesses && user.businesses[0]);
 
+
+
                 if (business) {
+
                     return {
+
                         name: business.company_name || business.name || "Evoto Technologies",
+
                         email: business.email || currentUser?.email,
+
                         address: business.address || null,
+
                         phone: business.phone_number || business.phone || "N/A",
-                        gst: business.gst_number || business.gst || null,
+
                     };
+
                 }
+
             }
+
         } catch (e) {
+
             /* silent catch */
+
         }
 
+
+
         return {
+
             name: "Evoto Technologies",
+
             email: currentUser?.email || "",
+
             address: null,
+
             phone: "N/A",
-            gst: null,
+
         };
+
     };
+
+
 
     const formatAddressLines = (vendor: Vendor | null) => {
+
         if (!vendor) return [];
+
         const elements: React.ReactNode[] = [];
+
         if (vendor.address1) elements.push(<p key="a1">{vendor.address1}</p>);
+
         if (vendor.address2) elements.push(<p key="a2">{vendor.address2}</p>);
+
         const parts = [];
+
         if (vendor.city) parts.push(vendor.city);
+
         if (vendor.state) parts.push(vendor.state);
+
         if (vendor.country) parts.push(vendor.country);
+
         if (vendor.pin) parts.push(`PIN: ${vendor.pin}`);
+
         if (parts.length > 0) elements.push(<p key="parts">{parts.join(", ")}</p>);
+
         return elements;
+
     };
 
-    const getMeasuringUnit = (item: PurchaseOrderItem) => {
-        if (item.measuring_unit_name) return item.measuring_unit_name;
+
+
+    const getMeasuringUnit = (unitId?: number) => {
+
         const units: { [key: number]: string } = {
+
             1: "PCS",
+
             2: "KG",
+
             3: "LTR",
+
             4: "MTR",
+
         };
-        return units[item.measuring_unit_id || 1] || "PCS";
+
+        return units[unitId || 1] || "PCS";
+
     };
+
+
 
     return (
+
         <div className="min-h-screen bg-gray-50 pb-20 relative">
+
             {isLoading && (
+
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
+
                     <div className="flex flex-col items-center gap-4">
+
                         <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
+
                         <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">
+
                             Fetching Purchase Order Details...
+
                         </p>
+
                     </div>
+
                 </div>
+
             )}
+
             <style>
+
                 {`
+
           @media print {
+
             .sidebar, .header, .footer, .topbar, .no-print, [data-kt-app-sidebar-enabled="true"] .app-sidebar, [data-kt-app-header-enabled="true"] .app-header {
+
               display: none !important;
+
             }
+
             body {
+
               background-color: white !important;
+
               margin: 0 !important;
+
               padding: 0 !important;
+
             }
+
             .min-h-screen {
+
               min-height: auto !important;
+
               background: none !important;
+
               padding: 0 !important;
+
             }
+
             #po-print-area {
+
               margin: 0 !important;
+
               padding: 0 !important;
+
               box-shadow: none !important;
+
               max-width: 100% !important;
+
               width: 100% !important;
+
               position: absolute !important;
+
               left: 0 !important;
+
               top: 0 !important;
+
             }
+
             * {
+
               -webkit-print-color-adjust: exact;
+
               print-color-adjust: exact;
+
             }
+
           }
+
         `}
+
             </style>
+
             <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+
                 <div className="flex items-center justify-between max-w-7xl mx-auto">
+
                     <div className="flex items-center gap-4">
+
                         <Button variant="ghost" size="icon" onClick={() => navigate("/purchases/purchase-orders")}>
+
                             <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                        <div>
-                            <h1 className="text-xl font-semibold text-black">
-                                Purchase Invoice #{poData.poNo || "Draft"}
-                            </h1>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2">
-                            <Download className="h-4 w-4" />Download PDF
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
-                            <Printer className="h-4 w-4" />Print PDF
+
                         </Button>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
-                                    <Share className="h-4 w-4" /> Share
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                                    <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
-                                    <Mail className="h-4 w-4" /> Email
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        {associatedInvoice ? (
-                            <button
-                                onClick={() => navigate(`/purchases/purchase-invoices/${associatedInvoice.uuid}`)}
-                                className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md mr-2 hover:bg-emerald-100 transition-colors"
-                                title="View Purchase Invoice"
-                            >
-                                <FileText className="h-4 w-4 text-emerald-600" />
-                                <span className="text-xs font-semibold text-emerald-700">
-                                    Invoice: {associatedInvoice.invoice_number} ({associatedInvoice.payment_status?.toUpperCase()})
-                                </span>
-                            </button>
-                        ) : (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleConvertToInvoice}
-                                disabled={!id}
-                                className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
-                            >
-                                <FileText className="h-4 w-4" />
-                                Convert to Invoice
-                            </Button>
-                        )}
+                        <div>
+
+                            <h1 className="text-xl font-semibold text-black">
+
+                                Purchase Invoice #{poData.poNo || "Draft"}
+
+                            </h1>
+
+                        </div>
+
                     </div>
+
+                    <div className="flex items-center gap-2">
+
+                        {associatedInvoice ? (
+
+                            <button
+
+                                onClick={() => navigate(`/purchases/purchase-invoices/${associatedInvoice.uuid}`)}
+
+                                className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md mr-2 hover:bg-emerald-100 transition-colors"
+
+                                title="View Purchase Invoice"
+
+                            >
+
+                                <FileText className="h-4 w-4 text-emerald-600" />
+
+                                <span className="text-xs font-semibold text-emerald-700">
+
+                                    Invoice: {associatedInvoice.invoice_number} ({associatedInvoice.payment_status?.toUpperCase()})
+
+                                </span>
+
+                            </button>
+
+                        ) : (
+
+                            <Button
+
+                                variant="outline"
+
+                                size="sm"
+
+                                onClick={handleConvertToInvoice}
+
+                                disabled={isConverting || !id}
+
+                                className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+
+                            >
+
+                                {isConverting ? (
+
+                                    <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+
+                                ) : (
+
+                                    <FileText className="h-4 w-4" />
+
+                                )}
+
+                                {isConverting ? "Converting..." : "Convert to Invoice"}
+
+                            </Button>
+
+                        )}
+
+                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
+
+                            <Printer className="h-4 w-4" />Print / Save PDF
+
+                        </Button>
+
+                    </div>
+
                 </div>
+
             </div>
+
+
 
             <div id="po-print-area" ref={poRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
-                <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+
+                <div className="mb-8 flex justify-between items-start">
+
                     {(() => {
+
                         const businessInfo = getAuthBusinessInfo();
+
                         return (
+
                             <>
-                                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
+
+                                <div className="mt-12">
+
                                     <h1 className="text-2xl font-semibold text-black leading-tight">
+
                                         {businessInfo?.name}
+
                                     </h1>
+
                                     {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
+
                                     {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                                    {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+
+                                    {businessInfo?.gst && <p className="text-xs text-gray-600 mt-1 font-medium">GST: {businessInfo.gst}</p>}
+
                                     {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
+
                                 </div>
-                                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
-                                    {brandingAssets?.logo_path ? (
-                                        <img
-                                            src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
-                                            className="h-24 md:h-40 w-auto object-contain"
-                                            alt={getAuthBusinessInfo()?.name || "Logo"}
-                                        />
-                                    ) : (
-                                        <img
-                                            src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                                            className="h-24 md:h-40 w-auto object-contain"
-                                            alt="Evoto Technologies"
-                                        />
-                                    )}
+
+                                <div className="flex flex-col items-end -mt-8">
+
+                                    <img src={toAbsoluteUrl("/media/app/Evoto-Logo.png")} className="h-40 w-auto object-contain" alt="Evoto Technologies" />
+
                                 </div>
+
                             </>
+
                         );
+
                     })()}
+
                 </div>
+
+
 
                 <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
+
                     <div className="px-4 py-1 border-b border-black bg-gray-100">
+
                         <p className="text-[11px] font-semibold text-black uppercase">Purchase Order No.</p>
+
                     </div>
+
                     <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+
                         <p className="text-[11px] font-semibold text-black uppercase">P.O. Date</p>
+
                     </div>
+
                     <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+
                         <p className="text-[11px] font-semibold text-black uppercase">Delivery Date</p>
+
                     </div>
+
                     <div className="px-4 py-1">
+
                         <p className="text-[14px] font-normal text-black">{poData.poNo}</p>
+
                     </div>
+
                     <div className="px-4 py-1 border-x border-black text-center">
+
                         <p className="text-[14px] font-normal text-black">{poData.poDate ? new Date(poData.poDate).toLocaleDateString("en-IN") : ""}</p>
+
                     </div>
+
                     <div className="px-4 py-1 text-right">
+
                         <p className="text-[14px] font-normal text-black">{poData.deliveryDate ? new Date(poData.deliveryDate).toLocaleDateString("en-IN") : ""}</p>
+
                     </div>
+
                 </div>
+
+
 
                 <div className="mb-12">
+
                     <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+
                         VENDOR DETAILS
+
                     </h3>
+
                     <div className="space-y-1 text-black text-sm">
+
                         <p className="font-semibold text-lg mb-2">
+
                             {poData.selectedVendor ? poData.selectedVendor.vendor_name || poData.selectedVendor.company_name : "N/A"}
+
                         </p>
+
                         <div className="space-y-1">
+
                             {poData.selectedVendor?.company_name && (
+
                                 <p className="text-gray-600">{poData.selectedVendor.company_name}</p>
+
                             )}
+
                             {poData.selectedVendor?.email && (
+
                                 <p className="text-black"><span className="font-semibold">Email:</span> {poData.selectedVendor.email}</p>
+
                             )}
+
                             {poData.selectedVendor?.mobile && (
+
                                 <p className="text-black"><span className="font-semibold">Mobile:</span> {poData.selectedVendor.mobile}</p>
+
                             )}
+
                             {poData.selectedVendor?.gst && (
+
                                 <p className="text-black"><span className="font-semibold">GST:</span> {poData.selectedVendor.gst}</p>
+
                             )}
+
                             <div className="text-black">
+
                                 {formatAddressLines(poData.selectedVendor)}
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
+
 
                 <div className="mb-4">
+
                     <table className="w-full border border-black">
+
                         <thead>
+
                             <tr className="border-b-2 border-black bg-gray-100">
+
                                 <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
+
                                     Item DESCRIPTION
+
                                 </th>
-                                <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">
-                                    IMAGE
-                                </th>
+
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">QTY</th>
+
                                 <th className="px-3 py-2 text-right font-semibold text-xs text-black uppercase tracking-wider border-r border-black whitespace-nowrap">PRICE/ITEM</th>
+
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">DISC.</th>
+
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider border-r border-black">TAX</th>
+
                                 <th className="px-3 py-2 text-center font-semibold text-xs text-black uppercase tracking-wider">TOTAL</th>
+
                             </tr>
+
                         </thead>
+
                         <tbody className="divide-y divide-black">
+
                             {poData.poItems?.map((item, index) => (
+
                                 <tr key={item.id}>
+
                                     <td className="px-3 py-2 align-top border-r border-black">
+
                                         <div className="flex items-start gap-1">
+
                                             <span className="font-medium text-sm text-black min-w-[20px]">{index + 1}.</span>
+
                                             <div className="flex-1">
+
                                                 <p className="font-medium text-sm text-black leading-snug">{item.item_name}</p>
+
                                                 {item.description && <p className="text-xs text-black mt-1 leading-relaxed">{item.description}</p>}
+
                                             </div>
+
                                         </div>
+
                                     </td>
-                                    <td className="px-3 py-2 text-center align-top border-r border-black">
-                                        {item.image ? (
-                                            <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-200">
-                                                <img
-                                                    src={resolveImageUrl(item.image)}
-                                                    alt={item.item_name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <span className="text-[10px] text-gray-500">—</span>
-                                        )}
-                                    </td>
+
                                     <td className="px-3 py-2 text-center text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
-                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item)}</span>
+
+                                        {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
+
                                     </td>
+
                                     <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+
                                         {formatCurrency(item.price_per_item)}
+
                                     </td>
+
                                     <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+
                                         <div className="flex flex-col items-end">
+
                                             <span>-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</span>
+
                                             {item.discount > 0 && <span className="text-[10px]">({item.discount}%)</span>}
+
                                         </div>
+
                                     </td>
+
                                     <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
+
                                         <div className="flex flex-col items-end">
+
                                             <span>{formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}</span>
+
                                             {item.tax > 0 && <span className="text-[10px]">({item.tax}%)</span>}
+
                                         </div>
+
                                     </td>
+
                                     <td className="px-3 py-2 text-right font-normal text-sm text-black align-top whitespace-nowrap">
+
                                         {formatCurrency(item.amount)}
+
                                     </td>
+
                                 </tr>
+
                             ))}
+
                         </tbody>
+
                         <tfoot>
+
                             <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                                <td colSpan={3} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
+
+                                <td colSpan={2} className="px-3 py-2 text-right text-xs uppercase tracking-widest text-black border-r border-black">SUBTOTAL</td>
+
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
+
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
+
                                 <td className="px-3 py-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
+
                                 <td className="px-3 py-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(totals.totalAmount)}</td>
+
                             </tr>
+
                         </tfoot>
+
                     </table>
+
                 </div>
+
+
 
                 <div className="mt-16 grid grid-cols-2 gap-16">
+
                     <div className="space-y-10">
+
                         {poData.notes && (
+
                             <div>
+
                                 <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-20">Notes</h4>
+
                                 <p className="text-xs text-black leading-relaxed whitespace-pre-wrap">{poData.notes}</p>
+
                             </div>
+
                         )}
+
                         {poData.terms && (
+
                             <div>
+
                                 <h4 className="text-xs font-bold text-black uppercase mb-2 border-b border-black pb-1 w-40">Terms & Conditions</h4>
+
                                 <div className="text-[10px] text-black space-y-1">
+
                                     {poData.terms?.split("\n").filter((t) => t.trim() !== "").map((term, i) => (
+
                                         <p key={i} className="leading-tight">{term}</p>
+
                                     ))}
+
                                 </div>
+
                             </div>
+
                         )}
+
                     </div>
+
+
 
                     <div>
+
                         <div className="space-y-0">
+
                             <div className="flex justify-between items-center py-2">
+
                                 <span className="text-xs font-normal text-black uppercase">Taxable Amount</span>
+
                                 <span className="text-sm font-bold text-black">{formatCurrency(totals.subtotal - totals.totalDiscount)}</span>
+
                             </div>
+
                             <div className="flex justify-between items-center py-2">
+
                                 <span className="text-xs font-normal text-black uppercase">CGST ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
+
                                 <span className="text-sm font-bold text-black">{formatCurrency(totals.totalCGST)}</span>
+
                             </div>
+
                             <div className="flex justify-between items-center py-2 border-b border-black">
+
                                 <span className="text-xs font-normal text-black uppercase">{currentUser?.isUT ? 'UTGST' : 'SGST'} ({Math.round((totals.primaryTax / 2) * 100) / 100}%)</span>
+
                                 <span className="text-sm font-bold text-black">{formatCurrency(totals.totalTax / 2)}</span>
+
                             </div>
+
                             <div className="flex justify-between items-center py-2 border-b-2 border-black">
+
                                 <span className="text-sm font-bold text-black">GRAND TOTAL</span>
+
                                 <span className="text-xl font-bold text-black">{formatCurrency(totals.totalAmount)}</span>
+
                             </div>
+
                             <div className="pt-2 text-right">
+
                                 <p className="text-xs text-black leading-tight">
+
                                     <span className="font-bold uppercase text-[12px]">In words:</span> {formatNumberInWords(totals.totalAmount)}
+
                                 </p>
+
                             </div>
+
                         </div>
-                        <div className="mt-12 md:mt-20 flex justify-end">
+
+                        <div className="mt-20 flex justify-end">
+
                             <div className="text-center">
-                                {brandingAssets?.esign_path && (
-                                    <div className="mb-0 flex justify-center">
-                                        <img
-                                            src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                                            className="h-12 md:h-16 w-auto object-contain"
-                                            alt="Signature"
-                                        />
-                                    </div>
-                                )}
-                                <div className="w-48 border-b border-black mb-1"></div>
-                                <p className="text-[10px] font-bold text-black uppercase tracking-wider">
-                                    Authorized Signatory
-                                </p>
+
+                                <div className="w-48 border-b border-black mb-2"></div>
+
+                                <p className="text-xs font-bold text-black uppercase">Authorized Signatory</p>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     );
+
 };
 
+
+
 export default PurchaseOrderPreviewPage;
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -21,20 +21,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import axios from "axios";
 import { toast } from "sonner";
 import {
   createPurchaseInvoice,
   getPurchaseInvoiceById,
-  updatePurchaseInvoice,
 } from "../services/purchaseInvoice.services";
 import AddItemPage from "../../quotation/components/AdditemPage";
 import CreateItemModal from "../../items/CreateItemModal";
 import { useAuthContext } from "@/auth/useAuthContext";
-import { resolveImageUrl } from "@/utils/imageUtils";
 
 interface Vendor {
   id: string;
@@ -50,9 +46,6 @@ interface Vendor {
   state?: string;
   country?: string;
   pin?: string;
-  first_name?: string;
-  last_name?: string;
-  contact_person?: string;
   [key: string]: any;
 }
 
@@ -67,7 +60,6 @@ interface InvoiceItem {
   id: string;
   item_id: string;
   item_name: string;
-  image?: string | null;
   hsn_sac?: string;
   quantity: number;
   price_per_item: number;
@@ -82,7 +74,6 @@ interface InvoiceItem {
 interface InventoryItem {
   item_id: string;
   item_name: string;
-  image?: string | null;
   opening_stock: number;
   sales_price: number;
   purchase_price: number | null;
@@ -104,61 +95,15 @@ const addDays = (date: string | number | Date, days: number) => {
 const CreatePurchaseInvoicePage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
   const { currentUser } = useAuthContext();
   const isEditMode = !!id;
-  const isFromPurchaseOrder = location.state?.fromPurchaseOrder;
   const today = new Date().toISOString().split("T")[0];
 
-  // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isVendorsLoading, setIsVendorsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isPartyDialogOpen, setIsPartyDialogOpen] = useState(false);
-
-  // Business Profile
   const [businessProfile, setBusinessProfile] = useState<any>(null);
 
-  // Form states
-  const [formData, setFormData] = useState<InvoiceFormData>({
-    invoiceNo: "",
-    invoiceDate: today,
-    dueDate: addDays(today, 30),
-    status: "unpaid",
-  });
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [showCreateItemModal, setShowCreateItemModal] = useState(false);
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-
-  // Financial States
-  const [amountPaid, setAmountPaid] = useState<number | string>(0);
-  const [paymentMode, setPaymentMode] = useState("Cash");
-  const [notes, setNotes] = useState("");
-  const [showNotesField, setShowNotesField] = useState(false);
-  const [termsAndConditions, setTermsAndConditions] = useState("");
-  const [showTermsField, setShowTermsField] = useState(false);
-  const [isFullyPaid, setIsFullyPaid] = useState(false);
-  const [autoRoundOff, setAutoRoundOff] = useState(false);
-  const [roundOffAmount, setRoundOffAmount] = useState(0);
-  const [tax, setTax] = useState(18);
-
-  const [additionalCharges, setAdditionalCharges] = useState<{ name: string; amount: number }[]>([]);
-  const [showAdditionalChargesField, setShowAdditionalChargesField] = useState(false);
-  const [newChargeName, setNewChargeName] = useState("");
-  const [newChargeAmount, setNewChargeAmount] = useState(0);
-
-  const [discount, setDiscount] = useState<{ type: "percentage" | "amount"; value: number }>({
-    type: "percentage",
-    value: 0,
-  });
-  const [showDiscountField, setShowDiscountField] = useState(false);
-
-  // ── Fetch business profile ───────────────────────────────────────────────────
   useEffect(() => {
     const fetchBusinessProfile = async () => {
       try {
@@ -171,11 +116,6 @@ const CreatePurchaseInvoicePage = () => {
           email: business?.email || user?.email,
           phone: business?.phone_number || business?.phone || business?.mobile || user?.phone || user?.mobile,
           address: [business?.address || user?.address, user?.city, user?.state, user?.country].filter(Boolean).join(", "),
-          address1: business?.address || user?.address,
-          city: user?.city,
-          state: user?.state,
-          country: user?.country,
-          pin: user?.pin,
           gst: business?.gst || business?.gstin || user?.gst || user?.gstin,
         });
       } catch (error) {
@@ -184,6 +124,41 @@ const CreatePurchaseInvoicePage = () => {
     };
     fetchBusinessProfile();
   }, []);
+
+  const [formData, setFormData] = useState<InvoiceFormData>({
+    invoiceNo: "",
+    invoiceDate: today,
+    dueDate: addDays(today, 30),
+    status: "unpaid",
+  });
+
+  const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [showCreateItemModal, setShowCreateItemModal] = useState(false);
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+
+  // Financial States
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [notes, setNotes] = useState("");
+  const [showNotesField, setShowNotesField] = useState(false);
+  const [termsAndConditions, setTermsAndConditions] = useState("");
+  const [showTermsField, setShowTermsField] = useState(false);
+  const [isFullyPaid, setIsFullyPaid] = useState(false);
+
+  const [additionalCharges, setAdditionalCharges] = useState<{ name: string; amount: number }[]>([]);
+  const [showAdditionalChargesField, setShowAdditionalChargesField] = useState(false);
+  const [newChargeName, setNewChargeName] = useState("");
+  const [newChargeAmount, setNewChargeAmount] = useState(0);
+
+  const [discount, setDiscount] = useState<{ type: "percentage" | "amount"; value: number }>({
+    type: "percentage",
+    value: 0,
+  });
+  const [showDiscountField, setShowDiscountField] = useState(false);
 
   // ── Fetch vendors ───────────────────────────────────────────────────────────
   const fetchVendors = useCallback(async () => {
@@ -196,11 +171,8 @@ const CreatePurchaseInvoicePage = () => {
         id: v.uuid,
         uuid: v.uuid,
         name: v.vendor_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-        first_name: v.first_name || v.vendor_name || "",
-        last_name: v.last_name || "",
-        company_name: v.company_name || "",
-        contact_person: v.contact_person || v.first_name || "",
         mobile: v.mobile || "",
+        company_name: v.company_name || "",
         email: v.email || null,
         gst: v.gst || "",
         address1: v.address1 || "",
@@ -222,123 +194,6 @@ const CreatePurchaseInvoicePage = () => {
     fetchVendors();
   }, [fetchVendors]);
 
-  const fetchPurchaseInvoice = async (invoiceId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await getPurchaseInvoiceById(invoiceId);
-      if (response.success && response.data) {
-        const data = response.data;
-        const invoiceDate = data.invoice_date ? data.invoice_date.split('T')[0] : today;
-        const dueDate = data.due_date ? data.due_date.split('T')[0] : "";
-
-        setFormData({
-          invoiceNo: data.invoice_number || "",
-          invoiceDate,
-          dueDate,
-          status: data.payment_status || "unpaid",
-        });
-
-        setAmountPaid(Number(data.amount_paid) || 0);
-        setIsFullyPaid(Number(data.balance_due) === 0);
-
-        if (data.vendor_id) {
-          const vendorRes = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${data.vendor_id}`);
-          if (vendorRes.data) {
-            const v = vendorRes.data;
-            setSelectedVendor({
-              id: v.uuid,
-              uuid: v.uuid,
-              name: v.vendor_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-              first_name: v.first_name || v.vendor_name || "",
-              last_name: v.last_name || "",
-              company_name: v.company_name || "",
-              contact_person: v.contact_person || v.first_name || "",
-              mobile: v.mobile || "",
-              email: v.email || null,
-              gst: v.gst || "",
-              address1: v.address1 || "",
-              address2: v.address2 || "",
-              city: v.city || "",
-              state: v.state || "",
-              country: v.country || "",
-              pin: v.pin || "",
-            });
-          }
-        }
-
-        if (data.items) {
-          const mappedItems = data.items.map((item: any) => ({
-            id: item.uuid || item.id,
-            item_id: item.item_id,
-            item_name: item.item_name || item.product_name || "Item",
-            image: item.image,
-            hsn_sac: item.hsn_sac || "",
-            quantity: Number(item.quantity) || 1,
-            price_per_item: Number(item.unit_price) || 0,
-            discount: Number(item.discount_percentage) || 0,
-            tax: Number(item.tax_percentage) || 18,
-            amount: Number(item.total_price) || 0,
-            measuring_unit_id: Number(item.measuring_unit_id) || 1,
-            description: item.description || "",
-          }));
-          setInvoiceItems(mappedItems);
-          if (mappedItems.length > 0) setTax(mappedItems[0].tax);
-        }
-
-        setNotes(data.additional_notes?.notes || "");
-        setTermsAndConditions(data.additional_notes?.terms_and_conditions || "");
-        setShowNotesField(!!data.additional_notes?.notes);
-        setShowTermsField(!!data.additional_notes?.terms_and_conditions);
-      }
-    } catch (error) {
-      toast.error("Failed to load invoice details");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isEditMode && id) {
-      fetchPurchaseInvoice(id);
-    }
-  }, [id, isEditMode]);
-
-  // Handle incoming data from Purchase Order
-  useEffect(() => {
-    if (isFromPurchaseOrder && location.state?.purchaseOrderData && !isEditMode) {
-      const poData = location.state.purchaseOrderData;
-
-      if (poData.selectedVendor) {
-        const v = poData.selectedVendor;
-        setSelectedVendor({
-          ...v,
-          id: v.uuid || v.id,
-          name: v.vendor_name || v.company_name || v.name || "",
-        });
-      }
-
-      if (poData.poItems) {
-        const mappedItems = poData.poItems.map((item: any) => ({
-          ...item,
-          id: item.id || `po-item-${Date.now()}-${Math.random()}`,
-          item_name: item.item_name || item.product_name || "Item",
-        }));
-        setInvoiceItems(mappedItems);
-        if (mappedItems.length > 0) setTax(mappedItems[0].tax);
-      }
-
-      if (poData.notes) {
-        setNotes(poData.notes);
-        setShowNotesField(true);
-      }
-
-      if (poData.terms) {
-        setTermsAndConditions(poData.terms);
-        setShowTermsField(true);
-      }
-    }
-  }, [isFromPurchaseOrder, location.state, isEditMode]);
-
   const filteredVendors = vendors.filter((v) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -349,107 +204,80 @@ const CreatePurchaseInvoicePage = () => {
   });
 
   // ── Calculations ────────────────────────────────────────────────────────────
-  const calculateSubtotal = () => {
-    return invoiceItems.reduce((sum, item) => {
-      const amount = Math.round(item.quantity * item.price_per_item * 100) / 100;
-      return sum + amount;
-    }, 0);
-  };
+  const calculateSubtotal = () =>
+    invoiceItems.reduce(
+      (sum, item) => sum + (item.quantity * item.price_per_item),
+      0,
+    );
 
-  const calculateDiscount = () => {
-    const total = invoiceItems.reduce(
+  const calculateItemDiscount = () =>
+    invoiceItems.reduce(
       (sum, item) => sum + (item.quantity * item.price_per_item * item.discount) / 100,
       0,
     );
+
+  const calculateTax = () =>
+    invoiceItems.reduce((sum, item) => {
+      const taxable = item.quantity * item.price_per_item * (1 - item.discount / 100);
+      return sum + (taxable * item.tax) / 100;
+    }, 0);
+
+  const calculateOverallDiscount = () => {
+    const subtotal = calculateSubtotal() - calculateItemDiscount();
+    return discount.type === "percentage"
+      ? (subtotal * discount.value) / 100
+      : discount.value;
+  };
+
+  const calculateTotal = () => {
+    const total =
+      calculateSubtotal() -
+      calculateItemDiscount() +
+      calculateTax() +
+      additionalCharges.reduce((s, c) => s + c.amount, 0) -
+      calculateOverallDiscount();
     return Math.round(total * 100) / 100;
   };
 
-  const calculateOverallDiscount = () => {
-    const subtotal = calculateSubtotal();
-    if (discount.type === "percentage") {
-      return (subtotal * discount.value) / 100;
-    } else {
-      return discount.value;
-    }
-  };
-
-  const calculateTax = () => {
-    const totalTax = invoiceItems.reduce((sum, item) => {
-      const taxableAmount = item.quantity * item.price_per_item * (1 - item.discount / 100);
-      return sum + (taxableAmount * item.tax) / 100;
-    }, 0);
-    return Math.round(totalTax * 100) / 100;
-  };
-
-  const calculateTotalBeforeRoundOff = () => {
-    const subtotal = calculateSubtotal();
-    const itemDiscount = calculateDiscount();
-    const taxAmount = calculateTax();
-    const additionalChargesTotal = additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-    const overallDiscountAmount = calculateOverallDiscount();
-
-    return (
-      subtotal -
-      itemDiscount -
-      overallDiscountAmount +
-      taxAmount +
-      additionalChargesTotal
-    );
-  };
-
-  const calculateFinalTotal = () => {
-    const totalBeforeRound = calculateTotalBeforeRoundOff();
-    if (autoRoundOff) {
-      const rounded = Math.round(totalBeforeRound);
-      // We don't set state in render
-      return rounded;
-    }
-    return totalBeforeRound + roundOffAmount;
-  };
-
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelectVendor = (vendor: Vendor) => {
     setSelectedVendor(vendor);
-    setIsPartyDialogOpen(false);
+    setIsVendorDialogOpen(false);
   };
 
   const handleAddItems = (items: InventoryItem[]) => {
     const newItems: InvoiceItem[] = items.map((item, index) => {
-      const quantity = item.quantity || 1; // Use the quantity from item modal, fallback to 1
+      const quantity = item.quantity || 1;
       const price = item.purchase_price || 0;
       const disc = 0;
       const taxRate = item.gst_tax_rate || 18;
-      const totalAmount = quantity * price * (1 - disc / 100) * (1 + taxRate / 100);
-
+      const amount = (quantity * price * (1 - disc / 100)) * (1 + taxRate / 100);
       return {
         id: `item-${Date.now()}-${index}`,
         item_id: item.item_id,
         item_name: item.item_name,
-        image: item.image,
         hsn_sac: item.hsn_code || "",
         quantity,
         price_per_item: price,
         discount: disc,
         tax: taxRate,
-        amount: Math.round(totalAmount * 100) / 100,
-        measuring_unit_id: item.measuring_unit_id || 1,
-        description: "",
+        amount,
+        measuring_unit_id: item.measuring_unit_id,
       };
     });
     setInvoiceItems((prev) => [...prev, ...newItems]);
-    if (newItems.length > 0) setTax(newItems[0].tax);
     toast.success(`${items.length} item(s) added`);
   };
 
   const handleUpdateQuantity = (id: string, qty: number) => {
     setInvoiceItems(prev => prev.map(item => {
       if (item.id === id) {
-        const amount = Math.round((qty * item.price_per_item * (1 - item.discount / 100) * (1 + item.tax / 100)) * 100) / 100;
+        const amount = (qty * item.price_per_item * (1 - item.discount / 100)) * (1 + item.tax / 100);
         return { ...item, quantity: qty, amount };
       }
       return item;
@@ -459,7 +287,7 @@ const CreatePurchaseInvoicePage = () => {
   const handleUpdatePrice = (id: string, price: number) => {
     setInvoiceItems(prev => prev.map(item => {
       if (item.id === id) {
-        const amount = Math.round((item.quantity * price * (1 - item.discount / 100) * (1 + item.tax / 100)) * 100) / 100;
+        const amount = (item.quantity * price * (1 - item.discount / 100)) * (1 + item.tax / 100);
         return { ...item, price_per_item: price, amount };
       }
       return item;
@@ -469,19 +297,18 @@ const CreatePurchaseInvoicePage = () => {
   const handleUpdateDiscount = (id: string, disc: number) => {
     setInvoiceItems(prev => prev.map(item => {
       if (item.id === id) {
-        const amount = Math.round((item.quantity * item.price_per_item * (1 - disc / 100) * (1 + item.tax / 100)) * 100) / 100;
+        const amount = (item.quantity * item.price_per_item * (1 - disc / 100)) * (1 + item.tax / 100);
         return { ...item, discount: disc, amount };
       }
       return item;
     }));
   };
 
-  const handleUpdateTax = (id: string, taxRate: number) => {
-    setTax(taxRate);
+  const handleUpdateTax = (id: string, tax: number) => {
     setInvoiceItems(prev => prev.map(item => {
       if (item.id === id) {
-        const amount = Math.round((item.quantity * item.price_per_item * (1 - item.discount / 100) * (1 + taxRate / 100)) * 100) / 100;
-        return { ...item, tax: taxRate, amount };
+        const amount = (item.quantity * item.price_per_item * (1 - item.discount / 100)) * (1 + tax / 100);
+        return { ...item, tax, amount };
       }
       return item;
     }));
@@ -515,650 +342,710 @@ const CreatePurchaseInvoicePage = () => {
 
     setIsSaving(true);
     try {
-      const finalTotal = calculateFinalTotal();
+      const totalAmount = calculateTotal();
       const payload = {
         vendor_id: selectedVendor.uuid,
         purchase_invoice_number: formData.invoiceNo || undefined,
         invoice_date: formData.invoiceDate,
         due_date: formData.dueDate,
-        total_amount: finalTotal,
-        amount_paid: isFullyPaid ? finalTotal : (Number(amountPaid) || 0),
-        balance_due: isFullyPaid ? 0 : Math.max(0, finalTotal - (Number(amountPaid) || 0)),
+        total_amount: totalAmount,
+        amount_paid: isFullyPaid ? totalAmount : amountPaid,
+        balance_due: isFullyPaid ? 0 : totalAmount - amountPaid,
         items: invoiceItems.map(item => ({
           item_id: item.item_id,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.price_per_item,
-          discount_percentage: item.discount,
-          tax_percentage: item.tax,
+          discount: { discount_percentage: item.discount },
+          tax: { tax_percentage: item.tax },
           total_price: item.amount,
-          measuring_unit_id: item.measuring_unit_id
         })),
         notes: notes,
         terms_and_conditions: termsAndConditions,
-        additional_charges: additionalCharges.reduce((s, c) => s + c.amount, 0),
-        overall_discount: calculateOverallDiscount(),
-        round_off: roundOffAmount,
-        payment_status: isFullyPaid ? "paid" : ((Number(amountPaid) || 0) > 0 ? "partial" : "unpaid"),
+        charges: {
+          subtotal: calculateSubtotal(),
+          item_discount: calculateItemDiscount(),
+          overall_discount: calculateOverallDiscount(),
+          tax_total: calculateTax(),
+          additional_charges: additionalCharges.reduce((s, c) => s + c.amount, 0),
+        }
       };
 
-      let response;
-      if (isEditMode && id) {
-        response = await updatePurchaseInvoice(id, payload);
-      } else {
-        response = await createPurchaseInvoice(payload);
-      }
-
+      const response = await createPurchaseInvoice(payload);
       if (response.success) {
-        toast.success(`Purchase Invoice ${isEditMode ? "updated" : "created"} successfully!`);
-
-        // Mark purchase order as converted if this invoice was created from a PO
-        const poState = location.state as any;
-        if (poState?.fromPurchaseOrder && poState?.purchaseOrderId && !isEditMode) {
-          try {
-            // Import purchase order service to update PO status
-            const { updatePurchaseOrder } = await import("../services/purchaseOrder.services");
-            await updatePurchaseOrder(poState.purchaseOrderId, {
-              status: 'converted'
-            });
-          } catch (error) {
-            console.error("Failed to mark purchase order as converted:", error);
-            // Don't show error to user as invoice was created successfully
-          }
-        }
-
+        toast.success("Purchase Invoice created successfully!");
         navigate(`/purchases/purchase-invoices/${response.data.invoice_uuid}`);
       } else {
-        toast.error(response.error || "Failed to save invoice");
+        toast.error(response.error || "Failed to create invoice");
       }
     } catch (err) {
-      console.error(err);
       toast.error("An unexpected error occurred");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleBackClick = () => {
-    setShowConfirmModal(true);
-  };
-
-  const handleConfirmLeave = () => {
-    setShowConfirmModal(false);
-    navigate(-1);
-  };
-
-  const handleCancelLeave = () => {
-    setShowConfirmModal(false);
-  };
-
-  useEffect(() => {
-    if (isFullyPaid) {
-      setAmountPaid(Number(calculateFinalTotal().toFixed(2)));
-    }
-  }, [isFullyPaid, invoiceItems, tax, additionalCharges, discount, roundOffAmount, autoRoundOff]);
-
-  // Address Formatting
-  const formatAddress = (vendor: any) => {
-    if (!vendor) return [];
-    const elements: React.ReactNode[] = [];
-    if (vendor.address1) elements.push(<span key="a1"><span className="font-medium">Address:</span> {vendor.address1}</span>);
-    if (vendor.address2) elements.push(<span key="a2"><span className="font-medium">Line 2:</span> {vendor.address2}</span>);
-
-    const parts = [];
-    if (vendor.city) parts.push(<span key="c"><span className="font-medium">City:</span> {vendor.city}</span>);
-    if (vendor.state) parts.push(<span key="s"><span className="font-medium">State:</span> {vendor.state}</span>);
-    if (vendor.pin) parts.push(<span key="p"><span className="font-medium">PIN:</span> {vendor.pin}</span>);
-    if (vendor.country) parts.push(<span key="co"><span className="font-medium">Country:</span> {vendor.country}</span>);
-
-    if (parts.length > 0) {
-      const joined = parts.reduce((acc: any[], curr, idx) => idx === 0 ? [curr] : [...acc, ", ", curr], []);
-      elements.push(<div key="bottom">{joined}</div>);
-    }
-    return elements;
-  };
-
   return (
-    <div className="p-6 bg-gray-50 min-h-screen space-y-6 relative">
-      {(isLoading || isSaving) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
-          <SpinnerDotted size={50} color="#1B84FF" />
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="sticky top-[70px] z-10 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBackClick}>
-            <ArrowLeft className="h-4 w-4" />
+    <div className="bg-gray-50/50 min-h-screen pb-20">
+      {/* Sticky Header */}
+      <div className="sticky top-[70px] z-20 flex items-center justify-between bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="hover:bg-gray-100 rounded-full"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
           </Button>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {isEditMode ? "Edit Purchase Invoice" : "Create Purchase Invoice"}
-          </h1>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 leading-none">
+              {isEditMode ? "Edit Purchase Invoice" : "Create Purchase Invoice"}
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">Drafting new entry</p>
+          </div>
         </div>
-        <Button
-          className="bg-[#1B84FF] hover:bg-[#0F6FE0] text-white gap-2 px-4 shadow-sm"
-          disabled={isSaving}
-          onClick={handleSaveInvoice}
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save Invoice"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="hidden sm:inline-flex text-gray-600 border-gray-300"
+          >
+            Cancel
+          </Button>
+          <Button
+            className="bg-[#1B84FF] hover:bg-[#1B84FF]/90 text-white gap-2 px-6 shadow-sm"
+            disabled={isSaving}
+            onClick={handleSaveInvoice}
+          >
+            {isSaving ? (
+              <SpinnerDotted size={16} color="white" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaving ? "Saving..." : "Save Invoice"}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Parties Card */}
-        <div className="lg:col-span-4 bg-white border rounded-xl p-5 shadow-sm space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+        {/* Top Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Parties Section */}
+          <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Bill From (Vendor) */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Bill From</h3>
-              {selectedVendor ? (
-                <div className="border rounded-xl min-h-[180px] p-4 bg-white relative">
+            <div className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col">
+              <div className="px-5 py-3 border-b bg-gray-50/50 flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-gray-700">Bill From (Vendor)</h3>
+              </div>
+              <div className="p-5 flex-1 flex flex-col justify-center min-h-[160px]">
+                {selectedVendor ? (
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{selectedVendor.name}</h4>
-                      <div className="mt-2 text-sm text-gray-700 space-y-1">
-                        {selectedVendor.company_name && <p className="font-medium">{selectedVendor.company_name}</p>}
-                        <div className="mt-2 space-y-1">
-                          {selectedVendor.mobile && (
-                            <p className="text-gray-600">
-                              <span className="font-medium">Phone:</span> {selectedVendor.mobile}
-                            </p>
-                          )}
-                          {selectedVendor.gst && (
-                            <p className="text-gray-600">
-                              <span className="font-medium">GST:</span> {selectedVendor.gst}
-                            </p>
-                          )}
-                          {formatAddress(selectedVendor).map((line, i) => (
-                            <p key={i} className="text-gray-600">{line}</p>
-                          ))}
-                        </div>
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-gray-900 text-lg leading-tight">{selectedVendor.name}</h4>
+                      {selectedVendor.company_name && (
+                        <p className="text-sm font-medium text-gray-600">{selectedVendor.company_name}</p>
+                      )}
+                      <div className="text-sm text-gray-500 space-y-1 mt-3">
+                        {selectedVendor.mobile && <p className="flex items-center gap-2">📞 {selectedVendor.mobile}</p>}
+                        {selectedVendor.gst && (
+                          <p className="flex items-center gap-2">
+                            <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded font-bold border border-blue-100 uppercase tracking-tighter">GSTIN</span> {selectedVendor.gst}
+                          </p>
+                        )}
+                        <p className="flex items-start gap-2 max-w-[300px]">📍 {selectedVendor.address1}{selectedVendor.city ? `, ${selectedVendor.city}` : ""}</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsPartyDialogOpen(true)} className="h-8">
-                      Change Vendor
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsVendorDialogOpen(true)}
+                      className="border-gray-200 text-gray-600 hover:text-primary hover:border-primary px-3 transition-all"
+                    >
+                      Change
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed rounded-xl min-h-[180px] flex flex-col items-center justify-center bg-gray-50 p-4">
-                  <Button variant="outline" onClick={() => setIsPartyDialogOpen(true)} className="gap-2 border-dashed text-blue-600 hover:bg-blue-50">
-                    <Plus className="h-4 w-4" />
-                    Add Vendor
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Ship To (Business) */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
-              {businessProfile ? (
-                <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
-                  <h4 className="font-medium text-gray-900">{businessProfile.name}</h4>
-                  <div className="mt-2 text-sm text-gray-700 space-y-1">
-                    {businessProfile.phone && (
-                      <p className="text-gray-600"><span className="font-medium">Phone:</span> {businessProfile.phone}</p>
-                    )}
-                    {businessProfile.gst && (
-                      <p className="text-gray-600"><span className="font-medium">GST:</span> {businessProfile.gst}</p>
-                    )}
-                    <p className="text-gray-600 line-clamp-3"><span className="font-medium">Address:</span> {businessProfile.address}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed rounded-xl h-[180px] bg-gray-50 flex items-center justify-center">
-                  <SpinnerDotted size={20} color="#1B84FF" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Invoice Details Card */}
-        <div className="lg:col-span-1 bg-white border rounded-xl p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Invoice Details</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Purchase Inv #</label>
-              <Input
-                name="invoiceNo"
-                value={formData.invoiceNo}
-                onChange={handleChange}
-                placeholder="Optional"
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Date</label>
-              <Input
-                type="date"
-                name="invoiceDate"
-                value={formData.invoiceDate}
-                onChange={handleChange}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <label className="text-xs text-gray-600">Due Date</label>
-              <Input
-                type="date"
-                name="dueDate"
-                value={formData.dueDate}
-                onChange={handleChange}
-                min={formData.invoiceDate}
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Items Table */}
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50/50 flex justify-between">
-          <h3 className="text-base font-semibold text-gray-800">Items</h3>
-          <Button size="sm" onClick={() => setShowAddItemModal(true)}>
-            + Add Item
-          </Button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-16 border-r">No.</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase w-20 border-r">Image</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase border-r min-w-[250px]">Item Details</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-28 border-r">HSN/SAC</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-32 border-r">Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-36 border-r">PRICE/ITEM</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-28 border-r">Disc %</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-28 border-r">Tax %</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase w-36 border-r">Amount</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase w-16">Action</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {invoiceItems.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-4 py-20 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                        <Plus className="h-6 w-6" />
-                      </div>
-                      <p className="text-sm text-gray-500">No items added. Click below to add items.</p>
-                      <Button size="sm" variant="outline" onClick={() => setShowAddItemModal(true)}>Add items from Inventory</Button>
+                ) : (
+                  <div
+                    className="flex flex-col items-center justify-center cursor-pointer group py-4"
+                    onClick={() => setIsVendorDialogOpen(true)}
+                  >
+                    <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-inner">
+                      <Plus className="h-7 w-7" />
                     </div>
-                  </td>
+                    <p className="mt-3 text-sm font-semibold text-gray-600 group-hover:text-primary">Select Vendor</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Required to create invoice</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Deliver To (Business) */}
+            <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+              <div className="px-5 py-3 border-b bg-gray-50/50 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-700">Deliver To</h3>
+              </div>
+              <div className="p-5 min-h-[160px]">
+                {businessProfile ? (
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-gray-900 text-lg leading-tight">{businessProfile.name}</h4>
+                    <div className="text-sm text-gray-500 space-y-1 mt-3">
+                      {businessProfile.phone && <p>📞 {businessProfile.phone}</p>}
+                      {businessProfile.gst && (
+                        <p className="flex items-center gap-2">
+                          <span className="bg-gray-50 text-gray-500 text-[10px] px-2 py-0.5 rounded font-bold border border-gray-200 uppercase tracking-tighter">GSTIN</span> {businessProfile.gst}
+                        </p>
+                      )}
+                      <p className="flex items-start gap-2">📍 {businessProfile.address}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center h-full text-gray-400 italic text-sm">Loading business profile...</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="lg:col-span-1 bg-white border rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3 border-b bg-gray-50/50">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Invoice Details</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-500 uppercase">Purchase Invoice #</label>
+                <div className="relative">
+                  <Input
+                    name="invoiceNo"
+                    value={formData.invoiceNo}
+                    onChange={handleChange}
+                    className="bg-gray-50/50 border-gray-200 focus:bg-white text-sm"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-500 uppercase">Invoice Date</label>
+                <div className="relative group">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors z-10" />
+                  <Input
+                    type="date"
+                    name="invoiceDate"
+                    value={formData.invoiceDate}
+                    onChange={handleChange}
+                    className="pl-10 bg-gray-50/50 border-gray-200 focus:bg-white text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-500 uppercase">Due Date</label>
+                <div className="relative group">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors z-10" />
+                  <Input
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleChange}
+                    className="pl-10 bg-gray-50/50 border-gray-200 focus:bg-white text-sm"
+                    min={formData.invoiceDate}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Items Table Section */}
+        <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50/50 flex justify-between items-center">
+            <div>
+              <h3 className="text-base font-bold text-gray-800">Item List</h3>
+              <p className="text-[11px] text-gray-500 font-medium uppercase tracking-tight">Add items from inventory or create one</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowAddItemModal(true)}
+              className="bg-primary hover:bg-primary-active text-white shadow-sm flex gap-2"
+            >
+              <Plus className="h-4 w-4 text-white" />
+              Add Item
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-[#f8fafc] border-b-2 border-gray-100">
+                <tr>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-12">#</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 min-w-[300px]">Item Details</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-28 text-center">HSN/SAC</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-36 text-center">Quantity</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-40 text-center">Price / Item</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-32 text-center">Disc. %</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-32 text-center">Tax %</th>
+                  <th className="px-4 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider border-r border-gray-100 w-44">Amount</th>
+                  <th className="px-4 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-12"></th>
                 </tr>
-              ) : (
-                invoiceItems.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50/70 group transition-colors">
-                    <td className="px-4 py-4 text-sm text-gray-500 border-r">{index + 1}</td>
-                    {/* Image Column */}
-                    <td className="px-3 py-2 text-center border-r border-gray-200">
-                      {item.image ? (
-                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
-                          <img
-                            src={resolveImageUrl(item.image)}
-                            alt={item.item_name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://placehold.co/40x40?text=No+Img';
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {invoiceItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-20">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                          <Plus className="h-8 w-8 text-blue-300" />
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-800">No items selected</h4>
+                        <p className="text-xs text-gray-500 mt-1 max-w-[240px]">Search and add items from your inventory to populate this table</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAddItemModal(true)}
+                          className="mt-5 border-blue-200 text-primary hover:bg-blue-50"
+                        >
+                          Select Your First Item
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  invoiceItems.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors group group-hover:bg-gray-50">
+                      <td className="px-4 py-4 text-xs font-bold text-gray-400 border-r border-gray-100 align-top">{index + 1}</td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top">
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-bold text-gray-900 leading-none">{item.item_name}</p>
+                          <textarea
+                            className="w-full text-[11px] text-gray-500 bg-transparent border-0 focus:ring-1 focus:ring-blue-100 rounded-lg p-1 resize-none placeholder-gray-300 italic min-h-[40px]"
+                            placeholder="Add a detailed description for this purchase..."
+                            value={item.description || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setInvoiceItems(prev => prev.map(i => i.id === item.id ? { ...i, description: val } : i));
                             }}
                           />
                         </div>
-                      ) : (
-                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
-                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-50 text-[10px] font-bold text-gray-500 border border-gray-200 font-mono tracking-widest leading-none">
+                          {item.hsn_sac || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center bg-gray-50 border border-gray-300 rounded-lg overflow-hidden h-9 w-full shadow-inner focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all">
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleUpdateQuantity(item.id, parseFloat(e.target.value) || 0)}
+                              className="w-full h-full text-center bg-transparent text-sm font-bold text-gray-800 focus:outline-none"
+                            />
+                            <div className="px-2 h-full bg-gray-100 flex items-center justify-center border-l text-[10px] font-black text-gray-400 uppercase tracking-tighter">Nos</div>
+                          </div>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 border-r">
-                      <p className="text-sm font-medium text-gray-900">{item.item_name}</p>
-                      <textarea
-                        value={item.description || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setInvoiceItems(prev => prev.map(i => i.id === item.id ? { ...i, description: val } : i));
-                        }}
-                        placeholder="Add description..."
-                        className="mt-1 w-full text-xs text-gray-500 bg-transparent border-0 focus:ring-0 p-0 resize-none hover:bg-gray-100 focus:bg-white rounded transition-colors"
-                      />
-                    </td>
-                    <td className="px-4 py-4 border-r text-xs">{item.hsn_sac || "-"}</td>
-                    <td className="px-4 py-4 border-r">
-                      <div className="flex items-center border rounded-lg bg-white h-9 shadow-inner focus-within:ring-1 focus-within:ring-blue-200">
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={e => handleUpdateQuantity(item.id, parseFloat(e.target.value) || 0)}
-                          className="w-full text-center text-sm border-0 focus:ring-0 bg-transparent"
-                        />
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top">
+                        <div className="relative group">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 z-10 transition-colors group-focus-within:text-blue-500">₹</span>
+                          <input
+                            type="number"
+                            value={item.price_per_item}
+                            onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-full h-9 pl-6 pr-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 shadow-inner transition-all"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top">
+                        <div className="relative group">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 z-10 transition-colors group-focus-within:text-red-500">%</span>
+                          <input
+                            type="number"
+                            value={item.discount}
+                            onChange={(e) => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-full h-9 pl-6 pr-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 shadow-inner transition-all text-right"
+                          />
+                        </div>
+                        {item.discount > 0 && (
+                          <p className="text-[9px] font-bold text-red-500 text-right mt-1">-₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100 align-top">
+                        <div className="relative group">
+                          <select
+                            value={item.tax}
+                            onChange={(e) => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-full h-9 px-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 shadow-inner transition-all appearance-none text-center"
+                          >
+                            <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                            <option value="28">28%</option>
+                          </select>
+                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
+                        </div>
+                        {item.tax > 0 && (
+                          <p className="text-[9px] font-bold text-green-500 text-right mt-1">+₹{((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right border-r border-gray-100 align-top pt-5">
+                        <p className="text-sm font-black text-gray-900">
+                          ₹{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-center align-top pt-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="h-8 w-8 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all rounded-full opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {invoiceItems.length > 0 && (
+                <tfoot className="bg-gray-50 border-t-2 border-gray-100">
+                  <tr className="font-bold">
+                    <td colSpan={6} className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase border-r border-gray-100">Subtotal & Tax Calculations</td>
+                    <td className="px-4 py-3 text-center border-r border-gray-100">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] text-gray-400 uppercase tracking-tighter">Tax Total</span>
+                        <span className="text-xs text-green-600">+ ₹{calculateTax().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 border-r">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">₹</span>
-                        <input
-                          type="number"
-                          value={item.price_per_item}
-                          onChange={e => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
-                          className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                        />
-                      </div>
+                    <td className="px-4 py-3 text-right bg-blue-50/50 border-r border-gray-100">
+                      <span className="text-sm font-black text-primary">₹{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </td>
-                    <td className="px-4 py-4 border-r">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
-                        <input
-                          type="number"
-                          value={item.discount}
-                          onChange={e => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
-                          className="w-full h-9 pl-5 pr-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 border-r">
-                      <select
-                        value={item.tax}
-                        onChange={e => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
-                        className="w-full h-9 text-sm border rounded-lg focus:ring-1 focus:ring-blue-200"
-                      >
-                        <option value="None">None</option>
-                        <option value="5">5%</option>
-                        <option value="12">12%</option>
-                        <option value="18">18%</option>
-                        <option value="28">28%</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-4 text-right font-medium text-gray-900 border-r">
-                      ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <button onClick={() => handleRemoveItem(item.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                    </td>
+                    <td></td>
                   </tr>
-                ))
+                </tfoot>
               )}
-            </tbody>
-            {invoiceItems.length > 0 && (
-              <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-4 border-r border-gray-200"
-                  ></td>
-                  <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
-                    Subtotal
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
-                    {calculateDiscount() > 0 &&
-                      `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
-                    {calculateTax() > 0 &&
-                      `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
-                    ₹
-                    {calculateFinalTotal().toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="px-4 py-4"></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
-
-      {/* Summary Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Notes/Terms */}
-        <div className="space-y-4">
-          <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
-            <div>
-              {!showNotesField ? (
-                <button onClick={() => setShowNotesField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                  <Plus className="h-4 w-4" /> Add Notes
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center"><label className="text-sm font-medium">Notes</label><button onClick={() => setShowNotesField(false)}><X className="h-4 w-4 text-gray-400" /></button></div>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Internal remarks..." />
-                </div>
-              )}
-            </div>
-            <div>
-              {!showTermsField ? (
-                <button onClick={() => setShowTermsField(true)} className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                  <Plus className="h-4 w-4" /> Add Terms & Conditions
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center"><label className="text-sm font-medium">Terms & Conditions</label><button onClick={() => setShowTermsField(false)}><X className="h-4 w-4 text-gray-400" /></button></div>
-                  <textarea value={termsAndConditions} onChange={e => setTermsAndConditions(e.target.value)} rows={3} className="w-full border rounded-lg p-2 text-sm" placeholder="Payment terms..." />
-                </div>
-              )}
-            </div>
+            </table>
           </div>
         </div>
 
-        {/* Totals Summary */}
-        <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Taxable Amount</span>
-              <span className="font-semibold">₹{(calculateSubtotal() - calculateDiscount()).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">SGST ({(tax / 2)}%)</span>
-              <span className="font-medium text-gray-500">₹{(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">CGST ({(tax / 2)}%)</span>
-              <span className="font-medium text-gray-500">₹{(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-            </div>
-
-            {/* Additional Charges */}
-            {!showAdditionalChargesField ? (
-              <button onClick={() => setShowAdditionalChargesField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3" /> Additional Charges</button>
-            ) : (
-              <div className="flex gap-2 p-2 bg-gray-50 rounded-lg">
-                <Input value={newChargeName} onChange={e => setNewChargeName(e.target.value)} className="h-8 text-xs" placeholder="Charge Name" />
-                <Input type="number" value={newChargeAmount || ""} onChange={e => setNewChargeAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-24 text-right" placeholder="Amount" />
-                <Button size="sm" onClick={handleAddAdditionalCharge} className="h-8">Add</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowAdditionalChargesField(false)}><X className="h-3 w-3" /></Button>
-              </div>
-            )}
-            {additionalCharges.map((c, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600 flex items-center gap-1">{c.name} <button onClick={() => handleRemoveAdditionalCharge(i)} className="text-red-400 hover:text-red-600"><X className="h-3 w-3" /></button></span>
-                <span className="font-medium">₹{c.amount.toLocaleString("en-IN")}</span>
-              </div>
-            ))}
-
-            {/* Overall Discount */}
-            {!showDiscountField ? (
-              <button onClick={() => setShowDiscountField(true)} className="text-blue-600 text-sm flex items-center gap-1"><Plus className="h-3 w-3" /> Overall Discount</button>
-            ) : (
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <span className="text-sm">Discount</span>
-                <select value={discount.type} onChange={e => setDiscount(prev => ({ ...prev, type: e.target.value as any }))} className="h-8 text-xs border rounded px-1">
-                  <option value="percentage">%</option>
-                  <option value="amount">₹</option>
-                </select>
-                <Input type="number" value={discount.value || ""} onChange={e => setDiscount(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))} className="h-8 text-xs w-20 text-right" />
-                <span className="text-sm font-medium text-red-500 ml-auto">- ₹{calculateOverallDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                <button onClick={() => { setShowDiscountField(false); setDiscount({ type: "percentage", value: 0 }); }}><X className="h-4 w-4 text-gray-400" /></button>
-              </div>
-            )}
-
-            {/* Round Off */}
-            <div className="flex items-center justify-between pt-3 border-t">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="ar" checked={autoRoundOff} onChange={e => setAutoRoundOff(e.target.checked)} className="h-3.5 w-3.5" />
-                <label htmlFor="ar" className="text-sm text-gray-600">Round Off</label>
-              </div>
-              {!autoRoundOff && (
-                <Input type="number" value={roundOffAmount || ""} onChange={e => setRoundOffAmount(parseFloat(e.target.value) || 0)} className="h-8 text-xs w-20 text-right" />
-              )}
-            </div>
-
-            {/* Final Total */}
-            <div className="flex justify-between pt-5 border-t-2 border-gray-300 items-baseline">
-              <span className="text-lg font-bold text-gray-800">Grand Total</span>
-              <span className="text-2xl font-bold text-blue-600">₹{calculateFinalTotal()?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-            </div>
-
-            {/* Payment */}
-            <div className="pt-4 space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-gray-700">Amount Paid</label>
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" checked={isFullyPaid} onChange={e => setIsFullyPaid(e.target.checked)} id="full" className="h-4 w-4" />
-                  <label htmlFor="full" className="text-xs text-gray-500">Paid full</label>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                  <Input 
-                    type="number" 
-                    value={amountPaid} 
-                    onKeyDown={(e) => {
-                      if (["-", "+", "e", "E"].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onChange={e => {
-                      const rawVal = e.target.value;
-                      if (rawVal === '') {
-                        setAmountPaid('');
-                        setIsFullyPaid(false);
-                        return;
-                      }
-                      const numVal = parseFloat(rawVal);
-                      if (Number.isNaN(numVal)) {
-                        setAmountPaid('');
-                        setIsFullyPaid(false);
-                        return;
-                      }
-                      if (numVal < 0) {
-                        setAmountPaid(0);
-                        setIsFullyPaid(false);
-                        return;
-                      }
-                      setAmountPaid(rawVal);
-                      if (numVal !== Number(calculateFinalTotal().toFixed(2))) setIsFullyPaid(false);
-                    }} 
-                    className="h-10 pl-7 text-base font-medium" 
-                    disabled={isFullyPaid} 
-                  />
-                </div>
-                <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="h-10 text-sm border rounded-lg px-2 bg-white min-w-[100px]">
-                  <option>Cash</option>
-                  <option>UPI</option>
-                  <option>Bank Transfer</option>
-                  <option>Card</option>
-                  <option>Cheque</option>
-                </select>
-              </div>
-              <div className="flex justify-between text-blue-700 pt-2 border-t border-blue-200">
-                <span className="text-xs font-bold uppercase tracking-wider">Balance Due</span>
-                <span className="text-lg font-bold">₹{Math.max(0, (calculateFinalTotal() - (Number(amountPaid) || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Part Selection Dialog */}
-      <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader><DialogTitle>Choose Vendor</DialogTitle></DialogHeader>
-          <div className="p-4 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search vendors..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" autoFocus />
-            </div>
-            <div className="max-h-[300px] overflow-y-auto border rounded-xl divide-y">
-              {isVendorsLoading ? (
-                <div className="py-10 text-center"><SpinnerDotted size={30} color="#1B84FF" /></div>
-              ) : filteredVendors.length > 0 ? (
-                filteredVendors.map(v => (
-                  <div key={v.uuid} onClick={() => handleSelectVendor(v)} className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center group">
-                    <div>
-                      <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{v.name}</p>
-                      <p className="text-xs text-gray-500">{v.company_name}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">{v.mobile || "No Mobile"}</p>
+        {/* Bottom Section: Notes & Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Notes & Terms */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+              <div className="p-5 space-y-5">
+                {/* Notes */}
+                <div className="space-y-3">
+                  {!showNotesField ? (
+                    <button
+                      onClick={() => setShowNotesField(true)}
+                      className="text-primary hover:text-primary-active text-sm font-bold flex items-center gap-2 group"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-blue-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                        <Plus className="h-4 w-4" />
+                      </div>
+                      Add Internal Notes
+                    </button>
+                  ) : (
+                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Internal Notes</label>
+                        <button onClick={() => { setShowNotesField(false); setNotes(""); }} className="text-gray-400 hover:text-red-500">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add notes for internal tracking (won't appear on print)..."
+                        className="w-full h-24 p-3 text-sm bg-gray-50 border-gray-200 rounded-xl focus:bg-white transition-all focus:ring-2 focus:ring-blue-100"
+                      />
                     </div>
-                    <div className="text-right">
-                      {v.gst && <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">GST</span>}
-                      <p className="text-[10px] text-gray-400 mt-1 uppercase">{v.city || "-"}</p>
+                  )}
+                </div>
+
+                {/* Terms */}
+                <div className="space-y-3 pt-2 border-t border-dashed border-gray-100">
+                  {!showTermsField ? (
+                    <button
+                      onClick={() => setShowTermsField(true)}
+                      className="text-primary hover:text-primary-active text-sm font-bold flex items-center gap-2 group"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-blue-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                        <Plus className="h-4 w-4" />
+                      </div>
+                      Add Terms and Conditions
+                    </button>
+                  ) : (
+                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Terms & Conditions</label>
+                        <button onClick={() => { setShowTermsField(false); setTermsAndConditions(""); }} className="text-gray-400 hover:text-red-500">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        value={termsAndConditions}
+                        onChange={(e) => setTermsAndConditions(e.target.value)}
+                        placeholder="Add payment terms, delivery schedules, etc..."
+                        className="w-full h-24 p-3 text-sm bg-gray-50 border-gray-200 rounded-xl focus:bg-white transition-all focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Option: Signature Placeholder */}
+            <div className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center opacity-60">
+              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                <Info className="h-5 w-5" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">E-Signature Module<br /><span className="text-[9px] font-normal lowercase tracking-normal">Signature will be applied based on business settings</span></p>
+            </div>
+          </div>
+
+          {/* Financial Summary card */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col">
+              <div className="px-6 py-4 border-b bg-gray-50/50">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Total Summary</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">Subtotal</span>
+                    <span className="text-gray-900 font-bold">₹{calculateSubtotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">Item Discount</span>
+                    <span className="text-red-500 font-bold">- ₹{calculateItemDiscount().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">Taxable Amount</span>
+                    <span className="text-gray-900 font-bold">₹{(calculateSubtotal() - calculateItemDiscount()).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-dashed border-gray-100 pt-3">
+                    <span className="text-gray-500 font-medium italic">SGST (9%)</span>
+                    <span className="text-gray-900 font-medium">₹{(calculateTax() / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium italic">CGST (9%)</span>
+                    <span className="text-gray-900 font-medium">₹{(calculateTax() / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                {/* Overall Discount Section */}
+                <div className="pt-3 border-t border-gray-100">
+                  {!showDiscountField ? (
+                    <button
+                      onClick={() => setShowDiscountField(true)}
+                      className="text-primary hover:text-primary-active text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Overall Discount
+                    </button>
+                  ) : (
+                    <div className="space-y-3 animate-in fade-in duration-300">
+                      <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-medium">Overall Discount</span>
+                          <button onClick={() => { setShowDiscountField(false); setDiscount({ type: "percentage", value: 0 }); }} className="text-gray-400 hover:text-red-500"><X className="h-3 w-3" /></button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={discount.type}
+                            onChange={(e) => setDiscount(prev => ({ ...prev, type: e.target.value as any }))}
+                            className="h-7 text-[10px] font-bold border-gray-200 rounded-lg bg-gray-50"
+                          >
+                            <option value="percentage">%</option>
+                            <option value="amount">₹</option>
+                          </select>
+                          <input
+                            type="number"
+                            value={discount.value}
+                            onChange={(e) => setDiscount(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
+                            className="w-16 h-7 text-xs font-bold border-gray-200 rounded-lg bg-gray-50 text-right px-1.5 focus:bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end pr-1">
+                        <p className="text-xs font-bold text-red-500">- ₹{calculateOverallDiscount().toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Amount */}
+                <div className="pt-6 border-t-2 border-gray-100 flex justify-between items-center">
+                  <span className="text-lg font-black text-gray-800 uppercase tracking-tighter">Grand Total</span>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-primary leading-none">₹{calculateTotal().toLocaleString()}</span>
+                    <p className="text-[10px] font-bold text-green-600 uppercase italic tracking-widest mt-1">all taxes included</p>
+                  </div>
+                </div>
+
+                {/* Payment Section - Premium Card */}
+                <div className="mt-8 bg-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-200/50 space-y-5 animate-in slide-in-from-bottom-5 duration-500">
+                  <div className="flex justify-between items-center bg-blue-500/30 rounded-full px-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="fullPay"
+                        checked={isFullyPaid}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsFullyPaid(checked);
+                          if (checked) setAmountPaid(calculateTotal());
+                        }}
+                        className="h-4 w-4 rounded border-blue-400 bg-transparent text-blue-500 focus:ring-offset-blue-600"
+                      />
+                      <label htmlFor="fullPay" className="text-xs font-bold uppercase tracking-tight cursor-pointer">Mark Fully Paid</label>
+                    </div>
+                    <div className="h-5 w-[1px] bg-blue-400/50"></div>
+                    <span className="text-[10px] font-medium opacity-80 italic">Recording direct payment</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase opacity-70">Amount Received (₹)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold opacity-60">₹</span>
+                        <input
+                          type="number"
+                          value={isFullyPaid ? calculateTotal() : amountPaid}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setAmountPaid(val);
+                            if (val !== calculateTotal()) setIsFullyPaid(false);
+                          }}
+                          disabled={isFullyPaid}
+                          className="w-full h-11 bg-white/20 border-white/30 rounded-xl pl-6 pr-3 text-lg font-black text-white focus:outline-none focus:bg-white/30 transition-all placeholder:text-white/40 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase opacity-70">Payment Mode</label>
+                      <select
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="w-full h-11 bg-white/20 border-white/30 rounded-xl px-3 text-sm font-bold text-white focus:outline-none focus:bg-white/30 transition-all appearance-none"
+                      >
+                        <option value="Cash" className="text-gray-900">Cash</option>
+                        <option value="UPI" className="text-gray-900">UPI</option>
+                        <option value="Bank Transfer" className="text-gray-900">Bank Transfer</option>
+                        <option value="Card" className="text-gray-900">Credit/Debit Card</option>
+                        <option value="Cheque" className="text-gray-900">Cheque</option>
+                      </select>
                     </div>
                   </div>
-                ))
+
+                  <div className="pt-4 border-t border-white/20 flex justify-between items-center group">
+                    <span className="text-xs font-bold uppercase opacity-80">Remaining Balance</span>
+                    <div className="text-right">
+                      <span className="text-xl font-black text-white drop-shadow-sm group-hover:scale-110 transition-transform block">
+                        ₹{(calculateTotal() - (isFullyPaid ? calculateTotal() : amountPaid)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modals & Dialogs */}
+      <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>
+        <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+          <div className="bg-[#1B84FF] px-6 py-6 text-white flex justify-between items-center">
+            <div>
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Choose Vendor</DialogTitle>
+              <p className="text-xs font-medium opacity-80 mt-1 uppercase tracking-widest">Searching in vendor directory</p>
+            </div>
+            <button
+              onClick={() => setIsVendorDialogOpen(false)}
+              className="hover:scale-110 transition-transform opacity-60 hover:opacity-100"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+              <Input
+                placeholder="Type name, company or mobile number..."
+                className="pl-12 h-14 bg-gray-50 border-gray-100 text-base font-medium focus:ring-4 focus:ring-blue-50 transition-all rounded-xl"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
+              {isVendorsLoading ? (
+                <div className="py-24 flex flex-col items-center justify-center gap-4">
+                  <SpinnerDotted size={40} color="#1B84FF" thickness={150} />
+                  <p className="text-sm font-bold text-gray-400 animate-pulse">Syncing vendors...</p>
+                </div>
+              ) : filteredVendors.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {filteredVendors.map((v) => (
+                    <div
+                      key={v.uuid}
+                      className="group relative p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary hover:bg-blue-50/20 cursor-pointer transition-all active:scale-[0.98] shadow-sm hover:shadow-md"
+                      onClick={() => handleSelectVendor(v)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <h5 className="font-black text-gray-900 leading-none group-hover:text-primary transition-colors">{v.name}</h5>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-tight">{v.company_name || "Personal Portfolio"}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 font-mono">
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded leading-none">{v.mobile}</span>
+                          {v.gst && <span className="text-[9px] font-bold text-primary bg-blue-50 px-2 py-0.5 rounded leading-none border border-blue-100">{v.gst}</span>}
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between opacity-60 group-hover:opacity-100">
+                        <p className="text-[10px] text-gray-500 leading-none">📍 {v.city || "Area Not Defined"}</p>
+                        <ArrowLeft className="h-3 w-3 text-primary rotate-180 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="py-20 text-center text-gray-400 text-sm italic">No vendors found</div>
+                <div className="py-24 text-center space-y-4">
+                  <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                    <Search className="h-10 w-10 text-gray-200" />
+                  </div>
+                  <div>
+                    <p className="font-black text-gray-300 uppercase italic tracking-widest text-lg">No Results Found</p>
+                    <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto leading-relaxed italic font-medium">Try checking your search terms or add a new vendor to your directory</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AddItemPage open={showAddItemModal} onOpenChange={setShowAddItemModal} onAddItems={handleAddItems} onCreateNewItem={() => { setShowAddItemModal(false); setShowCreateItemModal(true); }} />
-      <CreateItemModal open={showCreateItemModal} onOpenChange={setShowCreateItemModal} onSuccess={() => setShowCreateItemModal(false)} item={null} />
+      <AddItemPage
+        open={showAddItemModal}
+        onOpenChange={setShowAddItemModal}
+        onAddItems={handleAddItems}
+        onCreateNewItem={() => {
+          setShowAddItemModal(false);
+          setShowCreateItemModal(true);
+        }}
+      />
 
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="sm:max-w-[400px] p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
-            <svg
-              className="h-6 w-6 text-red-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <DialogTitle className="text-lg font-semibold text-gray-900">
-            Unsaved Changes
-          </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500 mt-2">
-            You have unsaved changes. Are you sure you want to leave this page?
-          </DialogDescription>
-          <DialogFooter className="mt-6 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancelLeave}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleConfirmLeave}
-              className="flex-1"
-            >
-              Leave Page
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateItemModal
+        open={showCreateItemModal}
+        onOpenChange={setShowCreateItemModal}
+        onSuccess={() => setShowCreateItemModal(false)}
+        item={null}
+      />
     </div>
   );
 };

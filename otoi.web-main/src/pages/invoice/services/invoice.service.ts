@@ -225,13 +225,13 @@ export const getInvoices = async (
 
   try {
     const params = new URLSearchParams();
-    
+
     // Add search parameters
     if (search) params.append('search', search);
     if (party_name) params.append('party_name', party_name);
     if (invoice_number) params.append('invoice_number', invoice_number);
     if (payment_status && payment_status !== 'all') params.append('payment_status', payment_status);
-    
+
     // Add pagination parameters
     params.append('page', String(page));
     params.append('per_page', String(per_page));
@@ -294,13 +294,33 @@ export const getInvoiceById = async (id: string): Promise<ApiResponse> => {
       terms_and_conditions: data.additional_notes?.terms_and_conditions || "",
       payment_terms: data.additional_notes?.payment_terms || "",
       items:
-        data.items?.map((item: any) => ({
-          ...item,
-          discount_percentage: item.discount?.discount_percentage || 0,
-          discount_amount: item.discount?.discount_amount || 0,
-          tax_percentage: item.tax?.tax_percentage || 0,
-          tax_amount: item.tax?.tax_amount || 0,
-        })) || [],
+        data.items?.map((item: any) => {
+          const resolveValue = (val: any, fieldKey: string) => {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === "object") return Number(val[fieldKey]) || 0;
+            return Number(val) || 0;
+          };
+
+          return {
+            ...item,
+            discount_percentage: resolveValue(
+              item.discount?.discount_percentage ?? item.discount_percentage,
+              "discount_percentage"
+            ),
+            discount_amount: resolveValue(
+              item.discount?.discount_amount ?? item.discount_amount,
+              "discount_amount"
+            ),
+            tax_percentage: resolveValue(
+              item.tax?.tax_percentage ?? item.tax_percentage,
+              "tax_percentage"
+            ),
+            tax_amount: resolveValue(
+              item.tax?.tax_amount ?? item.tax_amount,
+              "tax_amount"
+            ),
+          };
+        }) || [],
     };
 
     return {
@@ -794,7 +814,7 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
   } catch (error: any) {
     // Fallback to frontend approach if backend doesn't support the new parameter
     console.warn('Backend does not support customer_dropdown_active, falling back to frontend approach');
-    
+
     try {
       const fallbackResponse = await axios.get(
         `${API_URL}/invoices?per_page=1000`,
@@ -809,7 +829,7 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
       // Extract only the minimal data needed for dropdown from actual invoices
       if (fallbackResponse.data && fallbackResponse.data.data) {
         const uniqueCustomers = new Map();
-        
+
         fallbackResponse.data.data.forEach((item: any) => {
           if (item.customer_name && item.customer_name.trim()) {
             const customerName = item.customer_name.trim();
@@ -821,9 +841,9 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
             }
           }
         });
-        
+
         const minimalData = Array.from(uniqueCustomers.values()).sort((a, b) => a.name.localeCompare(b.name));
-        
+
         return {
           success: true,
           data: minimalData,
@@ -871,7 +891,7 @@ export const getInvoiceNumbersDropdown = async (): Promise<ApiResponse> => {
   } catch (error: any) {
     // Fallback to frontend approach if backend doesn't support the new parameter
     console.warn('Backend does not support invoice_numbers_only, falling back to optimized frontend approach');
-    
+
     try {
       const fallbackResponse = await axios.get(
         `${API_URL}/invoices?per_page=1000`,
@@ -890,7 +910,7 @@ export const getInvoiceNumbersDropdown = async (): Promise<ApiResponse> => {
           invoice_number: item.invoice_number,
           customer_id: item.customer_id
         }));
-        
+
         return {
           success: true,
           data: minimalData,

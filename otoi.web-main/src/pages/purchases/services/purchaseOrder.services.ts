@@ -224,13 +224,33 @@ export const getPurchaseOrderById = async (
       notes: data.additional_notes?.notes || "",
       terms_and_conditions: data.additional_notes?.terms_and_conditions || "",
       items:
-        data.items?.map((item: any) => ({
-          ...item,
-          discount_percentage: item.discount?.discount_percentage || 0,
-          discount_amount: item.discount?.discount_amount || 0,
-          tax_percentage: item.tax?.tax_percentage || 0,
-          tax_amount: item.tax?.tax_amount || 0,
-        })) || [],
+        data.items?.map((item: any) => {
+          const resolveValue = (val: any, fieldKey: string) => {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === "object") return Number(val[fieldKey]) || 0;
+            return Number(val) || 0;
+          };
+
+          return {
+            ...item,
+            discount_percentage: resolveValue(
+              item.discount?.discount_percentage ?? item.discount_percentage,
+              "discount_percentage"
+            ),
+            discount_amount: resolveValue(
+              item.discount?.discount_amount ?? item.discount_amount,
+              "discount_amount"
+            ),
+            tax_percentage: resolveValue(
+              item.tax?.tax_percentage ?? item.tax_percentage,
+              "tax_percentage"
+            ),
+            tax_amount: resolveValue(
+              item.tax?.tax_amount ?? item.tax_amount,
+              "tax_amount"
+            ),
+          };
+        }) || [],
     };
 
     return { success: true, data: transformedData, status: response.status };

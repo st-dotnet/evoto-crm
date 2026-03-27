@@ -226,13 +226,33 @@ export const getDebitNoteById = async (id: string): Promise<ApiResponse> => {
       status: debitNoteData.status || 'unpaid',
       notes: debitNoteData.additional_notes?.notes || debitNoteData.notes || "",
       terms_and_conditions: debitNoteData.additional_notes?.terms_and_conditions || debitNoteData.terms_and_conditions || debitNoteData.terms || "",
-      items: data.items?.map((item: any) => ({
-        ...item,
-        discount_percentage: item.discount?.discount_percentage || item.discount || 0,
-        discount_amount: item.discount?.discount_amount || 0,
-        tax_percentage: item.tax?.tax_percentage || item.tax || 0,
-        tax_amount: item.tax?.tax_amount || 0,
-      })) || [],
+      items: data.items?.map((item: any) => {
+        const resolveValue = (val: any, fieldKey: string) => {
+          if (val === null || val === undefined) return 0;
+          if (typeof val === "object") return Number(val[fieldKey]) || 0;
+          return Number(val) || 0;
+        };
+
+        return {
+          ...item,
+          discount_percentage: resolveValue(
+            item.discount?.discount_percentage ?? item.discount_percentage ?? item.discount,
+            "discount_percentage"
+          ),
+          discount_amount: resolveValue(
+            item.discount?.discount_amount ?? item.discount_amount,
+            "discount_amount"
+          ),
+          tax_percentage: resolveValue(
+            item.tax?.tax_percentage ?? item.tax_percentage ?? item.tax,
+            "tax_percentage"
+          ),
+          tax_amount: resolveValue(
+            item.tax?.tax_amount ?? item.tax_amount,
+            "tax_amount"
+          ),
+        };
+      }) || [],
     };
     
 
