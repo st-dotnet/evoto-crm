@@ -44,6 +44,7 @@ import {
   getVendorNamesDropdown,
   getPaymentOutNumbersDropdown,
   getVendorInvoices,
+  getPaymentOutById,
 } from "../services/payment-out.service";
 import { toast } from "sonner";
 import { SpinnerDotted } from "spinners-react";
@@ -149,22 +150,39 @@ export const PaymentOutPage = () => {
     }
   };
 
-  // ── View Details ─────────────────────────────────────────────────────────────
+  // ── View Details ────────────────────────────
 
   const fetchPaymentDetails = async (payment: any) => {
-    setSelectedPayment(payment);
     setIsModalOpen(true);
     setModalLoading(true);
 
     try {
-      if (payment.party_name) {
-        const res = await getVendorInvoices(payment.party_name);
-        if (res.success && res.data) {
-          setVendorInvoices((res.data as any[]).filter((inv: any) => inv.invoice_number !== payment.invoice_number));
+      // Fetch fresh payment details with correct balance
+      const paymentResponse = await getPaymentOutById(payment.id);
+      if (paymentResponse.success && paymentResponse.data) {
+        setSelectedPayment(paymentResponse.data);
+        
+        // Fetch vendor invoices if party_name exists
+        if (paymentResponse.data.party_name) {
+          const res = await getVendorInvoices(paymentResponse.data.party_name);
+          if (res.success && res.data) {
+            setVendorInvoices((res.data as any[]).filter((inv: any) => inv.invoice_number !== paymentResponse.data.invoice_number));
+          }
+        }
+      } else {
+        // Fallback to original payment data if fetch fails
+        setSelectedPayment(payment);
+        if (payment.party_name) {
+          const res = await getVendorInvoices(payment.party_name);
+          if (res.success && res.data) {
+            setVendorInvoices((res.data as any[]).filter((inv: any) => inv.invoice_number !== payment.invoice_number));
+          }
         }
       }
     } catch (err) {
-      console.error("Error fetching vendor invoices:", err);
+      console.error("Error fetching payment details:", err);
+      // Fallback to original payment data
+      setSelectedPayment(payment);
     } finally {
       setModalLoading(false);
     }
@@ -236,7 +254,7 @@ export const PaymentOutPage = () => {
       ),
     },
     {
-      accessorKey: "total_amount_settled",
+      accessorKey: "total_amount",
       header: ({ column }) => (
         <DataGridColumnHeader title="Total Amount" column={column} className="justify-center" />
       ),
@@ -643,7 +661,7 @@ export const PaymentOutPage = () => {
                           <span className="text-sm font-medium text-blue-700">Total Amount</span>
                         </div>
                         <span className="text-sm font-bold text-blue-900">
-                          ₹{selectedPayment.total_amount_settled?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          ₹{selectedPayment.total_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -692,7 +710,7 @@ export const PaymentOutPage = () => {
                       <div>
                         <p className="text-[11px] text-gray-500 mb-1">Discount</p>
                         <p className="text-lg font-bold text-rose-600">
-                          ₹{selectedPayment.payment_discount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          ₹{selectedPayment.discount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </p>
                       </div>
                       <div>
@@ -740,14 +758,14 @@ export const PaymentOutPage = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {vendorInvoices.slice(0, 5).map((inv) => (
+                            {(() => { console.log('Vendor invoices:', vendorInvoices); return vendorInvoices.slice(0, 5); })().map((inv) => (
                               <tr key={inv.id} className="hover:bg-gray-50/80 transition-colors">
                                 <td className="px-4 py-3 text-gray-600">
                                   {new Date(inv.date).toLocaleDateString()}
                                 </td>
                                 <td className="px-4 py-3 font-medium text-blue-600">#{inv.invoice_number}</td>
                                 <td className="px-4 py-3 text-right text-gray-900">
-                                  ₹{inv.total_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                  ₹{inv.invoice_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-4 py-3 text-right font-semibold text-amber-700">
                                   ₹{inv.balance_due?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}

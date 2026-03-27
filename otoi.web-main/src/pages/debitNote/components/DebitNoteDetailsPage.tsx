@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Download,
@@ -25,6 +25,7 @@ import { toAbsoluteUrl } from "@/utils/Assets";
 const DebitNoteDetailsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuthContext();
   const debitNoteRef = useRef<HTMLDivElement>(null);
 
@@ -48,36 +49,15 @@ const DebitNoteDetailsPage: React.FC = () => {
     return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Calculate quantity-based balance due
+  // Calculate balance due from original invoice (same as PurchaseInvoiceDetailsPage)
   const calculateBalanceDue = () => {
-    if (debitNoteData.status === 'credited') {
-      return 0;
+    // Use backend-provided balance_due from original invoice (same logic as PurchaseInvoiceDetailsPage)
+    if (originalInvoiceData) {
+      return originalInvoiceData.balance_due || originalInvoiceData.balance_amount || 0;
     }
 
-    // If we have original invoice data, calculate based on remaining quantities
-    if (originalInvoiceData?.items && debitNoteData?.items) {
-      let remainingBalance = 0;
-      
-      debitNoteData.items.forEach((debitItem: any) => {
-        const originalItem = originalInvoiceData.items.find((invItem: any) => 
-          invItem.item_id === debitItem.item_id || invItem.product_name === debitItem.item_name
-        );
-        
-        if (originalItem) {
-          const originalQty = originalItem.quantity || 0;
-          const returnedQty = debitItem.quantity || 0;
-          const remainingQty = Math.max(0, originalQty - returnedQty);
-          const unitPrice = originalItem.unit_price || originalItem.price_per_item || 0;
-          
-          remainingBalance += remainingQty * unitPrice;
-        }
-      });
-      
-      return remainingBalance;
-    }
-
-    // Fallback to amount-based calculation
-    return Math.max(0, (debitNoteData.total_amount || 0) - (debitNoteData.amount_received || 0));
+    // Fallback: use debit note's own balance_due if available
+    return debitNoteData.balance_due || 0;
   };
 
   const formatNumberInWords = (num: number) => {
@@ -185,7 +165,17 @@ const DebitNoteDetailsPage: React.FC = () => {
 
       setIsLoading(true);
       try {
-        const response = await getDebitNoteById(id);
+        // Check if data was passed from navigation state
+        const passedData = location.state?.debitNoteData;
+        
+        let response;
+        if (passedData && passedData.uuid) {
+          // Use passed data to avoid re-fetching
+          response = { success: true, data: passedData };
+        } else {
+          // Fallback to API call if no data passed or data is invalid
+          response = await getDebitNoteById(id);
+        }
 
         if (response.success && response.data) {
 
@@ -238,12 +228,22 @@ const DebitNoteDetailsPage: React.FC = () => {
           }
         } else {
           console.error("❌ Failed to load debit note:", response);
-          toast.error(response.error || "Failed to load debit note");
+          const errorMessage = response.error || "Failed to load debit note";
+          if (errorMessage.includes('not found') || errorMessage.includes('500') || errorMessage.includes('Server error')) {
+            toast.error('Debit note not found. It may have been deleted or does not exist.');
+          } else {
+            toast.error(errorMessage);
+          }
           navigate("/debit-note");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("❌ Error fetching debit note:", error);
-        toast.error("Failed to load debit note");
+        const errorMessage = (error as any)?.error || (error as any)?.message || (error as any)?.response?.data?.error || "Failed to load debit note";
+        if (errorMessage.includes('not found') || errorMessage.includes('500') || errorMessage.includes('Server error')) {
+          toast.error('Debit note not found. It may have been deleted or does not exist.');
+        } else {
+          toast.error(errorMessage);
+        }
         navigate("/debit-note");
       } finally {
         setIsLoading(false);
@@ -471,7 +471,7 @@ const DebitNoteDetailsPage: React.FC = () => {
       </style>
 
       {/* Sticky Header */}
-      <div className="bg-white px-6 py-4 border-b border-gray-200 sticky top-0 z-10 no-print">
+      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/debit-note")}>
@@ -479,8 +479,8 @@ const DebitNoteDetailsPage: React.FC = () => {
             </Button>
             <div>
               <h1 className="text-xl font-semibold text-black">Debit Note #{debitNoteData?.debit_note_number || 'Loading...'}</h1>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${getStatusBadge(debitNoteData?.status)}`}>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getStatusBadge(debitNoteData?.status)}`}>
                   {debitNoteData?.status && typeof debitNoteData.status === 'string'
                     ? debitNoteData.status.charAt(0).toUpperCase() + debitNoteData.status.slice(1)
                     : 'Loading...'
@@ -500,57 +500,121 @@ const DebitNoteDetailsPage: React.FC = () => {
       </div>
 
       {/* Debit Note Content */}
-      <div id="debit-note-print-area" ref={debitNoteRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm border border-gray-100">
-        <div className="mb-12 flex justify-between items-start">
-          <div className="mt-12">
-            <h1 className="text-2xl font-semibold text-black">{businessInfo?.name || "Evoto Technologies"}</h1>
-            {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-            {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-            {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
-            {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
-          </div>
-          <div className="flex flex-col items-end -mt-8">
-            <img
-              src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-              className="h-40 w-auto object-contain"
-              alt="Evoto Technologies"
-            />
-          </div>
+      <div id="debit-note-print-area" ref={debitNoteRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
+        <div className="mb-8 flex justify-between items-start">
+          {(() => {
+            const businessInfo = getAuthBusinessInfo();
+            return (
+              <>
+                <div className="mt-12">
+                  <h1 className="text-2xl font-semibold text-black leading-tight">
+                    {businessInfo?.name || "Evoto Technologies"}
+                  </h1>
+                  {businessInfo?.email && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.email}
+                    </p>
+                  )}
+                  {businessInfo?.phone && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.phone}
+                    </p>
+                  )}
+                  {businessInfo?.address && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      {businessInfo.address}
+                    </p>
+                  )}
+                  {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+                </div>
+                <div className="flex flex-col items-end -mt-8">
+                  <img
+                    src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
+                    className="h-40 w-auto object-contain"
+                    alt="Evoto Technologies"
+                  />
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-          <div className="border-r border-black">
-            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px]">Debit Note Number</div>
-            <div className="px-4 py-2 font-normal text-sm">{debitNoteData?.debit_note_number || 'N/A'}</div>
+          {/* Labels Row */}
+          <div className="px-4 py-1 border-b border-black bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Debit Note No.
+            </p>
           </div>
-          <div className="border-r border-black">
-            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] text-center">Debit Note Date</div>
-            <div className="px-4 py-2 text-center font-normal text-sm">
+          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Debit Note Date
+            </p>
+          </div>
+          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Invoice No.
+            </p>
+          </div>
+
+          {/* Values Row */}
+          <div className="px-4 py-1">
+            <p className="text-[14px] font-normal text-black">
+              {debitNoteData?.debit_note_number || 'N/A'}
+            </p>
+          </div>
+          <div className="px-4 py-1 border-x border-black text-center">
+            <p className="text-[14px] font-normal text-black">
               {debitNoteData?.debit_note_date ? new Date(debitNoteData.debit_note_date).toLocaleDateString("en-IN") : 'N/A'}
-            </div>
+            </p>
           </div>
-          <div>
-            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] text-right">Reference Invoice</div>
-            <div className="px-4 py-2 text-right font-normal text-sm">
+          <div className="px-4 py-1 text-right">
+            <p className="text-[14px] font-normal text-black">
               {debitNoteData?.linked_invoice_id || debitNoteData?.invoice_number || "N/A"}
-            </div>
+            </p>
           </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2 border-b border-black pb-1 w-32">
-            <h3 className="text-[10px] font-bold uppercase">Vendor Details</h3>
-          </div>
-          <p className="font-bold text-base text-black uppercase">{debitNoteData.vendor?.vendor_name || debitNoteData.vendor?.name || debitNoteData.party_name || 'N/A'}</p>
-          <div className="text-xs text-gray-700 mt-1 space-y-0.5">
-            {debitNoteData.vendor?.company_name && <p className="font-medium">{debitNoteData.vendor.company_name}</p>}
-            {debitNoteData.vendor?.gst && <p><span className="font-bold text-black uppercase text-[9px]">GSTIN:</span> {debitNoteData.vendor.gst}</p>}
-            {debitNoteData.vendor?.mobile && <p><span className="font-bold text-black uppercase text-[9px]">Mobile:</span> {debitNoteData.vendor.mobile}</p>}
-            <p>{debitNoteData.vendor?.address1 || debitNoteData.vendor?.address}</p>
-            <div className="flex gap-4 pt-1">
-              {debitNoteData.vendor?.city && <p><span className="font-bold text-black uppercase text-[9px]">City:</span> {debitNoteData.vendor.city}</p>}
-              <p><span className="font-bold text-black uppercase text-[9px]">State:</span> {debitNoteData.vendor?.state}</p>
-              <p><span className="font-bold text-black uppercase text-[9px]">Pin:</span> {debitNoteData.vendor?.pin}</p>
+        <div className="grid grid-cols-2 gap-12 mb-12">
+          <div>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+              BILL TO
+            </h3>
+            <div className="space-y-1 text-black text-sm">
+              <p className="font-semibold text-lg mb-2">
+                {debitNoteData.vendor?.vendor_name || debitNoteData.vendor?.name || debitNoteData.party_name || 'N/A'}
+              </p>
+              <div className="space-y-1">
+                {debitNoteData.vendor?.company_name && (
+                  <p className="text-gray-600">
+                    {debitNoteData.vendor.company_name}
+                  </p>
+                )}
+                {debitNoteData.vendor?.email && (
+                  <p className="text-black">
+                    <span className="font-semibold">Email:</span>{" "}
+                    {debitNoteData.vendor.email}
+                  </p>
+                )}
+                {debitNoteData.vendor?.mobile && (
+                  <p className="text-black">
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {debitNoteData.vendor.mobile}
+                  </p>
+                )}
+                {debitNoteData.vendor?.gst && (
+                  <p className="text-black">
+                    <span className="font-semibold">GSTIN:</span>{" "}
+                    {debitNoteData.vendor.gst}
+                  </p>
+                )}
+                {debitNoteData.vendor?.address1 && (
+                  <p className="text-black">
+                    <span className="font-semibold">Address:</span>{" "}
+                    {debitNoteData.vendor.address1}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -580,11 +644,6 @@ const DebitNoteDetailsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-black">
             {debitNoteData.items?.map((item: any, idx: number) => {
-              const discPerc = item.discount || 0;
-              const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
-              const taxPerc = item.tax || 0;
-              const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
-
               return (
                 <tr key={idx}>
                   <td className="p-2 border-r border-black align-top">
@@ -602,16 +661,18 @@ const DebitNoteDetailsPage: React.FC = () => {
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price || item.price_per_item)}</td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>-{formatCurrency(discAmt)}</span>
-                      {discPerc > 0 && <span className="text-[9px]">({discPerc}%)</span>}
-                    </div>
+                    {item.discount && item.discount.discount_percentage > 0
+                      ? `${item.discount.discount_percentage}% (${formatCurrency(item.discount.discount_amount)})`
+                      : typeof item.discount === 'number' && item.discount > 0
+                      ? `${item.discount}%`
+                      : "-"}
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>{formatCurrency(taxAmt)}</span>
-                      <span className="text-[9px] block text-gray-500">({taxPerc}%)</span>
-                    </div>
+                    {item.tax && item.tax.tax_percentage > 0
+                      ? `${item.tax.tax_percentage}% (${formatCurrency(item.tax.tax_amount)})`
+                      : typeof item.tax === 'number' && item.tax > 0
+                      ? `${item.tax}%`
+                      : "-"}
                   </td>
                   <td className="p-2 text-right font-medium align-top whitespace-nowrap text-red-600">{formatCurrency(item.total_price || item.amount)}</td>
                 </tr>
@@ -620,11 +681,24 @@ const DebitNoteDetailsPage: React.FC = () => {
           </tbody>
           <tfoot>
             <tr className="border-t border-black bg-gray-50 font-bold">
-              <td colSpan={2} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}</td>
-              <td className="p-2 text-right text-sm text-black whitespace-nowrap text-red-600">{formatCurrency(debitNoteData.total_amount || 0)}</td>
+              <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+              <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}</td>
+            </tr>
+            {(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0) > 0 && (
+              <tr className="bg-gray-50 font-bold">
+                <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Discount</td>
+                <td className="p-2 text-right text-sm text-black whitespace-nowrap">-{formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}</td>
+              </tr>
+            )}
+            {(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0) > 0 && (
+              <tr className="bg-gray-50 font-bold">
+                <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Tax</td>
+                <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}</td>
+              </tr>
+            )}
+            <tr className="border-t border-black bg-gray-100 font-bold">
+              <td colSpan={5} className="p-2 text-right text-[12px] uppercase tracking-widest text-black border-r border-black">Total Amount</td>
+              <td className="p-2 text-right text-sm font-bold text-black whitespace-nowrap text-red-600">{formatCurrency(debitNoteData.total_amount || 0)}</td>
             </tr>
           </tfoot>
         </table>
@@ -682,7 +756,7 @@ const DebitNoteDetailsPage: React.FC = () => {
               </div>
               <div className="flex justify-between text-base text-red-700 font-bold">
                 <span className="uppercase">Balance Due</span>
-                <span>{formatCurrency(debitNoteData.balance_due || 0)}</span>
+                <span>{formatCurrency(calculateBalanceDue())}</span>
               </div>
             </div>
           </div>

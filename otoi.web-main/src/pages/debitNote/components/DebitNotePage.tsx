@@ -34,7 +34,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
-import { getDebitNotes, deleteDebitNote, getCustomerNamesDropdown, getDebitNoteNumbersDropdown, getDebitNoteById, updatePurchaseInvoiceStatus, checkDebitNoteExistsForInvoice } from '../service/debitNote.service';
+import { getDebitNotes, deleteDebitNote, getDebitNoteById, updatePurchaseInvoiceStatus, checkDebitNoteExistsForInvoice, getPartyNamesDropdown, getInvoiceNumbersDropdown } from '../service/debitNote.service';
 import axios from 'axios';
 
 interface DebitNote {
@@ -47,6 +47,11 @@ interface DebitNote {
     status: string;
 }
 
+interface PartyNameItem {
+    uuid: string;
+    name: string;
+}
+
 interface DebitNoteNumberItem {
     uuid: string;
     debit_note_number: string;
@@ -55,6 +60,7 @@ interface DebitNoteNumberItem {
 
 const DebitNotePage = () => {
     const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
+    const [rawDebitNotesData, setRawDebitNotesData] = useState<any[]>([]);
     const [invoicesWithDebitNotes, setInvoicesWithDebitNotes] = useState<Set<string>>(new Set());
     const [isCheckingDebitNote, setIsCheckingDebitNote] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -63,15 +69,19 @@ const DebitNotePage = () => {
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [searchType, setSearchType] = useState<'party_name' | 'debit_note_number'>('party_name');
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [allCustomerNames, setAllCustomerNames] = useState<string[]>([]);
-    const [allDebitNoteNumbers, setAllDebitNoteNumbers] = useState<string[] | DebitNoteNumberItem[]>([]);
-    const [filteredSuggestions, setFilteredSuggestions] = useState<string[] | DebitNoteNumberItem[]>([]);
+    const [allCustomerNames, setAllCustomerNames] = useState<PartyNameItem[]>([]);
+    const [allDebitNoteNumbers, setAllDebitNoteNumbers] = useState<string[]>([]);
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const [isSearchLoading, setIsSearchLoading] = useState(false);
     const [isDropdownLoading, setIsDropdownLoading] = useState(false);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [debitNoteToDelete, setDebitNoteToDelete] = useState<string | null>(null);
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
+    const [customDateFrom, setCustomDateFrom] = useState<string>('');
+    const [customDateTo, setCustomDateTo] = useState<string>('');
+    const [showCustomDateRange, setShowCustomDateRange] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
@@ -80,38 +90,27 @@ const DebitNotePage = () => {
     const fetchAutocompleteData = useCallback(async () => {
         setIsDropdownLoading(true);
         try {
+            // Use dedicated dropdown endpoints that return simple arrays
             const [customerResponse, debitNoteNumberResponse] = await Promise.all([
-                getCustomerNamesDropdown(),
-                getDebitNoteNumbersDropdown()
+                getPartyNamesDropdown(),
+                getInvoiceNumbersDropdown()
             ]);
 
             if (customerResponse.success && customerResponse.data) {
-                let customerData = customerResponse.data;
-                if (customerData.data && Array.isArray(customerData.data)) {
-                    customerData = customerData.data;
-                }
-                
-                const customerNames = Array.isArray(customerData)
-                    ? [...new Set(customerData
-                        .filter((item: any) => item.party_name && item.party_name.trim())
-                        .map((item: any) => item.party_name.trim())
-                    )].sort()
+                // Handle the party names dropdown response - should be array of {uuid, name} objects
+                const partyNames = Array.isArray(customerResponse.data)
+                    ? customerResponse.data.filter((item: any) => item && item.name && typeof item.name === 'string')
+                        .sort((a: any, b: any) => a.name.localeCompare(b.name))
                     : [];
-                setAllCustomerNames(customerNames);
+                setAllCustomerNames(partyNames);
             } else {
                 setAllCustomerNames([]);
             }
 
             if (debitNoteNumberResponse.success && debitNoteNumberResponse.data) {
-                // Handle nested structure - data is nested under data.debit_notes
-                let debitNoteData = debitNoteNumberResponse.data;
-                if (debitNoteData.data && debitNoteData.data.debit_notes) {
-                    debitNoteData = debitNoteData.data.debit_notes;
-                } else if (debitNoteData.debit_notes) {
-                    debitNoteData = debitNoteData.debit_notes;
-                }
-                const debitNoteNumbers = Array.isArray(debitNoteData)
-                    ? debitNoteData.map((item: any) => item.debit_note_number || item).filter(Boolean)
+                // Handle the debit note numbers dropdown response - should be simple array
+                const debitNoteNumbers = Array.isArray(debitNoteNumberResponse.data)
+                    ? debitNoteNumberResponse.data.filter((item: any) => item && typeof item === 'string')
                     : [];
                 setAllDebitNoteNumbers(debitNoteNumbers);
             } else {
@@ -133,22 +132,21 @@ const DebitNotePage = () => {
         setSearchType(type);
         setShowSuggestions(false);
         setSearchTerm('');
-        setFilteredSuggestions(type === 'party_name' ? allCustomerNames : allDebitNoteNumbers);
+        setFilteredSuggestions(type === 'party_name' ? allCustomerNames.map(item => item.name) : allDebitNoteNumbers);
     };
 
     useEffect(() => {
         if (searchTerm) {
             const suggestions = searchType === 'party_name'
-                ? allCustomerNames.filter(name =>
-                    name.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                : allDebitNoteNumbers.filter(item => {
-                    const displayValue = typeof item === 'string' ? item : item.debit_note_number || '';
-                    return displayValue.toLowerCase().includes(searchTerm.toLowerCase());
-                }) as string[] | DebitNoteNumberItem[];
+                ? allCustomerNames.filter(item =>
+                    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+                ).map(item => item.name)
+                : allDebitNoteNumbers.filter(item =>
+                    item.toLowerCase().includes(searchTerm.toLowerCase())
+                );
             setFilteredSuggestions(suggestions);
         } else {
-            const suggestions = searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers;
+            const suggestions = searchType === 'party_name' ? allCustomerNames.map(item => item.name) : allDebitNoteNumbers;
             setFilteredSuggestions(suggestions);
         }
     }, [searchTerm, searchType, allCustomerNames, allDebitNoteNumbers]);
@@ -170,9 +168,18 @@ const DebitNotePage = () => {
                 sort: params.sorting?.[0]?.id,
                 order: params.sorting?.[0]?.desc ? 'desc' : 'asc',
                 ...(searchTerm && {
-                    [searchType === 'party_name' ? 'party_name' : 'debit_note_number']: searchTerm
+                    search: searchTerm
                 }),
-                status: selectedStatus === 'all' ? '' : selectedStatus
+                status: selectedStatus === 'all' ? '' : selectedStatus,
+                ...(selectedDateFilter !== 'all' && {
+                    date_filter: selectedDateFilter
+                }),
+                ...(showCustomDateRange && customDateFrom && {
+                    date_from: customDateFrom
+                }),
+                ...(showCustomDateRange && customDateTo && {
+                    date_to: customDateTo
+                })
             };
 
             const response = await getDebitNotes(apiParams);
@@ -180,6 +187,9 @@ const DebitNotePage = () => {
             if (response.success && response.data) {
                 // Handle the actual API response structure: {data: {debit_notes: [...], pagination: {...}}}
                 const notesArray = response.data.data?.debit_notes || response.data.debit_notes || [];
+                
+                // Store the raw data for edit navigation
+                setRawDebitNotesData(notesArray);
                
                 const formattedData = Array.isArray(notesArray) ? notesArray.map((note: any) => ({
                     id: note.uuid?.toString() || note.id?.toString() || '',
@@ -236,7 +246,6 @@ const DebitNotePage = () => {
                 throw new Error(response.error || 'Failed to fetch debit notes');
             }
         } catch (error: any) {
-            console.error('Error fetching debit notes:', error);
             toast.error(error.message || 'Failed to fetch debit notes');
             setDebitNotes([]);
             return {
@@ -246,7 +255,7 @@ const DebitNotePage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchTerm, searchType, selectedStatus, refreshKey]);
+    }, [debouncedSearchTerm, searchType, selectedStatus, refreshKey, selectedDateFilter, customDateFrom, customDateTo, showCustomDateRange]);
 
     useEffect(() => {
         fetchDebitNotes({
@@ -286,7 +295,6 @@ const DebitNotePage = () => {
                     try {
                         await updatePurchaseInvoiceStatus(linkedInvoiceId, 'unpaid');
                     } catch (statusError) {
-                        console.error('Failed to update purchase invoice status:', statusError);
                         // Don't show error to user as deletion was successful
                     }
                 }
@@ -484,7 +492,13 @@ const DebitNotePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/debit-note/view/${row.original.id}`);
+                                        // Find raw data for this specific debit note
+                                        const rawDebitNote = rawDebitNotesData.find(note => 
+                                            (note.uuid?.toString() || note.id?.toString()) === row.original.id
+                                        );
+                                        navigate(`/debit-note/view/${row.original.id}`, { 
+                                            state: { debitNoteData: rawDebitNote } 
+                                        });
                                         setIsOpen(false);
                                     }}
                                 >
@@ -496,7 +510,13 @@ const DebitNotePage = () => {
                                     onSelect={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(`/debit-note/edit/${row.original.id}`);
+                                        // Find the raw data for this specific debit note
+                                        const rawDebitNote = rawDebitNotesData.find(note => 
+                                            (note.uuid?.toString() || note.id?.toString()) === row.original.id
+                                        );
+                                        navigate(`/debit-note/edit/${row.original.id}`, { 
+                                            state: { debitNoteData: rawDebitNote } 
+                                        });
                                         setIsOpen(false);
                                     }}
                                 >
@@ -580,12 +600,121 @@ const DebitNotePage = () => {
                         </DropdownMenu>
                     </div>
                     <div className="w-36">
-                        <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Last 365 Days
-                            </span>
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                        {selectedDateFilter === 'all' && 'All Dates'}
+                                        {selectedDateFilter === 'today' && 'Today'}
+                                        {selectedDateFilter === 'this_week' && 'This Week'}
+                                        {selectedDateFilter === 'last_week' && 'Last Week'}
+                                        {selectedDateFilter === 'this_month' && 'This Month'}
+                                        {selectedDateFilter === 'last_month' && 'Last Month'}
+                                        {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                                        {showCustomDateRange && 'Custom Range'}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('all');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-gray-500" />
+                                    <span>All Dates</span>
+                                    {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('today');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-blue-500" />
+                                    <span>Today</span>
+                                    {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('this_week');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-green-500" />
+                                    <span>This Week</span>
+                                    {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('last_week');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-yellow-500" />
+                                    <span>Last Week</span>
+                                    {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('this_month');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-purple-500" />
+                                    <span>This Month</span>
+                                    {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('last_month');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-orange-500" />
+                                    <span>Last Month</span>
+                                    {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedDateFilter('last_365_days');
+                                        setShowCustomDateRange(false);
+                                        setRefreshKey(prev => prev + 1);
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-indigo-500" />
+                                    <span>Last 365 Days</span>
+                                    {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setShowCustomDateRange(true);
+                                        setSelectedDateFilter('custom');
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Circle className="h-4 w-4 text-pink-500" />
+                                    <span>Custom Range</span>
+                                    {showCustomDateRange && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     <Button
@@ -638,23 +767,49 @@ const DebitNotePage = () => {
                                                 </div>
                                             </DropdownMenuItem>
                                         ) : (
-                                            (searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers).map((item, index) => {
-                                                const displayValue = typeof item === 'string' ? item : item.debit_note_number;
-                                                const keyValue = typeof item === 'string' ? index : item.uuid || index;
+                                            <>
+                                                {searchType === 'party_name' ? 
+                                                    allCustomerNames.map((item: PartyNameItem) => {
+                                                        const displayValue = item.name;
+                                                        const keyValue = item.uuid;
 
-                                                return (
-                                                    <DropdownMenuItem
-                                                        key={keyValue}
-                                                        onClick={() => {
-                                                            setSearchTerm(displayValue);
-                                                            setRefreshKey(prev => prev + 1);
-                                                        }}
-                                                        className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
-                                                    >
-                                                        {displayValue}
+                                                        return (
+                                                            <DropdownMenuItem
+                                                                key={keyValue}
+                                                                onClick={() => {
+                                                                    setSearchTerm(displayValue);
+                                                                    setRefreshKey(prev => prev + 1);
+                                                                }}
+                                                                className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
+                                                            >
+                                                                {displayValue}
+                                                            </DropdownMenuItem>
+                                                        );
+                                                    }) :
+                                                    allDebitNoteNumbers.map((item: string, index: number) => {
+                                                        const displayValue = item;
+                                                        const keyValue = index;
+
+                                                        return (
+                                                            <DropdownMenuItem
+                                                                key={keyValue}
+                                                                onClick={() => {
+                                                                    setSearchTerm(displayValue);
+                                                                    setRefreshKey(prev => prev + 1);
+                                                                }}
+                                                                className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
+                                                            >
+                                                                {displayValue}
+                                                            </DropdownMenuItem>
+                                                        );
+                                                    })
+                                                }
+                                                {((searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers).length === 0) && (
+                                                    <DropdownMenuItem disabled>
+                                                        <span className="text-gray-500">No {searchType === 'party_name' ? 'parties' : 'debit notes'} found</span>
                                                     </DropdownMenuItem>
-                                                );
-                                            })
+                                                )}
+                                            </>
                                         )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -696,6 +851,55 @@ const DebitNotePage = () => {
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Custom Date Range Inputs */}
+                    {showCustomDateRange && (
+                        <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm font-medium text-gray-700">From:</label>
+                                <Input
+                                    type="date"
+                                    value={customDateFrom}
+                                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                                    className="h-8 w-32 text-sm"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm font-medium text-gray-700">To:</label>
+                                <Input
+                                    type="date"
+                                    value={customDateTo}
+                                    onChange={(e) => setCustomDateTo(e.target.value)}
+                                    className="h-8 w-32 text-sm"
+                                />
+                            </div>
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    if (customDateFrom && customDateTo) {
+                                        setRefreshKey(prev => prev + 1);
+                                    }
+                                }}
+                                className="h-8 px-3"
+                            >
+                                Apply
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setShowCustomDateRange(false);
+                                    setCustomDateFrom('');
+                                    setCustomDateTo('');
+                                    setSelectedDateFilter('all');
+                                    setRefreshKey(prev => prev + 1);
+                                }}
+                                className="h-8 px-3"
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <DataGrid

@@ -9,7 +9,7 @@ from app.models.purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 from app.models import Customer
 from app.utils.decorators import login_required
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, desc, asc
 from datetime import datetime
 import uuid
 import os
@@ -157,7 +157,7 @@ def generate_debit_note_number(max_retries=5):
                 ).first()
                 
                 if not existing_any:
-                    return candidate_number
+                    return candidate_number 
                 else:
                     pass
             
@@ -272,6 +272,47 @@ def update_purchase_invoice_payment_status(purchase_invoice_id):
 
 
 debit_note_blueprint = Blueprint("debit_note", __name__)
+
+
+# ── Helper Functions ───────────────────────────────────────────────────────────────
+
+def _date_filter_query(query, model, date_filter: str):
+    """Apply common date filters to a query."""
+    today = date.today()
+    if date_filter == "today":
+        query = query.filter(model.debit_note_date == today)
+
+    elif date_filter == "this_week":
+        start = today - __import__("datetime").timedelta(days=today.weekday())
+        query = query.filter(model.debit_note_date >= start, model.debit_note_date <= today)
+
+    elif date_filter == "last_week":
+        import datetime as _dt
+        start = today - _dt.timedelta(days=today.weekday() + 7)
+        end   = start + _dt.timedelta(days=6)
+        query = query.filter(model.debit_note_date >= start, model.debit_note_date <= end)
+
+    elif date_filter == "this_month":
+        query = query.filter(
+            db.extract("month", model.debit_note_date) == today.month,
+            db.extract("year",  model.debit_note_date) == today.year,
+        )
+    elif date_filter == "last_month":
+        if today.month == 1:
+            m, y = 12, today.year - 1
+        else:
+            m, y = today.month - 1, today.year
+        query = query.filter(
+            db.extract("month", model.debit_note_date) == m,
+            db.extract("year",  model.debit_note_date) == y,
+        )
+    elif date_filter == "last_365_days":
+        import datetime as _dt
+        query = query.filter(model.debit_note_date >= today - _dt.timedelta(days=365))
+    return query
+
+
+# ── Helper Functions ───────────────────────────────────────────────────────────────
 
 
 @debit_note_blueprint.route('/api/debit-notes/next-number', methods=['GET'])
@@ -628,6 +669,64 @@ def create_debit_note():
         }), 500
 
 
+@debit_note_blueprint.route('/purchase-invoice/<invoice_id>', methods=['GET'])
+@login_required
+@jwt_required()
+def get_purchase_invoice_for_debit_note(invoice_id):
+    """Get purchase invoice details for creating debit note"""
+    try:
+        # Get JWT claims
+        jwt_claims = get_jwt()
+        
+        # Handle different JWT token formats
+        if isinstance(jwt_claims, str):
+            business_id = 1  # Default fallback
+        else:
+            business_id = jwt_claims.get('business_id', 1)
+        
+        # Get purchase invoice with vendor details
+        invoice = PurchaseInvoice.query.filter_by(
+            uuid=invoice_id,
+            business_id=business_id,
+            is_deleted=False
+        ).first()
+        
+        if not invoice:
+            return jsonify({
+                "success": False,
+                "message": "Purchase invoice not found"
+            }), 404
+        
+        # Get vendor details
+        vendor = Vendor.query.filter_by(uuid=invoice.vendor_id).first() if invoice.vendor_id else None
+        
+        # Build response
+        response = {
+            "success": True,
+            "data": {
+                "uuid": invoice.uuid,
+                "invoice_number": invoice.invoice_number,
+                "invoice_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
+                "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+                "total_amount": float(invoice.total_amount),
+                "balance_due": float(invoice.balance_due),
+                "payment_status": invoice.payment_status,
+                "vendor_id": invoice.vendor_id,
+                "vendor_name": vendor.vendor_name or vendor.company_name or "" if vendor else "",
+                "vendor_uuid": str(vendor.uuid) if vendor else None
+            }
+        }
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": "Failed to get purchase invoice details",
+            "error": str(e)
+        }), 500
+
+
 @debit_note_blueprint.route('/available-purchase-invoices', methods=['GET'])
 @login_required
 @jwt_required()
@@ -687,6 +786,100 @@ def get_available_purchase_invoices():
         }), 500
 
 
+@debit_note_blueprint.route('/dropdown', methods=['GET'])
+@login_required
+@jwt_required()
+def get_debit_note_dropdown():
+    """Get dropdown data for debit note filters - vendor names with UUID and invoice numbers"""
+    try:
+        # Get JWT claims
+        jwt_claims = get_jwt()
+        
+        # Handle different JWT token formats
+        if isinstance(jwt_claims, str):
+            business_id = 1  # Default fallback
+        else:
+            business_id = jwt_claims.get('business_id', 1)
+        
+        dropdown_type = request.args.get('type', '').strip()
+        
+        if dropdown_type == 'party_names':
+            # Get vendor names with UUID (like payment_out.py but with UUID)
+            vendors = (
+                db.session.query(
+                    Vendor.uuid,
+                    db.func.coalesce(Vendor.vendor_name, Vendor.company_name).label('party_name')
+                )
+                .join(DebitNote, Vendor.uuid == DebitNote.vendor_id)
+                .filter(DebitNote.business_id == business_id, DebitNote.is_deleted == False)
+                .distinct()
+                .order_by('party_name')
+                .all()
+            )
+            
+            result = []
+            for vendor in vendors:
+                if vendor.party_name:
+                    result.append({
+                        'uuid': str(vendor.uuid),
+                        'name': vendor.party_name
+                    })
+            
+            return jsonify(result), 200
+            
+        elif dropdown_type == 'invoice_numbers':
+            # Get invoice numbers from debit notes
+            invoice_numbers = (
+                db.session.query(DebitNote.invoice_number)
+                .filter(
+                    DebitNote.business_id == business_id,
+                    DebitNote.is_deleted == False,
+                    DebitNote.invoice_number.isnot(None)
+                )
+                .distinct()
+                .order_by(DebitNote.invoice_number)
+                .all()
+            )
+            
+            return jsonify([n.invoice_number for n in invoice_numbers if n.invoice_number]), 200
+            
+        elif dropdown_type == 'debit_note_numbers':
+            # Get debit note numbers
+            debit_note_numbers = (
+                db.session.query(DebitNote.debit_note_number)
+                .filter(
+                    DebitNote.business_id == business_id,
+                    DebitNote.is_deleted == False
+                )
+                .distinct()
+                .order_by(DebitNote.debit_note_number)
+                .all()
+            )
+            
+            return jsonify([n.debit_note_number for n in debit_note_numbers]), 200
+            
+        elif dropdown_type == 'statuses':
+            # Get available statuses
+            statuses = (
+                db.session.query(DebitNote.status)
+                .filter(
+                    DebitNote.business_id == business_id,
+                    DebitNote.is_deleted == False
+                )
+                .distinct()
+                .order_by(DebitNote.status)
+                .all()
+            )
+            
+            return jsonify([s.status for s in statuses if s.status]), 200
+            
+        else:
+            return jsonify({'error': 'Invalid dropdown type. Use: party_names, invoice_numbers, debit_note_numbers, statuses'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch dropdown data', 'details': str(e)}), 500
+
+
 @debit_note_blueprint.route('/', methods=['GET'])
 @login_required
 @jwt_required()
@@ -708,34 +901,143 @@ def get_debit_notes():
         search = request.args.get('search', '', type=str)
         vendor_id = request.args.get('vendor_id', '', type=str)
         customer_id = request.args.get('customer_id', '', type=str)  # For backward compatibility
-        invoice_id = request.args.get('invoice_id', '', type=str)  # Add invoice_id parameter
+        invoice_id = request.args.get('invoice_id', '', type=str)
         status = request.args.get('status', '', type=str)
         date_from = request.args.get('date_from', '', type=str)
         date_to = request.args.get('date_to', '', type=str)
-        
+        debit_note_number = request.args.get('debit_note_number', '', type=str)
+        date_filter = request.args.get('date_filter', '', type=str)
+        order = request.args.get('order', 'desc', type=str)  # Add order parameter
         
         # Handle both customer_id and vendor_id for backward compatibility
         if customer_id and not vendor_id:
             vendor_id = customer_id
+
+        # Dropdown shortcuts
+        if request.args.get("party_names_dropdown") == "true":
+            # Get party names (vendor names) for dropdown
+            party_names = (
+                db.session.query(
+                    db.func.coalesce(Vendor.vendor_name, Vendor.company_name).label('party_name')
+                )
+                .join(DebitNote, Vendor.uuid == DebitNote.vendor_id)
+                .filter(DebitNote.business_id == business_id, DebitNote.is_deleted == False)
+                .distinct()
+                .order_by('party_name')
+                .all()
+            )
+            return jsonify([p.party_name for p in party_names if p.party_name]), 200
+
+        if request.args.get("vendor_dropdown_all") == "true":
+            # Get all vendors that have debit notes
+            vendor_query = db.session.query(Vendor.uuid, Vendor.vendor_name, Vendor.company_name).distinct()
+            
+            # Only filter by business_id if it's available
+            if business_id:
+                vendor_query = vendor_query.join(DebitNote, Vendor.uuid == DebitNote.vendor_id).filter(
+                    DebitNote.is_deleted == False,
+                    DebitNote.business_id == business_id
+                )
+            
+            rows = vendor_query.all()
+            
+            # Format response to match purchase_order format
+            result = []
+            for r in rows:
+                if r.uuid:
+                    name = r.vendor_name or r.company_name or ""
+                    if name:
+                        result.append({"uuid": str(r.uuid), "name": name})
+            result.sort(key=lambda x: x["name"].lower())
+            return jsonify(result), 200
+
+        if request.args.get("vendor_names_dropdown") == "true":
+            # Get vendor names for dropdown
+            vendor_query = db.session.query(Vendor.vendor_name, Vendor.company_name).distinct()
+            
+            if business_id:
+                vendor_query = vendor_query.join(DebitNote, Vendor.uuid == DebitNote.vendor_id).filter(
+                    DebitNote.is_deleted == False,
+                    DebitNote.business_id == business_id
+                )
+            
+            rows = vendor_query.all()
+            result = []
+            for r in rows:
+                name = r.vendor_name or r.company_name or ""
+                if name and name not in result:
+                    result.append(name)
+            result.sort()
+            return jsonify(result), 200
+
+        if request.args.get("debit_note_numbers_dropdown") == "true":
+            # Get debit note numbers for dropdown
+            numbers_query = db.session.query(DebitNote.debit_note_number).distinct()
+            
+            if business_id:
+                numbers_query = numbers_query.filter(
+                    DebitNote.is_deleted == False,
+                    DebitNote.business_id == business_id
+                )
+            
+            numbers_query = numbers_query.order_by(DebitNote.debit_note_number)
+            numbers = numbers_query.all()
+            
+            return jsonify([n[0] for n in numbers if n[0]]), 200
+
+        if request.args.get("statuses_dropdown") == "true":
+            # Get statuses for dropdown
+            status_query = db.session.query(DebitNote.status).distinct()
+            
+            if business_id:
+                status_query = status_query.filter(
+                    DebitNote.is_deleted == False,
+                    DebitNote.business_id == business_id
+                )
+            
+            statuses = status_query.all()
+            return jsonify([s[0] for s in statuses if s[0]]), 200
+
+        if request.args.get("invoice_numbers_dropdown") == "true":
+            # Get invoice numbers for dropdown
+            invoice_query = db.session.query(DebitNote.invoice_number).distinct()
+            
+            if business_id:
+                invoice_query = invoice_query.filter(
+                    DebitNote.is_deleted == False,
+                    DebitNote.business_id == business_id,
+                    DebitNote.invoice_number.isnot(None)
+                )
+            
+            invoice_query = invoice_query.order_by(DebitNote.invoice_number)
+            numbers = invoice_query.all()
+            
+            return jsonify([n[0] for n in numbers if n[0]]), 200
         
-        # Build query
-        query = DebitNote.query.filter_by(
-            business_id=business_id,
-            is_deleted=False
+        # Build query with joins like payment_out.py
+        query = (
+            DebitNote.query
+            .outerjoin(Vendor, DebitNote.vendor_id == Vendor.uuid)
+            .filter(DebitNote.business_id == business_id, DebitNote.is_deleted == False)
         )
         
-        # Apply filters
+        # Apply filters similar to payment_out.py
         if search:
             query = query.filter(
                 or_(
                     DebitNote.debit_note_number.ilike(f'%{search}%'),
-                    DebitNote.vendor.has(Vendor.company_name.ilike(f'%{search}%')),
-                    DebitNote.vendor.has(Vendor.vendor_name.ilike(f'%{search}%')),
-                    DebitNote.invoice_number.ilike(f'%{search}%')  # Keep invoice_number for search
+                    Vendor.vendor_name.ilike(f'%{search}%'),
+                    Vendor.company_name.ilike(f'%{search}%'),
+                    DebitNote.invoice_number.ilike(f'%{search}%')
                 )
             )
         
-        # Handle invoice_id specific filter
+        if debit_note_number:
+            query = query.filter(DebitNote.debit_note_number.ilike(f'%{debit_note_number}%'))
+        
+        if vendor_id:
+            query = query.filter(DebitNote.vendor_id == vendor_id)
+        
         if invoice_id:
             query = query.filter(
                 or_(
@@ -744,21 +1046,24 @@ def get_debit_notes():
                 )
             )
         
-        # Handle vendor_id
-        if vendor_id:
-            query = query.filter(DebitNote.vendor_id == vendor_id)
-        
-        if status:
+        if status and status != "all":
             query = query.filter(DebitNote.status == status)
         
-        if date_from:
-            query = query.filter(DebitNote.debit_note_date >= datetime.strptime(date_from, '%Y-%m-%d').date())
+        # Date filtering - handle both individual dates and preset filters
+        if date_filter and date_filter != "all":
+            query = _date_filter_query(query, DebitNote, date_filter)
+        else:
+            if date_from:
+                query = query.filter(DebitNote.debit_note_date >= datetime.strptime(date_from, '%Y-%m-%d').date())
+            
+            if date_to:
+                query = query.filter(DebitNote.debit_note_date <= datetime.strptime(date_to, '%Y-%m-%d').date())
         
-        if date_to:
-            query = query.filter(DebitNote.debit_note_date <= datetime.strptime(date_to, '%Y-%m-%d').date())
-        
-        # Order by date descending
-        query = query.order_by(DebitNote.debit_note_date.desc())
+        # Order by date based on order parameter
+        if order == 'asc':
+            query = query.order_by(DebitNote.debit_note_date.asc(), DebitNote.created_at.asc())
+        else:
+            query = query.order_by(desc(DebitNote.debit_note_date), desc(DebitNote.created_at))
         
         # Paginate
         pagination = query.paginate(
@@ -770,32 +1075,39 @@ def get_debit_notes():
         # Serialize data
         debit_notes = []
         for dn in pagination.items:
-            # Debug UUID values
+            # Get vendor details
+            vendor = None
+            if dn.vendor_id:
+                vendor = Vendor.query.filter_by(uuid=dn.vendor_id).first()
+            
+            # Get vendor address
+            vendor_address = None
+            if vendor:
+                vendor_address = {
+                    "address1": vendor.address1,
+                    "address2": vendor.address2,
+                    "city": vendor.city,
+                    "state": vendor.state,
+                    "country": vendor.country,
+                    "pin": vendor.pin
+                }
             
             debit_notes.append({
-                "uuid": dn.uuid,
+                "uuid": str(dn.uuid),
                 "debit_note_number": dn.debit_note_number,
-                "vendor_id": dn.vendor_id,
-                "vendor_name": dn.vendor.company_name if dn.vendor else "",
-                "vendor_address": {
-                    "address1": dn.vendor.address1 if dn.vendor else "",
-                    "address2": dn.vendor.address2 if dn.vendor else "",
-                    "city": dn.vendor.city if dn.vendor else "",
-                    "state": dn.vendor.state if dn.vendor else "",
-                    "country": dn.vendor.country if dn.vendor else "",
-                    "pin": dn.vendor.pin if dn.vendor else ""
-                } if dn.vendor else {},
-                "invoice_id": dn.invoice_id,
+                "vendor_id": str(dn.vendor_id) if dn.vendor_id else None,
+                "vendor_name": vendor.vendor_name if vendor else None,
+                "vendor_address": vendor_address,
+                "invoice_id": str(dn.invoice_id) if dn.invoice_id else None,
                 "invoice_number": dn.invoice_number,
-                "debit_note_date": dn.debit_note_date.isoformat(),
+                "debit_note_date": dn.debit_note_date.isoformat() if dn.debit_note_date else None,
+                "total_amount": float(dn.total_amount) if dn.total_amount else 0,
+                "amount_received": float(dn.amount_received) if dn.amount_received else 0,
+                "balance_amount": float(dn.balance_amount) if dn.balance_amount else 0,
                 "status": dn.status,
-                "total_amount": float(dn.total_amount),
-                "amount_received": float(dn.amount_received),
-                "balance_amount": float(dn.balance_amount),
-                "created_at": dn.created_at.isoformat()
+                "created_at": dn.created_at.isoformat() if dn.created_at else None,
+                "updated_at": dn.updated_at.isoformat() if dn.updated_at else None
             })
-        
-        # Debug final response
         
         return jsonify({
             "success": True,
@@ -803,20 +1115,19 @@ def get_debit_notes():
                 "debit_notes": debit_notes,
                 "pagination": {
                     "current_page": pagination.page,
-                    "per_page": pagination.per_page,
-                    "total": pagination.total,
-                    "last_page": pagination.pages
+                    "last_page": pagination.pages,
+                    "per_page": per_page,
+                    "total": pagination.total
                 }
             },
             "status": 200
         }), 200
         
     except Exception as e:
-        import traceback
-        current_app.logger.error(f"Error getting debit notes: {str(e)}")
         return jsonify({
             "success": False,
-            "message": "Failed to get debit notes",
+            "message": "Failed to fetch debit notes",
+            "details": str(e),
             "status": 500
         }), 500
 
@@ -889,6 +1200,7 @@ def get_debit_note(debit_note_id):
                 })
         
         # Calculate balance due using quantity-based logic
+        balance_due = calculate_debit_note_balance_due(debit_note)
         
         debit_note_data = {
             "uuid": debit_note.uuid,

@@ -249,6 +249,10 @@ export const getDebitNoteById = async (id: string): Promise<ApiResponse> => {
       errorMessage = 'Debit note not found.';
     } else if (error.response?.status === 401) {
       errorMessage = 'Session expired. Please log in again.';
+    } else if (error.response?.status === 500) {
+      errorMessage = 'Server error. The debit note may not exist or there might be a temporary issue.';
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
     }
 
     return {
@@ -356,6 +360,13 @@ export const getDebitNotes = async (params?: {
   order?: string;
   date_from?: string;
   date_to?: string;
+  date_filter?: string;
+  vendor_dropdown_all?: boolean;
+  vendor_names_dropdown?: boolean;
+  party_names_dropdown?: boolean;
+  debit_note_numbers_dropdown?: boolean;
+  statuses_dropdown?: boolean;
+  invoice_numbers_dropdown?: boolean;
 }): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
@@ -364,7 +375,7 @@ export const getDebitNotes = async (params?: {
 
   try {
     const queryParams = new URLSearchParams();
-    
+        
     // Add search parameters
     if (params?.search) queryParams.append('search', params.search);
     if (params?.customer_id) queryParams.append('customer_id', params.customer_id);
@@ -374,6 +385,15 @@ export const getDebitNotes = async (params?: {
     if (params?.status) queryParams.append('status', params.status);
     if (params?.date_from) queryParams.append('date_from', params.date_from);
     if (params?.date_to) queryParams.append('date_to', params.date_to);
+    if (params?.date_filter) queryParams.append('date_filter', params.date_filter);
+    
+    // Add dropdown parameters
+    if (params?.vendor_dropdown_all) queryParams.append('vendor_dropdown_all', 'true');
+    if (params?.vendor_names_dropdown) queryParams.append('vendor_names_dropdown', 'true');
+    if (params?.party_names_dropdown) queryParams.append('party_names_dropdown', 'true');
+    if (params?.debit_note_numbers_dropdown) queryParams.append('debit_note_numbers_dropdown', 'true');
+    if (params?.statuses_dropdown) queryParams.append('statuses_dropdown', 'true');
+    if (params?.invoice_numbers_dropdown) queryParams.append('invoice_numbers_dropdown', 'true');
     
     // Add pagination parameters
     queryParams.append('page', String(params?.page || 1));
@@ -382,6 +402,8 @@ export const getDebitNotes = async (params?: {
     // Add sorting parameters
     if (params?.sort) queryParams.append('sort', params.sort);
     if (params?.order) queryParams.append('order', params.order || 'desc');
+
+    const finalUrl = `${API_URL}/debit-notes?${queryParams.toString()}`;
 
     const response = await axios.get(
       `${API_URL}/debit-notes?${queryParams.toString()}`,
@@ -402,6 +424,131 @@ export const getDebitNotes = async (params?: {
     return {
       success: false,
       error: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch debit notes',
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+// Dedicated dropdown functions that return simple arrays
+export const getPartyNamesDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/debit-notes/dropdown?type=party_names`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data, // This should be: [{"uuid": "...", "name": "CP Plus"}]
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || 'Failed to fetch party names',
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const getInvoiceNumbersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/debit-notes/dropdown?type=invoice_numbers`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data, // This should be: ["PINV-9016", "PINV-9015"]
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || 'Failed to fetch invoice numbers',
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const getDebitNoteNumbersDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/debit-notes/dropdown?type=debit_note_numbers`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data, // This should be: ["DN-9969", "DN-9968"]
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || 'Failed to fetch debit note numbers',
+      status: error?.response?.status || 500,
+    };
+  }
+};
+
+export const getStatusesDropdown = async (): Promise<ApiResponse> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required', status: 401 };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/debit-notes/dropdown?type=statuses`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data, // This should be: ["unpaid", "partial", "paid", "credited", "cancelled"]
+      status: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || 'Failed to fetch statuses',
       status: error?.response?.status || 500,
     };
   }
@@ -480,70 +627,6 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
   }
 };
 
-export const getDebitNoteNumbersDropdown = async (): Promise<ApiResponse> => {
-  const token = getAuthToken();
-  if (!token) {
-    return { success: false, error: 'Authentication required', status: 401 };
-  }
-
-  try {
-    const response = await axios.get(
-      `${API_URL}/debit-notes?debit_note_numbers_dropdown=true`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    return {
-      success: true,
-      data: response.data,
-      status: response.status,
-    };
-  } catch (error: any) {
-    try {
-      const fallbackResponse = await axios.get(
-        `${API_URL}/debit-notes?per_page=1000`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      // Extract only the minimal data needed for dropdown from actual debit notes
-      if (fallbackResponse.data && fallbackResponse.data.data) {
-        const minimalData = fallbackResponse.data.data.map((item: any) => ({
-          uuid: item.uuid,
-          debit_note_number: item.debit_note_number,
-          customer_id: item.customer_id
-        }));
-        
-        return {
-          success: true,
-          data: minimalData,
-          status: fallbackResponse.status,
-        };
-      }
-      
-      return {
-        success: false,
-        error: 'No debit notes found',
-        status: fallbackResponse.status || 404,
-      };
-    } catch (fallbackError: any) {
-      return {
-        success: false,
-        error: fallbackError.response?.data?.error || fallbackError.response?.data?.message || 'Failed to fetch debit note numbers',
-        status: fallbackError?.response?.status || 500,
-      };
-    }
-  }
-};
-
 export const getAllCustomersDropdown = async (): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
@@ -581,7 +664,7 @@ export const getVendorsDropdown = async (): Promise<ApiResponse> => {
 
   try {
     const response = await axios.get(
-      `${API_URL}/vendors/?items_per_page=1000`, // Get all vendors for dropdown
+      `${API_URL}/vendors/?items_per_page=1000`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

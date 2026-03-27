@@ -615,10 +615,9 @@ const InvoicePage = () => {
                                             
                                             if (checkResponse.success && checkResponse.data.hasCreditNote) {
                                                 
-                                                // If credit note exists, navigate to edit the first one
+                                                // If credit note exists, just show toast message - don't navigate
                                                 const existingCreditNote = checkResponse.data.creditNotes[0];
-                                                toast.info(`Credit note ${existingCreditNote.credit_note_number} already exists. Opening for editing.`);
-                                                navigate(`/sales/credit-note/edit/${existingCreditNote.uuid}`);
+                                                toast.info(`Credit note ${existingCreditNote.credit_note_number} already exists.You can only create one credit note per invoice.`);
                                                 setIsOpen(false);
                                                 return;
                                             } else {

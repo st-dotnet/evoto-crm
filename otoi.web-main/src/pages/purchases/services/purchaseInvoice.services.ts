@@ -144,6 +144,34 @@ export const deletePurchaseInvoice = async (invoiceId: string) => {
   }
 };
 
+// Dedicated dropdown functions for purchase invoice filtering
+export const getPurchaseInvoicePartyNames = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/purchase-invoices/dropdown?type=party_names`);
+    return { success: true, data: res.data };
+  } catch (err: any) {
+    return { success: false, error: err?.response?.data?.error || "Failed to fetch party names" };
+  }
+};
+
+export const getPurchaseInvoiceNumbers = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/purchase-invoices/dropdown?type=invoice_numbers`);
+    return { success: true, data: res.data };
+  } catch (err: any) {
+    return { success: false, error: err?.response?.data?.error || "Failed to fetch invoice numbers" };
+  }
+};
+
+export const getPurchaseInvoiceStatuses = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/purchase-invoices/dropdown?type=statuses`);
+    return { success: true, data: res.data };
+  } catch (err: any) {
+    return { success: false, error: err?.response?.data?.error || "Failed to fetch statuses" };
+  }
+};
+
 /** Update an existing purchase invoice. */
 export const updatePurchaseInvoice = async (invoiceId: string, payload: any) => {
   try {

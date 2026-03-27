@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCreditNoteById } from '../service/creditIn.service';
+import { getCustomerById } from "@/pages/parties/services/customer.service";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
@@ -21,17 +22,25 @@ import { toAbsoluteUrl } from "@/utils/Assets";
 interface CreditNoteItem {
   uuid: string;
   item_id: string;
-  product_name: string;
+  item_name: string;
   description?: string | null;
   quantity: number;
   unit_price: number;
-  discount_percentage: number;
-  discount_amount: number;
-  tax_percentage: number;
-  tax_amount: number;
+  discount_percentage?: number;
+  discount_amount?: number;
+  tax_percentage?: number;
+  tax_amount?: number;
   total_price: number;
   measuring_unit_id?: number;
   hsn_sac?: string;
+  discount?: { 
+    discount_amount: number;
+    discount_percentage: number;
+  };
+  tax?: { 
+    tax_amount: number;
+    tax_percentage: number;
+  };
 }
 
 interface Customer {
@@ -111,8 +120,7 @@ const CreditInDetailsPage: React.FC = () => {
           creditNoteData = creditNoteData.credit_notes;
         }
         
-        
-        // Map the API response fields to our interface
+        // Set initial credit note data
         const mappedData = {
           uuid: creditNoteData.uuid || creditNoteData.id,
           credit_note_number: creditNoteData.credit_note_number || creditNoteData.creditNoteNo,
@@ -120,28 +128,49 @@ const CreditInDetailsPage: React.FC = () => {
           status: creditNoteData.status,
           customer: creditNoteData.selectedCustomer || creditNoteData.customer,
           items: creditNoteData.creditNoteItems || creditNoteData.items || [],
-          subtotal: creditNoteData.subtotal || 0,
-          tax_total: creditNoteData.total_tax || creditNoteData.tax_total || 0,
-          discount_total: creditNoteData.total_discount || creditNoteData.discount_total || 0,
+          subtotal: creditNoteData.subtotal || creditNoteData.charges?.taxable_amount || 0,
+          tax_total: creditNoteData.total_tax || creditNoteData.tax_total || creditNoteData.charges?.total_tax || 0,
+          discount_total: creditNoteData.total_discount || creditNoteData.discount_total || creditNoteData.charges?.total_discount || 0,
           additional_charges_total: creditNoteData.additional_charges || creditNoteData.additional_charges_total || 0,
-          round_off: creditNoteData.round_off_amount || creditNoteData.round_off || 0,
+          round_off: creditNoteData.round_off_amount || creditNoteData.round_off || creditNoteData.charges?.round_off_amount || 0,
           total_amount: creditNoteData.total_amount || 0,
-          notes: creditNoteData.notes || creditNoteData.terms,
-          terms_and_conditions: creditNoteData.terms_and_conditions || creditNoteData.terms,
-          linked_invoice_id: creditNoteData.linkToInvoiceId || creditNoteData.linked_invoice_id,
+          notes: creditNoteData.additional_notes?.notes || creditNoteData.notes || creditNoteData.terms,
+          terms_and_conditions: creditNoteData.additional_notes?.terms_and_conditions || creditNoteData.terms_and_conditions || creditNoteData.terms,
+          linked_invoice_id: creditNoteData.linkToInvoiceId || creditNoteData.linked_invoice_id || creditNoteData.invoice_id,
           invoice_number: creditNoteData.linkToInvoice || creditNoteData.invoice_number,
           business: creditNoteData.business,
         };
         
         setCreditNoteData(mappedData as CreditNoteData);
+
+        // Fetch customer details separately to get address information
+        if (creditNoteData.customer_id || creditNoteData.customer?.uuid) {
+          const custId = creditNoteData.customer_id || creditNoteData.customer?.uuid;
+          try {
+            const customerRes = await getCustomerById(custId);
+            if (customerRes.success && customerRes.data) {
+              setCreditNoteData(prev => prev ? ({
+                ...prev,
+                customer: {
+                  ...prev.customer,
+                  ...customerRes.data,
+                  billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
+                  shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
+                }
+              }) : null);
+            }
+          } catch (custError) {
+            console.error("Error fetching customer details for credit note:", custError);
+          }
+        }
       } else {
         toast.error(response.error || "Failed to load credit note");
-        navigate("/sales/credit-notes");
+        navigate("/sales/credit-note");
       }
     } catch (error) {
       console.error("Error fetching credit note:", error);
       toast.error("Failed to load credit note");
-      navigate("/sales/credit-notes");
+      navigate("/sales/credit-note");
     } finally {
       setIsLoading(false);
     }
@@ -242,9 +271,9 @@ const CreditInDetailsPage: React.FC = () => {
 
   const formatCurrency = (amount: number) => {
     if (typeof amount !== 'number' || amount === null || amount === undefined) {
-      return '₹ 0.00';
+      return '₹0.00';
     }
-    return `₹ ${amount.toFixed(2)}`;
+    return `₹${amount.toFixed(2)}`;
   };
 
   const formatNumberInWords = (num: number) => {
@@ -429,7 +458,8 @@ const CreditInDetailsPage: React.FC = () => {
       address = address.find((addr: any) => addr?.is_default) || address[0];
     }
 
-    if (address && typeof address === "object") {
+    // If no nested address object, use direct address fields from customer
+    if (!address || (typeof address !== "object")) {
       const prefix = type === "shipping" ? "shipping_" : "";
       address = {
         address1:
@@ -603,9 +633,10 @@ const CreditInDetailsPage: React.FC = () => {
       <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/sales/credit-note')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/sales/credit-note")}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -649,15 +680,6 @@ const CreditInDetailsPage: React.FC = () => {
             >
               <Share className="h-4 w-4" />
               Share
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              className="gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
             </Button>
           </div>
         </div>
@@ -834,66 +856,101 @@ const CreditInDetailsPage: React.FC = () => {
                   #
                 </th>
                 <th className="border border-black px-4 py-2 text-left text-[12px] font-semibold text-black uppercase">
-                  Item Details
+                  Item Description
                 </th>
                 <th className="border border-black px-4 py-2 text-center text-[12px] font-semibold text-black uppercase">
-                  HSN/SAC
+                  Image
                 </th>
-                <th className="border border-black px-4 py-2 text-right text-[12px] font-semibold text-black uppercase">
+                <th className="border border-black px-4 py-2 text-center text-[12px] font-semibold text-black uppercase">
                   Qty
                 </th>
                 <th className="border border-black px-4 py-2 text-right text-[12px] font-semibold text-black uppercase">
-                  Unit Price
+                  Price/Item
                 </th>
                 <th className="border border-black px-4 py-2 text-right text-[12px] font-semibold text-black uppercase">
-                  Discount
+                  Disc.
                 </th>
                 <th className="border border-black px-4 py-2 text-right text-[12px] font-semibold text-black uppercase">
                   Tax
                 </th>
                 <th className="border border-black px-4 py-2 text-right text-[12px] font-semibold text-black uppercase">
-                  Amount
+                  Total
                 </th>
               </tr>
             </thead>
             <tbody>
-              {(creditNoteData.items || []).map((item, index) => (
-                <tr key={item.uuid} className="hover:bg-gray-50">
-                  <td className="border border-black px-4 py-2 text-sm text-black">
-                    {index + 1}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-sm text-black">
-                    <div className="font-medium">{item.product_name}</div>
-                    {item.description && (
-                      <div className="text-xs text-gray-600 mt-1">
-                        {item.description}
+              {(creditNoteData.items || []).map((item, index) => {
+                return (
+                  <tr key={item.uuid} className="hover:bg-gray-50">
+                    <td className="border border-black px-4 py-2 text-sm text-black">
+                      {index + 1}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-sm text-black">
+                      <div className="font-medium">{item.item_name}</div>
+                      {item.description && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          {item.description}
+                        </div>
+                      )}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-center text-sm text-black">
+                      <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center mx-auto">
+                        <span className="text-xs text-gray-500">No Img</span>
                       </div>
-                    )}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-center text-sm text-black">
-                    {item.hsn_sac || "N/A"}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                    {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                    {formatCurrency(item.unit_price)}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                    {item.discount_percentage > 0
-                      ? `${item.discount_percentage}% (${formatCurrency(item.discount_amount)})`
-                      : "-"}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                    {item.tax_percentage > 0
-                      ? `${item.tax_percentage}% (${formatCurrency(item.tax_amount)})`
-                      : "-"}
-                  </td>
-                  <td className="border border-black px-4 py-2 text-right text-sm font-medium text-black">
-                    {formatCurrency(item.total_price)}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-center text-sm text-black">
+                      {item.quantity}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-right text-sm text-black">
+                      {formatCurrency(item.unit_price)}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-right text-sm text-black">
+                      {item.discount?.discount_percentage && item.discount.discount_percentage > 0
+                        ? `${item.discount.discount_percentage}%`
+                        : typeof item.discount === 'number' && item.discount > 0
+                        ? `${item.discount}%`
+                        : item.discount_percentage !== undefined && item.discount_percentage > 0
+                        ? `${item.discount_percentage}%`
+                        : "-"}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-right text-sm text-black">
+                      {item.tax?.tax_percentage && item.tax.tax_percentage > 0
+                        ? `${item.tax.tax_percentage}%`
+                        : typeof item.tax === 'number' && item.tax > 0
+                        ? `${item.tax}%`
+                        : item.tax_percentage !== null && item.tax_percentage !== undefined && item.tax_percentage > 0
+                        ? `${item.tax_percentage}%`
+                        : "-"}
+                    </td>
+                    <td className="border border-black px-4 py-2 text-right text-sm font-medium text-black">
+                      {formatCurrency(item.total_price)}
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* Footer Rows */}
+              <tr className="bg-gray-50">
+                <td colSpan={5} className="border border-black px-4 py-2 text-right text-sm font-semibold text-black">
+                  Subtotal:
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm text-black">
+                  {formatCurrency(creditNoteData.discount_total || 0)}
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm text-black">
+                  {formatCurrency(creditNoteData.tax_total || 0)}
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black">
+                  {formatCurrency(creditNoteData.subtotal || 0)}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={7} className="border border-black px-4 py-2 text-right text-sm font-bold text-black">
+                  Grand Total:
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm font-bold text-black">
+                  {formatCurrency(creditNoteData.total_amount)}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -921,69 +978,83 @@ const CreditInDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="w-80">
-            <div className="border border-black overflow-hidden">
-              <div className="grid grid-cols-2 gap-0">
-                <div className="px-4 py-2 bg-gray-100 border-b border-r border-black">
-                  <p className="text-sm font-semibold text-black">Subtotal:</p>
-                </div>
-                <div className="px-4 py-2 text-right border-b border-black">
-                  <p className="text-sm text-black">
-                    {formatCurrency(creditNoteData.subtotal)}
-                  </p>
-                </div>
-                <div className="px-4 py-2 bg-gray-100 border-b border-r border-black">
-                  <p className="text-sm font-semibold text-black">Discount:</p>
-                </div>
-                <div className="px-4 py-2 text-right border-b border-black">
-                  <p className="text-sm text-black">
-                    -{formatCurrency(creditNoteData.discount_total)}
-                  </p>
-                </div>
-                <div className="px-4 py-2 bg-gray-100 border-b border-r border-black">
-                  <p className="text-sm font-semibold text-black">Tax:</p>
-                </div>
-                <div className="px-4 py-2 text-right border-b border-black">
-                  <p className="text-sm text-black">
-                    {formatCurrency(creditNoteData.tax_total)}
-                  </p>
-                </div>
-                {creditNoteData.additional_charges_total > 0 && (
-                  <>
-                    <div className="px-4 py-2 bg-gray-100 border-b border-r border-black">
-                      <p className="text-sm font-semibold text-black">Additional Charges:</p>
-                    </div>
-                    <div className="px-4 py-2 text-right border-b border-black">
-                      <p className="text-sm text-black">
-                        {formatCurrency(creditNoteData.additional_charges_total)}
-                      </p>
-                    </div>
-                  </>
-                )}
-                {creditNoteData.round_off !== 0 && (
-                  <>
-                    <div className="px-4 py-2 bg-gray-100 border-b border-r border-black">
-                      <p className="text-sm font-semibold text-black">Round Off:</p>
-                    </div>
-                    <div className="px-4 py-2 text-right border-b border-black">
-                      <p className="text-sm text-black">
-                        {formatCurrency(creditNoteData.round_off)}
-                      </p>
-                    </div>
-                  </>
-                )}
-                <div className="px-4 py-2 bg-gray-100 border-r border-black">
-                  <p className="text-base font-bold text-black">Total Amount:</p>
-                </div>
-                <div className="px-4 py-2 text-right">
-                  <p className="text-base font-bold text-black">
-                    {formatCurrency(creditNoteData.total_amount)}
-                  </p>
-                </div>
+            {/* ===== Tax Summary ===== */}
+            <div className="space-y-0">
+              <div className="flex justify-between items-center py-2">
+                <span className="text-xs font-normal text-black uppercase">
+                  Taxable Amount
+                </span>
+                <span className="text-sm font-bold text-black">
+                  {formatCurrency(creditNoteData.subtotal - (creditNoteData.discount_total || 0))}
+                </span>
               </div>
-            </div>
-            <div className="mt-4 text-sm text-gray-700">
-              <p className="font-semibold">Amount in words:</p>
-              <p>{formatNumberInWords(creditNoteData.total_amount)}</p>
+
+              {creditNoteData.tax_total > 0 && (
+                <>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-xs font-normal text-black uppercase">
+                      CGST ({creditNoteData.subtotal - (creditNoteData.discount_total || 0) > 0
+                        ? Math.round(((creditNoteData.tax_total / (creditNoteData.subtotal - (creditNoteData.discount_total || 0))) * 100 / 2) * 100) / 100
+                        : 0}%)
+                    </span>
+                    <span className="text-sm font-bold text-black">
+                      {formatCurrency(creditNoteData.tax_total / 2)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-2 border-b border-black">
+                    <span className="text-xs font-normal text-black uppercase">
+                      {currentUser?.isUT ? 'UTGST' : 'SGST'}
+                      ({creditNoteData.subtotal - (creditNoteData.discount_total || 0) > 0
+                        ? Math.round(((creditNoteData.tax_total / (creditNoteData.subtotal - (creditNoteData.discount_total || 0))) * 100 / 2) * 100) / 100
+                        : 0}%)
+                    </span>
+                    <span className="text-sm font-bold text-black">
+                      {formatCurrency(creditNoteData.tax_total / 2)}
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {creditNoteData.additional_charges_total > 0 && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs font-normal text-black uppercase">
+                    Additional Charges
+                  </span>
+                  <span className="text-sm font-bold text-black">
+                    {formatCurrency(creditNoteData.additional_charges_total)}
+                  </span>
+                </div>
+              )}
+
+              {creditNoteData.round_off !== 0 && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs font-normal text-black uppercase">
+                    Round Off
+                  </span>
+                  <span className="text-sm font-bold text-black">
+                    {formatCurrency(creditNoteData.round_off)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center py-3 border-b-2 border-black">
+                <span className="text-sm font-bold text-black uppercase tracking-wider">
+                  Grand Total
+                </span>
+                <span className="text-xl font-bold text-black">
+                  {formatCurrency(creditNoteData.total_amount)}
+                </span>
+              </div>
+
+              <div className="pt-2 text-right">
+                <p className="text-[10px] text-gray-500 uppercase font-medium">
+                  Amount in Words
+                </p>
+                <p className="text-xs font-bold text-black">
+                  {formatNumberInWords(creditNoteData.total_amount)}
+                </p>
+              </div>
             </div>
           </div>
         </div>

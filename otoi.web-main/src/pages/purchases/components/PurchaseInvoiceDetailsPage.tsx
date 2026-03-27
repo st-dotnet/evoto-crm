@@ -910,8 +910,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                       type="number"
                       value={paymentForm.amount || ""}
                       onChange={(e) => {
-                        const newAmount = parseFloat(e.target.value) || 0;
-                                                
+                        const newAmount = parseFloat(e.target.value) || 0;                    
                         setPaymentForm({ 
                           ...paymentForm, 
                           amount: newAmount

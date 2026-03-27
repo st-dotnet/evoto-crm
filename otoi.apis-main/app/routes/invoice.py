@@ -184,7 +184,7 @@ def create_invoice():
         total_amount = float(data.get("total_amount", 0))
         amount_paid = float(data.get("amount_paid", 0))
         payment_discount = float(data.get("payment_discount", 0))
-        balance_due = total_amount - amount_paid - payment_discount
+        balance_due = round(total_amount - amount_paid - payment_discount, 2)
         
         invoice = Invoice(
             invoice_number=invoice_number,
@@ -541,7 +541,7 @@ def get_invoices():
         for inv in invoices:
             # Calculate effective balance due considering credit notes
             credit_notes_total = credit_notes_by_invoice.get(str(inv.uuid), 0)
-            effective_balance_due = max(0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - credit_notes_total)
+            effective_balance_due = round(max(0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - credit_notes_total), 2)
             
             # Debug: Print calculation for this invoice
             
@@ -561,11 +561,11 @@ def get_invoices():
                 "due_date": inv.due_date.isoformat() if inv.due_date else None,
                 "customer_id": str(inv.customer_id),
                 "customer_name": f"{customers[inv.customer_id].first_name} {customers[inv.customer_id].last_name}" if inv.customer_id in customers else None,
-                "total_amount": float(inv.total_amount) if inv.total_amount else 0,
-                "amount_paid": float(inv.amount_paid) if inv.amount_paid else 0,
+                "total_amount": round(float(inv.total_amount) if inv.total_amount else 0, 2),
+                "amount_paid": round(float(inv.amount_paid) if inv.amount_paid else 0, 2),
                 "balance_due": effective_balance_due,  
-                "payment_discount": float(inv.payment_discount) if inv.payment_discount else 0,
-                "credit_notes_total": credit_notes_total,  
+                "payment_discount": round(float(inv.payment_discount) if inv.payment_discount else 0, 2),
+                "credit_notes_total": round(credit_notes_total, 2),  
                 "payment_status": effective_payment_status,  
                 "charges": inv.charges,
                 "created_at": inv.created_at.isoformat() if inv.created_at else None,
@@ -667,7 +667,7 @@ def get_invoice(invoice_id):
     credit_notes_total = sum(float(cn.total_amount) for cn in credit_notes)
     
     # Calculate effective balance due considering credit notes
-    effective_balance_due = max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total)
+    effective_balance_due = round(max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total), 2)
     
     # Calculate effective payment status based on effective balance
     if effective_balance_due <= 0:
@@ -692,16 +692,16 @@ def get_invoice(invoice_id):
         } if invoice.customer else None,
         "invoice_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
         "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
-        "total_amount": float(invoice.total_amount) if invoice.total_amount else 0,
-        "amount_paid": float(invoice.amount_paid) if invoice.amount_paid else 0,
+        "total_amount": round(float(invoice.total_amount) if invoice.total_amount else 0, 2),
+        "amount_paid": round(float(invoice.amount_paid) if invoice.amount_paid else 0, 2),
         "balance_due": effective_balance_due, 
-        "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0,
+        "payment_discount": round(float(invoice.payment_discount) if invoice.payment_discount else 0, 2),
         "charges": invoice.charges or {},
         "payment_status": effective_payment_status, 
         "additional_notes": invoice.additional_notes or {},
         "items": items_data,
         "credit_notes": credit_notes_data,
-        "credit_notes_total": credit_notes_total, 
+        "credit_notes_total": round(credit_notes_total, 2), 
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "updated_at": invoice.updated_at.isoformat() if invoice.updated_at else None,
     }
@@ -887,7 +887,7 @@ def update_invoice(invoice_id):
             total_amount_value = float(invoice.total_amount or 0)
             amount_paid_value = float(invoice.amount_paid or 0)
             payment_discount_value = float(invoice.payment_discount or 0)
-            invoice.balance_due = total_amount_value - amount_paid_value - payment_discount_value
+            invoice.balance_due = round(total_amount_value - amount_paid_value - payment_discount_value, 2)
             if invoice.balance_due <= 0:
                 invoice.payment_status = "paid"
             elif amount_paid_value > 0:
@@ -972,7 +972,7 @@ def create_invoice_from_quotation(quotation_id):
             due_date=(datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d"),
             total_amount=quotation.total_amount,
             amount_paid=0,
-            balance_due=quotation.total_amount,
+            balance_due=round(quotation.total_amount, 2),
             charges=quotation.charges,
             payment_status="unpaid",
             additional_notes=quotation.additional_notes,
@@ -1095,8 +1095,8 @@ def record_payment(invoice_id):
         invoice.amount_paid = float(invoice.amount_paid or 0) + payment_amount
         # Calculate balance due considering both amount paid and total payment discount
         calculated_balance = float(invoice.total_amount)- invoice.amount_paid - (float(invoice.payment_discount) or 0)
-        # Cap balance at 0 to prevent negative values
-        invoice.balance_due = max(0, calculated_balance)
+        # Round to 2 decimal places and cap at 0 to prevent negative values
+        invoice.balance_due = round(max(0, calculated_balance), 2)
         
         # Use the helper function to update payment status (considers credit notes)
         update_invoice_payment_status(str(invoice.uuid))
@@ -1112,15 +1112,15 @@ def record_payment(invoice_id):
         # Calculate effective balance due considering credit notes for response
         credit_notes = CreditNote.query.filter_by(invoice_id=str(invoice.uuid), is_deleted=False).all()
         credit_notes_total = sum(float(cn.total_amount) for cn in credit_notes)
-        effective_balance_due = max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total)
+        effective_balance_due = round(max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total), 2)
         
         return jsonify({
             "message": "Payment recorded successfully",
-            "amount_paid": float(invoice.amount_paid),
+            "amount_paid": round(float(invoice.amount_paid), 2),
             "balance_due": effective_balance_due, 
             "payment_status": invoice.payment_status,
-            "payment_discount": float(invoice.payment_discount) if invoice.payment_discount else 0,
-            "credit_notes_total": credit_notes_total  
+            "payment_discount": round(float(invoice.payment_discount) if invoice.payment_discount else 0, 2),
+            "credit_notes_total": round(credit_notes_total, 2)  
         }), 200
         
     except Exception as e:

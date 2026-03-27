@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Plus,
   FileX,
+  ArrowDown,
   Calendar,
   Search,
   MoreVertical,
@@ -568,124 +569,127 @@ export const PaymentInPage = () => {
   return (
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-semibold">Payment In</h1>
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <ArrowDown className="h-5 w-5 text-blue-600" />
+          </div>
+          <h1 className="text-2xl font-semibold">Payment In</h1>
+        </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex flex-row sm:flex-row items-center gap-2 w-full sm:w-auto">
-            {/* Status Filter Dropdown */}
-            <div className="flex-1 sm:w-44 min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                    <div className="flex items-center overflow-hidden">
-                      <Filter className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate ml-1 text-xs sm:text-sm">
-                        {selectedStatus === 'all' && 'All'}
-                        {selectedStatus === 'paid' && 'Paid'}
-                        {selectedStatus === 'partially paid' && 'Pending'}
-                      </span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
-                  <DropdownMenuItem
-                    onClick={() => setSelectedStatus('all')}
-                    className="flex items-center gap-2"
-                  >
-                    <Circle className="h-4 w-4 text-gray-500" />
-                    <span>All Payments</span>
-                    {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSelectedStatus('paid')}
-                    className="flex items-center gap-2"
-                  >
-                    <Circle className="h-4 w-4 text-green-500" />
-                    <span>Done Payments</span>
-                    {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSelectedStatus('partially paid')}
-                    className="flex items-center gap-2"
-                  >
-                    <Circle className="h-4 w-4 text-yellow-500" />
-                    <span>Pending Payments</span>
-                    {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {/* Date Filter Dropdown */}
-            <div className="flex-1 sm:w-44 min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                    <div className="flex items-center overflow-hidden">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate ml-1 text-xs sm:text-sm">
-                        {selectedDateFilter === 'all' && 'All Dates'}
-                        {selectedDateFilter === 'today' && 'Today'}
-                        {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
-                        {selectedDateFilter === 'day_after_tomorrow' && 'D+2'}
-                        {selectedDateFilter === 'this_week' && 'This Wk'}
-                        {selectedDateFilter === 'last_week' && 'Last Wk'}
-                        {selectedDateFilter === 'this_month' && 'This Mo'}
-                        {selectedDateFilter === 'last_month' && 'Last Mo'}
-                        {selectedDateFilter === 'last_365_days' && 'Year'}
-                      </span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('all')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>All Dates</span>
-                    {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('today')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-blue-500" />
-                    <span>Today</span>
-                    {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('tomorrow')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-500" />
-                    <span>Tomorrow</span>
-                    {selectedDateFilter === 'tomorrow' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('day_after_tomorrow')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-purple-500" />
-                    <span>Day After Tomorrow</span>
-                    {selectedDateFilter === 'day_after_tomorrow' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('this_week')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-orange-500" />
-                    <span>This Week</span>
-                    {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_week')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-yellow-500" />
-                    <span>Last Week</span>
-                    {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('this_month')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-indigo-500" />
-                    <span>This Month</span>
-                    {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_month')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-pink-500" />
-                    <span>Last Month</span>
-                    {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedDateFilter('last_365_days')} className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-red-500" />
-                    <span>Last 365 Days</span>
-                    {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          {/* Status Filter Dropdown */}
+          <div className="w-full sm:w-44">  
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                  <div className="flex items-center overflow-hidden">
+                    <Filter className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate ml-1">
+                      {selectedStatus === 'all' && 'All Payments'}
+                      {selectedStatus === 'paid' && 'Paid Payments'}
+                      {selectedStatus === 'partially paid' && 'Pending Payments'}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem
+                  onClick={() => setSelectedStatus('all')}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-gray-500" />
+                  <span>All Payments</span>
+                  {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSelectedStatus('paid')}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-green-500" />
+                  <span>Done Payments</span>
+                  {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSelectedStatus('partially paid')}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-yellow-500" />
+                  <span>Pending Payments</span>
+                  {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {/* Date Filter Dropdown */}
+          <div className="w-full sm:w-44">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                  <div className="flex items-center overflow-hidden">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate ml-1">
+                      {selectedDateFilter === 'all' && 'All Dates'}
+                      {selectedDateFilter === 'today' && 'Today'}
+                      {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
+                      {selectedDateFilter === 'day_after_tomorrow' && 'Day After Tomorrow'}
+                      {selectedDateFilter === 'this_week' && 'This Week'}
+                      {selectedDateFilter === 'last_week' && 'Last Week'}
+                      {selectedDateFilter === 'this_month' && 'This Month'}
+                      {selectedDateFilter === 'last_month' && 'Last Month'}
+                      {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('all')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span>All Dates</span>
+                  {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('today')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-blue-500" />
+                  <span>Today</span>
+                  {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('tomorrow')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-green-500" />
+                  <span>Tomorrow</span>
+                  {selectedDateFilter === 'tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('day_after_tomorrow')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <span>Day After Tomorrow</span>
+                  {selectedDateFilter === 'day_after_tomorrow' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_week')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-orange-500" />
+                  <span>This Week</span>
+                  {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_week')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-yellow-500" />
+                  <span>Last Week</span>
+                  {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('this_month')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-indigo-500" />
+                  <span>This Month</span>
+                  {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_month')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-pink-500" />
+                  <span>Last Month</span>
+                  {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDateFilter('last_365_days')} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-red-500" />
+                  <span>Last 365 Days</span>
+                  {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <Button
             size="sm"
@@ -1187,3 +1191,4 @@ export const PaymentInPage = () => {
     </div>
   );
 };
+  

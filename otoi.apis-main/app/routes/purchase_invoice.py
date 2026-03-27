@@ -17,7 +17,7 @@ Workflow
 
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, send_file, g
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func, asc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.utils.decorators import login_required
@@ -29,7 +29,6 @@ from app.models.purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.inventory import Item
 from app.models.vendor import Vendor
-from app.models.debit_note import DebitNote
 from app.services.pdf_service import generate_purchase_invoice_pdf
 
 purchase_invoice_blueprint = Blueprint("purchase_invoice", __name__)
@@ -510,6 +509,87 @@ def create_purchase_invoice():
         return jsonify({"error": "Failed to create purchase invoice", "details": str(e)}), 500
 
 
+# ── DROPDOWN ───────────────────────────────────────────────────────────────────
+
+@purchase_invoice_blueprint.route('/dropdown', methods=['GET'])
+@login_required
+@jwt_required()
+def get_purchase_invoice_dropdown():
+    """Get dropdown data for purchase invoice filters - vendor names with UUID and invoice numbers"""
+    try:
+        # Get JWT claims
+        jwt_claims = get_jwt()
+        
+        # Handle different JWT token formats
+        if isinstance(jwt_claims, str):
+            business_id = 1  # Default fallback
+        else:
+            business_id = jwt_claims.get('business_id', 1)
+        
+        dropdown_type = request.args.get('type', '').strip()
+        
+        if dropdown_type == 'party_names':
+            # Get vendor names with UUID (like payment_out.py but with UUID)
+            vendors = (
+                db.session.query(
+                    Vendor.uuid,
+                    db.func.coalesce(Vendor.vendor_name, Vendor.company_name).label('party_name')
+                )
+                .join(PurchaseInvoice, Vendor.uuid == PurchaseInvoice.vendor_id)
+                .filter(PurchaseInvoice.business_id == business_id, PurchaseInvoice.is_deleted == False)
+                .distinct()
+                .order_by('party_name')
+                .all()
+            )
+            
+            result = []
+            for vendor in vendors:
+                if vendor.party_name:
+                    result.append({
+                        'uuid': str(vendor.uuid),
+                        'name': vendor.party_name
+                    })
+            
+            return jsonify(result), 200
+            
+        elif dropdown_type == 'invoice_numbers':
+            # Get invoice numbers from purchase invoices
+            invoice_numbers = (
+                db.session.query(PurchaseInvoice.invoice_number)
+                .filter(
+                    PurchaseInvoice.business_id == business_id,
+                    PurchaseInvoice.is_deleted == False,
+                    PurchaseInvoice.invoice_number.isnot(None)
+                )
+                .distinct()
+                .order_by(PurchaseInvoice.invoice_number)
+                .all()
+            )
+            
+            return jsonify([n.invoice_number for n in invoice_numbers if n.invoice_number]), 200
+            
+        elif dropdown_type == 'statuses':
+            # Get available payment statuses
+            statuses = (
+                db.session.query(PurchaseInvoice.payment_status)
+                .filter(
+                    PurchaseInvoice.business_id == business_id,
+                    PurchaseInvoice.is_deleted == False
+                )
+                .distinct()
+                .order_by(PurchaseInvoice.payment_status)
+                .all()
+            )
+            
+            return jsonify([s.payment_status for s in statuses if s.payment_status]), 200
+            
+        else:
+            return jsonify({'error': 'Invalid dropdown type. Use: party_names, invoice_numbers, statuses'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch dropdown data', 'details': str(e)}), 500
+
+
 # ── LIST ──────────────────────────────────────────────────────────────────────
 
 @purchase_invoice_blueprint.route("/", methods=["GET"])
@@ -523,10 +603,32 @@ def list_purchase_invoices():
       - name: search
         in: query
         type: string
+      - name: vendor_name
+        in: query
+        type: string
+      - name: invoice_number
+        in: query
+        type: string
       - name: payment_status
         in: query
         type: string
         description: unpaid | partial | paid
+      - name: include_debit_notes
+        in: query
+        type: boolean
+        default: false
+      - name: vendor_names_dropdown
+        in: query
+        type: boolean
+        description: Set to "true" to get unique vendor names for dropdown
+      - name: invoice_numbers_dropdown
+        in: query
+        type: boolean
+        description: Set to "true" to get unique invoice numbers for dropdown
+      - name: payment_statuses_dropdown
+        in: query
+        type: boolean
+        description: Set to "true" to get unique payment statuses for dropdown
       - name: page
         in: query
         type: integer
@@ -535,10 +637,11 @@ def list_purchase_invoices():
         type: integer
     responses:
       200:
-        description: Paginated list of purchase invoices
+        description: Paginated list of purchase invoices or dropdown values
     """
     try:
-        query = db.session.query(PurchaseInvoice).outerjoin(Vendor, PurchaseInvoice.vendor_id == Vendor.uuid).filter(PurchaseInvoice.is_deleted == False)
+        business_id = getattr(g, "business_id", None)
+        query = db.session.query(PurchaseInvoice).outerjoin(Vendor, PurchaseInvoice.vendor_id == Vendor.uuid).filter(PurchaseInvoice.is_deleted == False).filter(PurchaseInvoice.business_id == business_id)
 
         search = request.args.get("search", "").strip()
         vendor_name = request.args.get("vendor_name", "").strip()
@@ -546,6 +649,12 @@ def list_purchase_invoices():
         payment_status = request.args.get("payment_status", "").strip()
         date_filter = request.args.get("date_filter", "last_365").strip()
         include_debit_notes = request.args.get("include_debit_notes", "false").lower() == "true"
+        order = request.args.get("order", "desc", type=str)  # Add order parameter
+        date_from = request.args.get("date_from", "", type=str)
+        date_to = request.args.get("date_to", "", type=str)
+        date_filter = request.args.get("date_filter", "", type=str)
+
+        # Dropdown shortcuts removed - use dedicated /dropdown endpoint instead
 
         # Apply date filter
         query = _date_filter_query(query, PurchaseInvoice, date_filter)
@@ -573,7 +682,11 @@ def list_purchase_invoices():
         if payment_status:
             query = query.filter(PurchaseInvoice.payment_status == payment_status)
 
-        query = query.order_by(desc(PurchaseInvoice.created_at))
+        # Order by date based on order parameter
+        if order == 'asc':
+            query = query.order_by(PurchaseInvoice.created_at.asc())
+        else:
+            query = query.order_by(desc(PurchaseInvoice.created_at))
 
         page = int(request.args.get("page", 1))
         per_page = int(
@@ -597,7 +710,6 @@ def list_purchase_invoices():
             invoice_ids = [inv.uuid for inv in invoices]
             debit_notes_map = {}
             if invoice_ids:
-                from app.models.debit_note import DebitNote
                 debit_notes = DebitNote.query.filter(
                     DebitNote.invoice_id.in_(invoice_ids),
                     DebitNote.is_deleted == False
@@ -614,7 +726,9 @@ def list_purchase_invoices():
                     })
 
         result = []
+        print(f"DEBUG: Processing {len(invoices)} invoices in list endpoint")
         for inv in invoices:
+            print(f"DEBUG: Processing invoice {inv.invoice_number}")
             # Update status for each invoice to ensure up-to-date values
             try:
                 update_purchase_invoice_payment_status(inv.uuid)
@@ -633,20 +747,23 @@ def list_purchase_invoices():
                 # Calculate total debit note amount
                 total_debit_amount = sum(float(dn.total_amount) for dn in debit_notes)
                 
+                print(f"DEBUG: Invoice {inv.invoice_number} - Total: {inv.total_amount}, Paid: {inv.amount_paid}, Discount: {inv.payment_discount or 0}, Debit Notes: {total_debit_amount}")
+                
                 # Force recalculate balance_due to ensure discount and debit notes are included
                 calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - total_debit_amount)
                 
+                print(f"DEBUG: Invoice {inv.invoice_number} - Calculated Balance: {calculated_balance}, Current Balance: {inv.balance_due}")
+                
+                # Update the invoice balance if different
+                if float(inv.balance_due) != calculated_balance:
+                    inv.balance_due = calculated_balance
+                    print(f"DEBUG: Updated balance for invoice {inv.invoice_number}")
                 
             except Exception as e:
-                import sys
                 # Fallback to simple calculation without debit notes
                 calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0))
                 total_debit_amount = 0.0
-            
-            if float(inv.balance_due) != calculated_balance:
-                inv.balance_due = calculated_balance
-                db.session.commit()
-                db.session.refresh(inv)
+                print(f"DEBUG: Error calculating balance for invoice {inv.invoice_number}: {e}")
             
             v = vendor_map.get(inv.vendor_id)
             invoice_data = {

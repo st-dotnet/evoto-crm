@@ -737,9 +737,10 @@ def update_customer(customer_id):
 
        # ---------------- BILLING ADDRESS VALIDATION ----------------
         # has_billing_updates = any(field in data for field in ["address1", "city", "state", "country", "pin"])
+        # Check for both prefixed and non-prefixed field names for compatibility
         has_billing_updates = any(field in data for field in [
         "billing_address1", "address1",
-        "billing_address2", "address2",
+        "billing_address2", "address2", 
         "billing_city", "city",
         "billing_state", "state",
         "billing_country", "country",
@@ -945,8 +946,6 @@ def update_customer(customer_id):
                 db.session.rollback()
                 current_app.logger.error(f"Error processing shipping addresses: {str(e)}", exc_info=True)
                 return jsonify({"error": f"Failed to process shipping addresses: {str(e)}"}), 400
-                current_app.logger.error(f"Error processing shipping address: {str(e)}")
-                return jsonify({"error": f"Failed to process shipping address: {str(e)}"}), 400
         
         # After processing all shipping addresses, ensure at least one default exists if there are addresses
         if shipping_list:
