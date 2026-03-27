@@ -136,7 +136,7 @@ const CreatePurchaseInvoicePage = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Financial States
-  const [amountPaid, setAmountPaid] = useState(0);
+  const [amountPaid, setAmountPaid] = useState<number | string>(0);
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [notes, setNotes] = useState("");
   const [showNotesField, setShowNotesField] = useState(false);
@@ -522,8 +522,8 @@ const CreatePurchaseInvoicePage = () => {
         invoice_date: formData.invoiceDate,
         due_date: formData.dueDate,
         total_amount: finalTotal,
-        amount_paid: isFullyPaid ? finalTotal : amountPaid,
-        balance_due: isFullyPaid ? 0 : Math.max(0, finalTotal - amountPaid),
+        amount_paid: isFullyPaid ? finalTotal : (Number(amountPaid) || 0),
+        balance_due: isFullyPaid ? 0 : Math.max(0, finalTotal - (Number(amountPaid) || 0)),
         items: invoiceItems.map(item => ({
           item_id: item.item_id,
           description: item.description,
@@ -539,7 +539,7 @@ const CreatePurchaseInvoicePage = () => {
         additional_charges: additionalCharges.reduce((s, c) => s + c.amount, 0),
         overall_discount: calculateOverallDiscount(),
         round_off: roundOffAmount,
-        payment_status: isFullyPaid ? "paid" : (amountPaid > 0 ? "partial" : "unpaid"),
+        payment_status: isFullyPaid ? "paid" : ((Number(amountPaid) || 0) > 0 ? "partial" : "unpaid"),
       };
 
       let response;
@@ -594,9 +594,9 @@ const CreatePurchaseInvoicePage = () => {
 
   useEffect(() => {
     if (isFullyPaid) {
-      setAmountPaid(Math.round(calculateFinalTotal()));
+      setAmountPaid(Number(calculateFinalTotal().toFixed(2)));
     }
-  }, [isFullyPaid, invoiceItems, tax, additionalCharges, discount, roundOffAmount]);
+  }, [isFullyPaid, invoiceItems, tax, additionalCharges, discount, roundOffAmount, autoRoundOff]);
 
   // Address Formatting
   const formatAddress = (vendor: any) => {
@@ -1029,7 +1029,38 @@ const CreatePurchaseInvoicePage = () => {
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                  <Input type="number" value={amountPaid} onChange={e => { setAmountPaid(parseFloat(e.target.value) || 0); setIsFullyPaid(false); }} className="h-10 pl-7 text-base font-medium" disabled={isFullyPaid} />
+                  <Input 
+                    type="number" 
+                    value={amountPaid} 
+                    onKeyDown={(e) => {
+                      if (["-", "+", "e", "E"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={e => {
+                      const rawVal = e.target.value;
+                      if (rawVal === '') {
+                        setAmountPaid('');
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      const numVal = parseFloat(rawVal);
+                      if (Number.isNaN(numVal)) {
+                        setAmountPaid('');
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      if (numVal < 0) {
+                        setAmountPaid(0);
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      setAmountPaid(rawVal);
+                      if (numVal !== Number(calculateFinalTotal().toFixed(2))) setIsFullyPaid(false);
+                    }} 
+                    className="h-10 pl-7 text-base font-medium" 
+                    disabled={isFullyPaid} 
+                  />
                 </div>
                 <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="h-10 text-sm border rounded-lg px-2 bg-white min-w-[100px]">
                   <option>Cash</option>
@@ -1041,7 +1072,7 @@ const CreatePurchaseInvoicePage = () => {
               </div>
               <div className="flex justify-between text-blue-700 pt-2 border-t border-blue-200">
                 <span className="text-xs font-bold uppercase tracking-wider">Balance Due</span>
-                <span className="text-lg font-bold">₹{Math.max(0, (calculateFinalTotal() - amountPaid)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                <span className="text-lg font-bold">₹{Math.max(0, (calculateFinalTotal() - (Number(amountPaid) || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>

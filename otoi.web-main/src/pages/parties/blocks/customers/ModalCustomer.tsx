@@ -1081,7 +1081,7 @@ const ModalCustomer = ({
                       <div className="flex flex-col gap-1">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700">
                           Billing Address 1{" "}
-                          {/* <span style={{ color: "red" }}>*</span> */}
+                          <span style={{ color: "red" }}>*</span>
                         </label>
                         <input
                           {...formik.getFieldProps("address1")}

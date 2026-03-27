@@ -216,7 +216,7 @@ const CreateInvoicePage = () => {
   });
 
   // Payment States
-  const [amountReceived, setAmountReceived] = useState(0);
+  const [amountReceived, setAmountReceived] = useState<number | string>(0);
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [transactionReference, setTransactionReference] = useState("");
   const [isFullyPaid, setIsFullyPaid] = useState(false);
@@ -1045,9 +1045,9 @@ const CreateInvoicePage = () => {
   // Payment Handlers
   useEffect(() => {
     if (isFullyPaid) {
-      setAmountReceived(Math.round(calculateFinalTotal()));
+      setAmountReceived(Number(calculateFinalTotal().toFixed(2)));
     }
-  }, [isFullyPaid, invoiceItems, tax, additionalCharges, discount]);
+  }, [isFullyPaid, invoiceItems, tax, additionalCharges, discount, autoRoundOff, roundOffAmount]);
 
   const handleSaveInvoice = async () => {
     setIsSaving(true);
@@ -1069,7 +1069,7 @@ const CreateInvoicePage = () => {
         total_discount: totalDiscount,
         total_tax: totalTax,
         total_amount: totalAmount,
-        amount_paid: amountReceived,
+        amount_paid: Number(amountReceived) || 0,
         additional_charges: additionalCharges.reduce(
           (sum, c) => sum + c.amount,
           0,
@@ -2511,8 +2511,25 @@ const CreateInvoicePage = () => {
                       }
                     }}
                     onChange={e => {
-                      setAmountReceived(parseFloat(e.target.value));
-                      if (parseFloat(e.target.value) !== Math.round(calculateFinalTotal())) setIsFullyPaid(false);
+                      const rawVal = e.target.value;
+                      if (rawVal === '') {
+                        setAmountReceived('');
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      const numVal = parseFloat(rawVal);
+                      if (Number.isNaN(numVal)) {
+                        setAmountReceived('');
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      if (numVal < 0) {
+                        setAmountReceived(0);
+                        setIsFullyPaid(false);
+                        return;
+                      }
+                      setAmountReceived(rawVal);
+                      if (numVal !== Number(calculateFinalTotal().toFixed(2))) setIsFullyPaid(false);
                     }}
                     className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
                   />
@@ -2540,7 +2557,7 @@ const CreateInvoicePage = () => {
               <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 <span className="text-sm font-medium text-green-600">Balance Amount</span>
                 <span className="text-lg font-bold text-green-600">
-                  ₹ {(calculateFinalTotal() - amountReceived).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  ₹ {(calculateFinalTotal() - (Number(amountReceived) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
