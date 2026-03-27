@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
-import { listPurchaseInvoices, deletePurchaseInvoice, recordPurchaseInvoicePayment } from "../services/purchaseInvoice.services";
+import { listPurchaseInvoices, deletePurchaseInvoice, recordPurchaseInvoicePayment, getPurchaseInvoicePartyNames, getPurchaseInvoiceNumbers, getPurchaseInvoiceStatuses } from "../services/purchaseInvoice.services";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
@@ -103,23 +103,42 @@ const PurchaseInvoicePage = () => {
         setRefreshKey(prev => prev + 1);
     }, [selectedStatus]);
 
-    // Fetch vendor names for autocomplete suggestions
+    // Fetch vendor names and invoice numbers for autocomplete suggestions
     const fetchAutocompleteData = useCallback(async () => {
         setIsDropdownLoading(true);
         try {
-            const vendorResponse = await getAllVendorsDropdown();
+            const [vendorResponse, invoiceNumberResponse, statusResponse] = await Promise.all([
+                getPurchaseInvoicePartyNames(),
+                getPurchaseInvoiceNumbers(),
+                getPurchaseInvoiceStatuses()
+            ]);
+            
+            // Handle vendor names (party names) - should be array of {uuid, name} objects
             if (vendorResponse.success && vendorResponse.data) {
-                const vendorNames = vendorResponse.data
-                    .map((v: any) => v.name)
-                    .filter((name: string) => name && name !== "N/A");
+                const vendorNames = Array.isArray(vendorResponse.data)
+                    ? vendorResponse.data.filter((item: any) => item && item.name && typeof item.name === 'string')
+                        .map((item: any) => item.name)
+                        .sort()
+                    : [];
                 setAllVendorNames(vendorNames);
+            }
+            
+            // Handle invoice numbers - should be simple array of strings
+            if (invoiceNumberResponse.success && invoiceNumberResponse.data) {
+                const invoiceNumbers = Array.isArray(invoiceNumberResponse.data)
+                    ? invoiceNumberResponse.data.filter((item: any) => item && typeof item === 'string')
+                        .sort()
+                    : [];
+                setAllInvoiceNumbers(invoiceNumbers);
             }
         } catch (error) {
             console.error('Error fetching autocomplete data:', error);
+            setAllVendorNames([]);
+            setAllInvoiceNumbers([]);
         } finally {
             setIsDropdownLoading(false);
         }
-    }, []);
+    }, [refreshKey]);
 
     useEffect(() => {
         fetchAutocompleteData();
@@ -200,16 +219,40 @@ const PurchaseInvoicePage = () => {
 
             if (response.success && response.data) {
                 const invoicesData = response.data.data || [];
-                const transformed = invoicesData.map((item: any) => ({
-                    id: item.uuid,
-                    date: item.invoice_date || item.created_at,
-                    invoice_number: item.invoice_number,
-                    vendor_name: item.vendor_name || 'N/A',
-                    amount: item.total_amount || 0,
-                    amount_paid: item.amount_paid || 0,
-                    balance_due: item.balance_due || 0,
-                    payment_status: item.payment_status || 'unpaid',
-                }));
+                
+                // Fetch debit notes for all invoices to recalculate balance (backend still returns incorrect values)
+                let debitNotes: any[] = [];
+                try {
+                    const { getDebitNotes } = await import("../../debitNote/service/debitNote.service");
+                    const debitNotesResponse = await getDebitNotes({ per_page: 1000 });
+                    const debitNotesData = debitNotesResponse.success && debitNotesResponse.data?.data ? debitNotesResponse.data.data : [];
+                    debitNotes = Array.isArray(debitNotesData) ? debitNotesData : [];
+                } catch (error) {
+                    console.warn('Failed to fetch debit notes, proceeding without balance adjustment:', error);
+                    // Continue without debit notes if fetch fails
+                }
+                
+                const transformed = invoicesData.map((item: any) => {
+                    // Calculate total debit note amount for this invoice
+                    const debitNoteTotal = debitNotes
+                        .filter((dn: any) => dn.invoice_id === item.uuid || dn.linked_invoice_id === item.uuid)
+                        .reduce((sum: number, dn: any) => sum + (dn.total_amount || 0), 0);
+                    
+                    // Recalculate balance due: backend balance - debit notes applied
+                    const backendBalance = item.balance_due || 0;
+                    const adjustedBalance = Math.max(0, backendBalance - debitNoteTotal);
+                    
+                    return {
+                        id: item.uuid,
+                        date: item.invoice_date || item.created_at,
+                        invoice_number: item.invoice_number,
+                        vendor_name: item.vendor_name || 'N/A',
+                        amount: item.total_amount || 0,
+                        amount_paid: item.amount_paid || 0,
+                        balance_due: adjustedBalance,
+                        payment_status: adjustedBalance === 0 ? 'paid' : (item.payment_status || 'unpaid'),
+                    };
+                });
                 setInvoices(transformed);
                 return {
                     data: transformed,

@@ -489,17 +489,17 @@ export default function CreateItemModal({
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-[900px] w-[95vw] p-0 rounded-lg shadow-lg h-[90vh] md:h-[80vh] flex flex-col overflow-hidden">
-                    <DialogHeader className="bg-gray-50 p-4 sm:p-6 border-b">
-                        <DialogTitle className="text-base sm:text-lg font-semibold text-gray-800 text-center sm:text-left">
+                <DialogContent className="max-w-[900px] w-[95vw] p-0 rounded-lg shadow-2xl h-[90vh] md:h-[80vh] flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]">
+                    <DialogHeader className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 sm:p-6 border-b transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+                        <DialogTitle className="text-base sm:text-lg font-semibold text-gray-800 text-center sm:text-left transition-all duration-300">
                             {item ? "Edit Item" : "Create New Item"}
                         </DialogTitle>
                     </DialogHeader>
 
-                    <DialogBody className="overflow-y-auto flex-1 p-0">
+                    <DialogBody className="overflow-y-auto flex-1 p-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                         <div className="flex flex-col md:flex-row h-full">
                             {/* Left Sidebar */}
-                            <div className="w-full md:w-64 p-2 md:p-4 bg-gray-50 border-b md:border-r overflow-x-auto md:overflow-y-auto flex md:flex-col gap-2 md:gap-0 sticky top-0 z-10 no-scrollbar">
+                            <div className="w-full md:w-64 p-2 md:p-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b md:border-r overflow-x-auto md:overflow-y-auto flex md:flex-col gap-2 md:gap-0 sticky top-0 z-10 no-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                                 <div
                                     className={clsx(
                                         "p-1.5 md:p-2 rounded mb-0 md:mb-4 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
@@ -842,26 +842,25 @@ export default function CreateItemModal({
                 }
                 setShowCategoryModal(isOpen);
             }}>
-                <DialogContent className="max-w-md rounded-2xl p-6 shadow-lg">
+                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]">
 
                     {/* Remove DialogHeader spacing issue */}
-                    <DialogTitle className="mb-4 text-lg font-semibold text-gray-800">
+                    <DialogTitle className="mb-4 text-lg font-semibold text-gray-800 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                         Create New Category
                     </DialogTitle>
 
-                    <div className="space-y-5">
+                    <div className="space-y-5 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                         <input
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-offset-2"
                             placeholder="Ex: Snacks"
                             value={newCategory}
                             onChange={(e) => setNewCategory(e.target.value)}
                         />
 
-                        <div className="flex justify-end gap-3 pt-2">
+                        <div className="flex justify-end gap-3 pt-2 transition-all duration-500">
                             <Button
                                 variant="outline"
-                                className="rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm h-9 md:h-10"
+                                className="rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm h-9 md:h-10 transition-all duration-300 hover:scale-105 active:scale-95"
                                 onClick={() => { setNewCategory(""); setShowCategoryModal(false); }}
                                 style={{ background: "white" }}
                             >
@@ -869,8 +868,7 @@ export default function CreateItemModal({
                             </Button>
 
                             <Button
-                                className="rounded-lg bg-blue-600 px-4 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white
-          hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 h-9 md:h-10"
+                                className="rounded-lg bg-blue-600 px-4 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 h-9 md:h-10 transition-all duration-300 hover:scale-105 active:scale-95 disabled:hover:scale-100"
                                 disabled={!newCategory}
                                 onClick={async () => {
                                     try {

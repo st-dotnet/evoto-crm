@@ -61,7 +61,7 @@ const CreateCreditNotePage = () => {
     const location = useLocation();
     const isEditMode = !!id && location.pathname.includes('/edit');
     const isViewMode = !!id && !location.pathname.includes('/edit');
-    
+
     // Get invoice_id from URL parameters
     const urlParams = new URLSearchParams(location.search);
     const invoiceId = urlParams.get('invoice_id');
@@ -119,14 +119,14 @@ const CreateCreditNotePage = () => {
             setIsInvoicePaid(false);
             return;
         }
-        
+
         try {
             const response = await getInvoiceById(invoiceNumber);
             if (response.success && response.data) {
                 const invoice = response.data;
                 const totalPaid = invoice.amount_paid || 0;
                 const totalAmount = invoice.total_amount || 0;
-                
+
                 // Fetch credit notes for this invoice to calculate total
                 let creditNotesTotal = 0;
                 try {
@@ -135,18 +135,16 @@ const CreateCreditNotePage = () => {
                         creditNotesTotal = creditNotesResponse.data.data.reduce((sum: number, cn: any) => sum + (cn.total_amount || 0), 0);
                     }
                 } catch (creditNotesError) {
-                    console.warn('Failed to fetch credit notes for invoice:', creditNotesError);
                     // Continue with 0 if credit notes fetch fails
                 }
-                
+
                 const balance = totalAmount - (totalPaid + creditNotesTotal);
-                
+
                 setIsInvoicePaid(balance === 0 && totalPaid > 0);
             } else {
                 setIsInvoicePaid(false);
             }
         } catch (error) {
-            console.error('Error checking invoice payment status:', error);
             setIsInvoicePaid(false);
         }
     };
@@ -211,21 +209,20 @@ const CreateCreditNotePage = () => {
                     const response = await getInvoiceById(invoiceId);
                     if (response.success && response.data) {
                         const invoice = response.data;
-                        
+
                         // Set customer
                         if (invoice.customer_id) {
                             await fetchCustomerData(invoice.customer_id);
                         }
-                        
+
                         // Auto-select the invoice
                         handleInvoiceSelect(invoice);
                     }
                 } catch (error) {
-                    console.error('Error loading invoice for credit note:', error);
                     toast.error('Failed to load invoice details');
                 }
             };
-            
+
             handleInvoiceFromParam();
         }
     }, [invoiceId, isEditMode]);
@@ -283,7 +280,6 @@ const CreateCreditNotePage = () => {
             };
             setSelectedCustomer(updatedCustomer);
         } catch (error: any) {
-            console.error("Error updating shipping address:", error);
             toast.error("Failed to update shipping address");
         }
     };
@@ -342,7 +338,6 @@ const CreateCreditNotePage = () => {
             setAddAddressModalOpen(false);
             setEditingAddress(undefined);
         } catch (error: any) {
-            console.error("Error saving address:", error);
             toast.error("Failed to save address. Please try again.");
         }
     };
@@ -351,7 +346,7 @@ const CreateCreditNotePage = () => {
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Element;
-            
+
             // Handle address dropdown
             if (
                 dropdownRef.current &&
@@ -359,7 +354,7 @@ const CreateCreditNotePage = () => {
             ) {
                 setActiveDropdownUuid(null);
             }
-            
+
             // Handle invoice dropdown
             if (!target.closest('#linkToInvoice') && !target.closest('.invoice-dropdown')) {
                 setShowInvoiceDropdown(false);
@@ -380,12 +375,17 @@ const CreateCreditNotePage = () => {
         setIsInvoiceDropdownLoading(true);
         try {
             const response = await getInvoicesForParty(selectedCustomer.uuid);
+
             if (response.success && response.data?.data) {
-                
                 // Backend now handles excluding invoices linked to credit notes
                 const availableInvoices = response.data.data.filter((invoice: any) => {
-                    const belongsToSelectedCustomer = invoice.customer_id === selectedCustomer.uuid;
-                    
+                    const belongsToSelectedCustomer =
+                        invoice.vendor_id === selectedCustomer.uuid ||
+                        invoice.customer_id === selectedCustomer.uuid ||
+                        invoice.party_id === selectedCustomer.uuid ||
+                        invoice.vendor_uuid === selectedCustomer.uuid ||
+                        invoice.customer_uuid === selectedCustomer.uuid;
+
                     return belongsToSelectedCustomer && invoice.payment_status !== 'refunded';
                 });
                 setPartyInvoices(availableInvoices);
@@ -395,7 +395,6 @@ const CreateCreditNotePage = () => {
                 setShowInvoiceDropdown(true); // Show dropdown even when no invoices to display message
             }
         } catch (error) {
-            console.error('Error fetching party invoices:', error);
             setPartyInvoices([]);
             setShowInvoiceDropdown(false);
         } finally {
@@ -451,7 +450,6 @@ const CreateCreditNotePage = () => {
                             setCreditNoteShippingAddressId(data.shipping_address_id);
                         }
                     } catch (error) {
-                        console.error('Error fetching customer data:', error);
                         // Fallback to minimal customer object
                         const fallbackCustomer = {
                             uuid: data.customer_id,
@@ -485,7 +483,7 @@ const CreateCreditNotePage = () => {
                                 });
                             }
                         } catch (invoiceError) {
-                            console.warn('Failed to fetch original invoice quantities:', invoiceError);
+                            // Continue without original quantities if fetch fails
                         }
                     }
 
@@ -522,7 +520,6 @@ const CreateCreditNotePage = () => {
                 navigate('/sales/credit-note');
             }
         } catch (error: any) {
-            console.error('Error fetching credit note:', error);
             toast.error('Failed to fetch credit note');
             navigate('/sales/credit-note');
         } finally {
@@ -535,14 +532,14 @@ const CreateCreditNotePage = () => {
         const subtotal = updatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.price_per_item), 0);
         const totalDiscount = updatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.price_per_item * item.discount / 100), 0);
         const totalTax = updatedItems.reduce((sum: number, item: any) => sum + ((item.quantity * item.price_per_item * (1 - item.discount / 100)) * item.tax / 100), 0);
-        
+
         // Calculate total amount consistently from components, not from item.amount
         const netAmount = subtotal - totalDiscount + totalTax;
         let totalAmount = netAmount;
-        
+
         // Apply round-off if enabled
         let roundOffAmount = 0;
-        
+
         if (creditNoteData.autoRoundOff) {
             const roundedAmount = Math.round(totalAmount);
             roundOffAmount = roundedAmount - totalAmount;
@@ -559,7 +556,7 @@ const CreateCreditNotePage = () => {
         }));
     };
 
-    
+
     // Function to handle invoice selection
     const handleInvoiceSelect = async (invoice: any) => {
         // Only check for existing credit notes when creating, not editing
@@ -571,7 +568,6 @@ const CreateCreditNotePage = () => {
                     return;
                 }
             } catch (error) {
-                console.error('Error checking credit note existence:', error);
                 // Allow proceeding if check fails (fail-safe)
             }
         }
@@ -586,7 +582,6 @@ const CreateCreditNotePage = () => {
         const invoiceId = invoice.uuid;
 
         if (!invoiceId) {
-            console.error('No valid invoice ID found in invoice object:', invoice);
             toast.error('Invalid invoice data - missing ID');
             return;
         }
@@ -629,7 +624,6 @@ const CreateCreditNotePage = () => {
                 toast.error('No items found in this invoice');
             }
         } catch (error) {
-            console.error('Error fetching invoice details:', error);
             toast.error('Failed to load invoice items');
         }
     };
@@ -753,7 +747,6 @@ const CreateCreditNotePage = () => {
 
             setSelectedCustomer(customerData);
         } catch (error) {
-            console.error('Error fetching customer data:', error);
             toast.error("Failed to fetch customer details");
         } finally {
             setIsLoading(false);
@@ -906,7 +899,6 @@ const CreateCreditNotePage = () => {
                     return;
                 }
             } catch (error) {
-                console.error('Error checking credit note existence before save:', error);
                 toast.error('Unable to verify credit note status. Cannot proceed for safety.');
                 setIsSaving(false);
                 return;
@@ -959,7 +951,7 @@ const CreateCreditNotePage = () => {
             if (response.success) {
                 const successMessage = isEditMode ? 'Credit note updated successfully' : 'Credit note created successfully';
                 toast.success(successMessage);
-                
+
                 // Dispatch event to notify invoice list about credit note changes
                 window.dispatchEvent(new CustomEvent('creditNoteUpdated', {
                     detail: {
@@ -968,14 +960,13 @@ const CreateCreditNotePage = () => {
                         invoiceId: response.data?.invoice_id || creditNoteData.linkToInvoice
                     }
                 }));
-                
+
                 navigate('/sales/credit-note');
             } else {
                 const errorMessage = isEditMode ? 'Failed to update credit note' : 'Failed to create credit note';
                 toast.error(response.error || errorMessage);
             }
         } catch (error: any) {
-            console.error('Error creating credit note:', error);
             toast.error(error.message || 'Failed to create credit note');
         } finally {
             setIsSaving(false);
@@ -1387,7 +1378,7 @@ const CreateCreditNotePage = () => {
                                             onChange={(e) => setCreditNoteData({ ...creditNoteData, linkToInvoice: e.target.value })}
                                             onFocus={() => selectedCustomer && fetchPartyInvoices()}
                                             className="pl-10"
-                                            disabled={!selectedCustomer || creditNoteData.linkToInvoice !== '' || isViewMode || isInvoicePaid}
+                                            disabled={!selectedCustomer || isViewMode || isInvoicePaid}
                                             autoComplete="off"
                                         />
                                         {creditNoteData.linkToInvoice && !isViewMode && (
@@ -2226,16 +2217,16 @@ const CreateCreditNotePage = () => {
                                                     <div
                                                         key={address.uuid || index}
                                                         className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
-                                                                ? "border-blue-500 bg-blue-50"
-                                                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                                                            ? "border-blue-500 bg-blue-50"
+                                                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                                                             }`}
                                                         onClick={() => setSelectedAddress(address)}
                                                     >
                                                         <div className="flex items-start gap-3">
                                                             <div
                                                                 className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
-                                                                        ? "bg-blue-100"
-                                                                        : "bg-gray-100 group-hover:bg-gray-200"
+                                                                    ? "bg-blue-100"
+                                                                    : "bg-gray-100 group-hover:bg-gray-200"
                                                                     }`}
                                                             >
                                                                 {address.address_type === "home" ? (
@@ -2279,10 +2270,7 @@ const CreateCreditNotePage = () => {
                                                                                 const uuid = address.uuid;
 
                                                                                 if (!uuid) {
-                                                                                    console.error(
-                                                                                        "Address UUID is missing:",
-                                                                                        address,
-                                                                                    );
+                                                                                    // Address UUID is missing
                                                                                     return;
                                                                                 }
 
@@ -2454,7 +2442,7 @@ const CreateCreditNotePage = () => {
                                                 setIsShippingModalOpen(false);
                                                 toast.success("Address changed successfully");
                                             } catch (error: any) {
-                                                const errorMessage = error.response?.data?.error || 
+                                                const errorMessage = error.response?.data?.error ||
                                                     "Failed to save shipping address. Please try again.";
 
                                                 toast.error(errorMessage);

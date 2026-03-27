@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Plus,
   FileX,
+  ArrowDown,
   Calendar,
   Search,
   MoreVertical,
@@ -554,10 +555,15 @@ export const PaymentInPage = () => {
   return (
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-semibold">Payment In</h1>
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <ArrowDown className="h-5 w-5 text-blue-600" />
+          </div>
+          <h1 className="text-2xl font-semibold">Payment In</h1>
+        </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Status Filter Dropdown */}
-          <div className="w-full sm:w-44">
+          <div className="w-full sm:w-44">  
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 w-full justify-between">
@@ -1180,3 +1186,4 @@ export const PaymentInPage = () => {
     </div>
   );
 };
+  
