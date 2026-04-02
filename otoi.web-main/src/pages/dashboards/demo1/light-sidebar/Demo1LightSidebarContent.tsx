@@ -1,45 +1,35 @@
 import {
-  ChannelStats,
-  EarningsChart,
-  EntryCallout,
-  Highlights,
-  TeamMeeting,
-  Teams,
+  BusinessOverviewHeader,
+  LatestTransactions,
+  SalesReport,
+  StatCards,
+  TodaysChecklist,
 } from "./blocks";
 
 const Demo1LightSidebarContent = () => {
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      <div className="grid lg:grid-cols-3 gap-5 lg:gap-7.5 items-stretch">
-        <div className="lg:col-span-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-5 lg:gap-7.5 h-full items-stretch">
-            <ChannelStats />
-          </div>
-        </div>
+      {/* Business Overview Header */}
+      <BusinessOverviewHeader />
 
+      {/* Row 1: Three stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7.5">
+        <StatCards />
+      </div>
+
+      {/* Row 2: Latest Transactions + Today's Checklist */}
+      <div className="grid lg:grid-cols-3 gap-5 lg:gap-7.5 items-stretch">
         <div className="lg:col-span-2">
-          <EntryCallout className="h-full" />
+          <LatestTransactions />
+        </div>
+        <div className="lg:col-span-1">
+          <TodaysChecklist />
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5 lg:gap-7.5 items-stretch">
-        <div className="lg:col-span-1">
-          <Highlights limit={3} />
-        </div>
-
-        <div className="lg:col-span-2">
-          <EarningsChart />
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-5 lg:gap-7.5 items-stretch">
-        <div className="lg:col-span-1">
-          <TeamMeeting />
-        </div>
-
-        {/* <div className="lg:col-span-2">
-          <Teams />
-        </div> */}
+      {/* Row 3: Sales Report (full width) */}
+      <div className="grid grid-cols-1 gap-5 lg:gap-7.5">
+        <SalesReport />
       </div>
     </div>
   );

@@ -120,6 +120,7 @@ const PurchaseOrderPreviewPage = lazy(() => import('@/pages/purchases/components
 const PurchaseInvoicePage = lazy(() => import('@/pages/purchases/components/PurchaseInvoicePage').then(module => ({ default: module.default })));
 const PurchaseInvoiceDetailsPage = lazy(() => import('@/pages/purchases/components/PurchaseInvoiceDetailsPage').then(module => ({ default: module.default })));
 const CreatePurchaseInvoicePage = lazy(() => import('@/pages/purchases/components/CreatePurchaseInvoicePage').then(module => ({ default: module.default })));
+const TransactionsPage = lazy(() => import('@/pages/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })));
 
 
 // Loading fallback component
@@ -430,6 +431,11 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/invoices/:id" element={
             <Suspense fallback={<LoadingFallback />}>
               <InvoiceDetailsPage />
+            </Suspense>
+          } />
+          <Route path="/transactions" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <TransactionsPage />
             </Suspense>
           } />
 

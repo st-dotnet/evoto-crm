@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useState } from 'react';
 import ApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
-import axios from 'axios';
+import { useLanguage } from '@/i18n';
+import { KeenIcon, Menu, MenuItem, MenuToggle } from '@/components';
+import { DropdownCard2 } from '@/partials/dropdowns/general';
 
 import {
   Select,
@@ -11,36 +13,27 @@ import {
   SelectValue
 } from '@/components/ui/select';
 
-const fetchEarningsChart = () => {
-  return axios.get<number[]>(`${import.meta.env.VITE_APP_API_URL}/sales/index`);
-};
-
 const EarningsChart = () => {
-  const [charData, setCharData] = useState<number[]>();
+  const { isRTL } = useLanguage();
+
+  // Monthly sales data (in thousands) — replace with API data when ready
+  const [period, setPeriod] = useState('12');
+  const allData: number[] = [44, 55, 41, 67, 22, 43, 85, 65, 50, 70, 40, 90];
   const categories: string[] = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec'
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
-  useEffect(() => {
-    // fetchEarningsChart().then((value) => setCharData(value.data));
-  }, []);
+  // Slice data based on selected period
+  const monthCount = parseInt(period);
+  const data = allData.slice(0, monthCount);
+  const cats = categories.slice(0, monthCount);
 
   const options: ApexOptions = {
     series: [
       {
-        name: 'series1',
-        data: charData ?? []
+        name: 'Sales',
+        data: data
       }
     ],
     chart: {
@@ -63,7 +56,7 @@ const EarningsChart = () => {
       colors: ['var(--tw-primary)']
     },
     xaxis: {
-      categories: categories,
+      categories: cats,
       axisBorder: {
         show: false
       },
@@ -105,17 +98,15 @@ const EarningsChart = () => {
           colors: 'var(--tw-gray-500)',
           fontSize: '12px'
         },
-        formatter: (defaultValue) => {
-          return `$${defaultValue}K`;
-        }
+        formatter: (defaultValue: number) => `$${defaultValue}K`
       }
     },
     tooltip: {
       enabled: true,
-      custom({ series, seriesIndex, dataPointIndex, w }) {
+      custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
         const number = parseInt(series[seriesIndex][dataPointIndex]) * 1000;
         const month = w.globals.seriesX[seriesIndex][dataPointIndex];
-        const monthName = categories[month];
+        const monthName = cats[month];
 
         const formatter = new Intl.NumberFormat('en-US', {
           style: 'currency',
@@ -126,13 +117,13 @@ const EarningsChart = () => {
 
         return `
           <div class="flex flex-col gap-2 p-3.5">
-            <div class="font-medium text-2sm text-gray-600">${monthName}, 2024 Sales</div>
+            <div class="font-medium text-2sm text-gray-600">${monthName}, 2025 Sales</div>
             <div class="flex items-center gap-1.5">
               <div class="font-semibold text-md text-gray-900">${formattedNumber}</div>
               <span class="badge badge-outline badge-success badge-xs">+24%</span>
             </div>
           </div>
-          `;
+        `;
       }
     },
     markers: {
@@ -143,17 +134,15 @@ const EarningsChart = () => {
       strokeOpacity: 1,
       strokeDashArray: 0,
       fillOpacity: 1,
-      discrete: [],
       shape: 'circle',
-      offsetX: 0,
-      offsetY: 0,
-      onClick: undefined,
-      onDblClick: undefined,
       showNullDataPoints: true,
       hover: {
         size: 8,
         sizeOffset: 0
-      }
+      },
+      discrete: [],
+      offsetX: 0,
+      offsetY: 0
     },
     fill: {
       gradient: {
@@ -183,12 +172,7 @@ const EarningsChart = () => {
         <h3 className="card-title">Earnings</h3>
 
         <div className="flex items-center flex-wrap gap-2 sm:gap-5">
-          <label className="switch switch-sm">
-            <input name="check" type="checkbox" value="1" className="order-2" readOnly />
-            <span className="switch-label order-1">Referrals only</span>
-          </label>
-
-          <Select defaultValue="3">
+          <Select defaultValue="12" onValueChange={(val) => setPeriod(val)}>
             <SelectTrigger className="w-28" size="sm">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
@@ -199,19 +183,40 @@ const EarningsChart = () => {
               <SelectItem value="12">12 months</SelectItem>
             </SelectContent>
           </Select>
+
+          <Menu>
+            <MenuItem
+              toggle="dropdown"
+              trigger="click"
+              dropdownProps={{
+                placement: isRTL() ? 'bottom-start' : 'bottom-end',
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: isRTL() ? [0, -10] : [0, 10]
+                    }
+                  }
+                ]
+              }}
+            >
+              <MenuToggle className="btn btn-sm btn-icon btn-light btn-clear">
+                <KeenIcon icon="dots-vertical" />
+              </MenuToggle>
+              {DropdownCard2()}
+            </MenuItem>
+          </Menu>
         </div>
       </div>
       <div className="card-body flex flex-col justify-end items-stretch grow px-3 py-1">
-        {charData && (
-          <ApexChart
-            id="earnings_chart"
-            options={options}
-            series={options.series}
-            type="area"
-            max-width="694"
-            height="250"
-          />
-        )}
+        <ApexChart
+          id="earnings_chart"
+          options={options}
+          series={options.series}
+          type="area"
+          max-width="694"
+          height="250"
+        />
       </div>
     </div>
   );
