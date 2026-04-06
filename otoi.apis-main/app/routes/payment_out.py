@@ -460,13 +460,19 @@ def update_payment_out(payment_id):
 @payment_out_blueprint.route("/<uuid:payment_id>", methods=["DELETE"])
 def delete_payment_out(payment_id):
     """
-    Delete a payment-out record and revert financials on the associated invoice.
+    Soft delete a payment-out record and revert financials on the associated invoice.
     """
     try:
         p = PaymentOut.query.filter_by(uuid=payment_id).first()
+        
         if not p:
-            return jsonify({"error": "Payment record not found"}), 404
-            
+            return jsonify({"error": "Payment not found"}), 404
+        
+        # Soft delete
+        p.is_deleted = True
+        set_updated_fields(p)
+        db.session.commit()
+        
         invoice = p.purchase_invoice
         
         if invoice:

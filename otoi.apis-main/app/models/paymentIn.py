@@ -39,6 +39,9 @@ class PaymentIn(BaseMixin, db.Model):
     # Additional notes
     payment_notes = Column(Text, nullable=True)
     
+    # Soft delete support
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    
     # Business context
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False)
     

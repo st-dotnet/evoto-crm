@@ -36,17 +36,24 @@ export const getPaymentOutList = async (
   date_filter = "",
 ): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     let url = `${API_URL}/payment-out?page=${page}&per_page=${per_page}`;
-    if (payment_status && payment_status !== "all") url += `&payment_status=${payment_status}`;
+    if (payment_status && payment_status !== "all")
+      url += `&payment_status=${payment_status}`;
     if (party_name) url += `&party_name=${encodeURIComponent(party_name)}`;
-    if (payment_number) url += `&payment_number=${encodeURIComponent(payment_number)}`;
-    if (date_filter && date_filter !== "all") url += `&date_filter=${encodeURIComponent(date_filter)}`;
+    if (payment_number)
+      url += `&payment_number=${encodeURIComponent(payment_number)}`;
+    if (date_filter && date_filter !== "all")
+      url += `&date_filter=${encodeURIComponent(date_filter)}`;
 
     const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       withCredentials: false,
     });
 
@@ -59,12 +66,19 @@ export const getPaymentOutList = async (
       per_page,
     };
 
-    return { success: true, data: { data: items, pagination }, status: response.status };
+    return {
+      success: true,
+      data: { data: items, pagination },
+      status: response.status,
+    };
   } catch (err: any) {
     const status = err.response?.status ?? 500;
     return {
       success: false,
-      error: status === 401 ? "Session expired. Please log in again." : "Failed to fetch payment-out records",
+      error:
+        status === 401
+          ? "Session expired. Please log in again."
+          : "Failed to fetch payment-out records",
       status,
     };
   }
@@ -80,29 +94,41 @@ export const recordPaymentOut = async (
   discount = 0,
 ): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     const response = await axios.post(
       `${API_URL}/payment-out/record-payment/${invoiceId}`,
       { amount_paid: amountPaid, payment_mode: paymentMode, notes, discount },
       {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         withCredentials: false,
       },
     );
     return { success: true, data: response.data, status: response.status };
   } catch (err: any) {
     const msg = err.response?.data?.error ?? "Failed to record payment";
-    return { success: false, error: msg, data: err.response?.data, status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: msg,
+      data: err.response?.data,
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
 // ── Vendor Invoices ───────────────────────────────────────────────────────────
 
-export const getVendorInvoices = async (vendorName: string): Promise<ApiResponse> => {
+export const getVendorInvoices = async (
+  vendorName: string,
+): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     const url = vendorName
@@ -110,18 +136,27 @@ export const getVendorInvoices = async (vendorName: string): Promise<ApiResponse
       : `${API_URL}/payment-out/vendor-invoices?per_page=1000`;
 
     const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       withCredentials: false,
     });
 
     // Filter to only invoices that have pending balance
     const invoices = (Array.isArray(response.data) ? response.data : []).filter(
-      (inv: any) => inv.status === "partial" || (inv.balance_amount > 0 && inv.amount_paid >= 0)
+      (inv: any) =>
+        inv.status === "partial" ||
+        (inv.balance_amount > 0 && inv.amount_paid >= 0),
     );
 
     return { success: true, data: invoices, status: response.status };
   } catch (err: any) {
-    return { success: false, error: "Failed to fetch vendor invoices", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: "Failed to fetch vendor invoices",
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
@@ -129,16 +164,27 @@ export const getVendorInvoices = async (vendorName: string): Promise<ApiResponse
 
 export const getVendorNamesDropdown = async (): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    const response = await axios.get(`${API_URL}/payment-out?party_names_dropdown=true`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const url = `${API_URL}/vendors/?dropdown=true`;
+    
+    const response = await axios.get(url, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
-    const data = Array.isArray(response.data) ? response.data : [];
-    return { success: true, data, status: response.status };
+    
+    // Return the data directly without additional processing
+    return { success: true, data: response.data, status: response.status };
   } catch (err: any) {
-    return { success: false, error: "Failed to fetch vendor names", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: err.response?.data?.error || "Failed to fetch vendor names",
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
@@ -146,16 +192,24 @@ export const getVendorNamesDropdown = async (): Promise<ApiResponse> => {
 
 export const getPaymentOutNumbersDropdown = async (): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    const response = await axios.get(`${API_URL}/payment-out?payment_numbers_dropdown=true`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(
+      `${API_URL}/payment-out?payment_numbers_dropdown=true`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
     const data = Array.isArray(response.data) ? response.data : [];
     return { success: true, data, status: response.status };
   } catch (err: any) {
-    return { success: false, error: "Failed to fetch payment numbers", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: "Failed to fetch payment numbers",
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
@@ -163,7 +217,8 @@ export const getPaymentOutNumbersDropdown = async (): Promise<ApiResponse> => {
 
 export const deletePaymentOut = async (id: string): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     const response = await axios.delete(`${API_URL}/payment-out/${id}`, {
@@ -171,21 +226,36 @@ export const deletePaymentOut = async (id: string): Promise<ApiResponse> => {
     });
     return { success: true, data: response.data, status: response.status };
   } catch (err: any) {
-    return { success: false, error: err.response?.data?.error ?? "Failed to delete payment", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: err.response?.data?.error ?? "Failed to delete payment",
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
-export const updatePaymentOut = async (id: string, data: any): Promise<ApiResponse> => {
+export const updatePaymentOut = async (
+  id: string,
+  data: any,
+): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     const response = await axios.put(`${API_URL}/payment-out/${id}`, data, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
     return { success: true, data: response.data, status: response.status };
   } catch (err: any) {
-    return { success: false, error: err.response?.data?.error ?? "Failed to update payment", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: err.response?.data?.error ?? "Failed to update payment",
+      status: err.response?.status ?? 500,
+    };
   }
 };
 
@@ -193,7 +263,8 @@ export const updatePaymentOut = async (id: string, data: any): Promise<ApiRespon
 
 export const getPaymentOutById = async (id: string): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+  if (!token)
+    return { success: false, error: "Authentication required.", status: 401 };
 
   try {
     const response = await axios.get(`${API_URL}/payment-out/${id}`, {
@@ -201,6 +272,10 @@ export const getPaymentOutById = async (id: string): Promise<ApiResponse> => {
     });
     return { success: true, data: response.data, status: response.status };
   } catch (err: any) {
-    return { success: false, error: "Failed to fetch payment details", status: err.response?.status ?? 500 };
+    return {
+      success: false,
+      error: "Failed to fetch payment details",
+      status: err.response?.status ?? 500,
+    };
   }
 };

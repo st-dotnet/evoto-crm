@@ -29,7 +29,6 @@ def extract_jwt_info():
         '/apidocs/',
         '/apidocs/index.html',
         '/apidocs/swagger.json',
-        '/apidocs/swagger.yaml',
 
     # Flask-apispec spec endpoint (IMPORTANT)
         '/apispec_1.json',
@@ -37,7 +36,16 @@ def extract_jwt_info():
     # Other
         '/flasgger',
         '/flasgger/',
-        '/favicon.ico'
+        '/favicon.ico',
+        
+        # Excel Export - Public endpoint
+        '/api/items/export/excel',
+        
+        # PDF Export - Public endpoint
+        '/api/items/export/pdf',
+        
+        # Print PDF - Public endpoint (allow query params for browser compatibility)
+        '/api/items/export/print-pdf'
     ]
     
     # Check if current endpoint is a static file or a public endpoint

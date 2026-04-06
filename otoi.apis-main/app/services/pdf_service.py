@@ -1,16 +1,22 @@
 """
 PDF Generation Service
-─────────────────────
+────────────────────
 Uses xhtml2pdf (pisa) to render Jinja2 HTML templates into downloadable A4 PDFs.
-Supports: Invoice, Quotation (easily extensible to other document types).
+Supports: Invoice, Quotation, Inventory (easily extensible to other document types).
 """
 
 from io import BytesIO
-from flask import render_template
+from flask import render_template, current_app
 from xhtml2pdf import pisa
 import os
 import base64
 import math
+from datetime import datetime
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib import colors
+from reportlab.lib.units import mm
 from app.models.business import GlobalConfig
 from app.config import Config
 
@@ -832,3 +838,380 @@ def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
 
     return _render_pdf("pdf/purchase_order.html", context)
 
+
+# ── Inventory PDF ──────────────────────────────────────────────────────
+
+def generate_inventory_pdf(search: str = '') -> dict:
+    """
+    Generate PDF for inventory rate list using reportlab for better table formatting.
+    
+    Args:
+        search: Optional search term to filter items
+        
+    Returns:
+        Dictionary with success status, PDF data, and metadata
+    """
+    try:
+        # Import models for direct database access
+        from ..models import Item
+        from ..extensions import db
+        from sqlalchemy import or_
+        
+        # Build base query - same as Excel export
+        query = db.session.query(
+            Item.item_name,
+            Item.item_code,
+            Item.purchase_price,
+            Item.sales_price
+        ).filter(Item.is_deleted == False)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                or_(
+                    Item.item_name.ilike(f"%{search}%"),
+                    Item.item_code.ilike(f"%{search}%")
+                )
+            )
+        
+        # Get results
+        items = query.all()
+        
+        # Convert to dict format for PDF generation
+        items_data = []
+        for item in items:
+            items_data.append({
+                'item_name': item.item_name or '',
+                'item_code': item.item_code or '',
+                'purchase_price': float(item.purchase_price) if item.purchase_price else 0.0,
+                'sales_price': float(item.sales_price) if item.sales_price else 0.0
+            })
+        
+        # Create PDF buffer with landscape orientation
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=landscape(A4), 
+            rightMargin=20*mm, 
+            leftMargin=20*mm, 
+            topMargin=30*mm, 
+            bottomMargin=20*mm
+        )
+        
+        # Define styles
+        styles = getSampleStyleSheet()
+        title_style = styles['Heading1']
+        normal_style = styles['Normal']
+        
+        # Custom styles for better appearance
+        title_style.fontSize = 18
+        title_style.textColor = colors.HexColor('#2C3E50')
+        title_style.spaceAfter = 20
+        
+        normal_style.fontSize = 10
+        normal_style.textColor = colors.HexColor('#34495E')
+        normal_style.spaceAfter = 6
+        
+        # Build document
+        elements = []
+        
+        # Title
+        elements.append(Paragraph("Inventory Rate List - Print Version", title_style))
+        elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", normal_style))
+        
+        if search:
+            elements.append(Paragraph(f"Search: {search}", normal_style))
+            elements.append(Paragraph("<br/>", normal_style))
+        
+        # Table headers
+        table_data = [['Item Name', 'Item Code', 'MRP (Rs.)', 'Selling Price (Rs.)']]
+        
+        # Add table data with proper text wrapping
+        for item in items_data:
+            table_data.append([
+                item.get('item_name', ''),  # Full item name - let it wrap
+                item.get('item_code', ''),  # Full item code - let it wrap
+                f"Rs.{item.get('purchase_price', 0):.2f}" if item.get('purchase_price') else 'Rs.0.00',
+                f"Rs.{item.get('sales_price', 0):.2f}" if item.get('sales_price') else 'Rs.0.00'
+            ])
+        
+        # Create table with proper column widths for long item names
+        col_widths = [
+            80*mm,   # Item Name - much wider for long names
+            35*mm,   # Item Code - medium
+            25*mm,   # MRP - smaller
+            25*mm    # Selling Price - smaller
+        ]
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)  # Repeat header on each page
+        
+        # Apply table styling with better spacing
+        table.setStyle(TableStyle([
+            # Header row styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#000000')),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            
+            # Data row styling
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (0, 1), (-1, -1), 'LEFT'),  # Item Name - Left align
+            ('ALIGN', (1, 1), (-1, -1), 'LEFT'),  # Item Code - Left align  
+            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'), # MRP - Right align
+            ('ALIGN', (3, 1), (-1, -1), 'RIGHT'), # Selling Price - Right align
+            
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#FFFFFF'), colors.HexColor('#F8F9FA')]),
+            
+            # Grid lines
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#DEE2E6')),
+            
+            # Cell padding - increased to prevent overlapping
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            
+            # Text wrapping
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(table)
+        
+        # Add summary
+        elements.append(Paragraph(f"<br/><br/>Total Items: {len(items_data)}", normal_style))
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get buffer value without closing
+        buffer.seek(0)
+        pdf_value = buffer.getvalue()
+        
+        return {
+            'success': True,
+            'data': pdf_value,
+            'metadata': {
+                'item_count': len(items_data),
+                'search': search,
+                'generated_at': datetime.now().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f"PDF generation failed: {str(e)}"
+        }
+
+
+def generate_print_inventory_pdf(search: str = '', print_options: dict = None) -> dict:
+    """
+    Generate print-optimized PDF for inventory rate list.
+    
+    Args:
+        search: Optional search term to filter items
+        print_options: Dictionary with print settings (copies, paper_size, orientation, quality)
+        
+    Returns:
+        Dictionary with success status, PDF data, and metadata
+    """
+    try:
+        # Import models for direct database access
+        from ..models import Item
+        from ..extensions import db
+        from sqlalchemy import or_
+        from reportlab.lib.pagesizes import A4, portrait, landscape
+        
+        # Get print options with defaults
+        if not print_options:
+            print_options = {}
+        
+        copies = print_options.get('copies', 1)
+        paper_size = print_options.get('paper_size', 'A4')
+        orientation = print_options.get('orientation', 'portrait')
+        quality = print_options.get('quality', 'high')
+        
+        # Build base query
+        query = db.session.query(
+            Item.item_name,
+            Item.item_code,
+            Item.purchase_price,
+            Item.sales_price
+        ).filter(Item.is_deleted == False)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                or_(
+                    Item.item_name.ilike(f"%{search}%"),
+                    Item.item_code.ilike(f"%{search}%")
+                )
+            )
+        
+        # Get results
+        items = query.all()
+        
+        # Convert to dict format
+        items_data = []
+        for item in items:
+            items_data.append({
+                'item_name': item.item_name or '',
+                'item_code': item.item_code or '',
+                'purchase_price': float(item.purchase_price) if item.purchase_price else 0.0,
+                'sales_price': float(item.sales_price) if item.sales_price else 0.0
+            })
+        
+        # Set page size based on options
+        if paper_size == 'A4':
+            if orientation == 'portrait':
+                page_size = A4
+            else:
+                page_size = landscape(A4)
+        elif paper_size == 'A3':
+            # Try to import A3, fallback to A4 landscape if not available
+            try:
+                from reportlab.lib.pagesizes import A3
+                if orientation == 'portrait':
+                    page_size = A3
+                else:
+                    page_size = landscape(A3)
+            except ImportError:
+                # A3 not available, fallback to A4 landscape
+                page_size = landscape(A4)
+        else:  # Letter
+            page_size = A4  # Fallback to A4
+        
+        # Create PDF buffer with print-optimized settings
+        buffer = BytesIO()
+        
+        # Ensure mm is defined for ReportLab
+        try:
+            from reportlab.lib.units import mm
+        except ImportError:
+            # If mm not available, define it manually
+            mm = 1.0  # This will be used as a multiplier
+        
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=page_size, 
+            rightMargin=15*mm if orientation == 'portrait' else 20*mm, 
+            leftMargin=15*mm if orientation == 'portrait' else 20*mm, 
+            topMargin=25*mm, 
+            bottomMargin=15*mm
+        )
+        
+        # Define styles optimized for printing
+        styles = getSampleStyleSheet()
+        title_style = styles['Heading1']
+        normal_style = styles['Normal']
+        
+        # Print-optimized styles
+        title_style.fontSize = 16 if orientation == 'portrait' else 14
+        title_style.textColor = colors.black
+        title_style.spaceAfter = 15
+        
+        normal_style.fontSize = 9 if quality == 'high' else 8
+        normal_style.textColor = colors.black
+        normal_style.spaceAfter = 4
+        
+        # Build document
+        elements = []
+        
+        # Print header
+        elements.append(Paragraph("INVENTORY RATE LIST - PRINT COPY", title_style))
+        elements.append(Paragraph(f"Printed on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}", normal_style))
+        
+        if search:
+            elements.append(Paragraph(f"Search Filter: {search}", normal_style))
+            elements.append(Paragraph("<br/>", normal_style))
+        
+        # Print options info
+        elements.append(Paragraph(f"Print Settings: {paper_size} {orientation}, Quality: {quality}, Copies: {copies}", normal_style))
+        elements.append(Paragraph("<br/>", normal_style))
+        
+        # Table headers
+        table_data = [['Item Name', 'Item Code', 'MRP (Rs.)', 'Selling Price (Rs.)']]
+        
+        # Add table data
+        for item in items_data:
+            table_data.append([
+                item.get('item_name', ''),
+                item.get('item_code', ''),
+                f"Rs.{item.get('purchase_price', 0):.2f}" if item.get('purchase_price') else 'Rs.0.00',
+                f"Rs.{item.get('sales_price', 0):.2f}" if item.get('sales_price') else 'Rs.0.00'
+            ])
+        
+        # Column widths optimized for print
+        if orientation == 'portrait':
+            col_widths = [70*mm, 30*mm, 25*mm, 25*mm]
+        else:
+            col_widths = [80*mm, 35*mm, 25*mm, 25*mm]
+            
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        
+        # Print-optimized table styling
+        table.setStyle(TableStyle([
+            # Header row styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 7 if quality == 'high' else 6),
+            
+            # Data row styling
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8 if quality == 'high' else 7),
+            ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (-1, -1), 'LEFT'),
+            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
+            ('ALIGN', (3, 1), (-1, -1), 'RIGHT'),
+            
+            # Print-friendly alternating colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9F9F9')]),
+            
+            # Print-optimized grid
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#666666')),
+            
+            # Print-optimized padding
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(table)
+        
+        # Print footer
+        elements.append(Paragraph(f"<br/><br/>Total Items: {len(items_data)}", normal_style))
+        elements.append(Paragraph(f"Page 1 of 1", normal_style))
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get buffer value
+        buffer.seek(0)
+        pdf_value = buffer.getvalue()
+        
+        return {
+            'success': True,
+            'data': pdf_value,
+            'metadata': {
+                'item_count': len(items_data),
+                'search': search,
+                'print_options': print_options,
+                'generated_at': datetime.now().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return {
+            'success': False,
+            'error': f"Print PDF generation failed: {str(e)}",
+            'error_details': error_details,
+            'traceback': traceback.format_exc()
+        }

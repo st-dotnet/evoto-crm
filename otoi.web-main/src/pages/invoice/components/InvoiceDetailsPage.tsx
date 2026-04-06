@@ -1,6 +1,16 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Printer,
+  Share,
+  CreditCard,
+  Edit,
+  X,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -21,7 +31,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogBody,
-  DialogClose
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -134,7 +144,10 @@ const InvoiceDetailsPage: React.FC = () => {
   });
   const [amountError, setAmountError] = useState("");
   const [updatedBalance, setUpdatedBalance] = useState(0);
-  const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
+  const [brandingAssets, setBrandingAssets] = useState<{
+    logo_path?: string;
+    esign_path?: string;
+  } | null>(null);
 
   const invoiceRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +157,31 @@ const InvoiceDetailsPage: React.FC = () => {
       fetchCreditNotesForInvoice();
       fetchBrandingAssets();
     }
+  }, [id]);
+
+  // Listen for credit note updates to refresh invoice data
+  useEffect(() => {
+    const handleCreditNoteUpdate = (event: CustomEvent) => {
+      // Add a small delay to ensure backend processes the credit note and updates status
+      setTimeout(() => {
+        // Refresh the invoice data to show updated status and balance
+        fetchInvoiceData();
+        // Also refresh credit notes to show the latest data
+        fetchCreditNotesForInvoice();
+      }, 500); // 500ms delay for backend processing
+    };
+
+    window.addEventListener(
+      "creditNoteUpdated",
+      handleCreditNoteUpdate as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "creditNoteUpdated",
+        handleCreditNoteUpdate as EventListener,
+      );
+    };
   }, [id]);
 
   const fetchBrandingAssets = async () => {
@@ -156,7 +194,6 @@ const InvoiceDetailsPage: React.FC = () => {
       console.error("Error fetching branding assets:", error);
     }
   };
-
 
   const fetchInvoiceData = async () => {
     setIsLoading(true);
@@ -172,18 +209,29 @@ const InvoiceDetailsPage: React.FC = () => {
           try {
             const customerRes = await getCustomerById(custId);
             if (customerRes.success && customerRes.data) {
-              setInvoiceData(prev => prev ? ({
-                ...prev,
-                customer: {
-                  ...prev.customer,
-                  ...customerRes.data,
-                  billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
-                  shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
-                }
-              }) : null);
+              setInvoiceData((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      customer: {
+                        ...prev.customer,
+                        ...customerRes.data,
+                        billing_address:
+                          customerRes.data.billing_address ||
+                          prev.customer?.billing_address,
+                        shipping_address:
+                          customerRes.data.shipping_address ||
+                          prev.customer?.shipping_address,
+                      },
+                    }
+                  : null,
+              );
             }
           } catch (custError) {
-            console.error("Error fetching customer details for invoice:", custError);
+            console.error(
+              "Error fetching customer details for invoice:",
+              custError,
+            );
           }
         }
       } else {
@@ -212,7 +260,10 @@ const InvoiceDetailsPage: React.FC = () => {
   };
 
   const getTotalCreditNoteAmount = () => {
-    return creditNotes.reduce((total, creditNote) => total + (creditNote.total_amount || 0), 0);
+    return creditNotes.reduce(
+      (total, creditNote) => total + (creditNote.total_amount || 0),
+      0,
+    );
   };
 
   const getPendingAmount = () => {
@@ -223,10 +274,15 @@ const InvoiceDetailsPage: React.FC = () => {
     }
     // Fallback calculation for backward compatibility
     const creditNotesTotal = getTotalCreditNoteAmount();
-    const manualBalance = Math.max(0, invoiceData.total_amount - creditNotesTotal - (invoiceData.amount_paid || 0) - (invoiceData.payment_discount || 0));
+    const manualBalance = Math.max(
+      0,
+      invoiceData.total_amount -
+        creditNotesTotal -
+        (invoiceData.amount_paid || 0) -
+        (invoiceData.payment_discount || 0),
+    );
     return manualBalance;
   };
-
 
   const handleDownloadPDF = async () => {
     if (!invoiceRef.current || !invoiceData) return;
@@ -234,28 +290,36 @@ const InvoiceDetailsPage: React.FC = () => {
     try {
       const token = (() => {
         try {
-          const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+          const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
           if (!authData) return null;
           const parsedAuth = JSON.parse(authData);
-          return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+          return (
+            parsedAuth.token ||
+            parsedAuth.access_token ||
+            parsedAuth.accessToken ||
+            null
+          );
         } catch (error) {
           return null;
         }
       })();
 
-      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/invoices/${invoiceData.uuid}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_APP_API_URL}/invoices/${invoiceData.uuid}/pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        throw new Error("Failed to generate PDF");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `Invoice-${invoiceData.invoice_number || "Draft"}.pdf`;
       document.body.appendChild(a);
@@ -282,17 +346,23 @@ const InvoiceDetailsPage: React.FC = () => {
     const shareToast = toast.loading("Preparing for share...");
     try {
       const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error("Failed to generate blob"));
-      }, "image/png"));
-      const file = new File([blob], `Invoice-${invoiceData?.invoice_number}.png`, { type: "image/png" });
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error("Failed to generate blob"));
+        }, "image/png"),
+      );
+      const file = new File(
+        [blob],
+        `Invoice-${invoiceData?.invoice_number}.png`,
+        { type: "image/png" },
+      );
 
       if (navigator.share) {
         await navigator.share({
           files: [file],
           title: `Invoice ${invoiceData?.invoice_number}`,
-          text: `Check out our invoice: ${invoiceData?.invoice_number}`
+          text: `Check out our invoice: ${invoiceData?.invoice_number}`,
         });
         toast.success("Shared successfully", { id: shareToast });
       } else {
@@ -301,7 +371,9 @@ const InvoiceDetailsPage: React.FC = () => {
         a.href = url;
         a.download = `Invoice-${invoiceData?.invoice_number}.png`;
         a.click();
-        toast.success("Image saved (Direct sharing not supported)", { id: shareToast });
+        toast.success("Image saved (Direct sharing not supported)", {
+          id: shareToast,
+        });
       }
     } catch (error) {
       toast.error("Failed to share", { id: shareToast });
@@ -329,7 +401,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const pendingAmount = getPendingAmount();
     const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
     const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
-    
+
     if (amount > maxAllowedAmount) {
       setAmountError(
         `Amount received cannot exceed ${formatCurrency(maxAllowedAmount)} (pending amount: ${formatCurrency(pendingAmount)} - discount: ${formatCurrency(currentDiscount)})`,
@@ -384,7 +456,9 @@ const InvoiceDetailsPage: React.FC = () => {
               ...paymentForm,
               amountReceived: roundToTwo((response.data as any).max_allowed),
             });
-            toast.info(`Amount adjusted to maximum allowed: ₹${(response.data as any).max_allowed}`);
+            toast.info(
+              `Amount adjusted to maximum allowed: ₹${(response.data as any).max_allowed}`,
+            );
           }
         } else {
           toast.error(response.error || "Failed to record payment");
@@ -405,7 +479,9 @@ const InvoiceDetailsPage: React.FC = () => {
             ...paymentForm,
             amountReceived: roundToTwo(errorData.max_allowed),
           });
-          toast.info(`Amount adjusted to maximum allowed: ₹${errorData.max_allowed}`);
+          toast.info(
+            `Amount adjusted to maximum allowed: ₹${errorData.max_allowed}`,
+          );
         }
       } else {
         toast.error("An error occurred while recording payment");
@@ -421,16 +497,22 @@ const InvoiceDetailsPage: React.FC = () => {
       const response = await checkCreditNoteExistsForInvoice(id!);
       if (response.success && response.data && response.data.hasCreditNote) {
         const creditNotes = response.data.creditNotes || [];
-        const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
-        toast.error(`Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+        const creditNoteNumbers = creditNotes
+          .map((cn: any) => cn.credit_note_number)
+          .join(", ");
+        toast.error(
+          `Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`,
+        );
         return;
       }
     } catch (error) {
-      console.error('Error checking credit notes:', error);
+      console.error("Error checking credit notes:", error);
       // Still allow edit if check fails, but show warning
-      toast.warning('Unable to verify credit note status. Proceed with caution.');
+      toast.warning(
+        "Unable to verify credit note status. Proceed with caution.",
+      );
     }
-    
+
     navigate(`/invoices/${id}/edit`);
   };
 
@@ -632,20 +714,42 @@ const InvoiceDetailsPage: React.FC = () => {
 
     const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
 
-    if (line1) elements.push(<>
-      <span className="font-semibold">{prefix}:</span> {line1}
-    </>);
+    if (line1)
+      elements.push(
+        <>
+          <span className="font-semibold">{prefix}:</span> {line1}
+        </>,
+      );
     // if (line2) elements.push(<>
     //     <span className="font-semibold">Line 2:</span> {line2}
     // </>);
 
     const parts = [];
-    if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
-    if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
-    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+    if (address.city)
+      parts.push(
+        <span key="city">
+          <span className="font-semibold">City:</span> {address.city}
+        </span>,
+      );
+    if (address.state)
+      parts.push(
+        <span key="state">
+          <span className="font-semibold">State:</span> {address.state}
+        </span>,
+      );
+    if (address.country)
+      parts.push(
+        <span key="country">
+          <span className="font-semibold">Country:</span> {address.country}
+        </span>,
+      );
     const pin = address.pin || address.postal_code || address.zip;
-    if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
-
+    if (pin)
+      parts.push(
+        <span key="pin">
+          <span className="font-semibold">PIN:</span> {pin}
+        </span>,
+      );
 
     if (parts.length > 0) {
       const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
@@ -662,8 +766,8 @@ const InvoiceDetailsPage: React.FC = () => {
     let address =
       type === "shipping"
         ? customer.shipping_address ||
-        customer.shippingAddress ||
-        customer.shipping_addresses
+          customer.shippingAddress ||
+          customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
@@ -673,8 +777,16 @@ const InvoiceDetailsPage: React.FC = () => {
     if (!address) {
       const prefix = type === "shipping" ? "shipping_" : "";
       address = {
-        address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
-        address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
+        address1:
+          customer[`${prefix}address1`] ||
+          customer[`${prefix}address_line1`] ||
+          customer.address1 ||
+          customer.address_line1,
+        address2:
+          customer[`${prefix}address2`] ||
+          customer[`${prefix}address_line2`] ||
+          customer.address2 ||
+          customer.address_line2,
         city: customer[`${prefix}city`] || customer.city,
         state: customer[`${prefix}state`] || customer.state,
         country: customer[`${prefix}country`] || customer.country,
@@ -703,7 +815,6 @@ const InvoiceDetailsPage: React.FC = () => {
     };
     return styles[status] || "bg-gray-100 text-gray-800";
   };
-
 
   if (isLoading) {
     return (
@@ -772,11 +883,21 @@ const InvoiceDetailsPage: React.FC = () => {
       <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/invoices")}><ArrowLeft className="h-4 w-4" /></Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/invoices")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <div>
-              <h1 className="text-xl font-semibold text-black">Invoice #{invoiceData.invoice_number}</h1>
+              <h1 className="text-xl font-semibold text-black">
+                Invoice #{invoiceData.invoice_number}
+              </h1>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}
+                >
                   {invoiceData.payment_status}
                 </span>
               </div>
@@ -828,7 +949,11 @@ const InvoiceDetailsPage: React.FC = () => {
               <Clock className="h-4 w-4" />
               Payment History
             </Button>
-            {Math.max(0, invoiceData.total_amount - (invoiceData.amount_paid + getTotalCreditNoteAmount())) > 0 && (
+            {Math.max(
+              0,
+              invoiceData.total_amount -
+                (invoiceData.amount_paid + getTotalCreditNoteAmount()),
+            ) > 0 && (
               <Button
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
@@ -876,7 +1001,9 @@ const InvoiceDetailsPage: React.FC = () => {
                 <div className="flex flex-col items-end -mt-8">
                   {brandingAssets?.logo_path ? (
                     <img
-                      src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
+                      src={resolveImageUrl(
+                        `/static/uploads/business/${brandingAssets.logo_path}`,
+                      )}
                       className="h-40 w-auto object-contain"
                       alt={businessInfo?.name || "Logo"}
                     />
@@ -897,13 +1024,19 @@ const InvoiceDetailsPage: React.FC = () => {
         <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
           {/* Labels Row */}
           <div className="px-4 py-1 border-b border-black bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Invoice No.
+            </p>
           </div>
           <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Invoice Date
+            </p>
           </div>
           <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
+            <p className="text-[11px] font-semibold text-black uppercase">
+              Due Date
+            </p>
           </div>
 
           {/* Values Row */}
@@ -926,10 +1059,14 @@ const InvoiceDetailsPage: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-12 mb-12">
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">BILL TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+              BILL TO
+            </h3>
             <div className="space-y-1 text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+                {invoiceData.customer
+                  ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim()
+                  : "Customer Details Not Available"}
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
@@ -939,34 +1076,49 @@ const InvoiceDetailsPage: React.FC = () => {
                                     } */}
                 </p>
                 {invoiceData.customer?.company_name && (
-                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                  <p className="text-gray-600">
+                    {invoiceData.customer.company_name}
+                  </p>
                 )}
                 {invoiceData.customer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {invoiceData.customer.email}
                   </p>
                 )}
                 {invoiceData.customer?.mobile && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {invoiceData.customer.mobile}
                   </p>
                 )}
                 {invoiceData.customer?.gst && (
                   <p className="text-black">
-                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                    <span className="font-semibold">GST:</span>{" "}
+                    {invoiceData.customer.gst}
                   </p>
                 )}
-                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
+                {invoiceData.customer &&
+                  formatAddressLines(
+                    getCustomerAddress(invoiceData.customer, "billing"),
+                    "billing",
+                  ).map((element, i) => (
+                    <p key={i} className="text-black">
+                      {element}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">SHIP TO</h3>
+            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
+              SHIP TO
+            </h3>
             <div className="text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+                {invoiceData.customer
+                  ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim()
+                  : "Customer Details Not Available"}
               </p>
               <div className="space-y-1">
                 <p className="font-medium">
@@ -976,26 +1128,37 @@ const InvoiceDetailsPage: React.FC = () => {
                                     } */}
                 </p>
                 {invoiceData.customer?.company_name && (
-                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                  <p className="text-gray-600">
+                    {invoiceData.customer.company_name}
+                  </p>
                 )}
                 {invoiceData.customer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {invoiceData.customer.email}
                   </p>
                 )}
                 {invoiceData.customer?.mobile && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {invoiceData.customer.mobile}
                   </p>
                 )}
                 {invoiceData.customer?.gst && (
                   <p className="text-black">
-                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                    <span className="font-semibold">GST:</span>{" "}
+                    {invoiceData.customer.gst}
                   </p>
                 )}
-                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
+                {invoiceData.customer &&
+                  formatAddressLines(
+                    getCustomerAddress(invoiceData.customer, "shipping"),
+                    "shipping",
+                  ).map((element, i) => (
+                    <p key={i} className="text-black">
+                      {element}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
@@ -1127,10 +1290,8 @@ const InvoiceDetailsPage: React.FC = () => {
         </div>
         {/* ===== Bottom Section (Two Column Layout) ===== */}
         <div className="mt-16 grid grid-cols-2 gap-16">
-
           {/* ================= LEFT SIDE ================= */}
           <div className="space-y-10">
-
             {/* Notes */}
             {invoiceData.notes && (
               <div>
@@ -1166,16 +1327,16 @@ const InvoiceDetailsPage: React.FC = () => {
 
           {/* ================= RIGHT SIDE ================= */}
           <div>
-
             {/* ===== Tax Summary ===== */}
             <div className="space-y-0">
-
               <div className="flex justify-between items-center py-2">
                 <span className="text-xs font-normal text-black uppercase">
                   Taxable Amount
                 </span>
                 <span className="text-sm font-bold text-black">
-                  {formatCurrency(invoiceData.subtotal - invoiceData.discount_total)}
+                  {formatCurrency(
+                    invoiceData.subtotal - invoiceData.discount_total,
+                  )}
                 </span>
               </div>
 
@@ -1183,9 +1344,18 @@ const InvoiceDetailsPage: React.FC = () => {
                 <>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs font-normal text-black uppercase">
-                      CGST ({invoiceData.subtotal - invoiceData.discount_total > 0
-                        ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                        : 0}%)
+                      CGST (
+                      {invoiceData.subtotal - invoiceData.discount_total > 0
+                        ? Math.round(
+                            (((invoiceData.tax_total /
+                              (invoiceData.subtotal -
+                                invoiceData.discount_total)) *
+                              100) /
+                              2) *
+                              100,
+                          ) / 100
+                        : 0}
+                      %)
                     </span>
                     <span className="text-sm font-bold text-black">
                       {formatCurrency(invoiceData.tax_total / 2)}
@@ -1194,10 +1364,18 @@ const InvoiceDetailsPage: React.FC = () => {
 
                   <div className="flex justify-between items-center py-2 border-b border-black">
                     <span className="text-xs font-normal text-black uppercase">
-                      {currentUser?.isUT ? 'UTGST' : 'SGST'}
-                      ({invoiceData.subtotal - invoiceData.discount_total > 0
-                        ? Math.round(((invoiceData.tax_total / (invoiceData.subtotal - invoiceData.discount_total)) * 100 / 2) * 100) / 100
-                        : 0}%)
+                      {currentUser?.isUT ? "UTGST" : "SGST"}(
+                      {invoiceData.subtotal - invoiceData.discount_total > 0
+                        ? Math.round(
+                            (((invoiceData.tax_total /
+                              (invoiceData.subtotal -
+                                invoiceData.discount_total)) *
+                              100) /
+                              2) *
+                              100,
+                          ) / 100
+                        : 0}
+                      %)
                     </span>
                     <span className="text-sm font-bold text-black">
                       {formatCurrency(invoiceData.tax_total / 2)}
@@ -1242,7 +1420,9 @@ const InvoiceDetailsPage: React.FC = () => {
                 {brandingAssets?.esign_path && (
                   <div className="mb-2 flex justify-center">
                     <img
-                      src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
+                      src={resolveImageUrl(
+                        `/static/uploads/business/${brandingAssets.esign_path}`,
+                      )}
                       className="h-16 w-auto object-contain"
                       alt="Signature"
                     />
@@ -1254,13 +1434,14 @@ const InvoiceDetailsPage: React.FC = () => {
                 </p>
               </div>
             </div>
-
           </div>
-
         </div>
 
         {/* Payment History Sidebar */}
-        <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
+        <Sheet
+          open={isPaymentHistoryOpen}
+          onOpenChange={setIsPaymentHistoryOpen}
+        >
           <SheetContent
             side="right"
             className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200"
@@ -1271,136 +1452,143 @@ const InvoiceDetailsPage: React.FC = () => {
               </SheetTitle>
             </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Summary Section */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-medium">
-                  Invoice Amount
-                </span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.total_amount)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
-                <span className="text-gray-500 font-medium tracking-tight">
-                  Initial Amount Received
-                </span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.amount_paid)}
-                </span>
-              </div>
-            </div>
-
-            {/* Payments List */}
-            <div className="space-y-4">
-              {invoiceData.amount_paid > 0 ? (
-                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-normal text-blue-600">
-                      Payment in #{invoiceData.invoice_number}
-                    </h4>
-                    <span className="text-sm font-bold text-gray-900">
-                      {formatCurrency(invoiceData.amount_paid)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                    <span>
-                      {new Date(invoiceData.invoice_date).toLocaleDateString(
-                        "en-IN",
-                      )}
-                    </span>
-                    <span className="capitalize">Cash</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center"></div>
-              )}
-            </div>
-
-            {/* Credit Note History */}
-            {creditNotes.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-bold text-gray-800 mb-3">
-                  Credit Note History
-                </h4>
-                <div className="space-y-2">
-                  {creditNotes.map((creditNote: any) => (
-                    <div
-                      key={creditNote.uuid}
-                      className="p-4 rounded-xl border border-green-100 bg-green-50/50 hover:bg-green-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-normal text-green-600">
-                          Credit Note #{creditNote.credit_note_number}
-                        </h4>
-                        <span className="text-sm font-bold text-green-600">
-                          {formatCurrency(creditNote.total_amount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-                        <span>
-                          {new Date(creditNote.credit_note_date).toLocaleDateString(
-                            "en-IN",
-                          )}
-                        </span>
-                        <span className={`capitalize px-2 py-1 rounded-full text-xs ${
-                          creditNote.status === 'refunded' 
-                            ? 'bg-red-100 text-red-700' 
-                            : creditNote.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {creditNote.status || 'active'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar Footer */}
-          <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm font-medium">
-                <span className="text-gray-600">Total Amount Received</span>
-                <span className="text-gray-900 font-bold">
-                  {formatCurrency(invoiceData.amount_paid)}
-                </span>
-              </div>
-              {creditNotes.length > 0 && (
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Summary Section */}
+              <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-green-600">Credit Note(s) Applied</span>
-                  <span className="text-green-600">
-                    -{formatCurrency(getTotalCreditNoteAmount())}
+                  <span className="text-gray-500 font-medium">
+                    Invoice Amount
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.total_amount)}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-gray-600">Balance Amount</span>
-                <span className="text-red-600">
-                  {formatCurrency(getPendingAmount())}
-                </span>
+                <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium tracking-tight">
+                    Initial Amount Received
+                  </span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.amount_paid)}
+                  </span>
+                </div>
               </div>
+
+              {/* Payments List */}
+              <div className="space-y-4">
+                {invoiceData.amount_paid > 0 ? (
+                  <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-normal text-blue-600">
+                        Payment in #{invoiceData.invoice_number}
+                      </h4>
+                      <span className="text-sm font-bold text-gray-900">
+                        {formatCurrency(invoiceData.amount_paid)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                      <span>
+                        {new Date(invoiceData.invoice_date).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </span>
+                      <span className="capitalize">Cash</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center"></div>
+                )}
+              </div>
+
+              {/* Credit Note History */}
+              {creditNotes.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-bold text-gray-800 mb-3">
+                    Credit Note History
+                  </h4>
+                  <div className="space-y-2">
+                    {creditNotes.map((creditNote: any) => (
+                      <div
+                        key={creditNote.uuid}
+                        className="p-4 rounded-xl border border-green-100 bg-green-50/50 hover:bg-green-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="text-sm font-normal text-green-600">
+                            Credit Note #{creditNote.credit_note_number}
+                          </h4>
+                          <span className="text-sm font-bold text-green-600">
+                            {formatCurrency(creditNote.total_amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                          <span>
+                            {new Date(
+                              creditNote.credit_note_date,
+                            ).toLocaleDateString("en-IN")}
+                          </span>
+                          <span
+                            className={`capitalize px-2 py-1 rounded-full text-xs ${
+                              creditNote.status === "refunded"
+                                ? "bg-red-100 text-red-700"
+                                : creditNote.status === "active"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {creditNote.status || "active"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {getPendingAmount() > 0 && (
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
-                onClick={handleActualRecordPayment}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Record Payment In
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+            {/* Sidebar Footer */}
+            <div className="p-6 bg-gray-50 border-t border-gray-200 mt-auto space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-600">Total Amount Received</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(invoiceData.amount_paid)}
+                  </span>
+                </div>
+                {creditNotes.length > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600">
+                      Credit Note(s) Applied
+                    </span>
+                    <span className="text-green-600">
+                      -{formatCurrency(getTotalCreditNoteAmount())}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm font-bold">
+                  <span className="text-gray-600">Balance Amount</span>
+                  <span className="text-red-600">
+                    {formatCurrency(getPendingAmount())}
+                  </span>
+                </div>
+              </div>
+
+              {getPendingAmount() > 0 && (
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-sm shadow-blue-100"
+                  onClick={handleActualRecordPayment}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Record Payment In
+                </Button>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Record Payment Modal */}
-        <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
+        <Dialog
+          open={isRecordPaymentOpen}
+          onOpenChange={setIsRecordPaymentOpen}
+        >
           <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
             <DialogHeader className="px-6 py-4 border-b border-gray-200">
               <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -1409,88 +1597,103 @@ const InvoiceDetailsPage: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
 
-          <DialogBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Form Section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Amount Received <span className="text-red-500">*</span>
-                      </label>
+            <DialogBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Form Section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount Received{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.amountReceived === null ||
+                          paymentForm.amountReceived === 0
+                            ? ""
+                            : roundToTwo(paymentForm.amountReceived)
+                        }
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          // Use the calculated pending amount after credit notes
+                          const pendingAmount = getPendingAmount();
+                          const currentDiscount =
+                            parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(
+                            0,
+                            pendingAmount - currentDiscount,
+                          );
+                          const cappedAmount = Math.min(
+                            amount,
+                            maxAllowedAmount,
+                          );
+                          setPaymentForm({
+                            ...paymentForm,
+                            amountReceived: roundToTwo(cappedAmount),
+                          });
+                          validateAmountReceived(cappedAmount);
+                        }}
+                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      {amountError && (
+                        <p className="text-xs text-red-600 font-medium">
+                          {amountError}
+                        </p>
+                      )}
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.amountReceived === null ||
-                        paymentForm.amountReceived === 0
-                          ? ""
-                          : roundToTwo(paymentForm.amountReceived)
-                      }
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        // Use the calculated pending amount after credit notes
-                        const pendingAmount = getPendingAmount();
-                        const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                        const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
-                        const cappedAmount = Math.min(amount, maxAllowedAmount);
-                        setPaymentForm({
-                          ...paymentForm,
-                          amountReceived: roundToTwo(cappedAmount),
-                        });
-                        validateAmountReceived(cappedAmount);
-                      }}
-                      className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                    {amountError && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {amountError}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">
-                        Payment Discount
-                      </label>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Payment Discount
+                        </label>
+                        <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={
+                          paymentForm.discount === null ||
+                          paymentForm.discount === 0
+                            ? ""
+                            : roundToTwo(paymentForm.discount)
+                        }
+                        onChange={(e) => {
+                          const newDiscount = parseFloat(e.target.value) || 0;
+                          // Use the calculated pending amount after credit notes
+                          const pendingAmount = getPendingAmount();
+                          const maxAllowedAmount = Math.max(
+                            0,
+                            pendingAmount - newDiscount,
+                          );
+                          const currentAmountReceived =
+                            parseFloat(String(paymentForm.amountReceived)) || 0;
+
+                          // Adjust amount received if it exceeds the new maximum allowed
+                          const adjustedAmountReceived = Math.min(
+                            currentAmountReceived,
+                            maxAllowedAmount,
+                          );
+
+                          setPaymentForm({
+                            ...paymentForm,
+                            discount: roundToTwo(newDiscount),
+                            amountReceived: roundToTwo(adjustedAmountReceived),
+                          });
+                          validateAmountReceived(adjustedAmountReceived);
+                        }}
+                        className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
                     </div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={
-                        paymentForm.discount === null ||
-                        paymentForm.discount === 0
-                          ? ""
-                          : roundToTwo(paymentForm.discount)
-                      }
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        // Use the calculated pending amount after credit notes
-                        const pendingAmount = getPendingAmount();
-                        const maxAllowedAmount = Math.max(0, pendingAmount - newDiscount);
-                        const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
-                        
-                        // Adjust amount received if it exceeds the new maximum allowed
-                        const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
-                        
-                        setPaymentForm({
-                          ...paymentForm,
-                          discount: roundToTwo(newDiscount),
-                          amountReceived: roundToTwo(adjustedAmountReceived),
-                        });
-                        validateAmountReceived(adjustedAmountReceived);
-                      }}
-                      className={`h-10 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
-                      placeholder="0.00"
-                      step="0.01"
-                    />
                   </div>
-                </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1560,7 +1763,10 @@ const InvoiceDetailsPage: React.FC = () => {
                       className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
                       value={paymentForm.notes}
                       onChange={(e) =>
-                        setPaymentForm({ ...paymentForm, notes: e.target.value })
+                        setPaymentForm({
+                          ...paymentForm,
+                          notes: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -1597,62 +1803,62 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
 
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                    Payment Calculation
-                  </h4>
-                  <div className="space-y-2">
-                    {creditNotes.length > 0 && (
-                      <>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600 font-medium">
-                            Original Balance Due
-                          </span>
-                          <span className="text-gray-600">
-                            {formatCurrency(invoiceData.total_amount)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-600 font-medium">
-                            Credit Note(s) Applied
-                          </span>
-                          <span className="text-green-600">
-                            -{formatCurrency(getTotalCreditNoteAmount())}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-red-600 font-medium">
-                        Pending Amount
-                      </span>
-                      <span className="text-red-600 font-semibold">
-                        {formatCurrency(getPendingAmount())}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Amount Received</span>
-                      <span className="text-gray-900 font-medium">
-                        {formatCurrency(paymentForm.amountReceived)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="text-gray-900 font-medium">
-                        -{formatCurrency(paymentForm.discount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm font-semibold text-gray-800">
-                        New Balance
-                      </span>
-                      <span className="text-base font-bold text-blue-600">
-                        {formatCurrency(
-                          Math.max(
-                            0,
-                            getPendingAmount() -
-                              paymentForm.amountReceived -
-                              paymentForm.discount,
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                      Payment Calculation
+                    </h4>
+                    <div className="space-y-2">
+                      {creditNotes.length > 0 && (
+                        <>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">
+                              Original Balance Due
+                            </span>
+                            <span className="text-gray-600">
+                              {formatCurrency(invoiceData.total_amount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-green-600 font-medium">
+                              Credit Note(s) Applied
+                            </span>
+                            <span className="text-green-600">
+                              -{formatCurrency(getTotalCreditNoteAmount())}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-600 font-medium">
+                          Pending Amount
+                        </span>
+                        <span className="text-red-600 font-semibold">
+                          {formatCurrency(getPendingAmount())}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Amount Received</span>
+                        <span className="text-gray-900 font-medium">
+                          {formatCurrency(paymentForm.amountReceived)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Discount</span>
+                        <span className="text-gray-900 font-medium">
+                          -{formatCurrency(paymentForm.discount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                        <span className="text-sm font-semibold text-gray-800">
+                          New Balance
+                        </span>
+                        <span className="text-base font-bold text-blue-600">
+                          {formatCurrency(
+                            Math.max(
+                              0,
+                              getPendingAmount() -
+                                paymentForm.amountReceived -
+                                paymentForm.discount,
                             ),
                           )}
                         </span>
@@ -1665,7 +1871,8 @@ const InvoiceDetailsPage: React.FC = () => {
 
             <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
               <div className="text-sm text-gray-500">
-                <span className="font-medium">Note:</span> Fields marked with <span className="text-red-500">*</span> are required
+                <span className="font-medium">Note:</span> Fields marked with{" "}
+                <span className="text-red-500">*</span> are required
               </div>
               <div className="flex gap-2">
                 <Button
@@ -1678,7 +1885,11 @@ const InvoiceDetailsPage: React.FC = () => {
                 <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   onClick={handleSavePayment}
-                  disabled={isSavingPayment || paymentForm.amountReceived <= 0 || amountError !== ""}
+                  disabled={
+                    isSavingPayment ||
+                    paymentForm.amountReceived <= 0 ||
+                    amountError !== ""
+                  }
                 >
                   {isSavingPayment ? (
                     <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@ from app.extensions import db
 from app.models.purchase import PurchaseEntry
 from app.utils.stamping import set_created_fields, set_updated_fields, set_business
 from sqlalchemy import or_
+import traceback
 from datetime import datetime
 
 purchase_blueprint = Blueprint("purchase", __name__, url_prefix="/purchase")
@@ -97,7 +98,8 @@ def get_purchase_entries():
             "pagination": {"total": pagination.total}
         })
     except Exception as e:
-        import traceback; print("ERROR in get_purchase_entries:", traceback.format_exc())
+        import traceback
+        current_app.logger.error(f"ERROR in get_purchase_entries: {traceback.format_exc()}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @purchase_blueprint.route("/", methods=["POST"])
@@ -167,7 +169,8 @@ def create_purchase_entry():
         }), 201
     except Exception as e:
         db.session.rollback()
-        import traceback; print("ERROR in create_purchase_entry:", traceback.format_exc())
+        import traceback
+        current_app.logger.error(f"ERROR in create_purchase_entry: {traceback.format_exc()}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @purchase_blueprint.route("/<uuid:entry_id>", methods=["GET"])
@@ -257,7 +260,7 @@ def update_purchase_entry(entry_id):
         return jsonify({"message": "Purchase entry updated successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        import traceback; print("ERROR in update_purchase_entry:", traceback.format_exc())
+        current_app.logger.error(f"ERROR in update_purchase_entry: {traceback.format_exc()}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @purchase_blueprint.route("/<uuid:entry_id>", methods=["DELETE"])
@@ -288,5 +291,6 @@ def delete_purchase_entry(entry_id):
         return jsonify({"message": "Purchase entry deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        import traceback; print("ERROR in delete_purchase_entry:", traceback.format_exc())
+        import traceback
+        current_app.logger.error(f"ERROR in delete_purchase_entry: {traceback.format_exc()}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500

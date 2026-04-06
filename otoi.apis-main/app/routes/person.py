@@ -353,8 +353,6 @@ def download_person_template():
         )
 
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
         return {"error": str(e)}, 500
 
     
