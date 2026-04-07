@@ -1,5 +1,9 @@
-
-import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { cn } from "@/lib/utils";
 import {
   DataGrid,
@@ -16,16 +20,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Eye, X, Check, Loader2, AlertCircle } from "lucide-react";
+import {
+  MoreVertical,
+  Edit,
+  Trash2,
+  Eye,
+  X,
+  Check,
+  AlertCircle,
+  Package,
+  TrendingDown,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogHeader
+  DialogHeader,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -39,15 +60,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { SpinnerDotted } from 'spinners-react';
+import { SpinnerDotted } from "spinners-react";
 import axios from "axios";
 import CreateItemModal from "./CreateItemModal";
-import { getItems, deleteItem, getItemById } from "../../pages/items/services/items.service";
+import {
+  getItems,
+  deleteItem,
+  getItemById,
+} from "../../pages/items/services/items.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
 
-
 interface InventoryItem {
-  item_id: string; // UUID from backend
+  item_id: string;
   item_name: string;
   item_code: string;
   opening_stock: number;
@@ -74,6 +98,9 @@ interface IInventoryItemsProps {
   refreshStatus?: number;
 }
 
+/* ─────────────────────────────────────────────
+   TOOLBAR
+───────────────────────────────────────────── */
 const Toolbar = ({
   defaultSearch,
   setSearch,
@@ -92,51 +119,30 @@ const Toolbar = ({
   onCreateItem: () => void;
 }) => {
   const [searchInput, setSearchInput] = useState(defaultSearch);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<{ item_id: string; item_name: string }[]>([]);
 
-  useEffect(() => {
-    setSearchInput(defaultSearch);
-  }, [defaultSearch]);
+  useEffect(() => { setSearchInput(defaultSearch); }, [defaultSearch]);
 
   useEffect(() => {
     const fetchAllItems = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?dropdown=true`);
-        // Remove duplicates by item_name, keeping only unique items with safety checks
+        const response = await axios.get(
+          `${import.meta.env.VITE_APP_API_URL}/items/?dropdown=true`,
+        );
         const responseData = response?.data ?? [];
         const uniqueItems = responseData.reduce((acc: any[], item: any) => {
-          if (!item?.item_name) return acc; // Skip items without names
-          const existingItem = acc.find(existing => existing?.item_name === item?.item_name);
-          if (!existingItem) {
-            acc.push(item);
-          }
+          if (!item?.item_name) return acc;
+          if (!acc.find((e) => e?.item_name === item?.item_name)) acc.push(item);
           return acc;
         }, []);
-
-        // Sort items alphabetically by item_name
-        const sortedItems = uniqueItems.sort((a: any, b: any) => {
-          const nameA = a?.item_name?.toLowerCase() ?? '';
-          const nameB = b?.item_name?.toLowerCase() ?? '';
-          return nameA.localeCompare(nameB);
-        });
-
-        setItems(sortedItems);
-      } catch (error) {
-        console.error("Failed to fetch all items dropdown", error);
-        setItems([]); // Set empty array on error
-      }
+        setItems(uniqueItems.sort((a: any, b: any) =>
+          (a?.item_name?.toLowerCase() ?? "").localeCompare(b?.item_name?.toLowerCase() ?? "")
+        ));
+      } catch { setItems([]); }
     };
     fetchAllItems();
   }, []);
-
-  // Handle input change and trigger debounced search
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchInput(value);
-    setOpen(true); // Keep dropdown open while typing
-  };
 
   const filteredItems = useMemo(() => {
     if (!searchInput) return items;
@@ -146,103 +152,72 @@ const Toolbar = ({
   }, [items, searchInput]);
 
   return (
-    <div className="card-header flex flex-col lg:flex-row lg:justify-between gap-5 border-b-0 px-5 py-4">
-      <div className="flex flex-col md:flex-row md:items-center gap-5 w-full lg:w-auto">
-        <div className="flex grow w-full md:w-64 lg:w-72">
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <div className="relative">
-                <KeenIcon
-                  icon="magnifier"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
-                />
-                <Input
-                  placeholder="Search items..."
-                  value={searchInput}
-                  onChange={handleInputChange}
-                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
-                  className="pl-9 pr-9 h-9 text-xs"
-                />
-                {searchInput && (
-                  <X
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
-                    onClick={() => {
-                      setSearchInput("");
-                      setSearch("");
-                    }}
-                  />
-                )}
-              </div>
-            </PopoverTrigger>
+    <div className="inv-toolbar">
+      {/* Search */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="inv-search-wrap">
+            <Search className="inv-search-icon" />
+            <Input
+              placeholder="Search by name or item code…"
+              value={searchInput}
+              onChange={(e) => { setSearchInput(e.target.value); setOpen(true); }}
+              onClick={() => setOpen(true)}
+              className="inv-search-input"
+            />
+            {searchInput && (
+              <X
+                className="inv-search-clear"
+                onClick={() => { setSearchInput(""); setSearch(""); }}
+              />
+            )}
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start" onOpenAutoFocus={(e) => e?.preventDefault()}>
+          <Command>
+            <CommandList>
+              {filteredItems.length === 0 && <CommandEmpty>No item found.</CommandEmpty>}
+              <CommandGroup>
+                {filteredItems.map((item) => (
+                  <CommandItem
+                    key={item?.item_id}
+                    value={item?.item_name}
+                    onSelect={() => { setSearchInput(item?.item_name); setSearch(item?.item_name); setOpen(false); }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", searchInput === item?.item_name ? "opacity-100" : "opacity-0")} />
+                    {item?.item_name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-            <PopoverContent
-              className="p-0 w-[var(--radix-popover-trigger-width)]"
-              align="start"
-              onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
-            >
-              <Command>
-                <CommandList>
-                  {(filteredItems || [])?.length === 0 && (
-                    <CommandEmpty>No item found.</CommandEmpty>
-                  )}
-                  <CommandGroup>
-                    {(filteredItems || [])?.map((item) => (
-                      <CommandItem
-                        key={item?.item_id}
-                        value={item?.item_name}
-                        onSelect={() => {
-                          setSearchInput(item?.item_name);
-                          setSearch(item?.item_name); // Hit the API with exact selection
-                          setOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            searchInput === item?.item_name ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {item?.item_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 w-full lg:w-auto lg:justify-end">
-        {/* <select 
-          value={defaultProductType === "all" ? "" : defaultProductType} 
-          onChange={(e) => setDefaultProductType(e.target.value || "all")}
-          className="item-type-filter px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Items</option>
-          <option value="Product">Products</option>
-          <option value="Service">Services</option>
-        </select> */}
+      {/* Right actions */}
+      <div className="inv-toolbar-actions">
         <button
-          className={`btn btn-sm ${defaultLowStock ? "btn-primary" : "btn-light"}`}
+          className={`inv-filter-btn ${defaultLowStock ? "inv-filter-btn--active" : ""}`}
           onClick={() => setDefaultLowStock(!defaultLowStock)}
         >
-          {defaultLowStock ? "Showing Low Stock" : "Show Low Stock"}
+          <TrendingDown className="w-3.5 h-3.5" />
+          {defaultLowStock ? "Low Stock" : "Low Stock"}
         </button>
-        <button
-          className="btn btn-sm btn-primary"
-          onClick={onCreateItem}
-        >
-          Create Item
+
+        <button className="inv-create-btn" onClick={onCreateItem}>
+          <Plus className="w-4 h-4" />
+          New Item
         </button>
       </div>
     </div>
   );
 };
 
+/* ─────────────────────────────────────────────
+   MOBILE VIEW
+───────────────────────────────────────────── */
 const MobileView = ({
-  onEdit,
-  onDetails,
-  onDelete
+  onEdit, onDetails, onDelete,
 }: {
   onEdit: (item: InventoryItem) => void;
   onDetails: (id: string) => void;
@@ -250,7 +225,6 @@ const MobileView = ({
 }) => {
   const { table, loading } = useDataGrid();
   const rows = table.getRowModel().rows;
-
   if (loading && rows.length === 0) return null;
 
   return (
@@ -258,61 +232,41 @@ const MobileView = ({
       {rows.map((row) => {
         const item = row.original as InventoryItem;
         return (
-          <div
-            key={item.item_id}
-            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
-          >
-            <div
-              className="flex flex-col cursor-pointer grow pr-4"
-              onClick={() => onDetails(item.item_id)}
-            >
-              <span className="font-semibold text-gray-900 text-sm mb-0.5">{item.item_name}</span>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-gray-500 font-medium">{item.item_code}</span>
-                <span className="text-xs text-gray-400 font-normal">
-                  Stock: {item.opening_stock} | Price: ₹{item.sales_price?.toLocaleString('en-IN')}
-                </span>
+          <div key={item.item_id} className="inv-mobile-row">
+            <div className="flex flex-col cursor-pointer grow pr-3" onClick={() => onDetails(item.item_id)}>
+              <span className="font-semibold text-[13px] text-gray-900 mb-0.5">{item.item_name}</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="inv-code-chip">{item.item_code}</span>
+                <span className="text-[11px] text-gray-400">Qty: {item.opening_stock}</span>
               </div>
             </div>
 
-            {item.image && (
-              <div className="size-12 rounded-lg overflow-hidden border border-gray-100 mr-3 shrink-0">
-                <img 
-                  src={resolveImageUrl(item.image)} 
-                  alt={item.item_name} 
-                  className="w-full h-full object-cover" 
-                />
+            {item.image ? (
+              <div className="size-11 rounded-xl overflow-hidden border border-gray-100 mr-2 shrink-0">
+                <img src={resolveImageUrl(item.image)} alt={item.item_name} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="size-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mr-2 shrink-0">
+                <Package className="w-4 h-4 text-gray-300" />
               </div>
             )}
 
+            <div className="flex flex-col items-end mr-1 shrink-0">
+              <span className="inv-price-badge">₹{item.sales_price?.toLocaleString("en-IN")}</span>
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
-                  <MoreVertical className="h-4.5 w-4.5" />
+                <button className="inv-action-trigger shrink-0">
+                  <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
-                <DropdownMenuItem
-                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
-                  onClick={() => onEdit(item)}
-                >
-                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
-                  onClick={() => onDetails(item.item_id)}
-                >
-                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
-                  Details
-                </DropdownMenuItem>
-                <div className="my-1 border-t border-gray-100"></div>
-                <DropdownMenuItem
-                  className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
-                  onClick={() => onDelete(item.item_id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+              <DropdownMenuContent align="end" className="w-32 p-1">
+                <DropdownMenuItem onClick={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDetails(item.item_id)}><Eye className="mr-2 h-4 w-4" />Details</DropdownMenuItem>
+                <div className="my-1 border-t border-gray-100" />
+                <DropdownMenuItem className="text-red-500 focus:bg-red-50" onClick={() => onDelete(item.item_id)}>
+                  <Trash2 className="mr-2 h-4 w-4" />Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -320,23 +274,24 @@ const MobileView = ({
         );
       })}
       {rows.length === 0 && !loading && (
-        <div className="p-16 text-center">
-          <div className="flex flex-col items-center gap-2">
-            <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
-            <span className="text-gray-400 text-sm font-medium">No items found matching your criteria.</span>
-          </div>
+        <div className="p-16 text-center flex flex-col items-center gap-2">
+          <Package className="w-10 h-10 text-gray-200" />
+          <span className="text-gray-400 text-sm">No items found.</span>
         </div>
       )}
     </div>
   );
 };
 
+/* ─────────────────────────────────────────────
+   MAIN PAGE
+───────────────────────────────────────────── */
 const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [lowStock, setLowStock] = useState(false);
-  const [productType, setProductType] = useState<string>("all"); // "all", "Product", "Service"
+  const [productType, setProductType] = useState<string>("all");
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(false);
@@ -345,157 +300,91 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isEditing, setIsEditing] = useState(false);
-  const [itemsData, setItemsData] = useState<InventoryItem[]>([]);
   const [allItemsForCount, setAllItemsForCount] = useState<InventoryItem[]>([]);
 
   const navigate = useNavigate();
 
-  // Helper function to safely convert to number with fallback
   const toNumber = (value: any, fallback = 0): number => {
-    if (value === null || value === undefined || value === 'None') return fallback;
+    if (value === null || value === undefined || value === "None") return fallback;
     const num = Number(value);
     return isNaN(num) ? fallback : num;
   };
 
-  // Fetch all items for accurate low stock count
+  const mapItem = (item: any): InventoryItem => ({
+    item_id: item.id || "",
+    item_name: item.item_name || "Unnamed Item",
+    item_code: item.item_code || `ITEM-${Date.now()}`,
+    opening_stock: toNumber(item.opening_stock, 0),
+    sales_price: toNumber(item.sales_price, 0),
+    purchase_price: item.purchase_price !== null && item.purchase_price !== "None"
+      ? toNumber(item.purchase_price, 0) : null,
+    type: item.item_type || item.type || "Product",
+    item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
+    category: item.category || "Uncategorized",
+    business_id: item.business_id || null,
+    description: item.description,
+    hsn_code: item.hsn_code,
+    category_id: item.category_id,
+    measuring_unit_id: item.measuring_unit_id,
+    gst_tax_rate: item.gst_tax_rate,
+    image: item.image,
+  });
+
   const fetchAllItemsForCount = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?items_per_page=10000`);
-      const payload: any = response?.data as any;
+      const payload: any = response?.data;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-
-      const mappedItems: InventoryItem[] = rows.map((item: any) => ({
-        item_id: item.id || "",
-        item_name: item.item_name || "Unnamed Item",
-        item_code: item.item_code || `ITEM-${Date.now()}`,
-        opening_stock: toNumber(item.opening_stock, 0),
-        sales_price: toNumber(item.sales_price, 0),
-        purchase_price:
-          item.purchase_price !== null && item.purchase_price !== "None"
-            ? toNumber(item.purchase_price, 0)
-            : null,
-        type: item.item_type || item.type || "Product",
-        item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
-        category: item.category || "Uncategorized",
-        business_id: item.business_id || null,
-        description: item.description,
-        hsn_code: item.hsn_code,
-        category_id: item.category_id,
-        measuring_unit_id: item.measuring_unit_id,
-        gst_tax_rate: item.gst_tax_rate,
-        image: item.image,
-      }));
-
-      setAllItemsForCount(mappedItems);
-    } catch (error) {
-      console.error("Failed to fetch all items for count", error);
-    }
+      setAllItemsForCount(rows.map(mapItem));
+    } catch { console.error("Failed to fetch all items for count"); }
   };
 
-  // Fetch items from API with pagination, sorting, and search
   const fetchItems = async (params: TDataGridRequestParams) => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
       queryParams.set("page", String(params.pageIndex + 1));
       queryParams.set("items_per_page", String(params.pageSize));
-
       if (params.sorting?.[0]?.id) {
         queryParams.set("sort", params.sorting[0].id);
         queryParams.set("order", params.sorting[0].desc ? "desc" : "asc");
       }
-
-      if (searchQuery) {
-        queryParams.set("query", searchQuery);
-      } else {
-        queryParams.delete("query");
-      }
-
-      if (lowStock) {
-        queryParams.set("low_stock", "true");
-      }
-
-      if (productType && productType !== "all") {
-        queryParams.set("item_type_id", productType === "Product" ? "1" : "2");
-      }
-
+      if (searchQuery) queryParams.set("query", searchQuery);
+      if (lowStock) queryParams.set("low_stock", "true");
+      if (productType && productType !== "all") queryParams.set("item_type_id", productType === "Product" ? "1" : "2");
       if (params.columnFilters) {
         params.columnFilters.forEach(({ id, value }) => {
-          if (value !== undefined && value !== null) {
-            queryParams.set(`filter[${id}]`, String(value));
-          }
+          if (value !== undefined && value !== null) queryParams.set(`filter[${id}]`, String(value));
         });
       }
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_APP_API_URL}/items/?${queryParams.toString()}`,
-      );
-      const payload: any = response?.data as any;
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/items/?${queryParams.toString()}`);
+      const payload: any = response?.data;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
       const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
-
-      // Map response data to our interface
-      const mappedItems: InventoryItem[] = rows.map((item: any) => ({
-        item_id: item.id || "",
-        item_name: item.item_name || "Unnamed Item",
-        item_code: item.item_code || `ITEM-${Date.now()}`,
-        opening_stock: toNumber(item.opening_stock, 0),
-        sales_price: toNumber(item.sales_price, 0),
-        purchase_price:
-          item.purchase_price !== null && item.purchase_price !== "None"
-            ? toNumber(item.purchase_price, 0)
-            : null,
-        type: item.item_type || item.type || "Product",
-        item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
-        category: item.category || "Uncategorized",
-        business_id: item.business_id || null,
-        description: item.description,
-        hsn_code: item.hsn_code,
-        category_id: item.category_id,
-        measuring_unit_id: item.measuring_unit_id,
-        gst_tax_rate: item.gst_tax_rate,
-        image: item.image,
-      }));
-
-      // Backend handles filtering when low_stock=true, no need for client-side filtering
+      const mappedItems = rows.map(mapItem);
       setItems(mappedItems);
-      return {
-        data: mappedItems,
-        totalCount: total,
-      };
-    } catch (error) {
-      console.log(error);
-      toast(`Connection Error`, {
-        description: `An error occurred while fetching data. Please try again later`,
-        action: {
-          label: "Ok",
-          onClick: () => console.log("Ok"),
-        },
-      });
-
-      return {
-        data: [],
-        totalCount: 0,
-      };
-    } finally {
-      setLoading(false);
-    }
+      return { data: mappedItems, totalCount: total };
+    } catch {
+      toast("Connection Error", { description: "Failed to fetch items." });
+      return { data: [], totalCount: 0 };
+    } finally { setLoading(false); }
   };
 
-  // Fetch items on component mount or when dependencies change
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-    fetchAllItemsForCount(); // Fetch all items for accurate low stock count
+    fetchAllItemsForCount();
   }, [refreshStatus, searchQuery, lowStock]);
 
-  // Calculate stock value and low stock count (Products only)
   const stockValue = items
-    .filter(item => item.item_type_id === 1)
+    .filter((item) => item.item_type_id === 1)
     .reduce((sum, item) => sum + (item.sales_price || 0) * (item.opening_stock || 0), 0);
 
-  const lowStockCount = allItemsForCount.filter((item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5).length;
+  const lowStockCount = allItemsForCount.filter(
+    (item) => item.item_type_id === 1 && (item.opening_stock || 0) <= 5
+  ).length;
 
-  // Delete an item with confirmation
+  const totalProducts = allItemsForCount.filter((item) => item.item_type_id === 1).length;
+
   const handleDeleteClick = (id: string, onClose?: () => void) => {
     if (onClose) onClose();
     setItemToDelete(id);
@@ -504,98 +393,63 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
-
     setIsDeleting(true);
     try {
       await deleteItem(itemToDelete);
       toast.success("Item deleted successfully");
-      setRefreshKey((prev) => prev + 1); // Trigger refresh instead of calling fetchItems directly
-    } catch (err) {
-      toast.error("Failed to delete item. Please try again.");
-    } finally {
+      setRefreshKey((prev) => prev + 1);
+    } catch { toast.error("Failed to delete item."); }
+    finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
       setItemToDelete(null);
     }
   };
 
-  // Edit an item
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
     setShowModal(true);
   };
 
-
-  // Column filter component
   const ColumnInputFilter = <TData, TValue>({ column }: IColumnFilterProps<TData, TValue>) => {
     const [inputValue, setInputValue] = useState((column.getFilterValue() as string) ?? "");
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        column.setFilterValue(inputValue);
-      }
-    };
-
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(event.target.value);
-    };
-
     return (
       <Input
-        placeholder="Filter..."
+        placeholder="Filter…"
         value={inputValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        className="h-9 w-full max-w-40"
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && column.setFilterValue(inputValue)}
+        className="h-8 w-full max-w-40 text-xs"
       />
     );
   };
 
-  // Define columns for DataGrid
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => [
     {
       accessorKey: "item_id",
-      header: () => (
-        <div className="w-full flex items-center justify-center h-full p-0 m-0">
-          <DataGridRowSelectAll />
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="w-full flex items-center justify-center h-full p-0 m-0">
-          <DataGridRowSelect row={row} />
-        </div>
-      ),
+      header: () => <div className="flex items-center justify-center"><DataGridRowSelectAll /></div>,
+      cell: ({ row }) => <div className="flex items-center justify-center"><DataGridRowSelect row={row} /></div>,
       enableSorting: false,
       enableHiding: false,
-      meta: {
-        headerClassName: "w-12 text-center align-middle p-0 m-0",
-        cellClassName: "text-center align-middle pointer-events-auto p-0 m-0",
-        disableRowClick: true,
-      },
+      meta: { headerClassName: "w-10 text-center p-0", cellClassName: "text-center p-0", disableRowClick: true },
     },
     {
       accessorKey: "image",
-      header: ({ column }) => (
-        <DataGridColumnHeader title="Image" column={column} />
-      ),
+      header: () => <span className="inv-col-header">Image</span>,
       enableSorting: false,
       cell: (info) => {
         const image = info.row.original.image;
-        if (!image) return <div className="size-10 rounded bg-gray-50 border border-gray-100 flex items-center justify-center"><KeenIcon icon="picture" className="text-gray-300 size-5" /></div>;
-        return (
-          <div className="size-10 rounded overflow-hidden border border-gray-100">
-            <img 
-              src={resolveImageUrl(image)} 
-              alt="Product" 
-              className="w-full h-full object-cover" 
-            />
+        return image ? (
+          <div className="size-10 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+            <img src={resolveImageUrl(image)} alt="Product" className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="size-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+            <Package className="w-4 h-4 text-slate-300" />
           </div>
         );
       },
-      meta: {
-        headerClassName: "w-20",
-        cellClassName: "text-center",
-      },
+      meta: { headerClassName: "w-16", cellClassName: "" },
     },
     {
       accessorFn: (row) => row.item_name,
@@ -609,90 +463,81 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       ),
       enableSorting: true,
       cell: (info) => (
-        <div className="flex items-center gap-2.5">
-          <div className="flex flex-col">
-            <a
-              className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(`/items/inventory/${info.row.original.item_id}`);
-              }}
-            >
-              {info.row.original.item_name}
-            </a>
-            <span className="text-2sm text-gray-700 font-normal">
-              {info.row.original.item_code}
-            </span>
-
-          </div>
+        <div className="flex flex-col gap-0.5">
+          <a
+            className="inv-item-name"
+            onClick={(e) => { e.preventDefault(); navigate(`/items/inventory/${info.row.original.item_id}`); }}
+          >
+            {info.row.original.item_name}
+          </a>
+          <span className="inv-code-chip">{info.row.original.item_code}</span>
         </div>
       ),
-      meta: {
-        headerClassName: "min-w-[250px]",
-      },
+      meta: { headerClassName: "min-w-[240px]" },
+    },
+    {
+      accessorFn: (row) => row.category,
+      id: "category",
+      header: ({ column }) => <DataGridColumnHeader title="Category" column={column} />,
+      enableSorting: true,
+      cell: (info) => (
+        <span className="inv-category-tag">{info.row.original.category}</span>
+      ),
+      meta: { headerClassName: "min-w-[120px]" },
     },
     {
       accessorFn: (row) => row.opening_stock,
       id: "opening_stock",
-      header: ({ column }) => (
-        <DataGridColumnHeader title="Stock Quantity" column={column} />
-      ),
+      header: ({ column }) => <DataGridColumnHeader title="Stock Qty" column={column} />,
       enableSorting: true,
-      cell: (info) => info.row.original.opening_stock,
-      meta: {
-        headerClassName: "min-w-[137px]",
-        cellClassName: "text-gray-800 font-medium",
+      cell: (info) => {
+        const qty = info.row.original.opening_stock;
+        return (
+          <span className={`inv-qty-badge ${qty <= 5 ? "inv-qty-badge--low" : "inv-qty-badge--ok"}`}>
+            {qty}
+          </span>
+        );
       },
+      meta: { headerClassName: "min-w-[110px]", cellClassName: "" },
     },
     {
       accessorFn: (row) => row.sales_price,
       id: "sales_price",
-      header: ({ column }) => (
-        <DataGridColumnHeader title="Selling Price" column={column} />
-      ),
+      header: ({ column }) => <DataGridColumnHeader title="Selling Price" column={column} />,
       enableSorting: true,
-      cell: (info) => {
-        const value = info.row.original.sales_price;
-        return `₹${value?.toLocaleString('en-IN') || '0'}`;
-      },
-      meta: {
-        headerClassName: "min-w-[137px]",
-        cellClassName: "text-gray-800 font-medium",
-      },
+      cell: (info) => (
+        <span className="inv-price-badge">
+          ₹{info.row.original.sales_price?.toLocaleString("en-IN") || "0"}
+        </span>
+      ),
+      meta: { headerClassName: "min-w-[130px]" },
     },
     {
       accessorFn: (row) => row.purchase_price,
       id: "purchase_price",
-      header: ({ column }) => (
-        <DataGridColumnHeader title="Purchase Price" column={column} />
-      ),
+      header: ({ column }) => <DataGridColumnHeader title="Purchase Price" column={column} />,
       enableSorting: true,
       cell: (info) => {
         const value = info.row.original.purchase_price;
-        return value ? `₹${value.toLocaleString('en-IN')}` : '₹0';
-
+        return (
+          <span className="text-sm text-gray-500 font-medium">
+            {value ? `₹${value.toLocaleString("en-IN")}` : <span className="text-gray-300">—</span>}
+          </span>
+        );
       },
-      meta: {
-        headerClassName: "min-w-[137px]",
-        cellClassName: "text-gray-800 font-medium",
-      },
+      meta: { headerClassName: "min-w-[130px]" },
     },
     {
       id: "actions",
-      header: ({ column }) => (
-        <DataGridColumnHeader title="Actions" column={column} className="justify-center" />
-      ),
+      header: () => <span className="inv-col-header text-center block">Actions</span>,
       enableSorting: false,
       meta: {
-        headerClassName: "w-28",
-        cellClassName: "text-gray-800 font-medium pointer-events-auto",
+        headerClassName: "w-20",
+        cellClassName: "pointer-events-auto",
         disableRowClick: true,
       },
       cell: ({ row }) => {
-        // const [isOpen, setIsOpen] = useState(false);
         const [isOpen, setIsOpen] = useState(false);
-
-
         return (
           <div className="flex justify-center">
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -700,226 +545,435 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center justify-center text-sm text-primary hover:text-primary-active"
+                  className="inv-action-trigger"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleEdit(row.original);
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
+              <DropdownMenuContent align="end" className="w-32 p-1 shadow-lg">
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleEdit(row.original); }}>
+                  <Edit className="mr-2 h-4 w-4" />Edit
                 </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    navigate(`/items/inventory/${row.original.item_id}`);
-                  }}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Details
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`/items/inventory/${row.original.item_id}`); }}>
+                  <Eye className="mr-2 h-4 w-4" />Details
                 </DropdownMenuItem>
-
+                <div className="my-1 border-t border-gray-100" />
                 <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDeleteClick(row.original.item_id, () => setIsOpen(false));
-                  }}
+                  className="text-red-500 focus:bg-red-50"
+                  onSelect={(e) => { e.preventDefault(); handleDeleteClick(row.original.item_id, () => setIsOpen(false)); }}
                 >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
+                  <Trash2 className="mr-2 h-4 w-4" />Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
         );
       },
     },
+  ], []);
 
-
-  ],
-    []
-  );
-
-  // Handle row selection changes
   const handleRowSelection = (state: RowSelectionState) => {
     setRowSelection(state);
     const selectedRowIds = Object.keys(state);
-    if (selectedRowIds.length > 0) {
-      toast(`Total ${selectedRowIds.length} are selected.`);
-    }
+    if (selectedRowIds.length > 0) toast(`${selectedRowIds.length} item(s) selected.`);
   };
-  // Render the component
+
   return (
-    <div className="grid gap-5 lg:gap-7.5 relative">
-      {(loading || isDeleting || isEditing) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
+    <>
+      {/* ── Scoped styles ── */}
+      <style>{`
+        /* Page layout */
+        .inv-page { display: grid; gap: 1.5rem; padding: 0; }
+
+        /* ── Hero banner ── */
+        .inv-hero {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2744 100%);
+          border-radius: 1.25rem;
+          padding: 2rem 2.25rem 1.75rem;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 1.5rem;
+          flex-wrap: wrap;
+          position: relative;
+          overflow: hidden;
+          margin: 0 1rem;
+        }
+        .inv-hero::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse 80% 60% at 110% -10%, rgba(59,130,246,0.18) 0%, transparent 60%),
+                      radial-gradient(ellipse 50% 50% at -5% 110%, rgba(16,185,129,0.10) 0%, transparent 60%);
+          pointer-events: none;
+        }
+        .inv-hero-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #fff;
+          letter-spacing: -0.02em;
+          margin: 0 0 0.25rem;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .inv-hero-sub {
+          font-size: 0.8125rem;
+          color: rgba(255,255,255,0.45);
+          font-weight: 400;
+          margin: 0;
+        }
+
+        /* ── Stat cards inside hero ── */
+        .inv-stats {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+        .inv-stat {
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 0.875rem;
+          padding: 0.875rem 1.25rem;
+          min-width: 140px;
+          backdrop-filter: blur(8px);
+          transition: background 0.2s;
+        }
+        .inv-stat:hover { background: rgba(255,255,255,0.11); }
+        .inv-stat-label {
+          font-size: 0.7rem;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.45);
+          margin-bottom: 0.375rem;
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+        }
+        .inv-stat-value {
+          font-size: 1.375rem;
+          font-weight: 700;
+          color: #fff;
+          letter-spacing: -0.02em;
+          line-height: 1;
+        }
+        .inv-stat--warn .inv-stat-value { color: #fbbf24; }
+        .inv-stat--warn .inv-stat-label { color: rgba(251,191,36,0.65); }
+        .inv-stat--warn { border-color: rgba(251,191,36,0.2); background: rgba(251,191,36,0.07); }
+
+        /* ── Toolbar ── */
+        .inv-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          padding: 0.875rem 1.25rem;
+          flex-wrap: wrap;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .inv-search-wrap {
+          position: relative;
+          width: 280px;
+          max-width: 100%;
+        }
+        .inv-search-icon {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 14px;
+          height: 14px;
+          color: #94a3b8;
+          pointer-events: none;
+        }
+        .inv-search-input {
+          padding-left: 2.25rem !important;
+          padding-right: 2.25rem !important;
+          height: 2.25rem;
+          font-size: 0.8125rem;
+          border-radius: 0.625rem;
+          border-color: #e2e8f0;
+          background: #f8fafc;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .inv-search-input:focus {
+          border-color: #3b82f6;
+          background: #fff;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        .inv-search-clear {
+          position: absolute;
+          right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 14px;
+          height: 14px;
+          color: #94a3b8;
+          cursor: pointer;
+        }
+        .inv-search-clear:hover { color: #475569; }
+
+        .inv-toolbar-actions { display: flex; align-items: center; gap: 0.625rem; }
+
+        .inv-filter-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0 0.875rem;
+          height: 2.25rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          border-radius: 0.625rem;
+          border: 1.5px solid #e2e8f0;
+          background: #fff;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .inv-filter-btn:hover { border-color: #cbd5e1; background: #f8fafc; }
+        .inv-filter-btn--active {
+          border-color: #f59e0b;
+          background: #fffbeb;
+          color: #d97706;
+        }
+        .inv-filter-btn--active:hover { background: #fef3c7; }
+
+        .inv-create-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0 1rem;
+          height: 2.25rem;
+          font-size: 0.8125rem;
+          font-weight: 600;
+          border-radius: 0.625rem;
+          border: none;
+          background: #0f172a;
+          color: #fff;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+        }
+        .inv-create-btn:hover { background: #1e293b; }
+        .inv-create-btn:active { transform: scale(0.97); }
+
+        /* ── Table cells ── */
+        .inv-item-name {
+          font-size: 0.8125rem;
+          font-weight: 600;
+          color: #0f172a;
+          cursor: pointer;
+          transition: color 0.15s;
+          text-decoration: none;
+          display: block;
+        }
+        .inv-item-name:hover { color: #3b82f6; }
+
+        .inv-code-chip {
+          display: inline-flex;
+          align-items: center;
+          padding: 0;
+          font-size: 0.7rem;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: #64748b;
+          font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+        }
+
+        .inv-category-tag {
+          display: inline-flex;
+          padding: 0.2rem 0.625rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+          border-radius: 9999px;
+          background: #eff6ff;
+          color: #3b82f6;
+          border: 1px solid #dbeafe;
+        }
+
+        .inv-qty-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 2.25rem;
+          padding: 0.2rem 0.625rem;
+          font-size: 0.8125rem;
+          font-weight: 700;
+          border-radius: 0.5rem;
+        }
+        .inv-qty-badge--ok { background: #f0fdf4; color: #16a34a; }
+        .inv-qty-badge--low { background: #fff7ed; color: #ea580c; }
+
+        .inv-price-badge {
+          display: inline-flex;
+          padding: 0.25rem 0.75rem;
+          font-size: 0.8125rem;
+          font-weight: 700;
+          border-radius: 0.5rem;
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .inv-action-trigger {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 2rem;
+          height: 2rem;
+          border-radius: 0.5rem;
+          border: none;
+          background: transparent;
+          color: #94a3b8;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+        }
+        .inv-action-trigger:hover { background: #f1f5f9; color: #334155; }
+
+        .inv-col-header {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #64748b;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        /* Mobile row */
+        .inv-mobile-row {
+          display: flex;
+          align-items: center;
+          padding: 0.875rem 1.25rem;
+          border-bottom: 1px solid #f1f5f9;
+          transition: background 0.15s;
+        }
+        .inv-mobile-row:hover { background: #f8fafc; }
+        .inv-mobile-row:last-child { border-bottom: none; }
+      `}</style>
+
+      <div className="inv-page">
+        {(loading || isDeleting || isEditing) && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80">
+            <SpinnerDotted size={48} thickness={100} speed={100} color="#3b82f6" />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6 mx-4 lg:mx-6">
-        <h1 className="text-2xl font-bold">Items</h1>
-      </div>
+        {/* ── Hero Banner ── */}
+        <div className="inv-hero">
+          <div>
+            <h1 className="inv-hero-title">Inventory</h1>
+            <p className="inv-hero-sub">Manage your products, stock levels & pricing</p>
+          </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5 mx-4 lg:mx-6">
-        {/* Stock Value */}
-        <div className="card border rounded-3 grow">
-          <div className="card-body py-4 px-5 flex justify-between items-center">
-            <div>
-              <div className="flex items-center mb-1">
-                <i className="bi bi-graph-up text-primary fs-5"></i>
-                <span className=" text-primary">Stock Value</span>
+          <div className="inv-stats">
+            <div className="inv-stat">
+              <div className="inv-stat-label">
+                <Package className="w-3 h-3" /> Stock Value
               </div>
-              <div className="text-xl">₹{stockValue.toLocaleString('en-IN')}</div>
+              <div className="inv-stat-value">₹{stockValue.toLocaleString("en-IN")}</div>
             </div>
-            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
-          </div>
-        </div>
 
-        {/* Low Stock */}
-        <div className="card border rounded-3 grow">
-          <div className="card-body py-4 px-5 flex justify-between items-center">
-            <div>
-              <div className="flex items-center mb-1">
-                <i className="bi bi-box-seam text-warning fs-5"></i>
-                <span className="text-warning">Low Stock</span>
+            <div className={`inv-stat ${lowStockCount > 0 ? "inv-stat--warn" : ""}`}>
+              <div className="inv-stat-label">
+                <TrendingDown className="w-3 h-3" /> Low Stock
               </div>
-              <div className="text-xl ml-3"> {lowStockCount}</div>
+              <div className="inv-stat-value">{lowStockCount}</div>
             </div>
-            <i className="bi bi-box-arrow-up-right text-muted fs-4"></i>
+
+            <div className="inv-stat">
+              <div className="inv-stat-label">
+                <Package className="w-3 h-3" /> Total Items
+              </div>
+              <div className="inv-stat-value">{allItemsForCount.length}</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mx-4 lg:mx-6">
-        <DataGrid
-          key={refreshKey}
-          columns={columns}
-          serverSide={true}
-          onFetchData={fetchItems}
-          loading={false}
-          rowSelection={true}
-          rowSelectionState={rowSelection}
-          getRowId={(row: any) => row.item_id}
-          onRowSelectionChange={handleRowSelection}
-          pagination={{ size: 5 }}
-          toolbar={
-            <Toolbar
-              defaultSearch={searchQuery}
-              setSearch={setSearchQuery}
-              defaultLowStock={lowStock}
-              setDefaultLowStock={setLowStock}
-              defaultProductType={productType}
-              setDefaultProductType={setProductType}
-              onCreateItem={() => {
-                setSelectedItem(null);
-                setShowModal(true);
-              }}
-            />
-          }
-          layout={{
-            card: true,
-            classes: {
-              container: 'hidden lg:block'
+        {/* ── Data Grid ── */}
+        <div className="mx-4">
+          <DataGrid
+            key={refreshKey}
+            columns={columns}
+            serverSide={true}
+            onFetchData={fetchItems}
+            loading={false}
+            rowSelection={true}
+            rowSelectionState={rowSelection}
+            getRowId={(row: any) => row.item_id}
+            onRowSelectionChange={handleRowSelection}
+            pagination={{ size: 5 }}
+            toolbar={
+              <Toolbar
+                defaultSearch={searchQuery}
+                setSearch={setSearchQuery}
+                defaultLowStock={lowStock}
+                setDefaultLowStock={setLowStock}
+                defaultProductType={productType}
+                setDefaultProductType={setProductType}
+                onCreateItem={() => { setSelectedItem(null); setShowModal(true); }}
+              />
             }
-          }}
-        >
-          <MobileView
-            onEdit={handleEdit}
-            onDetails={(id) => navigate(`/items/inventory/${id}`)}
-            onDelete={(id) => handleDeleteClick(id)}
-          />
-        </DataGrid>
-      </div>
+            layout={{
+              card: true,
+              classes: { container: "hidden lg:block" },
+            }}
+          >
+            <MobileView
+              onEdit={handleEdit}
+              onDetails={(id) => navigate(`/items/inventory/${id}`)}
+              onDelete={(id) => handleDeleteClick(id)}
+            />
+          </DataGrid>
+        </div>
 
-
-      {/* Modal */}
-      <div className="mx-4 lg:mx-6">
+        {/* ── Create/Edit Modal ── */}
         <CreateItemModal
           open={showModal}
           onOpenChange={(open: boolean) => {
             setShowModal(open);
-
-            if (!open) {
-              setSelectedItem(null);
-              setRefreshKey((prev) => prev + 1); // Increment key to trigger grid refresh
-            }
+            if (!open) { setSelectedItem(null); setRefreshKey((prev) => prev + 1); }
           }}
-          onSuccess={() => {
-            setShowModal(false);
-            setRefreshKey((prev) => prev + 1);
-          }}
+          onSuccess={() => { setShowModal(false); setRefreshKey((prev) => prev + 1); }}
           item={
             selectedItem
               ? {
-                ...selectedItem,
-
-                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
-                item_type_id: (selectedItem as any).item_type_id ?? 0,
-                category_id: (selectedItem as any).category_id ?? 0,
-                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-              }
+                  ...selectedItem,
+                  purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                  item_type_id: (selectedItem as any).item_type_id ?? 0,
+                  category_id: (selectedItem as any).category_id ?? 0,
+                  measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                  gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+                }
               : null
           }
         />
+
+        {/* ── Delete Dialog ── */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="w-[calc(100%-2rem)] max-w-[400px] p-6 rounded-2xl">
+            <DialogHeader className="flex flex-col items-center text-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <DialogTitle className="text-base font-semibold text-gray-900">Delete Item?</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
+                This action cannot be undone. The item will be permanently removed.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-row gap-3 mt-1">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="flex-1 rounded-xl" disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white border-0"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
-          <DialogHeader className="flex flex-col items-center text-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-            </div>
-
-            <DialogTitle className="text-lg font-semibold">
-              Delete Item
-            </DialogTitle>
-
-            <DialogDescription className="text-sm text-muted-foreground leading-relaxed text-center">
-              Are you sure you want to delete this item?
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="flex flex-row gap-3 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              className="flex-1"
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              className="flex-1 bg-red-600 hover:bg-red-700"
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </>
   );
 };
 

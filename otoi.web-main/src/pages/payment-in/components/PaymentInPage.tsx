@@ -206,7 +206,7 @@ export const PaymentInPage = () => {
     };
 
     fetchInitialData();
-  }, [selectedStatus, searchTerm, searchType, selectedDateFilter]);
+  }, [selectedStatus, searchTerm, searchType, selectedDateFilter, refreshKey]);
 
   const handleDelete = (id: string) => {
     setPaymentToDelete(id);
@@ -220,13 +220,16 @@ export const PaymentInPage = () => {
       const response = await deletePaymentIn(paymentToDelete);
       if (response.success) {
         toast.success("Payment deleted successfully");
-        // DataGrid will automatically refresh on delete
+        // Refresh the data after deletion
+        setRefreshKey(prev => prev + 1);
+        // Also update local state to remove the deleted item immediately
+        setPayments(prev => prev.filter(payment => payment.id !== paymentToDelete));
       } else {
         toast.error(response.error || "Failed to delete payment");
       }
     } catch (error: any) {
       console.error("Error deleting payment:", error);
-      toast.error("An error occurred while deleting the payment");
+      toast.error("Failed to delete payment");
     } finally {
       setPaymentToDelete(null);
       setDeleteDialogOpen(false);
