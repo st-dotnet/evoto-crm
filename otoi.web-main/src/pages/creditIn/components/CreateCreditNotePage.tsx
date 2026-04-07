@@ -440,9 +440,6 @@ const CreateCreditNotePage = () => {
       const response = await getCreditNoteById(creditNoteId);
       if (response.success && response.data) {
         const data = response.data.data; // API returns nested data structure
-        
-        // Debug: Log the received data to verify field names
-        console.log("Credit Note API Response:", data);
 
         const linkToInvoiceValue =
           data.invoice_number || data.invoice_no || data.invoice_id || "";
@@ -551,7 +548,6 @@ const CreateCreditNotePage = () => {
           setItems([]); // Ensure items is empty array
           
           // Backend now provides all fields correctly, no need to recalculate
-          console.log("No items found, using backend totals directly");
         }
 
         // If linked to invoice, fetch invoice details (only if needed for additional data)
@@ -570,11 +566,8 @@ const CreateCreditNotePage = () => {
 
   // Function to recalculate totals
   const recalculateTotals = (updatedItems: any[]) => {
-    console.log("Recalculating totals with items:", updatedItems);
-    
     // If there are no items, preserve the existing balance amount
     if (updatedItems.length === 0) {
-      console.log("No items found, preserving existing totals");
       // Don't recalculate to 0, keep existing values
       return;
     }
@@ -619,18 +612,7 @@ const CreateCreditNotePage = () => {
     const roundedTotalAmount = Math.round(totalAmount * 100) / 100;
     const roundedRoundOffAmount = Math.round(roundOffAmount * 100) / 100;
 
-    console.log("Calculated totals:", { 
-      subtotal: roundedSubtotal, 
-      totalDiscount: roundedTotalDiscount, 
-      totalTax: roundedTotalTax, 
-      totalAmount: roundedTotalAmount 
-    });
-
-    console.log("Before state update - creditNoteData.totalAmount:", creditNoteData.totalAmount);
-
     setCreditNoteData((prev) => {
-      console.log("State update - prev.totalAmount:", prev.totalAmount);
-      console.log("State update - new.totalAmount:", roundedTotalAmount);
       const newData = {
         ...prev,
         subtotal: roundedSubtotal,
@@ -639,7 +621,6 @@ const CreateCreditNotePage = () => {
         totalAmount: roundedTotalAmount,
         round_off_amount: roundedRoundOffAmount,
       };
-      console.log("State update - complete new data:", newData);
       return newData;
     });
   };
@@ -772,15 +753,6 @@ const CreateCreditNotePage = () => {
       const tax = parseFloat(item.tax) || 0;
       
       item.amount = quantity * pricePerItem * (1 - discount / 100) * (1 + tax / 100);
-      
-      console.log("Item amount recalculated:", {
-        field,
-        quantity,
-        pricePerItem,
-        discount,
-        tax,
-        amount: item.amount
-      });
     }
 
     updatedItems[index] = item;
