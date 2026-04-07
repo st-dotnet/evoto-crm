@@ -979,47 +979,6 @@ def delete_invoice(invoice_id):
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
 
-
-@invoice_blueprint.route("/<uuid:invoice_id>/delete", methods=["PUT"])
-def soft_delete_invoice(invoice_id):
-    """
-    Soft delete an invoice (sets is_deleted=True)
-    ---
-    tags:
-      - Invoices
-    parameters:
-      - name: invoice_id
-        in: path
-        required: true
-        type: string
-        format: uuid
-    responses:
-      200:
-        description: Invoice soft deleted successfully
-      404:
-        description: Invoice not found
-    """
-    invoice = Invoice.query.filter_by(uuid=invoice_id, is_deleted=False).first()
-    
-    if not invoice:
-        return jsonify({"error": "Invoice not found"}), 404
-    
-    try:
-        # Soft delete
-        invoice.is_deleted = True
-        set_updated_fields(invoice)
-        db.session.commit()
-        
-        return jsonify({
-            "message": "Invoice soft deleted successfully",
-            "note": "Invoice marked as deleted but remains in database for audit purposes"
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "An error occurred", "details": str(e)}), 500
-
-
 @invoice_blueprint.route("/from-quotation/<uuid:quotation_id>", methods=["POST"])
 def create_invoice_from_quotation(quotation_id):
     """
@@ -1207,7 +1166,6 @@ def record_payment(invoice_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
-
 
 @invoice_blueprint.route("/<uuid:invoice_id>/delete", methods=["PUT"])
 @login_required

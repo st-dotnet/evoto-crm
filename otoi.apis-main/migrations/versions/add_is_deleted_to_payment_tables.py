@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = 'add_is_deleted_to_payment_tables'
-down_revision = None
+down_revision = '0217ed50fba2'
 branch_labels = None
 depends_on = None
 
