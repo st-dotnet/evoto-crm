@@ -41,17 +41,69 @@ def get_dashboard_summary():
             )
             .scalar()
         )
-        # Minus outstanding Credit Notes (money we owe back to customers)
-        credit_notes_to_refund = (
-            db.session.query(func.coalesce(func.sum(CreditNote.balance_amount), 0))
+
+        # Split credit notes into two buckets:
+        # 1) CN against unpaid/partial invoices → offsets receivables (reduce "To Collect")
+        # 2) CN against fully-paid invoices or refund CNs → actual refund owed (add to "To Pay")
+
+        # All outstanding (non-paid) credit notes for this business
+        outstanding_cns = (
+            CreditNote.query
             .filter(
                 CreditNote.business_id == business_id,
                 CreditNote.is_deleted == False,
                 CreditNote.status != "paid",
             )
-            .scalar()
+            .all()
         )
-        to_collect = round(float(invoices_to_collect) - float(credit_notes_to_refund), 2)
+
+        credit_notes_offset = 0.0    # reduces To Collect (CN that offsets unpaid invoice balance)
+        credit_notes_refund = 0.0    # adds to To Pay (excess CN = actual refund owed to customer)
+
+        for cn in outstanding_cns:
+            cn_balance = float(cn.balance_amount or 0)
+            if cn_balance <= 0:
+                continue
+
+            if cn.invoice_id:
+                # Check the linked invoice
+                linked_invoice = Invoice.query.filter_by(
+                    uuid=cn.invoice_id,
+                    is_deleted=False
+                ).first()
+
+                if linked_invoice:
+                    # invoice.balance_due = total_amount - amount_paid (raw DB value, not modified by CN)
+                    invoice_remaining = float(linked_invoice.balance_due or 0)
+
+                    if linked_invoice.payment_status == "paid":
+                        # Invoice marked "paid" (CN + payments covered it fully).
+                        # The invoice is already excluded from invoices_to_collect.
+                        # offset portion = min(cn_balance, invoice_remaining) → already excluded, no action
+                        # refund portion = excess beyond invoice balance → To Pay
+                        refund_portion = max(0.0, cn_balance - invoice_remaining)
+                        credit_notes_refund += refund_portion
+                    else:
+                        # Invoice still unpaid/partial → included in invoices_to_collect
+                        # offset = min(cn_balance, invoice_remaining) → reduce To Collect
+                        offset = min(cn_balance, invoice_remaining)
+                        credit_notes_offset += offset
+                        # Any excess beyond invoice balance is a refund → To Pay
+                        excess = max(0.0, cn_balance - invoice_remaining)
+                        credit_notes_refund += excess
+                else:
+                    # Linked invoice was deleted; treat full CN as offset
+                    credit_notes_offset += cn_balance
+            else:
+                # No linked invoice
+                if cn.status == "refunded":
+                    credit_notes_refund += cn_balance
+                else:
+                    # Standalone unpaid CN – offset from receivables
+                    credit_notes_offset += cn_balance
+
+        credit_notes_to_refund = round(credit_notes_offset + credit_notes_refund, 2)
+        to_collect = round(float(invoices_to_collect) - credit_notes_offset, 2)
 
         # ------- To Pay (Net Payables) -------
         # Sum of balance_due on all non-deleted, non-paid purchase invoices
@@ -74,7 +126,7 @@ def get_dashboard_summary():
             )
             .scalar()
         )
-        to_pay = round(float(invoices_to_pay) - float(debit_notes_to_receive), 2)
+        to_pay = round(float(invoices_to_pay) - float(debit_notes_to_receive) + credit_notes_refund, 2)
 
         # ------- Cash Book (Cash vs Bank Balance) -------
         # Let's split payment_mode == "cash" vs others to compute genuine Cash in Hand vs Bank
@@ -112,9 +164,10 @@ def get_dashboard_summary():
             "bank_balance": bank_balance,
             "cash_bank_balance": cash_bank_balance,
             "total_receivables_gross": round(float(invoices_to_collect), 2),
-            "total_credit_notes": round(float(credit_notes_to_refund), 2),
+            "total_credit_notes": round(credit_notes_offset, 2),
             "total_payables_gross": round(float(invoices_to_pay), 2),
             "total_debit_notes": round(float(debit_notes_to_receive), 2),
+            "credit_notes_refund": round(credit_notes_refund, 2),
         }), 200
 
     except Exception as e:
@@ -142,6 +195,13 @@ def get_latest_transactions():
         business_id = g.get("business_id")
         limit = int(request.args.get("limit", 5))
         transactions = []
+
+        # Auto-close overdue POs so stale orders don't appear
+        from app.routes.purchase_order import auto_close_overdue_pos
+        try:
+            auto_close_overdue_pos()
+        except Exception:
+            pass
 
         # --- Sales Invoices ---
         try:
@@ -247,11 +307,14 @@ def get_latest_transactions():
         except Exception as e:
             print("Error parsing Purchase Invoices transactions:", e)
 
-        # --- Purchase Orders ---
+        # --- Purchase Orders (only "open" — closed/received POs are fulfilled) ---
         try:
             pos = (
                 PurchaseOrder.query
-                .filter(PurchaseOrder.business_id == business_id)
+                .filter(
+                    PurchaseOrder.business_id == business_id,
+                    PurchaseOrder.status == "open",
+                )
                 .order_by(desc(PurchaseOrder.created_at))
                 .limit(limit)
                 .all()
@@ -391,3 +454,142 @@ def get_sales_report():
 
     except Exception as e:
         return jsonify({"error": "Failed to load sales report", "details": str(e)}), 500
+
+
+@dashboard_blueprint.route("/overdue-summary", methods=["GET"])
+def get_overdue_summary():
+    """
+    Returns a summary of overdue invoices (past due_date, not fully paid).
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: Overdue invoice summary
+    """
+    try:
+        business_id = g.get("business_id")
+        today = datetime.utcnow().date()
+
+        overdue_invoices = (
+            Invoice.query
+            .filter(
+                Invoice.business_id == business_id,
+                Invoice.is_deleted == False,
+                Invoice.payment_status != "paid",
+                Invoice.due_date < today,
+            )
+            .all()
+        )
+
+        total_count = len(overdue_invoices)
+        total_amount = sum(float(inv.balance_due or 0) for inv in overdue_invoices)
+
+        oldest_days = 0
+        if overdue_invoices:
+            oldest_due = min(inv.due_date for inv in overdue_invoices if inv.due_date)
+            oldest_days = (today - oldest_due).days
+
+        return jsonify({
+            "total_count": total_count,
+            "total_amount": round(total_amount, 2),
+            "oldest_days": oldest_days,
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": "Failed to load overdue summary", "details": str(e)}), 500
+
+
+@dashboard_blueprint.route("/top-parties", methods=["GET"])
+def get_top_parties():
+    """
+    Returns top customers (receivable) or vendors (payable) by outstanding balance.
+    ---
+    tags:
+      - Dashboard
+    parameters:
+      - name: type
+        in: query
+        type: string
+        default: receivable
+        description: "receivable or payable"
+      - name: limit
+        in: query
+        type: integer
+        default: 5
+    responses:
+      200:
+        description: Top parties by outstanding balance
+    """
+    try:
+        business_id = g.get("business_id")
+        party_type = request.args.get("type", "receivable")
+        limit = int(request.args.get("limit", 5))
+
+        parties = []
+
+        if party_type == "receivable":
+            # Group invoices by customer, sum balance_due
+            results = (
+                db.session.query(
+                    Invoice.customer_id,
+                    func.sum(Invoice.balance_due).label("total_due"),
+                    func.count(Invoice.uuid).label("inv_count"),
+                )
+                .filter(
+                    Invoice.business_id == business_id,
+                    Invoice.is_deleted == False,
+                    Invoice.payment_status != "paid",
+                )
+                .group_by(Invoice.customer_id)
+                .order_by(func.sum(Invoice.balance_due).desc())
+                .limit(limit)
+                .all()
+            )
+
+            for customer_id, total_due, inv_count in results:
+                customer = Customer.query.get(customer_id)
+                if customer:
+                    name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or "-"
+                else:
+                    name = "-"
+                parties.append({
+                    "name": name,
+                    "amount": round(float(total_due or 0), 2),
+                    "count": inv_count,
+                })
+        else:
+            # Group purchase invoices by vendor, sum balance_due
+            results = (
+                db.session.query(
+                    PurchaseInvoice.vendor_id,
+                    func.sum(PurchaseInvoice.balance_due).label("total_due"),
+                    func.count(PurchaseInvoice.uuid).label("inv_count"),
+                )
+                .filter(
+                    PurchaseInvoice.business_id == business_id,
+                    PurchaseInvoice.is_deleted == False,
+                    PurchaseInvoice.payment_status != "paid",
+                )
+                .group_by(PurchaseInvoice.vendor_id)
+                .order_by(func.sum(PurchaseInvoice.balance_due).desc())
+                .limit(limit)
+                .all()
+            )
+
+            for vendor_id, total_due, inv_count in results:
+                vendor = Vendor.query.get(vendor_id) if vendor_id else None
+                if vendor:
+                    name = vendor.company_name or vendor.vendor_name or "-"
+                else:
+                    name = "-"
+                parties.append({
+                    "name": name,
+                    "amount": round(float(total_due or 0), 2),
+                    "count": inv_count,
+                })
+
+        return jsonify({"parties": parties}), 200
+
+    except Exception as e:
+        return jsonify({"error": "Failed to load top parties", "details": str(e)}), 500

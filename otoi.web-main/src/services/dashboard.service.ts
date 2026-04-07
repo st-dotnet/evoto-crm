@@ -25,6 +25,7 @@ export interface DashboardSummary {
   total_credit_notes: number;
   total_payables_gross: number;
   total_debit_notes: number;
+  credit_notes_refund: number;
 }
 
 export interface Transaction {
@@ -52,6 +53,18 @@ export interface SalesReport {
   data_points: SalesDataPoint[];
   total_sales: number;
   invoices_made: number;
+}
+
+export interface OverdueSummary {
+  total_count: number;
+  total_amount: number;
+  oldest_days: number;
+}
+
+export interface TopParty {
+  name: string;
+  amount: number;
+  count: number;
 }
 
 export interface ApiResponse<T = any> {
@@ -109,5 +122,34 @@ export const getSalesReport = async (
   } catch (error: any) {
     console.error('Failed to fetch sales report:', error);
     return { success: false, error: error.response?.data?.error || 'Failed to fetch sales report' };
+  }
+};
+
+export const getOverdueInvoices = async (): Promise<ApiResponse<OverdueSummary>> => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/dashboard/overdue-summary`,
+      authHeaders()
+    );
+    return { success: true, data: response.data };
+  } catch (error: any) {
+    console.error('Failed to fetch overdue summary:', error);
+    return { success: false, error: error.response?.data?.error || 'Failed to fetch overdue summary' };
+  }
+};
+
+export const getTopParties = async (
+  type: 'receivable' | 'payable' = 'receivable',
+  limit = 5
+): Promise<ApiResponse<TopParty[]>> => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/dashboard/top-parties?type=${type}&limit=${limit}`,
+      authHeaders()
+    );
+    return { success: true, data: response.data.parties };
+  } catch (error: any) {
+    console.error('Failed to fetch top parties:', error);
+    return { success: false, error: error.response?.data?.error || 'Failed to fetch top parties' };
   }
 };

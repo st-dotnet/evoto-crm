@@ -11,6 +11,15 @@ const TYPE_BADGE_MAP: Record<string, string> = {
   'Payment Out': 'badge-danger',
 };
 
+type FilterTab = 'All' | 'Sales' | 'Purchases' | 'Payments';
+
+const TAB_TYPES: Record<FilterTab, string[]> = {
+  All: [],
+  Sales: ['Sales Invoices'],
+  Purchases: ['Purchase Invoices', 'Purchase Orders'],
+  Payments: ['Payment In', 'Payment Out'],
+};
+
 const formatINR = (value: number): string => {
   return `₹ ${value.toLocaleString('en-IN')}`;
 };
@@ -25,14 +34,26 @@ const formatDate = (iso: string | null): string => {
   });
 };
 
+/* ── Skeleton row ── */
+const SkeletonRow = () => (
+  <tr className="animate-pulse">
+    <td><div className="w-20 h-4 bg-gray-200 rounded" /></td>
+    <td><div className="w-24 h-5 bg-gray-200 rounded-full" /></td>
+    <td><div className="w-16 h-4 bg-gray-200 rounded" /></td>
+    <td><div className="w-28 h-4 bg-gray-200 rounded" /></td>
+    <td className="text-end"><div className="w-20 h-4 bg-gray-200 rounded ml-auto" /></td>
+  </tr>
+);
+
 const LatestTransactions = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<FilterTab>('All');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await getLatestTransactions(5);
+    const res = await getLatestTransactions(10);
     if (res.success && res.data) {
       setTransactions(res.data);
     }
@@ -47,11 +68,53 @@ const LatestTransactions = () => {
     return () => window.removeEventListener('dashboard-refresh', handler);
   }, [fetchData]);
 
+  const filteredTxns =
+    activeTab === 'All'
+      ? transactions
+      : transactions.filter((t) => TAB_TYPES[activeTab].includes(t.type));
+
+  const displayedTxns = filteredTxns.slice(0, 5);
+
+  const tabs: FilterTab[] = ['All', 'Sales', 'Purchases', 'Payments'];
+
   return (
     <Fragment>
-      <div className={`card transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}>
-        <div className="card-header">
-          <h3 className="card-title">Latest Transactions</h3>
+      <div className="card">
+        <div className="card-header flex-col items-start gap-0 pb-0">
+          <h3 className="card-title mb-3">Latest Transactions</h3>
+
+          {/* Filter tabs */}
+          <div className="flex gap-0 border-b border-gray-200 w-full -mb-px">
+            {tabs.map((tab) => {
+              const count =
+                tab === 'All'
+                  ? transactions.length
+                  : transactions.filter((t) => TAB_TYPES[tab].includes(t.type)).length;
+
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  {tab}
+                  {!loading && (
+                    <span
+                      className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-gray-100 text-gray-400'
+                        }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="card-body p-0">
@@ -77,15 +140,17 @@ const LatestTransactions = () => {
                 </tr>
               </thead>
               <tbody>
-                {transactions.length === 0 && !loading ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-gray-500 py-6">
-                      No transactions found
-                    </td>
-                  </tr>
-                ) : (
-                  transactions.map((txn, index) => (
-                    <tr 
+                {loading ? (
+                  <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                  </>
+                ) : displayedTxns.length === 0 ? null : (
+                  displayedTxns.map((txn, index) => (
+                    <tr
                       key={index}
                       onClick={() => txn.route_path && navigate(txn.route_path)}
                       className={txn.route_path ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""}

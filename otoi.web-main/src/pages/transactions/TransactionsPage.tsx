@@ -143,8 +143,8 @@ export const TransactionsPage = () => {
             {/* Mobile View */}
             <div className="flex flex-col lg:hidden border-t border-gray-100">
               {transactions.map((txn: Transaction, index: number) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className={`flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 ${txn.route_path ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors' : ''}`}
                   onClick={() => txn.route_path && navigate(txn.route_path)}
                 >
