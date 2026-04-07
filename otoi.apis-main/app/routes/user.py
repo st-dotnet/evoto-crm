@@ -255,8 +255,8 @@ def get_all_users():
         db.session.rollback()
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error in get_all_users: {str(e)}")
-        print(error_details)
+        current_app.logger.error(f"Error in get_all_users: {str(e)}")
+        current_app.logger.error(error_details)
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 # --- Fetch Single User (Admin/User) ---
@@ -532,8 +532,8 @@ def create_user():
         # Log the actual error for debugging
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error in create_user: {str(e)}")
-        print(error_details)
+        current_app.logger.error(f"Error in create_user: {str(e)}")
+        current_app.logger.error(error_details)
         # Return user-friendly message
         return jsonify({"error": "Unable to create user. Please try again or contact support."}), 500
 
@@ -754,8 +754,8 @@ def update_user(user_uuid):
         # Log the actual error for debugging
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error in update_user: {str(e)}")
-        print(error_details)
+        current_app.logger.error(f"Error in update_user: {str(e)}")
+        current_app.logger.error(error_details)
         # Return user-friendly message
         return jsonify({"error": "Unable to update user. Please try again or contact support."}), 500
 
@@ -825,7 +825,7 @@ def delete_user(user_uuid):
         # Log the actual error for debugging
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error in delete_user: {str(e)}")
-        print(error_details)
+        current_app.logger.error(f"Error in delete_user: {str(e)}")
+        current_app.logger.error(error_details)
         # Return user-friendly message
         return jsonify({"error": "Unable to delete user. Please try again or contact support."}), 500

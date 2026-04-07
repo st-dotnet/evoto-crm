@@ -2,12 +2,12 @@ import { type TMenuConfig } from "@/components/menu";
 
 export const MENU_SIDEBAR: TMenuConfig = [
   {
-    heading: "General"
+    heading: "General",
   },
   {
     title: "Dashboard",
     icon: "element-11",
-    path: "/"
+    path: "/",
   },
   {
     title: "Parties",
@@ -24,8 +24,8 @@ export const MENU_SIDEBAR: TMenuConfig = [
       {
         title: "Vendors",
         path: "/parties/vendors",
-      }
-    ]
+      },
+    ],
   },
   {
     title: "Items",
@@ -33,13 +33,13 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Inventory",
-        path: "/items/inventory"
+        path: "/items/inventory",
       },
       {
         title: "Godown",
-        path: "/items/godown"
-      }
-    ]
+        path: "/items/godown",
+      },
+    ],
   },
   {
     title: "Sales",
@@ -47,21 +47,21 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Quotation/Estimates",
-        path: "/quotes/list"
+        path: "/quotes/list",
       },
       {
-        title: "Invoices",
-        path: "/invoices/list"
+        title: "Sales Invoice",
+        path: "/invoices/list",
       },
       {
         title: "Payment In",
-        path: "/payment-in"
+        path: "/payment-in",
       },
       {
         title: "Credit Note",
-        path: "/sales/credit-note"
-      }
-    ]
+        path: "/sales/credit-note",
+      },
+    ],
   },
   {
     title: "Purchases",
@@ -69,34 +69,34 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Purchase Orders",
-        path: "/purchases/purchase-orders"
+        path: "/purchases/purchase-orders",
       },
       {
         title: "Purchase Invoices",
-        path: "/purchases/purchase-invoices"
+        path: "/purchases/purchase-invoices",
       },
       {
         title: "Payment Out",
-        path: "/payment-out"
+        path: "/payment-out",
       },
       {
         title: "Debit Note",
-        path: "/debit-note"
-      }
-    ]
+        path: "/debit-note",
+      },
+    ],
   },
   {
     title: "Reports",
     icon: "graph",
-    path: "/reports/reports"
+    path: "/reports/list",
   },
   {
-    heading: "Accounting"
+    heading: "Accounting",
   },
   {
     title: "Purchase Entry",
     icon: "purchase",
-    path: "/accounting/purchase-entry"
+    path: "/accounting/purchase-entry",
   },
   // {
   //   title: "Payable",
@@ -595,28 +595,28 @@ export const MENU_SIDEBAR: TMenuConfig = [
     children: [
       {
         title: "Users",
-        path: "/user-management/users"
+        path: "/user-management/users",
       },
       {
         title: "Roles",
-        path: "/user-management/roles"
-      }
-    ]
+        path: "/user-management/roles",
+      },
+    ],
   },
   {
     title: "Global Config",
     icon: "verify",
-    path: "/global-config"
+    path: "/global-config",
   },
   {
     title: "Projects",
     icon: "questionnaire-tablet",
-    disabled: true
+    disabled: true,
   },
   {
     title: "eCommerce",
     icon: "handcart",
-    disabled: true
+    disabled: true,
   },
   // { heading: "Miscellaneous" },
   // {
@@ -634,7 +634,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
 export const MENU_MEGA: TMenuConfig = [
   {
     title: "Home",
-    path: "/"
+    path: "/",
   },
   {
     title: "Profiles",
@@ -647,84 +647,84 @@ export const MENU_MEGA: TMenuConfig = [
               {
                 title: "Default",
                 icon: "badge",
-                path: "/public-profile/profiles/default"
+                path: "/public-profile/profiles/default",
               },
               {
                 title: "Creator",
                 icon: "coffee",
-                path: "/public-profile/profiles/creator"
+                path: "/public-profile/profiles/creator",
               },
               {
                 title: "Company",
                 icon: "abstract-41",
-                path: "/public-profile/profiles/company"
+                path: "/public-profile/profiles/company",
               },
               {
                 title: "NFT",
                 icon: "bitcoin",
-                path: "/public-profile/profiles/nft"
+                path: "/public-profile/profiles/nft",
               },
               {
                 title: "Blogger",
                 icon: "message-text",
-                path: "/public-profile/profiles/blogger"
+                path: "/public-profile/profiles/blogger",
               },
               {
                 title: "CRM",
                 icon: "devices",
-                path: "/public-profile/profiles/crm"
+                path: "/public-profile/profiles/crm",
               },
               {
                 title: "Gamer",
                 icon: "ghost",
-                path: "/public-profile/profiles/gamer"
-              }
-            ]
+                path: "/public-profile/profiles/gamer",
+              },
+            ],
           },
           {
             children: [
               {
                 title: "Feeds",
                 icon: "book",
-                path: "/public-profile/profiles/feeds"
+                path: "/public-profile/profiles/feeds",
               },
               {
                 title: "Plain",
                 icon: "files",
-                path: "/public-profile/profiles/plain"
+                path: "/public-profile/profiles/plain",
               },
               {
                 title: "Modal",
                 icon: "mouse-square",
-                path: "/public-profile/profiles/modal"
+                path: "/public-profile/profiles/modal",
               },
               {
                 title: "Freelancer",
                 icon: "financial-schedule",
                 path: "#",
-                disabled: true
+                disabled: true,
               },
               {
                 title: "Developer",
                 icon: "technology-4",
                 path: "#",
-                disabled: true
+                disabled: true,
               },
               {
                 title: "Team",
                 icon: "users",
                 path: "#",
-                disabled: true
+                disabled: true,
               },
               {
                 title: "Events",
                 icon: "calendar-tick",
                 path: "#",
-                disabled: true
-              }
-            ]
-          }
-        ]
+                disabled: true,
+              },
+            ],
+          },
+        ],
       },
       {
         title: "Other Pages",
@@ -734,75 +734,75 @@ export const MENU_MEGA: TMenuConfig = [
               {
                 title: "Projects - 3 Columns",
                 icon: "element-6",
-                path: "/public-profile/projects/3-columns"
+                path: "/public-profile/projects/3-columns",
               },
               {
                 title: "Projects - 2 Columns",
                 icon: "element-4",
-                path: "/public-profile/projects/2-columns"
+                path: "/public-profile/projects/2-columns",
               },
               {
                 title: "Works",
                 icon: "office-bag",
-                path: "/public-profile/works"
+                path: "/public-profile/works",
               },
               {
                 title: "Teams",
                 icon: "people",
-                path: "/public-profile/teams"
+                path: "/public-profile/teams",
               },
               {
                 title: "Network",
                 icon: "icon",
-                path: "/public-profile/network"
+                path: "/public-profile/network",
               },
               {
                 title: "Activity",
                 icon: "chart-line-up-2",
-                path: "/public-profile/activity"
+                path: "/public-profile/activity",
               },
               {
                 title: "Campaigns - Card",
                 icon: "element-11",
-                path: "/public-profile/campaigns/card"
-              }
-            ]
+                path: "/public-profile/campaigns/card",
+              },
+            ],
           },
           {
             children: [
               {
                 title: "Campaigns - List",
                 icon: "kanban",
-                path: "/public-profile/campaigns/list"
+                path: "/public-profile/campaigns/list",
               },
               {
                 title: "Empty",
                 icon: "file-sheet",
-                path: "/public-profile/empty"
+                path: "/public-profile/empty",
               },
               {
                 title: "Documents",
                 icon: "document",
                 path: "#",
-                disabled: true
+                disabled: true,
               },
               {
                 title: "Badges",
                 icon: "award",
                 path: "#",
-                disabled: true
+                disabled: true,
               },
               {
                 title: "Awards",
                 icon: "gift",
                 path: "#",
-                disabled: true
-              }
-            ]
-          }
-        ]
-      }
-    ]
+                disabled: true,
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
     title: "My Account",
@@ -810,15 +810,27 @@ export const MENU_MEGA: TMenuConfig = [
       {
         title: "General Pages",
         children: [
-          { title: "Integrations", icon: "technology-2", path: "/account/integrations" },
-          { title: "Notifications", icon: "notification-1", path: "/account/notifications" },
+          {
+            title: "Integrations",
+            icon: "technology-2",
+            path: "/account/integrations",
+          },
+          {
+            title: "Notifications",
+            icon: "notification-1",
+            path: "/account/notifications",
+          },
           { title: "API Keys", icon: "key", path: "/account/api-keys" },
           { title: "Appearance", icon: "eye", path: "/account/appearance" },
-          { title: "Invite a Friend", icon: "user-tick", path: "/account/invite-a-friend" },
+          {
+            title: "Invite a Friend",
+            icon: "user-tick",
+            path: "/account/invite-a-friend",
+          },
           { title: "Activity", icon: "support", path: "/account/activity" },
           { title: "Brand", icon: "verify", disabled: true },
-          { title: "Get Paid", icon: "euro", disabled: true }
-        ]
+          { title: "Get Paid", icon: "euro", disabled: true },
+        ],
       },
       {
         title: "Other pages",
@@ -828,12 +840,18 @@ export const MENU_MEGA: TMenuConfig = [
             children: [
               { title: "Get Started + ", path: "/account/home/get-started" },
               { title: "User Profile", path: "/account/home/user-profile" },
-              { title: "Company Profile", path: "/account/home/company-profile" },
+              {
+                title: "Company Profile",
+                path: "/account/home/company-profile",
+              },
               { title: "With Sidebar", path: "/account/home/settings-sidebar" },
-              { title: "Enterprise", path: "/account/home/settings-enterprise" },
+              {
+                title: "Enterprise",
+                path: "/account/home/settings-enterprise",
+              },
               { title: "Plain", path: "/account/home/settings-plain" },
-              { title: "Modal", path: "/account/home/settings-modal" }
-            ]
+              { title: "Modal", path: "/account/home/settings-modal" },
+            ],
           },
           {
             title: "Billing",
@@ -844,21 +862,39 @@ export const MENU_MEGA: TMenuConfig = [
               { title: "Billing History", path: "/account/billing/history" },
               { title: "Tax Info", disabled: true },
               { title: "Invoices", disabled: true },
-              { title: "Gateaways", disabled: true }
-            ]
+              { title: "Gateaways", disabled: true },
+            ],
           },
           {
             title: "Security",
             children: [
               { title: "Get Started", path: "/account/security/get-started" },
-              { title: "Security Overview", path: "/account/security/overview" },
-              { title: "IP Addresses", path: "/account/security/allowed-ip-addresses" },
-              { title: "Privacy Settings", path: "/account/security/privacy-settings" },
-              { title: "Device Management", path: "/account/security/device-management" },
-              { title: "Backup & Recovery", path: "/account/security/backup-and-recovery" },
-              { title: "Current Sessions", path: "/account/security/current-sessions" },
-              { title: "Security Log", path: "/account/security/security-log" }
-            ]
+              {
+                title: "Security Overview",
+                path: "/account/security/overview",
+              },
+              {
+                title: "IP Addresses",
+                path: "/account/security/allowed-ip-addresses",
+              },
+              {
+                title: "Privacy Settings",
+                path: "/account/security/privacy-settings",
+              },
+              {
+                title: "Device Management",
+                path: "/account/security/device-management",
+              },
+              {
+                title: "Backup & Recovery",
+                path: "/account/security/backup-and-recovery",
+              },
+              {
+                title: "Current Sessions",
+                path: "/account/security/current-sessions",
+              },
+              { title: "Security Log", path: "/account/security/security-log" },
+            ],
           },
           {
             title: "Members & Roles",
@@ -866,13 +902,25 @@ export const MENU_MEGA: TMenuConfig = [
               { title: "Teams Starter", path: "/account/members/team-starter" },
               { title: "Teams", path: "/account/members/teams" },
               { title: "Team Info", path: "/account/members/team-info" },
-              { title: "Members Starter", path: "/account/members/members-starter" },
+              {
+                title: "Members Starter",
+                path: "/account/members/members-starter",
+              },
               { title: "Team Members", path: "/account/members/team-members" },
-              { title: "Import Members", path: "/account/members/import-members" },
+              {
+                title: "Import Members",
+                path: "/account/members/import-members",
+              },
               { title: "Roles", path: "/account/members/roles" },
-              { title: "Permissions - Toggler", path: "/account/members/permissions-toggle" },
-              { title: "Permissions - Check", path: "/account/members/permissions-check" }
-            ]
+              {
+                title: "Permissions - Toggler",
+                path: "/account/members/permissions-toggle",
+              },
+              {
+                title: "Permissions - Check",
+                path: "/account/members/permissions-check",
+              },
+            ],
           },
           {
             title: "Other Pages",
@@ -882,12 +930,12 @@ export const MENU_MEGA: TMenuConfig = [
               { title: "API Keys", path: "/account/api-keys" },
               { title: "Appearance", path: "/account/appearance" },
               { title: "Invite a Friend", path: "/account/invite-a-friend" },
-              { title: "Activity", path: "/account/activity" }
-            ]
-          }
-        ]
-      }
-    ]
+              { title: "Activity", path: "/account/activity" },
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
     title: "Network",
@@ -898,8 +946,8 @@ export const MENU_MEGA: TMenuConfig = [
           { title: "Get Started", icon: "flag", path: "/network/get-started" },
           { title: "Colleagues", icon: "users", path: "#", disabled: true },
           { title: "Donators", icon: "heart", path: "#", disabled: true },
-          { title: "Leads", icon: "abstract-21", path: "#", disabled: true }
-        ]
+          { title: "Leads", icon: "abstract-21", path: "#", disabled: true },
+        ],
       },
       {
         title: "Other pages",
@@ -912,8 +960,8 @@ export const MENU_MEGA: TMenuConfig = [
               { title: "Authors", path: "/network/user-cards/author" },
               { title: "NFT Users", path: "/network/user-cards/nft" },
               { title: "Social Users", path: "/network/user-cards/social" },
-              { title: "Gamers", path: "#", disabled: true }
-            ]
+              { title: "Gamers", path: "#", disabled: true },
+            ],
           },
           {
             title: "User Base",
@@ -921,15 +969,21 @@ export const MENU_MEGA: TMenuConfig = [
             children: [
               { title: "Team Crew", path: "/network/user-table/team-crew" },
               { title: "App Roster", path: "/network/user-table/app-roster" },
-              { title: "Market Authors", path: "/network/user-table/market-authors" },
+              {
+                title: "Market Authors",
+                path: "/network/user-table/market-authors",
+              },
               { title: "SaaS Users", path: "/network/user-table/saas-users" },
-              { title: "Store Clients", path: "/network/user-table/store-clients" },
-              { title: "Visitors", path: "/network/user-table/visitors" }
-            ]
-          }
-        ]
-      }
-    ]
+              {
+                title: "Store Clients",
+                path: "/network/user-table/store-clients",
+              },
+              { title: "Visitors", path: "/network/user-table/visitors" },
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
     title: "Authentication",
@@ -949,23 +1003,23 @@ export const MENU_MEGA: TMenuConfig = [
                 children: [
                   {
                     title: "Enter Email",
-                    path: "/auth/classic/reset-password/enter-email"
+                    path: "/auth/classic/reset-password/enter-email",
                   },
                   {
                     title: "Check Email",
-                    path: "/auth/classic/reset-password/check-email"
+                    path: "/auth/classic/reset-password/check-email",
                   },
                   {
                     title: "Change Password",
-                    path: "/auth/classic/reset-password/change"
+                    path: "/auth/classic/reset-password/change",
                   },
                   {
                     title: "Password is Changed",
-                    path: "/auth/classic/reset-password/changed"
-                  }
-                ]
-              }
-            ]
+                    path: "/auth/classic/reset-password/changed",
+                  },
+                ],
+              },
+            ],
           },
           {
             title: "Branded Layout",
@@ -979,40 +1033,44 @@ export const MENU_MEGA: TMenuConfig = [
                 children: [
                   {
                     title: "Enter Email",
-                    path: "/auth/reset-password/enter-email"
+                    path: "/auth/reset-password/enter-email",
                   },
                   {
                     title: "Check Email",
-                    path: "/auth/reset-password/check-email"
+                    path: "/auth/reset-password/check-email",
                   },
                   {
                     title: "Change Password",
-                    path: "/auth/reset-password/change"
+                    path: "/auth/reset-password/change",
                   },
                   {
                     title: "Password is Changed",
-                    path: "/auth/reset-password/changed"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+                    path: "/auth/reset-password/changed",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
       {
         title: "Other Pages",
         children: [
-          { title: "Welcome Message", icon: "like-2", path: "/auth/welcome-message" },
+          {
+            title: "Welcome Message",
+            icon: "like-2",
+            path: "/auth/welcome-message",
+          },
           {
             title: "Account Deactivated",
             icon: "shield-cross",
-            path: "/auth/account-deactivated"
+            path: "/auth/account-deactivated",
           },
           { title: "Error 404", icon: "message-question", path: "/error/404" },
-          { title: "Error 500", icon: "information", path: "/error/500" }
-        ]
-      }
-    ]
+          { title: "Error 500", icon: "information", path: "/error/500" },
+        ],
+      },
+    ],
   },
   {
     title: "Help",
@@ -1020,7 +1078,7 @@ export const MENU_MEGA: TMenuConfig = [
       {
         title: "Getting Started",
         icon: "coffee",
-        path: "https://keenthemes.com/metronic/tailwind/docs/getting-started/installation"
+        path: "https://keenthemes.com/metronic/tailwind/docs/getting-started/installation",
       },
       {
         title: "Support Forum",
@@ -1029,42 +1087,42 @@ export const MENU_MEGA: TMenuConfig = [
           {
             title: "All Questions",
             icon: "questionnaire-tablet",
-            path: "https://devs.keenthemes.com"
+            path: "https://devs.keenthemes.com",
           },
           {
             title: "Popular Questions",
             icon: "star",
-            path: "https://devs.keenthemes.com/popular"
+            path: "https://devs.keenthemes.com/popular",
           },
           {
             title: "Ask Question",
             icon: "message-question",
-            path: "https://devs.keenthemes.com/question/create"
-          }
-        ]
+            path: "https://devs.keenthemes.com/question/create",
+          },
+        ],
       },
       {
         title: "Licenses & FAQ",
         tooltip: {
           title: "Learn more about licenses",
-          placement: "right"
+          placement: "right",
         },
         icon: "subtitle",
-        path: "https://keenthemes.com/metronic/tailwind/docs/getting-started/license"
+        path: "https://keenthemes.com/metronic/tailwind/docs/getting-started/license",
       },
       {
         title: "Documentation",
         icon: "questionnaire-tablet",
-        path: "https://keenthemes.com/metronic/tailwind/docs"
+        path: "https://keenthemes.com/metronic/tailwind/docs",
       },
       { separator: true },
       {
         title: "Contact Us",
         icon: "share",
-        path: "https://keenthemes.com/contact"
-      }
-    ]
-  }
+        path: "https://keenthemes.com/contact",
+      },
+    ],
+  },
 ];
 
 export const MENU_ROOT: TMenuConfig = [
@@ -1073,27 +1131,27 @@ export const MENU_ROOT: TMenuConfig = [
     icon: "profile-circle",
     rootPath: "/public-profile/",
     path: "public-profile/profiles/default",
-    childrenIndex: 2
+    childrenIndex: 2,
   },
   {
     title: "Account",
     icon: "setting-2",
     rootPath: "/account/",
     path: "/",
-    childrenIndex: 3
+    childrenIndex: 3,
   },
   {
     title: "Network",
     icon: "users",
     rootPath: "/network/",
     path: "network/get-started",
-    childrenIndex: 4
+    childrenIndex: 4,
   },
   {
     title: "Authentication",
     icon: "security-user",
     rootPath: "/authentication/",
     path: "authentication/get-started",
-    childrenIndex: 5
-  }
+    childrenIndex: 5,
+  },
 ];

@@ -67,8 +67,8 @@ def generate_credit_note_number(max_retries=3):
             return new_credit_note_number
             
         except Exception as e:
-            # Log the error for debugging
-            print(f"Error generating credit note number (attempt {attempt + 1}): {str(e)}")
+            # Log error for debugging
+            current_app.logger.error(f"Error generating credit note number (attempt {attempt + 1}): {str(e)}")
             
             # Rollback any partial transaction to clean up state
             try:
@@ -117,9 +117,12 @@ def update_invoice_payment_status(invoice_id):
         original_balance = float(invoice.balance_due) + float(invoice.amount_paid)
         adjusted_balance = float(invoice.total_amount) - float(invoice.amount_paid) - total_credit_amount
         
-        # Update payment status based on effective balance
+        # Update payment status based on effective balance and credit notes
         if adjusted_balance <= 0:
-            invoice.payment_status = "paid"
+            if total_credit_amount >= float(invoice.total_amount):
+                invoice.payment_status = "refunded"
+            else:
+                invoice.payment_status = "paid"
         elif float(invoice.amount_paid) > 0 or total_credit_amount > 0:
             invoice.payment_status = "partial"
         else:
@@ -203,9 +206,9 @@ def _calculate_credit_note_totals_from_items(items_data, auto_round_off=False):
     total_tax = 0.0
     
     for item in items_data:
-        # Get item values
+        # Get item values - handle both field names from frontend
         quantity = float(item.get("quantity", 0))
-        unit_price = float(item.get("unit_price", 0))
+        unit_price = float(item.get("unit_price", item.get("price_per_item", 0)))  # 🎯 FIX: Handle both field names
         discount_percentage = float(item.get("discount", 0))
         tax_percentage = float(item.get("tax", 0))
         
@@ -350,7 +353,6 @@ def create_credit_note():
     """
     try:
         data = request.get_json()
-        print(f"Received request data: {data}")
         
         # Validate required fields
         if not data.get("customer_id") or not data.get("business_id"):
@@ -405,43 +407,33 @@ def create_credit_note():
         
         # Handle credit note number - use user-provided or auto-generate
         user_credit_note_number = data.get("credit_note_number", "").strip()
-        print(f"Received credit_note_number from request: '{user_credit_note_number}'")
-        print(f"Credit note number is empty: {not user_credit_note_number}")
         
         if user_credit_note_number:
-            print(f"Using user-provided credit note number: {user_credit_note_number}")
             # Validate uniqueness of user-provided credit note number
             existing_credit_note = CreditNote.query.filter_by(
                 credit_note_number=user_credit_note_number, 
                 is_deleted=False
             ).first()
-            print(f"Existing credit note with this number: {existing_credit_note}")
             
             if existing_credit_note:
-                print(f"Credit note number '{user_credit_note_number}' already exists, returning error")
                 return jsonify({
                     "success": False,
                     "error": f"Credit note number '{user_credit_note_number}' already exists"
                 }), 400
             credit_note_number = user_credit_note_number
-            print(f"Final credit note number (user provided): {credit_note_number}")
         else:
-            print("No user credit note number provided, generating auto number")
             # Generate auto number only when not provided
             # Using 4-digit sequential generation
             try:
                 credit_note_number = generate_credit_note_number()
-                print(f"Generated credit note number: {credit_note_number}")
             except Exception as e:
-                print(f"Error in generate_credit_note_number: {str(e)}")
+                current_app.logger.error(f"Error in generate_credit_note_number: {str(e)}")
                 # Even this should not fail, but if it does, create a manual 4-digit number
                 import time
                 timestamp = int(time.time())
                 fallback_num = timestamp % 9000 + 1000  # Ensure 4-digit number between 1000-9999
                 credit_note_number = f"CN-{fallback_num:04d}"
-                print(f"Using manual fallback: {credit_note_number}")
         
-        print(f"Final credit note number to be used: {credit_note_number}")
         
         # Create credit note with backend-calculated charges
         credit_note = CreditNote(
@@ -497,6 +489,11 @@ def create_credit_note():
                 "uuid": str(credit_note.uuid),
                 "credit_note_number": credit_note.credit_note_number,
                 "total_amount": float(credit_note.total_amount),
+                "subtotal": float(totals["subtotal"]),
+                "tax_total": float(totals["total_tax"]),
+                "discount_total": float(totals["total_discount"]),
+                "balance_amount": float(credit_note.balance_amount),
+                "amount_received": float(credit_note.amount_received),
                 "status": credit_note.status
             }
         }), 201
@@ -523,6 +520,11 @@ def create_credit_note():
                         "uuid": str(credit_note.uuid),
                         "credit_note_number": credit_note.credit_note_number,
                         "total_amount": float(credit_note.total_amount),
+                        "subtotal": float(totals["subtotal"]),
+                        "tax_total": float(totals["total_tax"]),
+                        "discount_total": float(totals["total_discount"]),
+                        "balance_amount": float(credit_note.balance_amount),
+                        "amount_received": float(credit_note.amount_received),
                         "status": credit_note.status
                     }
                 }), 201
@@ -1010,7 +1012,11 @@ def update_credit_note(credit_note_id):
                 "uuid": str(credit_note.uuid),
                 "credit_note_number": credit_note.credit_note_number,
                 "total_amount": float(credit_note.total_amount),
+                "subtotal": float(credit_note.subtotal),
+                "tax_total": float(credit_note.total_tax),
+                "discount_total": float(credit_note.total_discount),
                 "balance_amount": float(credit_note.balance_amount),
+                "amount_received": float(credit_note.amount_received),
                 "status": credit_note.status
             }
         })

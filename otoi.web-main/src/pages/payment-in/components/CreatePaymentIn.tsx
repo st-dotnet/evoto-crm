@@ -20,6 +20,8 @@ import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
 import { ColumnDef } from "@tanstack/react-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export const CreatePaymentIn = () => {
   const navigate = useNavigate();
@@ -999,14 +1001,135 @@ export const CreatePaymentIn = () => {
           Select a party to record payment
         </p>
         <button
-          onClick={() => setIsAddingParty(true)}
+          onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-all duration-200"
         >
           <User className="h-4 w-4" />
-          Select Party
+          Select Vendor
         </button>
       </div>
     </div>
+  );
+
+  // ─── Party Selection Modal ────────
+  const PartySelectionModal = () => (
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <DialogContent className="w-[95vw] max-w-[400px] sm:max-w-[450px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg">
+        <DialogHeader className="bg-white px-6 py-4 border-b">
+          <DialogTitle className="text-lg font-semibold text-gray-800">
+            Select Vendor
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="p-6 space-y-5">
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <Input
+              placeholder="Search Customers by name or mobile..."
+              className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Customer List */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {isPartiesLoading ? (
+                <div className="p-8 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                    <SpinnerDotted size={20} />
+                  </div>
+                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                    Loading Customers...
+                  </h3>
+                </div>
+              ) : filteredParties.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                    <User className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                    No Customer found
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Try adjusting your search criteria.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {filteredParties.map((party) => (
+                    <li
+                      key={party.id}
+                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        selectedParty?.id === party.id
+                          ? "bg-gray-100"
+                          : ""
+                      }`}
+                      onClick={() => handlePartySelect(party)}
+                    >
+                      <div className="flex items-center">
+                        <div
+                          className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
+                            selectedParty?.id === party.id
+                              ? "bg-green-100"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          <span
+                            className={`font-medium text-sm ${
+                              selectedParty?.id === party.id
+                                ? "text-green-700"
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {(party.name || "Unknown")
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                            {party.name || "Unknown Customer"}
+                          </div>
+                          {party.mobile && (
+                            <div className="text-sm text-gray-500 flex items-center mt-1">
+                              <span className="text-gray-400 mr-1.5">
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                </svg>
+                              </span>
+                              {party.mobile}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 
   return (
@@ -1412,90 +1535,7 @@ export const CreatePaymentIn = () => {
       </main>
 
       {/* ── Party Selection Modal ──────────────────────────────────────────── */}
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 px-2"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl w-[calc(100%-1rem)] max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Select Party
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Search Party
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search parties..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-10 pl-10 pr-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search className="h-4 w-4 text-slate-400" />
-                  </div>
-                </div>
-              </div>
-
-              {isPartiesLoading ? (
-                <div className="text-center py-8">
-                  <SpinnerDotted
-                    size={30}
-                    thickness={100}
-                    speed={100}
-                    color="#1B84FF"
-                  />
-                  <p className="mt-4 text-sm font-medium text-slate-600">
-                    Loading details...
-                  </p>
-                </div>
-              ) : (
-                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg">
-                  {filteredParties.length > 0 ? (
-                    filteredParties.map((party) => (
-                      <div
-                        key={party.id}
-                        onClick={() => handlePartySelect(party)}
-                        className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors duration-150"
-                      >
-                        <div className="font-medium text-sm text-slate-900">
-                          {party.name}
-                        </div>
-                        {party.mobile && (
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {party.mobile}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-sm text-slate-500">
-                      No parties found
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <PartySelectionModal />
     </div>
   );
 };

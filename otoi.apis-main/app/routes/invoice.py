@@ -545,9 +545,12 @@ def get_invoices():
             
             # Debug: Print calculation for this invoice
             
-            # Calculate effective payment status based on effective balance
+            # Calculate effective payment status based on credit notes and payments
             if effective_balance_due <= 0:
-                effective_payment_status = "paid"
+                if credit_notes_total >= float(inv.total_amount):
+                    effective_payment_status = "refunded"
+                else:
+                    effective_payment_status = "paid"
             elif float(inv.amount_paid) > 0 or credit_notes_total > 0:
                 effective_payment_status = "partial"
             else:
@@ -669,9 +672,12 @@ def get_invoice(invoice_id):
     # Calculate effective balance due considering credit notes
     effective_balance_due = round(max(0, float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0) - credit_notes_total), 2)
     
-    # Calculate effective payment status based on effective balance
+    # Calculate effective payment status based on credit notes and payments
     if effective_balance_due <= 0:
-        effective_payment_status = "paid"
+        if credit_notes_total >= float(invoice.total_amount):
+            effective_payment_status = "refunded"
+        else:
+            effective_payment_status = "paid"
     elif float(invoice.amount_paid) > 0 or credit_notes_total > 0:
         effective_payment_status = "partial"
     else:
@@ -913,7 +919,7 @@ def update_invoice(invoice_id):
 @invoice_blueprint.route("/<uuid:invoice_id>", methods=["DELETE"])
 def delete_invoice(invoice_id):
     """
-    Delete an invoice
+    Delete an invoice (hard delete if no related records, soft delete if related records exist)
     ---
     tags:
       - Invoices
@@ -925,15 +931,90 @@ def delete_invoice(invoice_id):
         format: uuid
     responses:
       200:
-        description: Invoice deleted successfully
+        description: Invoice deleted successfully (hard or soft delete depending on related records)
       404:
         description: Invoice not found
     """
     invoice = Invoice.query.get_or_404(invoice_id)
     try:
+        # Check for related records that might prevent deletion
+        related_errors = []
+        
+        # Check for payment records
+        from app.models import PaymentIn
+        payment_count = PaymentIn.query.filter_by(invoice_id=invoice_id).count()
+        if payment_count > 0:
+            related_errors.append(f"{payment_count} payment records")
+        
+        # Check for credit notes (only active, non-deleted ones)
+        from app.models import CreditNote
+        credit_note_count = CreditNote.query.filter_by(invoice_id=invoice_id, is_deleted=False).count()
+        if credit_note_count > 0:
+            related_errors.append(f"{credit_note_count} credit note records")
+        
+        # Check for debit notes (only active, non-deleted ones)
+        from app.models import DebitNote
+        debit_note_count = DebitNote.query.filter_by(invoice_id=invoice_id, is_deleted=False).count()
+        if debit_note_count > 0:
+            related_errors.append(f"{debit_note_count} debit note records")
+        
+        if related_errors:
+            # Automatically perform soft delete when there are related records
+            invoice.is_deleted = True
+            set_updated_fields(invoice)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Invoice soft deleted successfully",
+                "details": f"Invoice had related records: {', '.join(related_errors)}. Performed soft delete instead of hard delete to maintain data integrity.",
+                "note": "Invoice marked as deleted but remains in database for audit purposes. Related records are preserved."
+            }), 200
+        
+        # If no related records, proceed with hard delete
         db.session.delete(invoice)
         db.session.commit()
         return jsonify({"message": "Invoice deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An error occurred", "details": str(e)}), 500
+
+
+@invoice_blueprint.route("/<uuid:invoice_id>/delete", methods=["PUT"])
+def soft_delete_invoice(invoice_id):
+    """
+    Soft delete an invoice (sets is_deleted=True)
+    ---
+    tags:
+      - Invoices
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: Invoice soft deleted successfully
+      404:
+        description: Invoice not found
+    """
+    invoice = Invoice.query.filter_by(uuid=invoice_id, is_deleted=False).first()
+    
+    if not invoice:
+        return jsonify({"error": "Invoice not found"}), 404
+    
+    try:
+        # Soft delete
+        invoice.is_deleted = True
+        set_updated_fields(invoice)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Invoice soft deleted successfully",
+            "note": "Invoice marked as deleted but remains in database for audit purposes"
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred", "details": str(e)}), 500
@@ -1288,7 +1369,7 @@ def update_invoice_status(invoice_id):
           properties:
             status:
               type: string
-              enum: ["unpaid", "partially_paid", "paid", "refunded", "cancelled"]
+              enum: ["unpaid", "partial", "paid", "refunded", "cancelled"]
     responses:
       200:
         description: Invoice status updated successfully
@@ -1337,7 +1418,7 @@ def update_invoice_status(invoice_id):
                 "error": "Status is required"
             }), 400
         
-        valid_statuses = ["unpaid", "partially_paid", "paid", "refunded", "cancelled"]
+        valid_statuses = ["unpaid", "partial", "paid", "refunded", "cancelled"]
         if new_status not in valid_statuses:
             return jsonify({
                 "success": False,
@@ -1346,8 +1427,8 @@ def update_invoice_status(invoice_id):
         
         # Business logic validations
         if new_status == "refunded":
-            # Allow refunding invoices that are paid, partially_paid, or unpaid
-            if invoice.status not in ["paid", "partially_paid", "unpaid"]:
+            # Allow refunding invoices that are paid, partial, or unpaid
+            if invoice.status not in ["paid", "partial", "unpaid"]:
                 return jsonify({
                     "success": False,
                     "error": f"Cannot refund invoice with status: {invoice.status}"

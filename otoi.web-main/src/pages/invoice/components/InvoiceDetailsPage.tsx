@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogBody,
-  DialogClose
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,6 +155,31 @@ const InvoiceDetailsPage: React.FC = () => {
     }
   }, [id]);
 
+  // Listen for credit note updates to refresh invoice data
+  useEffect(() => {
+    const handleCreditNoteUpdate = (event: CustomEvent) => {
+      // Add a small delay to ensure backend processes the credit note and updates status
+      setTimeout(() => {
+        // Refresh the invoice data to show updated status and balance
+        fetchInvoiceData();
+        // Also refresh credit notes to show the latest data
+        fetchCreditNotesForInvoice();
+      }, 500); // 500ms delay for backend processing
+    };
+
+    window.addEventListener(
+      "creditNoteUpdated",
+      handleCreditNoteUpdate as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "creditNoteUpdated",
+        handleCreditNoteUpdate as EventListener,
+      );
+    };
+  }, [id]);
+
   const fetchBrandingAssets = async () => {
     try {
       const response = await getGlobalAssets();
@@ -180,18 +205,29 @@ const InvoiceDetailsPage: React.FC = () => {
           try {
             const customerRes = await getCustomerById(custId);
             if (customerRes.success && customerRes.data) {
-              setInvoiceData(prev => prev ? ({
-                ...prev,
-                customer: {
-                  ...prev.customer,
-                  ...customerRes.data,
-                  billing_address: customerRes.data.billing_address || prev.customer?.billing_address,
-                  shipping_address: customerRes.data.shipping_address || prev.customer?.shipping_address,
-                }
-              }) : null);
+              setInvoiceData((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      customer: {
+                        ...prev.customer,
+                        ...customerRes.data,
+                        billing_address:
+                          customerRes.data.billing_address ||
+                          prev.customer?.billing_address,
+                        shipping_address:
+                          customerRes.data.shipping_address ||
+                          prev.customer?.shipping_address,
+                      },
+                    }
+                  : null,
+              );
             }
           } catch (custError) {
-            console.error("Error fetching customer details for invoice:", custError);
+            console.error(
+              "Error fetching customer details for invoice:",
+              custError,
+            );
           }
         }
       } else {
@@ -220,7 +256,10 @@ const InvoiceDetailsPage: React.FC = () => {
   };
 
   const getTotalCreditNoteAmount = () => {
-    return creditNotes.reduce((total, creditNote) => total + (creditNote.total_amount || 0), 0);
+    return creditNotes.reduce(
+      (total, creditNote) => total + (creditNote.total_amount || 0),
+      0,
+    );
   };
 
   const getPendingAmount = () => {
@@ -231,10 +270,15 @@ const InvoiceDetailsPage: React.FC = () => {
     }
     // Fallback calculation for backward compatibility
     const creditNotesTotal = getTotalCreditNoteAmount();
-    const manualBalance = Math.max(0, invoiceData.total_amount - creditNotesTotal - (invoiceData.amount_paid || 0) - (invoiceData.payment_discount || 0));
+    const manualBalance = Math.max(
+      0,
+      invoiceData.total_amount -
+        creditNotesTotal -
+        (invoiceData.amount_paid || 0) -
+        (invoiceData.payment_discount || 0),
+    );
     return manualBalance;
   };
-
 
   const handleDownloadPDF = async () => {
     if (!invoiceRef.current || !invoiceData) return;
@@ -242,28 +286,36 @@ const InvoiceDetailsPage: React.FC = () => {
     try {
       const token = (() => {
         try {
-          const authData = localStorage.getItem('OTOI-auth-v1.0.0.1');
+          const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
           if (!authData) return null;
           const parsedAuth = JSON.parse(authData);
-          return parsedAuth.token || parsedAuth.access_token || parsedAuth.accessToken || null;
+          return (
+            parsedAuth.token ||
+            parsedAuth.access_token ||
+            parsedAuth.accessToken ||
+            null
+          );
         } catch (error) {
           return null;
         }
       })();
 
-      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/invoices/${invoiceData.uuid}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_APP_API_URL}/invoices/${invoiceData.uuid}/pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        throw new Error("Failed to generate PDF");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `Invoice-${invoiceData.invoice_number || "Draft"}.pdf`;
       document.body.appendChild(a);
@@ -402,7 +454,9 @@ const InvoiceDetailsPage: React.FC = () => {
               ...paymentForm,
               amountReceived: roundToTwo((response.data as any).max_allowed),
             });
-            toast.info(`Amount adjusted to maximum allowed: ₹${(response.data as any).max_allowed}`);
+            toast.info(
+              `Amount adjusted to maximum allowed: ₹${(response.data as any).max_allowed}`,
+            );
           }
         } else {
           toast.error(response.error || "Failed to record payment");
@@ -423,7 +477,9 @@ const InvoiceDetailsPage: React.FC = () => {
             ...paymentForm,
             amountReceived: roundToTwo(errorData.max_allowed),
           });
-          toast.info(`Amount adjusted to maximum allowed: ₹${errorData.max_allowed}`);
+          toast.info(
+            `Amount adjusted to maximum allowed: ₹${errorData.max_allowed}`,
+          );
         }
       } else {
         toast.error("An error occurred while recording payment");
@@ -439,14 +495,20 @@ const InvoiceDetailsPage: React.FC = () => {
       const response = await checkCreditNoteExistsForInvoice(id!);
       if (response.success && response.data && response.data.hasCreditNote) {
         const creditNotes = response.data.creditNotes || [];
-        const creditNoteNumbers = creditNotes.map((cn: any) => cn.credit_note_number).join(', ');
-        toast.error(`Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`);
+        const creditNoteNumbers = creditNotes
+          .map((cn: any) => cn.credit_note_number)
+          .join(", ");
+        toast.error(
+          `Cannot edit invoice. Credit note already exist: ${creditNoteNumbers}. Please unlink credit note first.`,
+        );
         return;
       }
     } catch (error) {
-      console.error('Error checking credit notes:', error);
+      console.error("Error checking credit notes:", error);
       // Still allow edit if check fails, but show warning
-      toast.warning('Unable to verify credit note status. Proceed with caution.');
+      toast.warning(
+        "Unable to verify credit note status. Proceed with caution.",
+      );
     }
 
     navigate(`/invoices/${id}/edit`);
@@ -650,20 +712,42 @@ const InvoiceDetailsPage: React.FC = () => {
 
     const prefix = type === "billing" ? "Billing Address" : "Shipping Address";
 
-    if (line1) elements.push(<>
-      <span className="font-semibold">{prefix}:</span> {line1}
-    </>);
+    if (line1)
+      elements.push(
+        <>
+          <span className="font-semibold">{prefix}:</span> {line1}
+        </>,
+      );
     // if (line2) elements.push(<>
     //     <span className="font-semibold">Line 2:</span> {line2}
     // </>);
 
     const parts = [];
-    if (address.city) parts.push(<span key="city"><span className="font-semibold">City:</span> {address.city}</span>);
-    if (address.state) parts.push(<span key="state"><span className="font-semibold">State:</span> {address.state}</span>);
-    if (address.country) parts.push(<span key="country"><span className="font-semibold">Country:</span> {address.country}</span>);
+    if (address.city)
+      parts.push(
+        <span key="city">
+          <span className="font-semibold">City:</span> {address.city}
+        </span>,
+      );
+    if (address.state)
+      parts.push(
+        <span key="state">
+          <span className="font-semibold">State:</span> {address.state}
+        </span>,
+      );
+    if (address.country)
+      parts.push(
+        <span key="country">
+          <span className="font-semibold">Country:</span> {address.country}
+        </span>,
+      );
     const pin = address.pin || address.postal_code || address.zip;
-    if (pin) parts.push(<span key="pin"><span className="font-semibold">PIN:</span> {pin}</span>);
-
+    if (pin)
+      parts.push(
+        <span key="pin">
+          <span className="font-semibold">PIN:</span> {pin}
+        </span>,
+      );
 
     if (parts.length > 0) {
       const joinedParts = parts.reduce((acc: React.ReactNode[], curr, idx) => {
@@ -680,8 +764,8 @@ const InvoiceDetailsPage: React.FC = () => {
     let address =
       type === "shipping"
         ? customer.shipping_address ||
-        customer.shippingAddress ||
-        customer.shipping_addresses
+          customer.shippingAddress ||
+          customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
@@ -691,8 +775,16 @@ const InvoiceDetailsPage: React.FC = () => {
     if (!address) {
       const prefix = type === "shipping" ? "shipping_" : "";
       address = {
-        address1: customer[`${prefix}address1`] || customer[`${prefix}address_line1`] || customer.address1 || customer.address_line1,
-        address2: customer[`${prefix}address2`] || customer[`${prefix}address_line2`] || customer.address2 || customer.address_line2,
+        address1:
+          customer[`${prefix}address1`] ||
+          customer[`${prefix}address_line1`] ||
+          customer.address1 ||
+          customer.address_line1,
+        address2:
+          customer[`${prefix}address2`] ||
+          customer[`${prefix}address_line2`] ||
+          customer.address2 ||
+          customer.address_line2,
         city: customer[`${prefix}city`] || customer.city,
         state: customer[`${prefix}state`] || customer.state,
         country: customer[`${prefix}country`] || customer.country,
@@ -721,7 +813,6 @@ const InvoiceDetailsPage: React.FC = () => {
     };
     return styles[status] || "bg-gray-100 text-gray-800";
   };
-
 
   if (isLoading) {
     return (
@@ -945,30 +1036,43 @@ const InvoiceDetailsPage: React.FC = () => {
             <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">BILL TO</h3>
             <div className="space-y-1 text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+                {invoiceData.customer
+                  ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim()
+                  : "Customer Details Not Available"}
               </p>
               <div className="space-y-1">
                 {invoiceData.customer?.company_name && (
-                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                  <p className="text-gray-600">
+                    {invoiceData.customer.company_name}
+                  </p>
                 )}
                 {invoiceData.customer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {invoiceData.customer.email}
                   </p>
                 )}
                 {invoiceData.customer?.mobile && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {invoiceData.customer.mobile}
                   </p>
                 )}
                 {invoiceData.customer?.gst && (
                   <p className="text-black">
-                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                    <span className="font-semibold">GST:</span>{" "}
+                    {invoiceData.customer.gst}
                   </p>
                 )}
-                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "billing"), "billing").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
+                {invoiceData.customer &&
+                  formatAddressLines(
+                    getCustomerAddress(invoiceData.customer, "billing"),
+                    "billing",
+                  ).map((element, i) => (
+                    <p key={i} className="text-black">
+                      {element}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
@@ -976,30 +1080,43 @@ const InvoiceDetailsPage: React.FC = () => {
             <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 print:w-56">SHIP TO</h3>
             <div className="text-black text-sm">
               <p className="font-semibold text-lg mb-2">
-                {invoiceData.customer ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim() : 'Customer Details Not Available'}
+                {invoiceData.customer
+                  ? `${invoiceData.customer.first_name || ""} ${invoiceData.customer.last_name || ""}`.trim()
+                  : "Customer Details Not Available"}
               </p>
               <div className="space-y-1">
                 {invoiceData.customer?.company_name && (
-                  <p className="text-gray-600">{invoiceData.customer.company_name}</p>
+                  <p className="text-gray-600">
+                    {invoiceData.customer.company_name}
+                  </p>
                 )}
                 {invoiceData.customer?.email && (
                   <p className="text-black">
-                    <span className="font-semibold">Email:</span> {invoiceData.customer.email}
+                    <span className="font-semibold">Email:</span>{" "}
+                    {invoiceData.customer.email}
                   </p>
                 )}
                 {invoiceData.customer?.mobile && (
                   <p className="text-black">
-                    <span className="font-semibold">Mobile:</span> {invoiceData.customer.mobile}
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {invoiceData.customer.mobile}
                   </p>
                 )}
                 {invoiceData.customer?.gst && (
                   <p className="text-black">
-                    <span className="font-semibold">GST:</span> {invoiceData.customer.gst}
+                    <span className="font-semibold">GST:</span>{" "}
+                    {invoiceData.customer.gst}
                   </p>
                 )}
-                {invoiceData.customer && formatAddressLines(getCustomerAddress(invoiceData.customer, "shipping"), "shipping").map((element, i) => (
-                  <p key={i} className="text-black">{element}</p>
-                ))}
+                {invoiceData.customer &&
+                  formatAddressLines(
+                    getCustomerAddress(invoiceData.customer, "shipping"),
+                    "shipping",
+                  ).map((element, i) => (
+                    <p key={i} className="text-black">
+                      {element}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
@@ -1259,8 +1376,7 @@ const InvoiceDetailsPage: React.FC = () => {
           </div>
 
           {/* ================= RIGHT SIDE ================= */}
-          <div className="md:col-span-1">
-
+          <div>
             {/* ===== Tax Summary ===== */}
             <div className="space-y-0 text-right">
 
@@ -1357,13 +1473,14 @@ const InvoiceDetailsPage: React.FC = () => {
                 </p>
               </div>
             </div>
-
           </div>
-
         </div>
 
         {/* Payment History Sidebar */}
-        <Sheet open={isPaymentHistoryOpen} onOpenChange={setIsPaymentHistoryOpen}>
+        <Sheet
+          open={isPaymentHistoryOpen}
+          onOpenChange={setIsPaymentHistoryOpen}
+        >
           <SheetContent
             side="right"
             className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200"
@@ -1443,17 +1560,20 @@ const InvoiceDetailsPage: React.FC = () => {
                         </div>
                         <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
                           <span>
-                            {new Date(creditNote.credit_note_date).toLocaleDateString(
-                              "en-IN",
-                            )}
+                            {new Date(
+                              creditNote.credit_note_date,
+                            ).toLocaleDateString("en-IN")}
                           </span>
-                          <span className={`capitalize px-2 py-1 rounded-full text-xs ${creditNote.status === 'refunded'
-                              ? 'bg-red-100 text-red-700'
-                              : creditNote.status === 'active'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}>
-                            {creditNote.status || 'active'}
+                          <span
+                            className={`capitalize px-2 py-1 rounded-full text-xs ${
+                              creditNote.status === "refunded"
+                                ? "bg-red-100 text-red-700"
+                                : creditNote.status === "active"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {creditNote.status || "active"}
                           </span>
                         </div>
                       </div>
@@ -1474,7 +1594,9 @@ const InvoiceDetailsPage: React.FC = () => {
                 </div>
                 {creditNotes.length > 0 && (
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600">Credit Note(s) Applied</span>
+                    <span className="text-green-600">
+                      Credit Note(s) Applied
+                    </span>
                     <span className="text-green-600">
                       -{formatCurrency(getTotalCreditNoteAmount())}
                     </span>
@@ -1500,8 +1622,12 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
           </SheetContent>
         </Sheet>
+
         {/* Record Payment Modal */}
-        <Dialog open={isRecordPaymentOpen} onOpenChange={setIsRecordPaymentOpen}>
+        <Dialog
+          open={isRecordPaymentOpen}
+          onOpenChange={setIsRecordPaymentOpen}
+        >
           <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
             <DialogHeader className="px-6 py-4 border-b border-gray-200">
               <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -1518,7 +1644,8 @@ const InvoiceDetailsPage: React.FC = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-1">
                         <label className="text-sm font-medium text-gray-700">
-                          Amount Received <span className="text-red-500">*</span>
+                          Amount Received{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                       </div>
                       <Input
@@ -1526,7 +1653,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         min="0"
                         value={
                           paymentForm.amountReceived === null ||
-                            paymentForm.amountReceived === 0
+                          paymentForm.amountReceived === 0
                             ? ""
                             : roundToTwo(paymentForm.amountReceived)
                         }
@@ -1534,9 +1661,16 @@ const InvoiceDetailsPage: React.FC = () => {
                           const amount = parseFloat(e.target.value) || 0;
                           // Use the calculated pending amount after credit notes
                           const pendingAmount = getPendingAmount();
-                          const currentDiscount = parseFloat(String(paymentForm.discount)) || 0;
-                          const maxAllowedAmount = Math.max(0, pendingAmount - currentDiscount);
-                          const cappedAmount = Math.min(amount, maxAllowedAmount);
+                          const currentDiscount =
+                            parseFloat(String(paymentForm.discount)) || 0;
+                          const maxAllowedAmount = Math.max(
+                            0,
+                            pendingAmount - currentDiscount,
+                          );
+                          const cappedAmount = Math.min(
+                            amount,
+                            maxAllowedAmount,
+                          );
                           setPaymentForm({
                             ...paymentForm,
                             amountReceived: roundToTwo(cappedAmount),
@@ -1565,7 +1699,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         min="0"
                         value={
                           paymentForm.discount === null ||
-                            paymentForm.discount === 0
+                          paymentForm.discount === 0
                             ? ""
                             : roundToTwo(paymentForm.discount)
                         }
@@ -1573,11 +1707,18 @@ const InvoiceDetailsPage: React.FC = () => {
                           const newDiscount = parseFloat(e.target.value) || 0;
                           // Use the calculated pending amount after credit notes
                           const pendingAmount = getPendingAmount();
-                          const maxAllowedAmount = Math.max(0, pendingAmount - newDiscount);
-                          const currentAmountReceived = parseFloat(String(paymentForm.amountReceived)) || 0;
+                          const maxAllowedAmount = Math.max(
+                            0,
+                            pendingAmount - newDiscount,
+                          );
+                          const currentAmountReceived =
+                            parseFloat(String(paymentForm.amountReceived)) || 0;
 
                           // Adjust amount received if it exceeds the new maximum allowed
-                          const adjustedAmountReceived = Math.min(currentAmountReceived, maxAllowedAmount);
+                          const adjustedAmountReceived = Math.min(
+                            currentAmountReceived,
+                            maxAllowedAmount,
+                          );
 
                           setPaymentForm({
                             ...paymentForm,
@@ -1661,7 +1802,10 @@ const InvoiceDetailsPage: React.FC = () => {
                       className="min-h-[80px] border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 resize-none"
                       value={paymentForm.notes}
                       onChange={(e) =>
-                        setPaymentForm({ ...paymentForm, notes: e.target.value })
+                        setPaymentForm({
+                          ...paymentForm,
+                          notes: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -1752,8 +1896,8 @@ const InvoiceDetailsPage: React.FC = () => {
                             Math.max(
                               0,
                               getPendingAmount() -
-                              paymentForm.amountReceived -
-                              paymentForm.discount,
+                                paymentForm.amountReceived -
+                                paymentForm.discount,
                             ),
                           )}
                         </span>
@@ -1766,7 +1910,8 @@ const InvoiceDetailsPage: React.FC = () => {
 
             <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
               <div className="text-sm text-gray-500">
-                <span className="font-medium">Note:</span> Fields marked with <span className="text-red-500">*</span> are required
+                <span className="font-medium">Note:</span> Fields marked with{" "}
+                <span className="text-red-500">*</span> are required
               </div>
               <div className="flex gap-2">
                 <Button
@@ -1779,7 +1924,11 @@ const InvoiceDetailsPage: React.FC = () => {
                 <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   onClick={handleSavePayment}
-                  disabled={isSavingPayment || paymentForm.amountReceived <= 0 || amountError !== ""}
+                  disabled={
+                    isSavingPayment ||
+                    paymentForm.amountReceived <= 0 ||
+                    amountError !== ""
+                  }
                 >
                   {isSavingPayment ? (
                     <div className="flex items-center gap-2">

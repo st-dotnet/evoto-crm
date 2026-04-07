@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Save, User, FileText, Search, X } from "lucide-react";
+import { ArrowLeft, Save, User, FileText, Search, X, Filter, Calendar, Circle, Check, ChevronDown } from "lucide-react";
 import {
   getPaymentOutList,
   getVendorInvoices,
@@ -8,25 +8,65 @@ import {
   recordPaymentOut,
   getVendorNamesDropdown,
 } from "../services/payment-out.service";
+import axios from "axios";
 import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
 import { ColumnDef } from "@tanstack/react-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const CreatePaymentOut = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
+  
+  // API function to get vendors
+  const getVendorsDropdown = async () => {
+    const token = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    if (!token) {
+      return { success: false, error: "Authentication required", status: 401 };
+    }
+
+    try {
+      const API_URL = import.meta.env.VITE_APP_API_URL;
+      
+      const response = await axios.get(
+        `${API_URL}/vendors/?dropdown=true`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      
+      return { success: true, data: response.data, status: response.status };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: "Failed to fetch vendors",
+        status: error.response?.status ?? 500,
+      };
+    }
+  };
   const [isEditMode, setIsEditMode] = useState(!!id);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
-  const [isAddingVendor, setIsAddingVendor] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [vendors, setVendors] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isVendorsLoading, setIsVendorsLoading] = useState(false);
+  const [mobilePayments, setMobilePayments] = useState<any[]>([]);
+  const [mobileLoading, setMobileLoading] = useState(false);
   const [vendorInvoices, setVendorInvoices] = useState<any[]>([]);
   const [isInvoicesLoading, setIsInvoicesLoading] = useState(false);
   const [paymentDate, setPaymentDate] = useState(
@@ -37,10 +77,7 @@ export const CreatePaymentOut = () => {
   const [paymentDiscount, setPaymentDiscount] = useState("");
   const [paymentNumber, setPaymentNumber] = useState("");
   const [isFullyPaid, setIsFullyPaid] = useState(false);
-
-  // Ref for dropdown container to handle click-outside
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
+  
   // Invoice selection state
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
     null,
@@ -152,7 +189,6 @@ export const CreatePaymentOut = () => {
         }
       }
     } catch (error: any) {
-      console.error("Payment recording error:", error);
 
       // Handle overpayment error from API response
       if (error.response?.data?.error?.includes("Overpayment not allowed")) {
@@ -179,21 +215,22 @@ export const CreatePaymentOut = () => {
   const fetchVendors = async () => {
     setIsVendorsLoading(true);
     try {
-      const response = await getVendorNamesDropdown();
+      const response = await getVendorsDropdown();
 
       if (response.success && response.data) {
-        const transformedVendors = response.data.map((name: string, index: number) => ({
-          id: index.toString(),
-          name,
-          mobile: "",
-          hasInvoices: true,
-        }));
-        setVendors(transformedVendors);
+        const vendorsList = response.data
+          .filter((vendor: any) => vendor && vendor.name && vendor.name.trim() !== "")
+          .map((vendor: any) => ({
+            uuid: vendor.uuid || vendor.id,
+            name: vendor.name || "Unknown Vendor",
+            mobile: vendor.mobile || "",
+            hasInvoices: true,
+          }));
+        setVendors(vendorsList);
       } else {
         toast.error(response.error || "Failed to fetch vendors");
       }
     } catch (error) {
-      console.error("Error fetching vendors:", error);
       toast.error("Failed to fetch vendors");
     } finally {
       setIsVendorsLoading(false);
@@ -201,28 +238,9 @@ export const CreatePaymentOut = () => {
     }
   };
 
-  // Click outside handler to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsAddingVendor(false);
-        setSearchQuery("");
-      }
-    };
-
-    if (isAddingVendor) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isAddingVendor]);
-
   const handleVendorDeselect = () => {
     setSelectedVendor(null);
     setVendorInvoices([]);
-    setIsAddingVendor(false);
     setSearchQuery("");
     setIsFullyPaid(false);
     // Clear payment fields when vendor is deselected
@@ -240,17 +258,26 @@ export const CreatePaymentOut = () => {
       const response = await getVendorInvoices(vendorName);
 
       if (response.success && response.data) {
-        setVendorInvoices(response.data);
+        // Filter out unpaid invoices - only show paid and partially paid
+        const filteredInvoices = response.data.filter(
+          (invoice: any) =>
+            invoice.balance_amount === 0 ||
+            invoice.balance_amount === "0" ||
+            invoice.status === "partial" ||
+            invoice.status === "partially paid" ||
+            invoice.status === "paid"
+        );
+        setVendorInvoices(filteredInvoices);
 
         // Check if all invoices are fully paid (balance amount = 0)
-        const allInvoicesPaid = response.data.every(
+        const allInvoicesPaid = filteredInvoices.every(
           (invoice: any) =>
             invoice.balance_amount === 0 || invoice.balance_amount === "0",
         );
         setIsFullyPaid(allInvoicesPaid);
 
         // Auto-select single partial invoice
-        const partialInvoices = response.data.filter(
+        const partialInvoices = filteredInvoices.filter(
           (invoice: any) =>
             invoice.balance_amount > 0 &&
             (invoice.status === "partial" ||
@@ -277,7 +304,6 @@ export const CreatePaymentOut = () => {
         setIsFullyPaid(false);
       }
     } catch (error) {
-      console.error("Error fetching vendor invoices:", error);
       toast.error("Failed to fetch vendor invoices");
       setVendorInvoices([]);
       setIsFullyPaid(false);
@@ -288,7 +314,6 @@ export const CreatePaymentOut = () => {
 
   const handleVendorSelect = async (vendor: any) => {
     setSelectedVendor(vendor);
-    setIsAddingVendor(false);
     setIsModalOpen(false);
     setSearchQuery("");
 
@@ -317,8 +342,8 @@ export const CreatePaymentOut = () => {
         );
         setPaymentAmount(
           paymentData.amount_paid?.toString() ||
-          paymentData.total_amount?.toString() ||
-          "",
+            paymentData.total_amount?.toString() ||
+            "",
         );
         setPaymentDiscount(paymentData.discount?.toString() || "");
         setPaymentNumber(paymentData.payment_number || "");
@@ -326,9 +351,9 @@ export const CreatePaymentOut = () => {
         setNotes(paymentData.notes || "");
 
         // Set vendor information
-        if (paymentData.party_name) {
+        if (paymentData.vendor_name || paymentData.party_name) {
           const vendorData = {
-            name: paymentData.party_name,
+            name: paymentData.vendor_name || paymentData.party_name,
             id: paymentData.id,
             mobile: "",
             hasInvoices: true,
@@ -341,7 +366,6 @@ export const CreatePaymentOut = () => {
         navigate("/payment-out");
       }
     } catch (error) {
-      console.error("Error loading payment for edit:", error);
       toast.error("Failed to load payment data");
       navigate("/payment-out");
     } finally {
@@ -534,68 +558,6 @@ export const CreatePaymentOut = () => {
     [selectedVendor],
   );
 
-  // --- Vendor Search Dropdown (inline in left panel) --------
-  const renderInlineVendorSearch = () => (
-    <div className="space-y-4" ref={dropdownRef}>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
-          Search Vendor
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search vendors..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            autoFocus
-          />
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400" />
-          </div>
-        </div>
-      </div>
-
-      {isVendorsLoading ? (
-        <div className="text-center py-6">
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-            <span className="text-sm text-slate-500">Loading vendors...</span>
-          </div>
-        </div>
-      ) : (
-        <div className="border border-slate-200 rounded-lg h-[250px] overflow-y-auto">
-          {filteredVendors.length > 0 ? (
-            <>
-              {filteredVendors.map((vendor) => (
-                <div
-                  key={vendor.id}
-                  onClick={() => handleVendorSelect(vendor)}
-                  className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors duration-150"
-                >
-                  <div className="font-medium text-sm text-slate-900">
-                    {vendor.name}
-                  </div>
-                  {vendor.mobile && (
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {vendor.mobile}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </>
-          ) : (
-            <div className="p-6 text-center">
-              <div className="text-sm text-slate-500">
-                No vendors found
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
   // ─── Selected Vendor Card ────────
   const renderSelectedVendor = () => (
     <div className="space-y-4">
@@ -613,7 +575,12 @@ export const CreatePaymentOut = () => {
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
-            Payment Amount (Pending: ₹{((vendorInvoices.find(i => i.id === selectedInvoiceId)?.balance_amount) || 0).toLocaleString("en-IN")})
+            Payment Amount (Pending: ₹
+            {(
+              vendorInvoices.find((i) => i.id === selectedInvoiceId)
+                ?.balance_amount || 0
+            ).toLocaleString("en-IN")}
+            )
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm z-10">
@@ -637,15 +604,19 @@ export const CreatePaymentOut = () => {
                   setPaymentAmount(actualAmount.toString());
                   setPaymentError("");
                 } else {
-                  const maxActual = Math.max(0, balanceAmount - currentDiscount);
+                  const maxActual = Math.max(
+                    0,
+                    balanceAmount - currentDiscount,
+                  );
                   setPaymentAmount(maxActual.toString());
                   setPaymentError(`Total payment cannot exceed balance amount`);
                 }
               }}
-              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${paymentError
-                ? "border-red-100 focus:ring-red-200 focus:border-red-400"
-                : "border-slate-100 focus:ring-blue-200 focus:border-blue-400"
-                }`}
+              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${
+                paymentError
+                  ? "border-red-100 focus:ring-red-200 focus:border-red-400"
+                  : "border-slate-100 focus:ring-blue-200 focus:border-blue-400"
+              }`}
               readOnly={isFullyPaid}
             />
           </div>
@@ -713,7 +684,11 @@ export const CreatePaymentOut = () => {
                 Total Applied to Invoice:
               </span>
               <span className="text-base font-bold text-blue-900">
-                ₹{((parseFloat(paymentAmount) || 0) + (parseFloat(paymentDiscount) || 0)).toLocaleString("en-IN")}
+                ₹
+                {(
+                  (parseFloat(paymentAmount) || 0) +
+                  (parseFloat(paymentDiscount) || 0)
+                ).toLocaleString("en-IN")}
               </span>
             </div>
           </div>
@@ -723,23 +698,26 @@ export const CreatePaymentOut = () => {
       {/* Show invoice status message */}
       {selectedVendor && vendorInvoices.length > 0 && (
         <div
-          className={`mt-4 p-3 rounded-lg ${vendorInvoices.every((invoice) => invoice.balance_amount === 0)
-            ? "bg-green-50 border border-green-200"
-            : "bg-yellow-50 border border-yellow-200"
-            }`}
+          className={`mt-4 p-3 rounded-lg ${
+            vendorInvoices.every((invoice) => invoice.balance_amount === 0)
+              ? "bg-green-50 border border-green-200"
+              : "bg-yellow-50 border border-yellow-200"
+          }`}
         >
           <div className="flex items-center gap-2">
             <div
-              className={`w-2 h-2 rounded-full ${vendorInvoices.every((invoice) => invoice.balance_amount === 0)
-                ? "bg-green-500"
-                : "bg-yellow-500"
-                }`}
+              className={`w-2 h-2 rounded-full ${
+                vendorInvoices.every((invoice) => invoice.balance_amount === 0)
+                  ? "bg-green-500"
+                  : "bg-yellow-500"
+              }`}
             ></div>
             <p
-              className={`text-sm font-medium ${vendorInvoices.every((invoice) => invoice.balance_amount === 0)
-                ? "text-green-700"
-                : "text-yellow-700"
-                }`}
+              className={`text-sm font-medium ${
+                vendorInvoices.every((invoice) => invoice.balance_amount === 0)
+                  ? "text-green-700"
+                  : "text-yellow-700"
+              }`}
             >
               {vendorInvoices.every((invoice) => invoice.balance_amount === 0)
                 ? `All ${vendorInvoices.length} invoices with this vendor are settled`
@@ -752,28 +730,149 @@ export const CreatePaymentOut = () => {
   );
 
   const renderEmptyVendor = () => (
-    <div className="flex flex-col items-center justify-center py-12">
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12">
       <div className="text-center">
-        <div className="mb-6">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
-            <User className="h-8 w-8" />
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
+            <User className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
-        <h3 className="text-lg font-medium text-slate-900 mb-2">
+        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
           No Vendor Selected
         </h3>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6 px-4">
           Select a vendor to record payment
         </p>
         <button
-          onClick={() => setIsAddingVendor(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-all duration-200"
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs sm:text-sm rounded-lg transition-all duration-200"
         >
-          <User className="h-4 w-4" />
+          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Select Vendor
         </button>
       </div>
     </div>
+  );
+
+  // ─── Vendor Selection Modal ────────
+  const VendorSelectionModal = () => (
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <DialogContent className="w-[95vw] max-w-[400px] sm:max-w-[450px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg">
+        <DialogHeader className="bg-white px-6 py-4 border-b">
+          <DialogTitle className="text-lg font-semibold text-gray-800">
+            Select Vendor
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="p-6 space-y-5">
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <Input
+              placeholder="Search Vendors by name or mobile..."
+              className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Vendor List */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {isVendorsLoading ? (
+                <div className="p-8 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                    <SpinnerDotted size={20} />
+                  </div>
+                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                    Loading Vendors...
+                  </h3>
+                </div>
+              ) : filteredVendors.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                    <User className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                    No Vendor found
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Try adjusting your search criteria.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {filteredVendors.map((vendor) => (
+                    <li
+                      key={vendor.id}
+                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        selectedVendor?.id === vendor.id
+                          ? "bg-gray-100"
+                          : ""
+                      }`}
+                      onClick={() => handleVendorSelect(vendor)}
+                    >
+                      <div className="flex items-center">
+                        <div
+                          className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
+                            selectedVendor?.id === vendor.id
+                              ? "bg-green-100"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          <span
+                            className={`font-medium text-sm ${
+                              selectedVendor?.id === vendor.id
+                                ? "text-green-700"
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {(vendor.name || "Unknown")
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                            {vendor.name || "Unknown Vendor"}
+                          </div>
+                          {vendor.mobile && (
+                            <div className="text-sm text-gray-500 flex items-center mt-1">
+                              <span className="text-gray-400 mr-1.5">
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                </svg>
+                              </span>
+                              {vendor.mobile}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 
   return (
@@ -794,20 +893,20 @@ export const CreatePaymentOut = () => {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <button
                 onClick={handleBackClick}
-                className="flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
+                className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+                <h1 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">
                   {isEditMode ? "Edit Payment Out" : "Record Payment Out"}
                 </h1>
-                <p className="text-sm text-slate-500 mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 hidden xs:block">
                   {isEditMode
                     ? "Update outgoing payment information"
                     : "Create a new outgoing payment record"}
@@ -817,7 +916,7 @@ export const CreatePaymentOut = () => {
             <button
               onClick={handleSave}
               disabled={isSaving || !selectedVendor}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <>
@@ -836,32 +935,32 @@ export const CreatePaymentOut = () => {
       </header>
 
       {/* ── Main Content ────────────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
           {/* ── Vendor Selection Card ─────────────────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600">
-                    <User className="h-4 w-4" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 text-blue-600">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
-                  <h2 className="text-lg font-semibold text-slate-900">
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                     Vendor Information
                   </h2>
                 </div>
                 {selectedVendor && (
                   <button
                     onClick={handleVendorDeselect}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
+                    className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {isInvoicesLoading && selectedVendor ? (
                 <div className="flex items-center justify-center py-12">
                   <SpinnerDotted
@@ -876,11 +975,9 @@ export const CreatePaymentOut = () => {
                 </div>
               ) : (
                 <>
-                  {isAddingVendor
-                    ? renderInlineVendorSearch()
-                    : selectedVendor
-                      ? renderSelectedVendor()
-                      : renderEmptyVendor()}
+                  {selectedVendor
+                    ? renderSelectedVendor()
+                    : renderEmptyVendor()}
                 </>
               )}
             </div>
@@ -888,40 +985,40 @@ export const CreatePaymentOut = () => {
 
           {/* ── Payment Details Card ─────────────────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-600">
-                  <FileText className="h-4 w-4" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 text-blue-600">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                   Payment Details
                 </h2>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Date / Mode / Number */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Payment Date
                   </label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-slate-50"
+                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
                     disabled={isFullyPaid}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Payment Mode
                   </label>
                   <select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-slate-50"
+                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
                     disabled={isFullyPaid}
                   >
                     <option value="cash">Cash</option>
@@ -933,15 +1030,16 @@ export const CreatePaymentOut = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Choose Invoice
                   </label>
                   {(() => {
                     const unpaid = vendorInvoices.filter(
-                      (inv) => inv.balance_amount > 0 || inv.status !== "paid"
+                      (inv) => inv.balance_amount > 0 || inv.status !== "paid",
                     );
                     const paid = vendorInvoices.filter(
-                      (inv) => inv.balance_amount === 0 && inv.status === "paid"
+                      (inv) =>
+                        inv.balance_amount === 0 && inv.status === "paid",
                     );
 
                     if (unpaid.length > 0) {
@@ -953,9 +1051,14 @@ export const CreatePaymentOut = () => {
                             setInvoiceFieldError(false);
                             setIsShaking(false);
                           }}
-                          className={`w-full h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${invoiceFieldError ? "border-red-500 bg-red-50" : "border-slate-300"
-                            } ${isShaking ? "animate-pulse" : ""}`}
-                          disabled={!selectedVendor || vendorInvoices.length === 0}
+                          className={`w-full h-9 sm:h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm ${
+                            invoiceFieldError
+                              ? "border-red-500 bg-red-50"
+                              : "border-slate-300"
+                          } ${isShaking ? "animate-pulse" : ""}`}
+                          disabled={
+                            !selectedVendor || vendorInvoices.length === 0
+                          }
                         >
                           <option value="">Choose an invoice...</option>
                           {unpaid.map((inv) => (
@@ -973,7 +1076,7 @@ export const CreatePaymentOut = () => {
                           type="text"
                           value={paid[0].invoice_number}
                           readOnly
-                          className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm"
+                          className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-xs sm:text-sm"
                           placeholder="No unpaid invoices"
                         />
                       );
@@ -984,7 +1087,7 @@ export const CreatePaymentOut = () => {
                         type="text"
                         value=""
                         readOnly
-                        className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-400 text-sm"
+                        className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-400 text-xs sm:text-sm"
                         placeholder="No invoices found"
                       />
                     );
@@ -994,14 +1097,18 @@ export const CreatePaymentOut = () => {
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                   Notes
                 </label>
                 <textarea
-                  value={isFullyPaid && !notes.trim() ? "Invoice fully settled." : notes}
+                  value={
+                    isFullyPaid && !notes.trim()
+                      ? "Invoice fully settled."
+                      : notes
+                  }
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Enter remarks..."
-                  className="w-full h-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm disabled:bg-slate-50"
+                  className="w-full h-20 sm:h-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-xs sm:text-sm disabled:bg-slate-50"
                   readOnly={isFullyPaid}
                 />
               </div>
@@ -1011,13 +1118,13 @@ export const CreatePaymentOut = () => {
 
         {/* ── Invoice Table Section */}
         {selectedVendor && (
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 text-purple-600">
-                  <FileText className="h-4 w-4" />
+          <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-600">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                   Purchase Invoices for this Vendor
                 </h2>
               </div>
@@ -1043,7 +1150,8 @@ export const CreatePaymentOut = () => {
                     }}
                     layout={{
                       classes: {
-                        table: '[&_tr:hover]:bg-slate-50 [&_td]:py-3 [&_th]:py-3 [&_td]:text-center [&_th]:text-center w-full',
+                        table:
+                          "[&_tr:hover]:bg-slate-50 [&_td]:py-3 [&_th]:py-3 [&_td]:text-center [&_th]:text-center w-full",
                       },
                     }}
                   />
@@ -1053,6 +1161,9 @@ export const CreatePaymentOut = () => {
           </div>
         )}
       </main>
+
+      {/* Vendor Selection Modal */}
+      <VendorSelectionModal />
     </div>
   );
 };

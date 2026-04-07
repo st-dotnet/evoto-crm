@@ -206,7 +206,7 @@ export const PaymentInPage = () => {
     };
 
     fetchInitialData();
-  }, [selectedStatus, searchTerm, searchType, selectedDateFilter]);
+  }, [selectedStatus, searchTerm, searchType, selectedDateFilter, refreshKey]);
 
   const handleDelete = (id: string) => {
     setPaymentToDelete(id);
@@ -227,7 +227,7 @@ export const PaymentInPage = () => {
       }
     } catch (error: any) {
       console.error("Error deleting payment:", error);
-      toast.error("An error occurred while deleting the payment");
+      toast.error("Failed to delete payment");
     } finally {
       setPaymentToDelete(null);
       setDeleteDialogOpen(false);

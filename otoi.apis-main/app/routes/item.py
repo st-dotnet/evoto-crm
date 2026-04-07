@@ -1,15 +1,30 @@
 import base64
+from datetime import datetime
+from io import BytesIO
 import random
 from sys import prefix
 import time
 from uuid import UUID
 import uuid
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response, send_file, current_app
+from flask_jwt_extended import jwt_required, get_jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_
 from app.extensions import db
 from app.models import Item, ItemCategory, MeasuringUnit, ItemType
+from app.services.pdf_service import generate_inventory_pdf
 from app.utils.stamping import set_created_fields, set_updated_fields
+# Excel export imports
+try:
+    import openpyxl
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+except ImportError:
+    openpyxl = None
+    Workbook = None
+    Font = None
+    PatternFill = None
+    Alignment = None
 
 item_blueprint = Blueprint("item", __name__, url_prefix="/items")
 
@@ -840,3 +855,275 @@ def delete_item(item_id):
     set_updated_fields(item)
     db.session.commit()
     return jsonify({"message": "Item soft-deleted successfully"})
+
+
+# ── EXCEL EXPORT ───────────────────────────────────────────────────────────
+
+@item_blueprint.route("/export/excel", methods=["GET"])
+def export_items_excel():
+    """
+    Export items to Excel file with search filtering.
+    ---
+    tags:
+      - Items
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Search term for item name or item code
+    responses:                                  
+      200:
+        description: Excel file download
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    try:
+        # Get query parameters
+        search = request.args.get("search", "").strip()
+        
+        # Build base query - Only 4 columns as requested
+        query = db.session.query(
+            Item.item_name,
+            Item.item_code,
+            Item.purchase_price,  # Add purchase_price for MRP
+            Item.sales_price
+        ).filter(Item.is_deleted == False)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                or_(
+                    Item.item_name.ilike(f"%{search}%"),
+                    Item.item_code.ilike(f"%{search}%")
+                )
+            )
+        
+        # Get results
+        items = query.all()
+        
+        # Check if Excel library is available
+        if not openpyxl:
+            return jsonify({
+                "error": "Excel export library not available. Please install openpyxl",
+                "details": "pip install openpyxl"
+            }), 500
+        
+        # Create Excel workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Items Rate List"
+        
+        # Add headers with styling
+        headers = ["Item Name", "Item Code", "MRP", "Selling Price"]
+        
+        # Add headers to first row
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            # Apply styling
+            cell.font = Font(bold=True, color="000000") 
+            cell.fill = PatternFill(start_color="4472C4", end_color="4472C4")
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+        
+        for row_num, item in enumerate(items, 2):
+        # Add data rows
+            ws.cell(row=row_num, column=1, value=item.item_name or "")
+            ws.cell(row=row_num, column=2, value=item.item_code or "")
+            ws.cell(row=row_num, column=3, value=f"₹{item.purchase_price:.2f}" if item.purchase_price else "₹0.00")  # MRP = purchase_price
+            ws.cell(row=row_num, column=4, value=f"₹{item.sales_price:.2f}" if item.sales_price else "₹0.00")
+         
+        # Auto-adjust column widths
+        for col in range(1, 5):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15
+        
+        # Save to memory
+        excel_file = BytesIO()
+        wb.save(excel_file)
+        excel_file.seek(0)
+        
+        # Create response
+        response = Response(
+            excel_file.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response.headers["Content-Disposition"] = "attachment; filename=items_rate_list.xlsx"
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to export Excel file",
+            "details": str(e)
+        }), 500
+
+
+# ── PDF EXPORT ────────────────────────────────────────────────────
+
+@item_blueprint.route("/export/pdf", methods=["POST"])
+def export_items_pdf():
+    """
+    Export items to PDF file with search filtering for printing.
+    ---
+    tags:
+      - Items
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: search
+        in: body
+        required: false
+        schema:
+          type: string
+        description: Search term for item name or item code
+    responses:
+      200:
+        description: PDF file for printing
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        search_param = data.get('search', '')
+        
+        # Generate PDF
+        pdf_result = generate_inventory_pdf(search=search_param)
+        
+        if not pdf_result['success']:
+            return jsonify({
+                'success': False,
+                'error': pdf_result.get('error', 'PDF generation failed'),
+                'status': 500
+            }), 500
+        
+        # Create PDF file for printing
+        pdf_buffer = pdf_result['data']
+        filename = f"inventory_rate_list_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        # Send PDF as response for printing (inline display instead of download)
+        return send_file(
+            BytesIO(pdf_buffer),
+            as_attachment=False,  # Changed to False for inline display/printing
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"PDF generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error during PDF generation',
+            'status': 500
+        }), 500
+
+
+# ── PRINT PDF ─────────────────────────────────────────────────────
+
+@item_blueprint.route("/export/print-pdf", methods=["GET", "POST"])
+def print_items_pdf():
+    """
+    Print items PDF with search filtering - opens browser print dialog.
+    ---
+    tags:
+      - Items
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Search term for item name or item code
+      - name: print_options
+        in: query (for GET) / body (for POST)
+        required: false
+        schema:
+          type: object
+          properties:
+            copies:
+              type: integer
+              default: 1
+            paper_size:
+              type: string
+              default: A4
+              enum: [A4, A3, Letter]
+            orientation:
+              type: string
+              default: portrait
+              enum: [portrait, landscape]
+            quality:
+              type: string
+              default: high
+              enum: [low, medium, high]
+        description: Print options
+    responses:
+      200:
+        description: Print-ready PDF with JavaScript print trigger
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    try:
+        # Handle both GET and POST requests
+        if request.method == 'GET':
+            # Get data from query parameters for GET
+            search_param = request.args.get('search', '')
+            print_options = {
+                'copies': int(request.args.get('copies', 1) or 1),
+                'paper_size': request.args.get('paper_size', 'A4'),
+                'orientation': request.args.get('orientation', 'portrait'),
+                'quality': request.args.get('quality', 'high')
+            }
+            # Log the received parameters for debugging
+            current_app.logger.info(f"Print PDF GET request - search: {search_param}, options: {print_options}")
+            current_app.logger.info(f"All query params: {dict(request.args)}")
+        else:
+            # Get data from JSON body for POST
+            data = request.get_json() or {}
+            search_param = data.get('search', '')
+            print_options = data.get('print_options', {})
+            # Log the received parameters for debugging
+            current_app.logger.info(f"Print PDF POST request - search: {search_param}, options: {print_options}")
+        
+        # Generate print-optimized PDF using existing working function
+        pdf_result = generate_inventory_pdf(search=search_param)
+        
+        if not pdf_result['success']:
+            current_app.logger.error(f"PDF generation failed: {pdf_result.get('error', 'Unknown error')}")
+            return jsonify({
+                'success': False,
+                'error': pdf_result.get('error', 'Print PDF generation failed'),
+                'status': 500
+            }), 500
+        
+        # Log successful PDF generation
+        current_app.logger.info(f"PDF generated successfully, items: {pdf_result.get('metadata', {}).get('item_count', 0)}")
+        
+        # Create print-optimized PDF
+        pdf_buffer = pdf_result['data']
+        filename = f"inventory_print_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        # Return PDF with print JavaScript
+        return send_file(
+            BytesIO(pdf_buffer),
+            as_attachment=False,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"Print PDF generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error during print PDF generation',
+            'status': 500
+        }), 500
