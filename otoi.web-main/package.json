@@ -5,7 +5,7 @@
   "type": "module",
   "proxy": "http://127.0.0.1:5000",
   "scripts": {
-    "dev": "vite",
+    "dev": "node api.js && vite",
     "stg_start": "vite --mode stg",
     "build": "tsc && vite build",
     "stg_build": "vite build --mode stg",
