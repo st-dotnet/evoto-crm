@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Credit Note {{ credit_note.credit_note_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.5cm 1.8cm 2cm 1.8cm;
+
+      @frame footer {
+        -pdf-frame-content: footer_content;
+        bottom: 1cm;
+        margin-left: 1.8cm;
+        margin-right: 1.8cm;
+        height: 1cm;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      background: #ffffff;
+    }
+
+    #footer_content {
+      font-size: 9px;
+      color: #666666;
+      text-align: center;
+      border-top: 1px solid #cccccc;
+      padding-top: 5px;
+    }
+
+    .header-table {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .company-name {
+      font-size: 22px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .company-meta {
+      font-size: 10px;
+      color: #666666;
+      line-height: 1.6;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1.5px solid #dddddd;
+      margin: 0 0 16px 0;
+    }
+
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .meta-table th {
+      border: 1px solid #000000;
+      background-color: #f5f5f5;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: left;
+      color: #444444;
+    }
+
+    .meta-table td {
+      border: 1px solid #000000;
+      padding: 4px 12px;
+      font-size: 12px;
+      text-align: left;
+      color: #1a1a1a;
+    }
+
+    .address-table {
+      width: 100%;
+      margin-bottom: 22px;
+    }
+
+    .address-section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #444444;
+      border-bottom: 1.5px solid #1a1a1a;
+      padding-bottom: 5px;
+      margin-bottom: 8px;
+    }
+
+    .address-customer-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 5px;
+    }
+
+    .address-detail {
+      font-size: 12px;
+      color: #333333;
+      line-height: 1.7;
+    }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 22px;
+    }
+
+    .items-table th {
+      border: 1px solid #cccccc;
+      background-color: #f5f5f5;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #444444;
+    }
+
+    .items-table td {
+      border: 1px solid #cccccc;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #1a1a1a;
+      vertical-align: top;
+    }
+
+    .item-name {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .item-desc {
+      font-size: 9px;
+      color: #888888;
+      margin-top: 2px;
+    }
+
+    .subtotal-row td {
+      background-color: #f5f5f5;
+      font-weight: bold;
+      font-size: 11px;
+      border-top: 1.5px solid #aaaaaa;
+    }
+
+    .totals-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .totals-table td {
+      padding: 2px 0;
+      font-size: 11px;
+    }
+
+    .totals-label {
+      color: #555555;
+      text-align: left;
+      width: 150px;
+    }
+
+    .totals-value {
+      font-weight: bold;
+      text-align: right;
+      color: #1a1a1a;
+    }
+
+    .grand-total-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: left;
+    }
+
+    .grand-total-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a1a1a;
+      text-align: right;
+    }
+
+    .in-words {
+      font-size: 9px;
+      color: #666666;
+      text-align: right;
+      padding-top: 4px;
+      font-style: italic;
+    }
+
+    .signature-line {
+      border-top: 1.5px solid #1a1a1a;
+      width: 200px;
+      padding-top: 7px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: center;
+      color: #1a1a1a;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <table class="header-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 65%; vertical-align: top; padding-top: 15px;">
+        <div class="company-name">{{ business.name }}</div>
+        <div class="company-meta">
+          {% if business.email %}<div>{{ business.email }}</div>{% endif %}
+          {% if business.phone_number %}<div>{{ business.phone_number }}</div>{% endif %}
+          {% if business_address.address1 %}
+          <div>
+            {{ business_address.address1 }}, {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }}
+          </div>
+          {% endif %}
+          {% if business.gst_number %}<div><strong>GSTIN:</strong> {{ business.gst_number }}</div>{% endif %}
+        </div>
+      </td>
+      <td style="width: 35%; text-align: right; vertical-align: top;">
+        {% if logo_data_uri %}
+        <img src="{{ logo_data_uri }}" width="100" alt="Logo" style="margin-top: -10px;">
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <hr class="divider">
+
+  <div style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">Credit Note</div>
+
+  <table class="meta-table" cellpadding="0" cellspacing="0">
+    <thead>
+      <tr>
+        <th style="width: 33%;">Credit Note No.</th>
+        <th style="width: 33%;">Credit Note Date</th>
+        <th style="width: 34%;">Linked Invoice</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ credit_note.credit_note_number }}</td>
+        <td>{{ credit_note.credit_note_date }}</td>
+        <td>{{ credit_note.invoice_number }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="address-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 100%; vertical-align: top;">
+        <div class="address-section-title">BILL TO</div>
+        {% if customer %}
+        <div class="address-customer-name">{{ customer.first_name }} {{ customer.last_name }}</div>
+        <div class="address-detail">
+          {% if customer.email %}<div><strong>Email:</strong> {{ customer.email }}</div>{% endif %}
+          {% if customer.mobile %}<div><strong>Mobile:</strong> {{ customer.mobile }}</div>{% endif %}
+          {% if customer.gst %}<div><strong>GSTIN:</strong> {{ customer.gst }}</div>{% endif %}
+          {% if customer.address1 %}<div>{{ customer.address1 }}, {{ customer.city }}, {{ customer.state }}</div>{% endif %}
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table class="items-table" cellpadding="0" cellspacing="0">
+    <thead>
+      <tr>
+        <th style="width: 40%; text-align: left;">Item Description</th>
+        <th style="width: 10%; text-align: center;">Qty</th>
+        <th style="width: 15%; text-align: right;">Price</th>
+        <th style="width: 15%; text-align: right;">Tax</th>
+        <th style="width: 20%; text-align: right;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>
+          <div class="item-name">{{ loop.index }}. {{ item.product_name }}</div>
+          {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
+        </td>
+        <td style="text-align: center;">{{ item.quantity }}</td>
+        <td style="text-align: right;">₹{{ "%.2f"|format(item.unit_price) }}</td>
+        <td style="text-align: right;">
+          {% if item.tax.tax_amount %}₹{{ "%.2f"|format(item.tax.tax_amount) }}{% else %}₹0.00{% endif %}
+        </td>
+        <td style="text-align: right; font-weight: bold;">₹{{ "%.2f"|format(item.total_price) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 50%; vertical-align: top;">
+        {% if notes.notes %}
+        <div style="font-size: 10px; font-weight: bold; margin-bottom: 4px;">NOTES:</div>
+        <div style="font-size: 10px; color: #555;">{{ notes.notes }}</div>
+        {% endif %}
+      </td>
+      <td style="width: 50%; vertical-align: top;">
+        <table class="totals-table">
+          <tr>
+            <td class="totals-label">Subtotal</td>
+            <td class="totals-value">₹{{ "%.2f"|format(charges.subtotal or 0) }}</td>
+          </tr>
+          {% if charges.total_tax %}
+          <tr>
+            <td class="totals-label">Tax Total</td>
+            <td class="totals-value">₹{{ "%.2f"|format(charges.total_tax) }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="grand-total-label">Grand Total</td>
+            <td class="grand-total-value">₹{{ "%.2f"|format(credit_note.total_amount) }}</td>
+          </tr>
+        </table>
+        <div class="in-words"><strong>In Words:</strong> {{ credit_note.amount_in_words }}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top: 50px; text-align: right;">
+    {% if esign_data_uri %}
+    <img src="{{ esign_data_uri }}" width="120" style="margin-bottom: 5px;"><br>
+    {% endif %}
+    <div class="signature-line">Authorized Signatory</div>
+  </div>
+
+  <div id="footer_content">
+    {{ business.name }} &nbsp;|&nbsp; Thank you!
+  </div>
+
+</body>
+</html>
