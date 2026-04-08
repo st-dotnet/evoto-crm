@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, FileText, CreditCard } from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, CreditCard, Share, Mail, Receipt } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { KeenIcon } from "@/components";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import axios from "axios";
@@ -9,6 +16,9 @@ import { createPurchaseInvoiceFromPO } from "../services/purchaseInvoice.service
 import { useAuthContext } from "@/auth/useAuthContext";
 import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { getShareData, sendShareEmail } from "@/services/share.service";
+import { resolveImageUrl } from "@/utils/imageUtils";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 interface PurchaseOrderItem {
     id: string;
@@ -40,6 +50,7 @@ interface Vendor {
 }
 
 interface PurchaseOrderData {
+    uuid?: string;
     poNo: string;
     poDate: string;
     deliveryDate: string;
@@ -62,6 +73,8 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     const [isConverting, setIsConverting] = useState(false);
     const [associatedInvoice, setAssociatedInvoice] = useState<any>(null);
     const poRef = useRef<HTMLDivElement>(null);
+    const [isFetchingShareData, setIsFetchingShareData] = useState(false);
+    const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
 
     const poData: PurchaseOrderData = fetchedData ||
         location.state?.poData || {
@@ -92,7 +105,19 @@ const PurchaseOrderPreviewPage: React.FC = () => {
             }
         };
         fetchBusinessProfile();
+        fetchBrandingAssets();
     }, []);
+
+    const fetchBrandingAssets = async () => {
+        try {
+            const response = await getGlobalAssets();
+            if (response.success && response.data) {
+                setBrandingAssets(response.data);
+            }
+        } catch (error) {
+            console.error("Error fetching branding assets:", error);
+        }
+    };
 
     useEffect(() => {
         if (id && !location.state?.poData) {
@@ -104,6 +129,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         const data = response.data;
 
                         const transformedData: PurchaseOrderData = {
+                            uuid: data.uuid,
                             poNo: data.po_number,
                             poDate: data.po_date,
                             deliveryDate: data.delivery_date,
@@ -200,27 +226,60 @@ const PurchaseOrderPreviewPage: React.FC = () => {
     const totals = calculateTotals();
 
     const handleConvertToInvoice = async () => {
-        if (!id || isConverting) return;
-        setIsConverting(true);
-        const res = await createPurchaseInvoiceFromPO(id);
-        setIsConverting(false);
-        if (res.success) {
-            toast.success(`Purchase Invoice ${res.data.invoice_number} created successfully.`);
-            setAssociatedInvoice({
-                uuid: res.data.invoice_uuid,
-                invoice_number: res.data.invoice_number,
-                payment_status: res.data.payment_status,
-                balance_due: res.data.total_amount
-            });
-        } else if (res.data?.invoice_uuid) {
-            toast.info(`Purchase Invoice already exists.`);
-            setAssociatedInvoice({
-                uuid: res.data.invoice_uuid,
-                invoice_number: res.data.invoice_number,
-                payment_status: "unpaid"
-            });
-        } else {
-            toast.error(res.error || "Failed to create purchase invoice");
+        const poId = poData?.uuid || id;
+        if (!poId) {
+            toast.error("Please save the purchase order first before converting to invoice.");
+            return;
+        }
+        navigate('/purchases/purchase-invoices/new', {
+            state: {
+                poId: poId,
+                poData: poData,
+                fromPO: true
+            }
+        });
+    };
+
+    const handleShareWhatsApp = async () => {
+        const poId = poData?.uuid || id;
+        if (!poId) return;
+        setIsFetchingShareData(true);
+        const fetchToast = toast.loading("Preparing share options...");
+        try {
+            const response = await getShareData(poId, 'purchase_order');
+            if (response.success && response.data) {
+                const { message, contact } = response.data;
+                const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+                window.open(whatsappUrl, "_blank");
+                toast.success("Opening WhatsApp...", { id: fetchToast });
+            } else {
+                throw new Error(response.error || "Failed to fetch share data");
+            }
+        } catch (error: any) {
+            console.error("Share error:", error);
+            toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+        } finally {
+            setIsFetchingShareData(false);
+        }
+    };
+
+    const handleShareEmail = async () => {
+        const poId = poData?.uuid || id;
+        if (!poId) return;
+        setIsFetchingShareData(true);
+        const fetchToast = toast.loading("Sending email...");
+        try {
+            const response = await sendShareEmail(poId, 'purchase_order');
+            if (response.success) {
+                toast.success("Email sent successfully!", { id: fetchToast });
+            } else {
+                throw new Error(response.error || "Failed to send email");
+            }
+        } catch (error: any) {
+            console.error("Email error:", error);
+            toast.error(error.message || "Failed to send email", { id: fetchToast });
+        } finally {
+            setIsFetchingShareData(false);
         }
     };
 
@@ -416,36 +475,36 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {associatedInvoice ? (
-                            <button
-                                onClick={() => navigate(`/purchases/purchase-invoices/${associatedInvoice.uuid}`)}
-                                className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md hover:bg-emerald-100 transition-colors"
-                                title="View Purchase Invoice"
-                            >
-                                <FileText className="h-4 w-4 text-emerald-600" />
-                                <span className="text-xs font-semibold text-emerald-700">
-                                    Invoice: {associatedInvoice.invoice_number} ({associatedInvoice.payment_status?.toUpperCase()})
-                                </span>
-                            </button>
-                        ) : (
+                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
+                            <Printer className="h-4 w-4" />Print PDF
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                                    <Share className="h-4 w-4" /> Share
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                                    <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                                    <Mail className="h-4 w-4" /> Email
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Show Convert to Invoice - temporarily always visible for debugging */}
+                        {(!associatedInvoice || poData?.status === 'open') && (
                             <Button
-                                variant="outline"
-                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-full md:w-auto"
                                 onClick={handleConvertToInvoice}
                                 disabled={isConverting || !id}
-                                className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
                             >
-                                {isConverting ? (
-                                    <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <FileText className="h-4 w-4" />
-                                )}
+                                <Receipt className="h-4 w-4" />
                                 {isConverting ? "Converting..." : "Convert to Invoice"}
                             </Button>
                         )}
-                        <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2">
-                            <Printer className="h-4 w-4" />Print / Save PDF
-                        </Button>
                     </div>
                 </div>
             </div>
@@ -630,8 +689,20 @@ const PurchaseOrderPreviewPage: React.FC = () => {
                         </div>
                         <div className="mt-20 flex justify-end">
                             <div className="text-center">
-                                <div className="w-48 border-b border-black mb-2"></div>
-                                <p className="text-xs font-bold text-black uppercase">Authorized Signatory</p>
+                                <p className="text-[10px] font-bold text-black uppercase mb-1">
+                                    For {getAuthBusinessInfo().name}
+                                </p>
+                                {brandingAssets?.esign_path && (
+                                    <div className="mb-0 flex justify-center">
+                                        <img
+                                            src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
+                                            className="h-12 md:h-16 w-auto object-contain mix-blend-multiply"
+                                            alt="Signature"
+                                        />
+                                    </div>
+                                )}
+                                <div className={`w-48 border-b border-black mb-1 ${brandingAssets?.esign_path ? '-mt-2' : 'mt-8'}`}></div>
+                                <p className="text-[10px] font-bold text-black uppercase tracking-wider">Authorized Signatory</p>
                             </div>
                         </div>
                     </div>

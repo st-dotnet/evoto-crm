@@ -153,7 +153,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       const response = await getPurchaseInvoiceById(id!);
       if (response.success && response.data) {
         setInvoiceData(response.data as unknown as PurchaseInvoiceData);
-        
+
         // Fetch debit notes for this invoice
         await fetchDebitNotes();
       } else {
@@ -171,24 +171,24 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
   const fetchDebitNotes = async () => {
     try {
       const response = await checkDebitNoteExistsForInvoice(id!);
-      
+
       if (response.success && response.data) {
         const debitNotes = response.data.debitNotes || [];
         setDebitNotes(debitNotes);
-        
+
         // Update invoice status based on backend balance_due
         if (invoiceData && debitNotes.length > 0) {
           const backendBalanceDue = invoiceData?.balance_due || 0;
-          
+
           if (backendBalanceDue === 0 && invoiceData.payment_status !== 'paid') {
             // Update local status immediately
             setInvoiceData(prev => prev ? { ...prev, payment_status: 'paid' } : null);
-            
+
             // Also update backend status
             try {
               const { updatePurchaseInvoiceStatus } = await import("../../debitNote/service/debitNote.service");
               await updatePurchaseInvoiceStatus(id!, 'paid');
-              
+
               // Dispatch event to refresh invoice list in other components
               window.dispatchEvent(new CustomEvent('invoiceStatusUpdated', {
                 detail: {
@@ -218,26 +218,26 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
     try {
       // Import the update function from debit note service
       const { updateDebitNote } = await import("../../debitNote/service/debitNote.service");
-      
+
       const response = await updateDebitNote(debitNoteId, { status: 'credited' });
-      
+
       if (response.success) {
         toast.success("Debit note accepted successfully");
-        
+
         // Update local state immediately (no need to refetch from backend)
-        setDebitNotes(prev => prev.map(dn => 
+        setDebitNotes(prev => prev.map(dn =>
           dn.uuid === debitNoteId ? { ...dn, status: 'credited' } : dn
         ));
-        
+
         // Update invoice status locally if needed
         if (invoiceData) {
           const backendBalanceDue = invoiceData?.balance_due || 0;
-          
+
           if (backendBalanceDue === 0 && invoiceData.payment_status !== 'paid') {
             setInvoiceData(prev => prev ? { ...prev, payment_status: 'paid' } : null);
           }
         }
-        
+
         // Dispatch event to refresh invoice list in other components
         window.dispatchEvent(new CustomEvent('debitNoteAccepted', {
           detail: {
@@ -266,7 +266,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
   const getPendingAmount = () => {
     // Use backend-provided balance_due instead of frontend calculation
     const backendBalanceDue = invoiceData?.balance_due || 0;
-    
+
     return backendBalanceDue;
   };
 
@@ -381,22 +381,22 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
 
   const handleSavePayment = async () => {
     if (!id || !invoiceData || isSavingPayment) return;
-    
+
     // Calculate pending amount (total amount - amount paid - debit notes)
     const pendingAmount = getPendingAmount();
     const debitNoteTotal = getTotalDebitNoteAmount();
     const amountPaid = invoiceData?.amount_paid || 0;
-    
-    
+
+
     // Validate amount is positive
     if (paymentForm.amount <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
-    
+
     // Enhanced validation with clear error messages
     if (paymentForm.amount > pendingAmount + 0.01) {
-      
+
       if (debitNoteTotal > 0) {
         toast.error(`Payment amount (${formatCurrency(paymentForm.amount)}) exceeds pending amount (${formatCurrency(pendingAmount)}). ${formatCurrency(debitNoteTotal)} is already covered by debit note(s) and ${formatCurrency(amountPaid)} has been paid.`);
       } else {
@@ -404,13 +404,13 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       }
       return;
     }
-    
+
     // Validate discount doesn't exceed payment amount
     if (paymentForm.discount > paymentForm.amount) {
       toast.error("Discount cannot be greater than payment amount");
       return;
     }
-    
+
 
     setIsSavingPayment(true);
     try {
@@ -424,7 +424,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
       if (response.success) {
         toast.success("Payment recorded successfully");
         setIsRecordPaymentOpen(false);
-        
+
         // Simple approach: refetch data from backend after delay (like InvoiceDetailsPage)
         setTimeout(() => {
           fetchInvoiceData(); // Refresh data
@@ -634,13 +634,6 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/purchase-invoices/${id}/edit`)} className="gap-2 text-primary border-primary">
-              <Edit className="h-4 w-4" /> Edit Invoice
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2">
-              <Clock className="h-4 w-4" />
-              Payment History
-            </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
             <DropdownMenu>
@@ -658,6 +651,10 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2">
+              <Clock className="h-4 w-4" />
+              Payment History
+            </Button>
             {invoiceData.balance_due > 0 && (
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
                 <CreditCard className="h-4 w-4" />Record Payment
@@ -852,36 +849,39 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             </div>
 
             <div className="mt-4 pt-4 border-t border-dashed border-gray-300 space-y-2 no-print">
-                <div className="flex justify-between text-xs text-green-700">
-                    <span className="font-medium uppercase">Amount Paid</span>
-                    <span className="font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
+              <div className="flex justify-between text-xs text-green-700">
+                <span className="font-medium uppercase">Amount Paid</span>
+                <span className="font-bold">{formatCurrency(invoiceData.amount_paid)}</span>
+              </div>
+              {debitNotes.length > 0 && (
+                <div className="flex justify-between text-xs text-amber-600">
+                  <span className="font-medium uppercase">Debit Note{debitNotes.length > 1 ? 's' : ''} Applied</span>
+                  <span className="font-bold">-{formatCurrency(getTotalDebitNoteAmount())}</span>
                 </div>
-                {debitNotes.length > 0 && (
-                    <div className="flex justify-between text-xs text-amber-600">
-                        <span className="font-medium uppercase">Debit Note{debitNotes.length > 1 ? 's' : ''} Applied</span>
-                        <span className="font-bold">-{formatCurrency(getTotalDebitNoteAmount())}</span>
-                    </div>
-                )}
-                <div className="flex justify-between text-base text-red-700 font-bold">
-                    <span className="uppercase">Balance Due</span>
-                    <span>{formatCurrency(getPendingAmount())}</span>
-                </div>
+              )}
+              <div className="flex justify-between text-base text-red-700 font-bold">
+                <span className="uppercase">Balance Due</span>
+                <span>{formatCurrency(getPendingAmount())}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="mt-12 md:mt-20 flex justify-end">
           <div className="text-center">
+            <p className="text-[10px] font-bold text-black uppercase mb-1">
+              For {businessInfo?.name}
+            </p>
             {brandingAssets?.esign_path && (
               <div className="mb-0 flex justify-center">
                 <img
                   src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                  className="h-12 md:h-16 w-auto object-contain"
+                  className="h-12 md:h-16 w-auto object-contain mix-blend-multiply"
                   alt="Signature"
                 />
               </div>
             )}
-            <div className="w-48 border-b border-black mb-1"></div>
+            <div className={`w-48 border-b border-black mb-1 ${brandingAssets?.esign_path ? '-mt-2' : 'mt-8'}`}></div>
             <p className="text-[10px] font-bold text-black uppercase tracking-wider">
               Authorized Signatory
             </p>
@@ -910,9 +910,9 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                       type="number"
                       value={paymentForm.amount || ""}
                       onChange={(e) => {
-                        const newAmount = parseFloat(e.target.value) || 0;                    
-                        setPaymentForm({ 
-                          ...paymentForm, 
+                        const newAmount = parseFloat(e.target.value) || 0;
+                        setPaymentForm({
+                          ...paymentForm,
                           amount: newAmount
                         });
                       }}
@@ -933,10 +933,10 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                       value={paymentForm.discount || ""}
                       onChange={(e) => {
                         const newDiscount = parseFloat(e.target.value) || 0;
-                        
-                        
-                        setPaymentForm({ 
-                          ...paymentForm, 
+
+
+                        setPaymentForm({
+                          ...paymentForm,
                           discount: newDiscount
                         });
                       }}
@@ -1103,7 +1103,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
               )}
             </div>
 
-            
+
             {/* Debit Note History */}
             {debitNotes.length > 0 && (
               <div className="mt-6">
@@ -1136,13 +1136,12 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                           <span className="text-sm font-bold text-amber-600 block">
                             {formatCurrency(debitNote.total_amount)}
                           </span>
-                          <span className={`capitalize px-2 py-1 rounded-full text-xs mt-1 inline-block ${
-                            debitNote.status === 'credited' 
-                              ? 'bg-purple-100 text-purple-700' 
+                          <span className={`capitalize px-2 py-1 rounded-full text-xs mt-1 inline-block ${debitNote.status === 'credited'
+                              ? 'bg-purple-100 text-purple-700'
                               : debitNote.status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
                             {debitNote.status || 'active'}
                           </span>
                         </div>

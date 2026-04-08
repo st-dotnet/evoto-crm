@@ -21,6 +21,8 @@ import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { resolveImageUrl } from "@/utils/imageUtils";
+import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
 const DebitNoteDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -43,6 +45,7 @@ const DebitNoteDetailsPage: React.FC = () => {
     payment_reference: '',
     payment_notes: ''
   });
+  const [brandingAssets, setBrandingAssets] = useState<{ logo_path?: string; esign_path?: string } | null>(null);
 
   // Helper functions
   const formatCurrency = (amount: number) => {
@@ -157,6 +160,17 @@ const DebitNoteDetailsPage: React.FC = () => {
 
   const isValidData = validateDebitNoteData(debitNoteData);
 
+  const fetchBrandingAssets = async () => {
+    try {
+      const response = await getGlobalAssets();
+      if (response.success && response.data) {
+        setBrandingAssets(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching branding assets:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) {
@@ -264,6 +278,7 @@ const DebitNoteDetailsPage: React.FC = () => {
 
     fetchData();
     fetchPayments();
+    fetchBrandingAssets();
   }, [id, navigate]);
 
   const handleDownloadPDF = async () => {
@@ -764,8 +779,20 @@ const DebitNoteDetailsPage: React.FC = () => {
 
         <div className="mt-24 flex justify-end">
           <div className="text-center">
-            <div className="w-48 border-b border-black mb-1"></div>
-            <p className="text-[10px] font-bold uppercase tracking-wider">Authorized Signatory</p>
+            <p className="text-[10px] font-bold text-black uppercase mb-1">
+              For {businessInfo.name}
+            </p>
+            {brandingAssets?.esign_path && (
+              <div className="mb-0 flex justify-center">
+                <img
+                  src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
+                  className="h-12 md:h-16 w-auto object-contain mix-blend-multiply"
+                  alt="Signature"
+                />
+              </div>
+            )}
+            <div className={`w-48 border-b border-black mb-1 ${brandingAssets?.esign_path ? '-mt-2' : 'mt-8'}`}></div>
+            <p className="text-[10px] font-bold text-black uppercase tracking-wider">Authorized Signatory</p>
           </div>
         </div>
       </div>

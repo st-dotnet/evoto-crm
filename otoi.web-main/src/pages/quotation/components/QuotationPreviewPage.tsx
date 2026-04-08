@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, FileText, Receipt, Share, Mail } from "lucide-react";
 import {
@@ -794,12 +794,12 @@ const QuotationPreviewPage: React.FC = () => {
         ref={quotationRef}
         className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12 bg-white mt-4 md:mt-8 shadow-sm overflow-hidden"
       >
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+        <div className="mb-8 flex flex-col md:flex-row print:flex-row justify-between items-center md:items-start print:items-start gap-4">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
+                <div className="mt-4 md:mt-12 print:mt-0 order-2 md:order-1 print:order-1 text-center md:text-left print:text-left">
                   <h1 className="text-2xl font-semibold text-black leading-tight">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
@@ -819,7 +819,7 @@ const QuotationPreviewPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
+                <div className="flex flex-col items-center md:items-end print:items-end -mt-0 md:-mt-8 print:mt-0 order-1 md:order-2 print:order-2">
                   {brandingAssets?.logo_path ? (
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
@@ -840,40 +840,36 @@ const QuotationPreviewPage: React.FC = () => {
         </div>
 
         {/* Metadata section - Mobile Bordered Box vs Desktop/Print Grid */}
-        <div className="md:grid md:grid-cols-3 gap-0 mb-8 md:mb-12 border border-black overflow-hidden print:grid print:grid-cols-3 print:mb-12">
-          {/* Desktop/Print Labels Row */}
-          <div className="px-4 py-1 border-b border-black md:border-r-0 bg-gray-100 hidden md:block print:block">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Quotation No.
-            </p>
-          </div>
-          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100 hidden md:block print:block">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Quotation Date
-            </p>
-          </div>
-          <div className="px-4 py-1 border-b border-black text-right bg-gray-100 hidden md:block print:block">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Expiry Date
-            </p>
-          </div>
-
-          {/* Desktop/Print Values or Mobile Box */}
-          <div className="md:contents hidden print:contents">
-            <div className="px-4 py-1 border-r border-black">
-              <p className="text-[14px] font-normal text-black">{quotationData.quotationNo}</p>
-            </div>
-            <div className="px-4 py-1 border-r border-black text-center">
-              <p className="text-[14px] font-normal text-black">
-                {new Date(quotationData.quotationDate).toLocaleDateString("en-IN")}
-              </p>
-            </div>
-            <div className="px-4 py-1 text-right">
-              <p className="text-[14px] font-normal text-black">
-                {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
-              </p>
-            </div>
-          </div>
+        <div className="mb-8 md:mb-12 border border-black print:mb-3">
+          {/* Desktop/Print Table */}
+          <table className="w-full hidden md:table print:table">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="px-4 py-1 text-left text-[11px] font-semibold text-black uppercase border-r border-black w-1/3">
+                  Quotation No.
+                </th>
+                <th className="px-4 py-1 text-center text-[11px] font-semibold text-black uppercase border-r border-black w-1/3">
+                  Quotation Date
+                </th>
+                <th className="px-4 py-1 text-right text-[11px] font-semibold text-black uppercase w-1/3">
+                  Expiry Date
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="px-4 py-1 text-left text-[14px] font-normal text-black border-r border-black">
+                  {quotationData.quotationNo}
+                </td>
+                <td className="px-4 py-1 text-center text-[14px] font-normal text-black border-r border-black">
+                  {new Date(quotationData.quotationDate).toLocaleDateString("en-IN")}
+                </td>
+                <td className="px-4 py-1 text-right text-[14px] font-normal text-black">
+                  {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           {/* Mobile-only Bordered Box */}
           <div className="block md:hidden print:hidden">
@@ -1310,12 +1306,12 @@ const QuotationPreviewPage: React.FC = () => {
                   <div className="mb-0 flex justify-center">
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                      className="h-12 md:h-16 w-auto object-contain"
+                      className="h-12 md:h-20 w-auto object-contain mix-blend-multiply"
                       alt="Signature"
                     />
                   </div>
                 )}
-                <div className="w-full md:w-48 border-b border-black mb-1 print:w-48"></div>
+                <div className="w-full md:w-48 border-b border-black mb-1 print:w-48 mx-auto"></div>
                 <p className="text-[10px] font-bold text-black uppercase tracking-wider">
                   Authorized Signatory
                 </p>

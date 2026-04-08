@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock, Mail } from "lucide-react";
 import {
@@ -208,18 +208,18 @@ const InvoiceDetailsPage: React.FC = () => {
               setInvoiceData((prev) =>
                 prev
                   ? {
-                      ...prev,
-                      customer: {
-                        ...prev.customer,
-                        ...customerRes.data,
-                        billing_address:
-                          customerRes.data.billing_address ||
-                          prev.customer?.billing_address,
-                        shipping_address:
-                          customerRes.data.shipping_address ||
-                          prev.customer?.shipping_address,
-                      },
-                    }
+                    ...prev,
+                    customer: {
+                      ...prev.customer,
+                      ...customerRes.data,
+                      billing_address:
+                        customerRes.data.billing_address ||
+                        prev.customer?.billing_address,
+                      shipping_address:
+                        customerRes.data.shipping_address ||
+                        prev.customer?.shipping_address,
+                    },
+                  }
                   : null,
               );
             }
@@ -273,9 +273,9 @@ const InvoiceDetailsPage: React.FC = () => {
     const manualBalance = Math.max(
       0,
       invoiceData.total_amount -
-        creditNotesTotal -
-        (invoiceData.amount_paid || 0) -
-        (invoiceData.payment_discount || 0),
+      creditNotesTotal -
+      (invoiceData.amount_paid || 0) -
+      (invoiceData.payment_discount || 0),
     );
     return manualBalance;
   };
@@ -764,8 +764,8 @@ const InvoiceDetailsPage: React.FC = () => {
     let address =
       type === "shipping"
         ? customer.shipping_address ||
-          customer.shippingAddress ||
-          customer.shipping_addresses
+        customer.shippingAddress ||
+        customer.shipping_addresses
         : customer.billing_address || customer.billingAddress;
 
     if (Array.isArray(address)) {
@@ -847,19 +847,38 @@ const InvoiceDetailsPage: React.FC = () => {
       <style>
         {`
           @media print {
+            /* Hide all layout elements */
             .sidebar, .header, .footer, .topbar, .no-print, [data-kt-app-sidebar-enabled="true"] .app-sidebar, [data-kt-app-header-enabled="true"] .app-header {
               display: none !important;
             }
+            
+            /* Reset body background and margins */
             body {
               background-color: white !important;
               margin: 0 !important;
               padding: 0 !important;
             }
+
+            /* Reset Metronic layout wrapper */
+            .wrapper {
+              padding: 0 !important;
+              padding-top: 0 !important;
+              padding-inline-start: 0 !important;
+            }
+
+            /* Reset main content area */
+            main.content, [role="content"] {
+              padding: 0 !important;
+            }
+
+            /* Container adjustments */
             .min-h-screen {
               min-height: auto !important;
               background: none !important;
               padding: 0 !important;
             }
+
+            /* Main content width and positioning */
             #invoice-print-area {
               margin: 0 !important;
               padding: 0 !important;
@@ -870,6 +889,8 @@ const InvoiceDetailsPage: React.FC = () => {
               left: 0 !important;
               top: 0 !important;
             }
+
+            /* Ensure text colors are black */
             * {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
@@ -934,14 +955,14 @@ const InvoiceDetailsPage: React.FC = () => {
       <div
         id="invoice-print-area"
         ref={invoiceRef}
-        className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12 bg-white mt-4 md:mt-8 shadow-sm overflow-hidden"
+        className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12 bg-white mt-4 md:mt-8 shadow-sm overflow-hidden print:overflow-visible"
       >
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+        <div className="mb-8 flex flex-col md:flex-row print:flex-row justify-between items-center md:items-start print:items-start gap-4">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
+                <div className="mt-4 md:mt-12 print:mt-0 order-2 md:order-1 print:order-1 text-center md:text-left print:text-left">
                   <h1 className="text-2xl font-semibold text-black leading-tight">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
@@ -961,7 +982,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
+                <div className="flex flex-col items-center md:items-end print:items-end -mt-0 md:-mt-8 print:mt-0 order-1 md:order-2 print:order-2">
                   {brandingAssets?.logo_path ? (
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
@@ -982,9 +1003,39 @@ const InvoiceDetailsPage: React.FC = () => {
         </div>
 
         {/* Invoice Details Metadata Box */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-0 mb-8 md:mb-12 border border-black overflow-hidden print:grid-cols-3 print:mb-12">
+        <div className="mb-8 md:mb-12 border border-black print:mb-3">
+          {/* Desktop/Print Table */}
+          <table className="w-full hidden md:table print:table">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="px-4 py-1 text-left text-[11px] font-semibold text-black uppercase border-r border-black w-1/3">
+                  Invoice No.
+                </th>
+                <th className="px-4 py-1 text-center text-[11px] font-semibold text-black uppercase border-r border-black w-1/3">
+                  Invoice Date
+                </th>
+                <th className="px-4 py-1 text-right text-[11px] font-semibold text-black uppercase w-1/3">
+                  Due Date
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="px-4 py-1 text-left text-[14px] font-normal text-black border-r border-black">
+                  {invoiceData.invoice_number}
+                </td>
+                <td className="px-4 py-1 text-center text-[14px] font-normal text-black border-r border-black">
+                  {new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}
+                </td>
+                <td className="px-4 py-1 text-right text-[14px] font-normal text-black">
+                  {new Date(invoiceData.due_date).toLocaleDateString("en-IN")}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
           {/* Mobile Layout (Labels and values paired) */}
-          <div className="md:hidden divide-y divide-black">
+          <div className="md:hidden print:hidden divide-y divide-black">
             <div className="px-4 py-2 flex justify-between h-auto">
               <span className="text-[11px] font-bold text-black uppercase">Invoice No.</span>
               <span className="text-sm font-normal text-black">{invoiceData.invoice_number}</span>
@@ -996,37 +1047,6 @@ const InvoiceDetailsPage: React.FC = () => {
             <div className="px-4 py-2 flex justify-between h-auto">
               <span className="text-[11px] font-bold text-black uppercase">Due Date</span>
               <span className="text-sm font-normal text-black">{new Date(invoiceData.due_date).toLocaleDateString("en-IN")}</span>
-            </div>
-          </div>
-
-          {/* Desktop/Print Layout */}
-          <div className="hidden md:contents print:contents">
-            {/* Labels Row */}
-            <div className="px-4 py-1 border-b border-black bg-gray-100">
-              <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
-            </div>
-            <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-              <p className="text-[11px] font-semibold text-black uppercase">Invoice Date</p>
-            </div>
-            <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-              <p className="text-[11px] font-semibold text-black uppercase">Due Date</p>
-            </div>
-
-            {/* Values Row */}
-            <div className="px-4 py-1">
-              <p className="text-[14px] font-normal text-black">
-                {invoiceData.invoice_number}
-              </p>
-            </div>
-            <div className="px-4 py-1 border-x border-black text-center">
-              <p className="text-[14px] font-normal text-black">
-                {new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}
-              </p>
-            </div>
-            <div className="px-4 py-1 text-right">
-              <p className="text-[14px] font-normal text-black">
-                {new Date(invoiceData.due_date).toLocaleDateString("en-IN")}
-              </p>
             </div>
           </div>
         </div>
@@ -1458,16 +1478,19 @@ const InvoiceDetailsPage: React.FC = () => {
             {/* ===== Signature ===== */}
             <div className="mt-12 md:mt-20 flex justify-end">
               <div className="text-center">
+                <p className="text-[10px] font-bold text-black uppercase mb-1">
+                  For {getAuthBusinessInfo().name}
+                </p>
                 {brandingAssets?.esign_path && (
                   <div className="mb-0 flex justify-center">
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.esign_path}`)}
-                      className="h-12 md:h-16 w-auto object-contain"
+                      className="h-12 md:h-20 w-auto object-contain mix-blend-multiply"
                       alt="Signature"
                     />
                   </div>
                 )}
-                <div className="w-48 border-b border-black mb-1"></div>
+                <div className={`w-full md:w-48 border-b border-black mb-1 print:w-48 mx-auto ${brandingAssets?.esign_path ? '-mt-2' : 'mt-12'}`}></div>
                 <p className="text-[10px] font-bold text-black uppercase tracking-wider">
                   Authorized Signatory
                 </p>
@@ -1565,13 +1588,12 @@ const InvoiceDetailsPage: React.FC = () => {
                             ).toLocaleDateString("en-IN")}
                           </span>
                           <span
-                            className={`capitalize px-2 py-1 rounded-full text-xs ${
-                              creditNote.status === "refunded"
-                                ? "bg-red-100 text-red-700"
-                                : creditNote.status === "active"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-700"
-                            }`}
+                            className={`capitalize px-2 py-1 rounded-full text-xs ${creditNote.status === "refunded"
+                              ? "bg-red-100 text-red-700"
+                              : creditNote.status === "active"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-700"
+                              }`}
                           >
                             {creditNote.status || "active"}
                           </span>
@@ -1653,7 +1675,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         min="0"
                         value={
                           paymentForm.amountReceived === null ||
-                          paymentForm.amountReceived === 0
+                            paymentForm.amountReceived === 0
                             ? ""
                             : roundToTwo(paymentForm.amountReceived)
                         }
@@ -1699,7 +1721,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         min="0"
                         value={
                           paymentForm.discount === null ||
-                          paymentForm.discount === 0
+                            paymentForm.discount === 0
                             ? ""
                             : roundToTwo(paymentForm.discount)
                         }
@@ -1896,8 +1918,8 @@ const InvoiceDetailsPage: React.FC = () => {
                             Math.max(
                               0,
                               getPendingAmount() -
-                                paymentForm.amountReceived -
-                                paymentForm.discount,
+                              paymentForm.amountReceived -
+                              paymentForm.discount,
                             ),
                           )}
                         </span>

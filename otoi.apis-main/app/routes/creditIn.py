@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
@@ -810,7 +810,8 @@ def get_credit_note(credit_note_id):
         # Get items
         items = []
         for item in credit_note.items:
-            items.append({
+            # Prepare item base data
+            item_info = {
                 "uuid": str(item.uuid),
                 "item_id": str(item.item_id) if item.item_id else None,
                 "item_name": item.item.item_name if item.item else None,
@@ -820,8 +821,27 @@ def get_credit_note(credit_note_id):
                 "unit_price": float(item.unit_price),
                 "discount": item.discount,
                 "tax": item.tax,
-                "total_price": float(item.total_price)
-            })
+                "total_price": float(item.total_price),
+                "image": None
+            }
+            
+            # Fetch product details including images if item_id exists
+            if item.item_id:
+                inventory_item = Item.query.get(item.item_id)
+                if inventory_item:
+                    # Update HSN/SAC code if missing
+                    if not item_info["hsn_sac_code"]:
+                        item_info["hsn_sac_code"] = inventory_item.hsn_code
+                    
+                    # Get the main image
+                    main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
+                    if not main_image_obj and inventory_item.images:
+                        main_image_obj = inventory_item.images[0]
+                    
+                    if main_image_obj:
+                        item_info["image"] = f"/static/itemImages/{main_image_obj.item_id}/{main_image_obj.image}"
+            
+            items.append(item_info)
         
         # Get payments
         payments = []
