@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_cors import CORS
-from app.models import Invoice, Quotation, PurchaseOrder, PurchaseInvoice, Item
+from app.models import Invoice, Quotation, PurchaseOrder, PurchaseInvoice, Item, CreditNote, DebitNote
 from app.extensions import db
 from app.services.mail_service import send_email
 from app.services.pdf_service import (
@@ -147,6 +147,16 @@ def get_share_data(uuid):
             number_field = 'invoice_number'
             date_field = 'invoice_date'
             display_type = 'Purchase Invoice'
+        elif obj_type == 'credit_note':
+            entity = CreditNote.query.filter_by(uuid=uuid).first()
+            number_field = 'credit_note_number'
+            date_field = 'credit_note_date'
+            display_type = 'Credit Note'
+        elif obj_type == 'debit_note':
+            entity = DebitNote.query.filter_by(uuid=uuid).first()
+            number_field = 'debit_note_number'
+            date_field = 'debit_note_date'
+            display_type = 'Debit Note'
 
         if not entity:
             return jsonify({"success": False, "error": f"{obj_type} not found"}), 404
@@ -156,7 +166,7 @@ def get_share_data(uuid):
         api_base_url = get_base_url()
         public_pdf_url = f"{api_base_url}/api/share-data/public/pdf/{token}"
         
-        contact = entity.customer if obj_type in ['invoice', 'quotation'] else entity.vendor
+        contact = entity.customer if obj_type in ['invoice', 'quotation', 'credit_note'] else entity.vendor
         doc_number = getattr(entity, number_field, "N/A")
         total_amount = float(getattr(entity, 'total_amount', 0))
         doc_date_obj = getattr(entity, date_field, datetime.datetime.now())
@@ -218,6 +228,16 @@ def get_public_pdf(token):
             entity = PurchaseInvoice.query.filter_by(uuid=uuid).first()
             pdf_func = generate_purchase_invoice_pdf
             filename = f"PurchaseInv_{entity.invoice_number}.pdf" if entity else filename
+        elif obj_type == 'credit_note':
+            from app.services.pdf_service import generate_credit_note_pdf
+            entity = CreditNote.query.filter_by(uuid=uuid).first()
+            pdf_func = generate_credit_note_pdf
+            filename = f"CreditNote_{entity.credit_note_number}.pdf" if entity else filename
+        elif obj_type == 'debit_note':
+            from app.services.pdf_service import generate_debit_note_pdf
+            entity = DebitNote.query.filter_by(uuid=uuid).first()
+            pdf_func = generate_debit_note_pdf
+            filename = f"DebitNote_{entity.debit_note_number}.pdf" if entity else filename
 
         if not entity:
             return "Document not found", 404
@@ -263,11 +283,19 @@ def send_share_email():
             entity = PurchaseInvoice.query.filter_by(uuid=uuid).first()
             number_field = 'invoice_number'
             display_type = 'Purchase Invoice'
+        elif obj_type == 'credit_note':
+            entity = CreditNote.query.filter_by(uuid=uuid).first()
+            number_field = 'credit_note_number'
+            display_type = 'Credit Note'
+        elif obj_type == 'debit_note':
+            entity = DebitNote.query.filter_by(uuid=uuid).first()
+            number_field = 'debit_note_number'
+            display_type = 'Debit Note'
 
         if not entity:
             return jsonify({"success": False, "error": "Document not found"}), 404
 
-        contact = entity.customer if obj_type in ['invoice', 'quotation'] else entity.vendor
+        contact = entity.customer if obj_type in ['invoice', 'quotation', 'credit_note'] else entity.vendor
         email_to = target_email or (contact.email if contact else None)
         
         if not email_to:

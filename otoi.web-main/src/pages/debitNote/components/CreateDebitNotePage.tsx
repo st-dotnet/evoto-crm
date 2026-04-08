@@ -1659,7 +1659,7 @@ const CreateDebitNotePage = () => {
                                                         <Input
                                                             type="number"
                                                             value={item.quantity}
-                                                            min="0"
+                                                            min="1"
                                                             step="1"
                                                             max={debitNoteData.linkToInvoice !== '' ? item.originalQty : undefined}
                                                             className={`w-full min-w-[50px] ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}
