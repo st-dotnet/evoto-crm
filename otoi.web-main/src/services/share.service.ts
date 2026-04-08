@@ -31,7 +31,7 @@ const getAuthToken = (): string | null => {
     }
 };
 
-export const getShareData = async (uuid: string, type: 'invoice' | 'quotation' | 'purchase_order' | 'purchase_invoice'): Promise<ApiResponse<ShareData>> => {
+export const getShareData = async (uuid: string, type: 'invoice' | 'quotation' | 'purchase_order' | 'purchase_invoice' | 'credit_note' | 'debit_note'): Promise<ApiResponse<ShareData>> => {
     const token = getAuthToken();
     try {
         const response = await axios.get(`${API_URL}/share-data/${uuid}?type=${type}`, {
