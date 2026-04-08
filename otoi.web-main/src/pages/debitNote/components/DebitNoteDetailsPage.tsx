@@ -9,13 +9,22 @@ import {
   Plus,
   CreditCard,
   Share,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { KeenIcon } from "@/components/keenicons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { getDebitNoteById, getDebitNotePayments, createDebitNotePayment, getVendorById } from '../service/debitNote.service';
+import { getShareData, sendShareEmail } from "@/services/share.service";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
@@ -43,6 +52,7 @@ const DebitNoteDetailsPage: React.FC = () => {
     payment_reference: '',
     payment_notes: ''
   });
+  const [isFetchingShareData, setIsFetchingShareData] = useState(false);
 
   // Helper functions
   const formatCurrency = (amount: number) => {
@@ -167,7 +177,7 @@ const DebitNoteDetailsPage: React.FC = () => {
       try {
         // Check if data was passed from navigation state
         const passedData = location.state?.debitNoteData;
-        
+
         let response;
         if (passedData && passedData.uuid) {
           // Use passed data to avoid re-fetching
@@ -227,7 +237,7 @@ const DebitNoteDetailsPage: React.FC = () => {
             }
           }
         } else {
-          console.error("❌ Failed to load debit note:", response);
+          console.error("Failed to load debit note:", response);
           const errorMessage = response.error || "Failed to load debit note";
           if (errorMessage.includes('not found') || errorMessage.includes('500') || errorMessage.includes('Server error')) {
             toast.error('Debit note not found. It may have been deleted or does not exist.');
@@ -237,7 +247,7 @@ const DebitNoteDetailsPage: React.FC = () => {
           navigate("/debit-note");
         }
       } catch (error: any) {
-        console.error("❌ Error fetching debit note:", error);
+        console.error("Error fetching debit note:", error);
         const errorMessage = (error as any)?.error || (error as any)?.message || (error as any)?.response?.data?.error || "Failed to load debit note";
         if (errorMessage.includes('not found') || errorMessage.includes('500') || errorMessage.includes('Server error')) {
           toast.error('Debit note not found. It may have been deleted or does not exist.');
@@ -316,37 +326,44 @@ const DebitNoteDetailsPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  const handleShare = async () => {
+  const handleShareWhatsApp = async () => {
     if (!debitNoteData) return;
-
-    const shareUrl = `${window.location.origin}/debit-note/${id}`;
-    const shareText = `Debit Note #${debitNoteData.debit_note_number} - Amount: ${formatCurrency(debitNoteData.total_amount || 0)}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Debit Note #${debitNoteData.debit_note_number}`,
-          text: shareText,
-          url: shareUrl
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-        fallbackShare(shareUrl, shareText);
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Preparing share options...");
+    try {
+      const response = await getShareData(debitNoteData.uuid, 'debit_note');
+      if (response.success && response.data) {
+        const { message, contact } = response.data;
+        const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp...", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to fetch share data");
       }
-    } else {
-      fallbackShare(shareUrl, shareText);
+    } catch (error: any) {
+      console.error("Share error:", error);
+      toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
     }
   };
 
-  const fallbackShare = (url: string, text: string) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(`${text}\n${url}`).then(() => {
-        toast.success("Link copied to clipboard!");
-      }).catch(() => {
-        toast.error("Failed to copy link");
-      });
-    } else {
-      toast.error("Sharing not supported on this device");
+  const handleShareEmail = async () => {
+    if (!debitNoteData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Sending email...");
+    try {
+      const response = await sendShareEmail(debitNoteData.uuid, 'debit_note');
+      if (response.success) {
+        toast.success("Email sent successfully!", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      console.error("Email error:", error);
+      toast.error(error.message || "Failed to send email", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
     }
   };
 
@@ -492,9 +509,24 @@ const DebitNoteDetailsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
-              <Share className="h-4 w-4" />Share
-            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" /> Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer text-sm">
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer text-sm">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/debit-note/${id}/edit`)} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
           </div>
         </div>
       </div>
@@ -664,15 +696,15 @@ const DebitNoteDetailsPage: React.FC = () => {
                     {item.discount && item.discount.discount_percentage > 0
                       ? `${item.discount.discount_percentage}% (${formatCurrency(item.discount.discount_amount)})`
                       : typeof item.discount === 'number' && item.discount > 0
-                      ? `${item.discount}%`
-                      : "-"}
+                        ? `${item.discount}%`
+                        : "-"}
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
                     {item.tax && item.tax.tax_percentage > 0
                       ? `${item.tax.tax_percentage}% (${formatCurrency(item.tax.tax_amount)})`
                       : typeof item.tax === 'number' && item.tax > 0
-                      ? `${item.tax}%`
-                      : "-"}
+                        ? `${item.tax}%`
+                        : "-"}
                   </td>
                   <td className="p-2 text-right font-medium align-top whitespace-nowrap text-red-600">{formatCurrency(item.total_price || item.amount)}</td>
                 </tr>

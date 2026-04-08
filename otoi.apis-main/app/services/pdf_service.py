@@ -867,3 +867,143 @@ def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
 
     return _render_pdf("pdf/purchase_order.html", context)
 
+
+# ── Credit Note PDF ──────────────────────────────────────────────────────────
+
+def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Credit Note.
+    """
+    business = credit_note.business
+    customer = credit_note.customer
+
+    business_address = None
+    if business and business.addresses:
+        business_address = business.addresses[0]
+
+    charges = credit_note.charges or {}
+    notes = credit_note.additional_notes or {}
+
+    items = []
+    for item in items_data:
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description": item.get("description", ""),
+            "quantity": item.get("quantity", 0),
+            "unit_price": item.get("unit_price", 0),
+            "discount": item.get("discount") or {},
+            "tax": item.get("tax") or {},
+            "total_price": item.get("total_price", 0),
+        })
+
+    context = {
+        "credit_note": {
+            "credit_note_number": credit_note.credit_note_number,
+            "credit_note_date": credit_note.credit_note_date.strftime("%d %b %Y") if credit_note.credit_note_date else "—",
+            "invoice_number": getattr(credit_note, 'invoice_number', "—") or (credit_note.invoice.invoice_number if credit_note.invoice else "—"),
+            "total_amount": float(credit_note.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(credit_note.total_amount or 0)),
+            "status": credit_note.status,
+        },
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name": business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email": business.email if business else "",
+            "gst_number": business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1 if business_address else "",
+            "city": business_address.city if business_address else "",
+            "state": business_address.state if business_address else "",
+            "pin": business_address.pin if business_address else "",
+        },
+        "customer": {
+            "first_name": customer.first_name if customer else "",
+            "last_name": customer.last_name if customer else "",
+            "mobile": customer.mobile if customer else "",
+            "email": customer.email if customer else "",
+            "gst": customer.gst if customer else "",
+            "address1": customer.address1 if customer else "",
+            "city": customer.city if customer else "",
+            "state": customer.state if customer else "",
+        },
+        "charges": charges,
+        "notes": notes,
+        "items": items,
+    }
+
+    return _render_pdf("pdf/credit_note.html", context)
+
+
+# ── Debit Note PDF ───────────────────────────────────────────────────────────
+
+def generate_debit_note_pdf(debit_note, items_data: list) -> BytesIO:
+    """
+    Generate a professional A4 PDF for a Debit Note.
+    """
+    business = debit_note.business
+    vendor = debit_note.vendor
+
+    business_address = None
+    if business and business.addresses:
+        business_address = business.addresses[0]
+
+    charges = debit_note.charges or {}
+    notes = debit_note.additional_notes or {}
+
+    items = []
+    for item in items_data:
+        items.append({
+            "product_name": item.get("product_name", ""),
+            "description": item.get("description", ""),
+            "quantity": item.get("quantity", 0),
+            "unit_price": item.get("unit_price", 0),
+            "discount": item.get("discount") or {},
+            "tax": item.get("tax") or {},
+            "total_price": item.get("total_price", 0),
+        })
+
+    context = {
+        "debit_note": {
+            "debit_note_number": debit_note.debit_note_number,
+            "debit_note_date": debit_note.debit_note_date.strftime("%d %b %Y") if debit_note.debit_note_date else "—",
+            "invoice_number": debit_note.invoice_number or "—",
+            "total_amount": float(debit_note.total_amount or 0),
+            "amount_in_words": get_amount_in_words(float(debit_note.total_amount or 0)),
+            "status": debit_note.status,
+        },
+        "logo_data_uri": get_logo_data_uri(business.id if business else None),
+        "esign_data_uri": get_esign_data_uri(business.id if business else None),
+        "roboto_font_path": get_font_path(),
+        "business": {
+            "name": business.name if business else "",
+            "phone_number": business.phone_number if business else "",
+            "email": business.email if business else "",
+            "gst_number": business.gst_number if business else "",
+        },
+        "business_address": {
+            "address1": business_address.address1 if business_address else "",
+            "city": business_address.city if business_address else "",
+            "state": business_address.state if business_address else "",
+            "pin": business_address.pin if business_address else "",
+        },
+        "vendor": {
+            "vendor_name": vendor.vendor_name if vendor else "",
+            "mobile": vendor.mobile if vendor else "",
+            "email": vendor.email if vendor else "",
+            "gst": vendor.gst if vendor else "",
+            "address1": vendor.address1 if vendor else "",
+            "city": vendor.city if vendor else "",
+            "state": vendor.state if vendor else "",
+        } if vendor else None,
+        "charges": charges,
+        "notes": notes,
+        "items": items,
+    }
+
+    return _render_pdf("pdf/debit_note.html", context)
+
+

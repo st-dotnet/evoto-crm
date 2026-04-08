@@ -8,11 +8,20 @@ import {
   Edit,
   FileText,
   Clock,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { KeenIcon } from "@/components/keenicons";
 import { toast } from "sonner";
 import { getCreditNoteById } from '../service/creditIn.service';
 import { getCustomerById } from "@/pages/parties/services/customer.service";
+import { getShareData, sendShareEmail } from "@/services/share.service";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
@@ -95,6 +104,7 @@ const CreditInDetailsPage: React.FC = () => {
   const { currentUser } = useAuthContext();
   const [creditNoteData, setCreditNoteData] = useState<CreditNoteData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingShareData, setIsFetchingShareData] = useState(false);
 
   const creditNoteRef = useRef<HTMLDivElement>(null);
 
@@ -226,42 +236,44 @@ const CreditInDetailsPage: React.FC = () => {
     document.title = originalTitle;
   };
 
-  const handleShare = async () => {
-    if (!creditNoteRef.current) return;
-    const shareToast = toast.loading("Preparing for share...");
+  const handleShareWhatsApp = async () => {
+    if (!creditNoteData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Preparing share options...");
     try {
-      const canvas = await html2canvas(creditNoteRef.current, { scale: 2 });
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error("Failed to generate blob"));
-        }, "image/png"),
-      );
-      const file = new File(
-        [blob],
-        `Credit-Note-${creditNoteData?.credit_note_number}.png`,
-        { type: "image/png" },
-      );
-
-      if (navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: `Credit Note ${creditNoteData?.credit_note_number}`,
-          text: `Check out our credit note: ${creditNoteData?.credit_note_number}`,
-        });
-        toast.success("Shared successfully", { id: shareToast });
+      const response = await getShareData(creditNoteData.uuid, 'credit_note');
+      if (response.success && response.data) {
+        const { message, contact } = response.data;
+        const whatsappUrl = `https://wa.me/${contact?.mobile || ""}?text=${encodeURIComponent(message || "")}`;
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp...", { id: fetchToast });
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Credit-Note-${creditNoteData?.credit_note_number}.png`;
-        a.click();
-        toast.success("Image saved (Direct sharing not supported)", {
-          id: shareToast,
-        });
+        throw new Error(response.error || "Failed to fetch share data");
       }
-    } catch (error) {
-      toast.error("Failed to share", { id: shareToast });
+    } catch (error: any) {
+      console.error("Share error:", error);
+      toast.error(error.message || "Failed to prepare share link", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
+    }
+  };
+
+  const handleShareEmail = async () => {
+    if (!creditNoteData) return;
+    setIsFetchingShareData(true);
+    const fetchToast = toast.loading("Sending email...");
+    try {
+      const response = await sendShareEmail(creditNoteData.uuid, 'credit_note');
+      if (response.success) {
+        toast.success("Email sent successfully!", { id: fetchToast });
+      } else {
+        throw new Error(response.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      console.error("Email error:", error);
+      toast.error(error.message || "Failed to send email", { id: fetchToast });
+    } finally {
+      setIsFetchingShareData(false);
     }
   };
 
@@ -654,33 +666,26 @@ const CreditInDetailsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintPDF}
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="gap-2"
-            >
-              <Share className="h-4 w-4" />
-              Share
-            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" /> Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer text-sm">
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer text-sm">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
           </div>
         </div>
       </div>
