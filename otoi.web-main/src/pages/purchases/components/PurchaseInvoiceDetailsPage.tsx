@@ -244,7 +244,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
 
   const handleViewDebitNoteDetails = (debitNoteId: string) => {
     // Navigate to debit note details page
-    navigate(`/debit-notes/${debitNoteId}`);
+    navigate(`/debit-note/view/${debitNoteId}`);
   };
 
   const getTotalDebitNoteAmount = () => {

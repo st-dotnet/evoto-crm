@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
@@ -926,6 +926,9 @@ def update_credit_note(credit_note_id):
             return jsonify({"success": False, "error": f"Cannot update credit note with status: {credit_note.status}"}), 400
         
         data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
         
         # Update basic fields
         if "customer_id" in data:
@@ -979,6 +982,21 @@ def update_credit_note(credit_note_id):
             credit_note.round_off_amount = totals["round_off_amount"]
             credit_note.auto_round_off = auto_round_off
         
+        # Handle "mark as fully paid" functionality
+        if "mark_as_fully_paid" in data and data["mark_as_fully_paid"]:
+            # Validation for fully paid
+            if credit_note.status == "refunded":
+                return jsonify({
+                    "success": False,
+                    "error": "Credit note is already marked as fully refunded"
+                }), 400
+            
+            # Set status to refunded
+            credit_note.status = "refunded"
+            credit_note.mark_as_fully_paid = True
+            credit_note.amount_received = float(credit_note.total_amount)
+            credit_note.balance_amount = 0
+        
         # Update charges if provided (without items)
         elif "charges" in data:
             charges_data = data["charges"]
@@ -990,6 +1008,56 @@ def update_credit_note(credit_note_id):
             
             credit_note.total_amount = totals["total_amount"]
             credit_note.balance_amount = credit_note.total_amount - float(credit_note.amount_received)
+        
+        # Handle status updates with validation
+        if "status" in data:
+            new_status = data["status"]
+            
+            # Validation for 'refunded' status (fully paid)
+            if new_status == "refunded":
+                # Check if status is already refunded
+                if credit_note.status == "refunded":
+                    return jsonify({
+                        "success": False,
+                        "error": "Credit note is already marked as fully refunded"
+                    }), 400
+                
+                # Ensure amount_received equals total_amount for refunded status
+                amount_received = float(data.get('amount_received', credit_note.amount_received))
+                total_amount = float(credit_note.total_amount)
+                
+                # Round both values to 2 decimal places for comparison
+                amount_received_rounded = round(amount_received, 2)
+                total_amount_rounded = round(total_amount, 2)
+                
+                if amount_received_rounded != total_amount_rounded:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Amount received ({amount_received_rounded}) must equal total amount ({total_amount_rounded}) to mark as fully refunded"
+                    }), 400
+                
+                # Set balance_amount to 0 for refunded status
+                credit_note.balance_amount = 0
+                credit_note.amount_received = total_amount
+                credit_note.mark_as_fully_paid = True
+            else:
+                # Prevent reverting from 'refunded' status
+                if credit_note.status == "refunded":
+                    return jsonify({
+                        "success": False,
+                        "error": "Cannot change status from refunded (fully paid)"
+                    }), 400
+            
+            credit_note.status = new_status
+        
+        # Update amount_received and balance_amount if provided
+        if "amount_received" in data:
+            credit_note.amount_received = data["amount_received"]
+            # Recalculate balance_amount
+            credit_note.balance_amount = float(credit_note.total_amount) - float(data["amount_received"])
+        
+        if "balance_amount" in data:
+            credit_note.balance_amount = data["balance_amount"]
         
         # Set audit fields
         set_updated_fields(credit_note)
@@ -1003,6 +1071,7 @@ def update_credit_note(credit_note_id):
                 update_invoice_payment_status(credit_note.invoice_id)
             except Exception as e:
                 # Log error but don't fail the credit note update
+                current_app.logger.error(f"Error updating invoice status: {str(e)}")
                 pass
         
         return jsonify({
@@ -1023,7 +1092,8 @@ def update_credit_note(credit_note_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": "An error occurred", "details": str(e)}), 500
+        current_app.logger.error(f"Error in credit note update processing: {str(e)}")
+        return jsonify({"success": False, "error": f"Processing error: {str(e)}"}), 500
 
 @credit_note_blueprint.route("/<uuid:credit_note_id>", methods=["DELETE"])
 @login_required

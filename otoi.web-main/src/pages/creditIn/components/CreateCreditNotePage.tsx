@@ -612,6 +612,9 @@ const CreateCreditNotePage = () => {
     const roundedTotalAmount = Math.round(totalAmount * 100) / 100;
     const roundedRoundOffAmount = Math.round(roundOffAmount * 100) / 100;
 
+    // Calculate balance amount
+    const balanceAmount = roundedTotalAmount - (creditNoteData.amountReceived || 0);
+
     setCreditNoteData((prev) => {
       const newData = {
         ...prev,
@@ -620,6 +623,7 @@ const CreateCreditNotePage = () => {
         total_tax: roundedTotalTax,
         totalAmount: roundedTotalAmount,
         round_off_amount: roundedRoundOffAmount,
+        balanceAmount: balanceAmount,
       };
       return newData;
     });
@@ -1044,11 +1048,21 @@ const CreateCreditNotePage = () => {
         tax: item.tax,
       }));
 
+      // Determine status based on checkbox and invoice linking
+      let finalStatus = creditNoteData.status || "draft";
+      if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
+        finalStatus = 'refunded';
+      } else if (!isEditMode && creditNoteData.linkToInvoice) {
+        finalStatus = 'refunded';
+      } else if (!isEditMode) {
+        finalStatus = 'unpaid';
+      }
+
       const creditNotePayload = {
         creditNoteNo: creditNoteData.creditNoteNo,
         creditNoteDate: creditNoteData.creditNoteDate,
         linkToInvoice: creditNoteData.linkToInvoice,
-        status: creditNoteData.status || "draft",
+        status: finalStatus,
         selectedCustomer: selectedCustomer,
         creditNoteItems: transformedItems,
         notes: creditNoteData.notes || "",
@@ -1060,7 +1074,11 @@ const CreateCreditNotePage = () => {
         total_tax: creditNoteData.total_tax || 0,
         taxable_amount: creditNoteData.taxableAmount || 0,
         round_off_amount: creditNoteData.round_off_amount || 0,
-        // Backend will calculate: subtotal, total_discount, total_tax, total_amount, etc.
+        // Add fully paid fields if checkbox is checked
+        ...(isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded' && {
+          amount_received: creditNoteData.totalAmount,
+          balance_amount: 0
+        })
       };
 
       let response;
@@ -1073,10 +1091,25 @@ const CreateCreditNotePage = () => {
       }
 
       if (response.success) {
-        const successMessage = isEditMode
-          ? "Credit note updated successfully"
-          : "Credit note created successfully";
-        toast.success(successMessage);
+        // Show appropriate success message
+        if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
+          toast.success('Credit note marked as fully refunded and updated successfully');
+        } else {
+          const successMessage = isEditMode
+            ? "Credit note updated successfully"
+            : "Credit note created successfully";
+          toast.success(successMessage);
+        }
+        
+        // Update local state if marked as fully paid
+        if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
+          setCreditNoteData(prev => ({
+            ...prev,
+            status: 'refunded',
+            amountReceived: prev.totalAmount,
+            balanceAmount: 0
+          }));
+        }
 
         // Dispatch event to notify invoice list about credit note changes
         window.dispatchEvent(
@@ -1092,10 +1125,29 @@ const CreateCreditNotePage = () => {
 
         navigate("/sales/credit-note");
       } else {
-        const errorMessage = isEditMode
-          ? "Failed to update credit note"
-          : "Failed to create credit note";
-        toast.error(response.error || errorMessage);
+        // Handle specific validation errors for mark as fully paid
+        if (isEditMode && creditNoteData.markAsFullyPaid) {
+          if (response.error?.includes('already marked as fully refunded')) {
+            toast.error('This credit note is already marked as fully refunded');
+            // Revert checkbox on error
+            setCreditNoteData(prev => ({ ...prev, markAsFullyPaid: false }));
+          } else if (response.error?.includes('Amount received must equal total amount')) {
+            toast.error('Amount received must equal total amount to mark as fully refunded');
+            // Revert checkbox on error
+            setCreditNoteData(prev => ({ ...prev, markAsFullyPaid: false }));
+          } else if (response.error?.includes('Cannot change status from')) {
+            toast.error('Cannot change status from refunded (fully paid)');
+            // Revert checkbox on error
+            setCreditNoteData(prev => ({ ...prev, markAsFullyPaid: false }));
+          } else {
+            toast.error(response.error || 'Failed to save credit note');
+          }
+        } else {
+          const errorMessage = isEditMode
+            ? "Failed to update credit note"
+            : "Failed to create credit note";
+          toast.error(response.error || errorMessage);
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create credit note");
@@ -1665,10 +1717,10 @@ const CreateCreditNotePage = () => {
                     <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-28">
                       Tax
                     </th>
-                    <th className="text-right p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
+                    <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
                       AMOUNT (₹)
                     </th>
-                    <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
+                    <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
                       Action
                     </th>
                   </tr>
@@ -1706,7 +1758,7 @@ const CreateCreditNotePage = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 border-r border-gray-200">
+                      <td className="px-4 py-4 border-r border-gray-200 align-middle">
                         <Input
                           placeholder="HSN/SAC"
                           value={item.hsnSac}
@@ -1714,141 +1766,130 @@ const CreateCreditNotePage = () => {
                           className="w-full bg-gray-100"
                         />
                       </td>
-                      <td className="px-4 py-4 border-r border-gray-200">
-                        <div className="flex flex-col">
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={item.quantity}
-                              min="1"
-                              step="1"
-                              className={`w-full min-w-[50px] ${
-                                creditNoteData.linkToInvoice !== ""
-                                  ? "bg-white"
-                                  : "bg-white"
-                              }`}
-                              onChange={(e) => {
-                                const inputValue = e.target.value;
-                                
-                                // Handle empty input (backspace case) - set to 1 to maintain minimum quantity
-                                if (inputValue === "") {
-                                  handleItemChange(index, "quantity", 1);
-                                  return;
-                                }
+                      <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          min="1"
+                          step="1"
+                          className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            creditNoteData.linkToInvoice !== ""
+                              ? "bg-amber-50 border-amber-200"
+                              : "bg-white"
+                          }`}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            
+                            // Handle empty input (backspace case) - set to 1 to maintain minimum quantity
+                            if (inputValue === "") {
+                              handleItemChange(index, "quantity", 1);
+                              return;
+                            }
 
-                                const newQty = parseInt(inputValue);
+                            const newQty = parseInt(inputValue);
 
-                                // Validate: quantity must be at least 1
-                                if (isNaN(newQty) || newQty < 1) {
-                                  handleItemChange(index, "quantity", 1);
-                                  return;
-                                }
+                            // Validate: quantity must be at least 1
+                            if (isNaN(newQty) || newQty < 1) {
+                              handleItemChange(index, "quantity", 1);
+                              return;
+                            }
 
-                                // Check if quantity exceeds available stock for linked invoice items
-                                if (
-                                  creditNoteData.linkToInvoice !== "" &&
-                                  newQty > (item.originalQty || 0)
-                                ) {
-                                  // Automatically set to max quantity instead of showing error
-                                  handleItemChange(index, "quantity", item.originalQty);
-                                  return;
-                                }
+                            // Check if quantity exceeds available stock for linked invoice items
+                            if (
+                              creditNoteData.linkToInvoice !== "" &&
+                              newQty > (item.originalQty || 0)
+                            ) {
+                              // Automatically set to max quantity instead of showing error
+                              handleItemChange(index, "quantity", item.originalQty);
+                              return;
+                            }
 
-                                handleItemChange(index, "quantity", newQty);
-                              }}
-                            />
-                            {creditNoteData.linkToInvoice !== "" &&
-                              item.originalQty !== undefined && (
-                                <span className="text-xs text-amber-600 mt-1">
-                                  Invoice max quantity: {item.originalQty}
-                                </span>
-                              )}
-                          </div>
-                        </div>
+                            handleItemChange(index, "quantity", newQty);
+                          }}
+                        />
+                        {creditNoteData.linkToInvoice !== "" &&
+                          item.originalQty !== undefined && (
+                            <div className="absolute bottom-1 left-0 right-0 text-center">
+                              <span className="text-[10px] text-amber-600 whitespace-nowrap">
+                                Max: {item.originalQty} (from invoice)
+                              </span>
+                            </div>
+                          )}
                       </td>
-                      <td className="px-4 py-4 border-r border-gray-200">
-                        <div className="flex flex-col">
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={item.price_per_item}
-                              disabled={creditNoteData.linkToInvoice !== ""}
-                              className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                creditNoteData.linkToInvoice !== ""
-                                  ? "text-gray-900 bg-gray-100"
-                                  : "text-gray-900 bg-white"
-                              }`}
-                              onChange={(e) => {
-                                const newPrice = parseFloat(e.target.value) || 0;
-                                handleItemChange(index, "price_per_item", newPrice);
-                              }}
-                            />
-                            <span className="absolute left-3 top-2.5 text-xs font-medium text-gray-500">
-                              ₹
+                      <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                        <Input
+                          type="number"
+                          value={item.price_per_item}
+                          disabled={creditNoteData.linkToInvoice !== ""}
+                          className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            creditNoteData.linkToInvoice !== ""
+                              ? "text-gray-900 bg-gray-100"
+                              : "text-gray-900 bg-white"
+                          }`}
+                          onChange={(e) => {
+                            const newPrice = parseFloat(e.target.value) || 0;
+                            handleItemChange(index, "price_per_item", newPrice);
+                          }}
+                        />
+                        <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">
+                          ₹
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                        <Input
+                          type="number"
+                          value={item.discount}
+                          disabled={creditNoteData.linkToInvoice !== ""}
+                          className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            creditNoteData.linkToInvoice !== ""
+                              ? "text-gray-900 bg-gray-100"
+                              : "text-gray-900 bg-white"
+                          }`}
+                          onChange={(e) => {
+                            const newDiscount = parseFloat(e.target.value) || 0;
+                            handleItemChange(index, "discount", newDiscount);
+                          }}
+                        />
+                        <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                          %
+                        </span>
+                        {item.discount > 0 && (
+                          <div className="absolute -bottom-5 left-0 right-0 text-right">
+                            <span className="text-[10px] font-medium text-red-600 leading-tight whitespace-nowrap">
+                              -₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}
                             </span>
                           </div>
-                          <div className="mt-0.5 h-3"></div>
-                        </div>
+                        )}
                       </td>
-                      <td className="px-4 py-4 border-r border-gray-200">
-                        <div className="flex flex-col">
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={item.discount}
-                              disabled={creditNoteData.linkToInvoice !== ""}
-                              className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                creditNoteData.linkToInvoice !== ""
-                                  ? "text-gray-900 bg-gray-100"
-                                  : "text-gray-900 bg-white"
-                              }`}
-                              onChange={(e) => {
-                                const newDiscount = parseFloat(e.target.value) || 0;
-                                handleItemChange(index, "discount", newDiscount);
-                              }}
-                            />
-                            <span className="absolute left-3 top-2.5 text-xs font-semibold text-gray-500">
-                              %
+                      <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                        <select
+                          value={item.tax}
+                          disabled={creditNoteData.linkToInvoice !== ""}
+                          className={`w-full pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${
+                            creditNoteData.linkToInvoice !== ""
+                              ? "bg-gray-100 text-gray-900"
+                              : "bg-white text-gray-900"
+                          }`}
+                          onChange={(e) => {
+                            const newTax = parseFloat(e.target.value) || 0;
+                            handleItemChange(index, "tax", newTax);
+                          }}
+                        >
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="12">12%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                        {item.tax > 0 && (
+                          <div className="absolute bottom-1 right-4 text-right">
+                            <span className="text-[10px] font-medium text-green-600 leading-tight whitespace-nowrap">
+                              +₹{((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}
                             </span>
                           </div>
-                          <span className="text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5 h-3">
-                            {item.discount > 0
-                              ? `-₹${((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}`
-                              : ""}
-                          </span>
-                        </div>
+                        )}
                       </td>
-                      <td className="px-4 py-4 border-r border-gray-200">
-                        <div className="flex flex-col">
-                          <div className="relative">
-                            <select
-                              value={item.tax}
-                              disabled={creditNoteData.linkToInvoice !== ""}
-                              className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${
-                                creditNoteData.linkToInvoice !== ""
-                                  ? "bg-gray-100 text-gray-900"
-                                  : "bg-white text-gray-900"
-                              }`}
-                              onChange={(e) => {
-                                const newTax = parseFloat(e.target.value) || 0;
-                                handleItemChange(index, "tax", newTax);
-                              }}
-                            >
-                              <option value="0">0%</option>
-                              <option value="5">5%</option>
-                              <option value="12">12%</option>
-                              <option value="18">18%</option>
-                              <option value="28">28%</option>
-                            </select>
-                          </div>
-                          <span className="text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5 h-3">
-                            {item.tax > 0
-                              ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}`
-                              : ""}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-right border-r border-gray-200">
+                      <td className="px-4 py-4 text-left border-r border-gray-200">
                         <div className="text-sm text-gray-900">
                           ₹
                           {item.amount.toLocaleString("en-IN", {
@@ -1857,7 +1898,7 @@ const CreateCreditNotePage = () => {
                           })}
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 align-middle">
                         <button
                           onClick={() => handleRemoveItem(item.id)}
                           className="text-red-500 hover:text-red-700 transition-colors p-1"
@@ -2077,7 +2118,7 @@ const CreateCreditNotePage = () => {
               </div>
               <div className="border-t pt-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Am ount Received</span>
+                  <span className="text-sm">Amount Received</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">
                       ₹ {creditNoteData.amountReceived.toFixed(2)}
@@ -2100,7 +2141,7 @@ const CreateCreditNotePage = () => {
                       }
                     />
                     <label
-                      htmlFor="markAsFullyPaid"
+                      htmlFor="markAsFullyPaid" 
                       className="text-sm font-medium"
                     >
                       Mark as fully paid

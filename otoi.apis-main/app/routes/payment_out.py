@@ -26,8 +26,6 @@ def generate_payment_out_number() -> str:
 
 
 
-
-
 def _date_filter_query(query, model, date_filter: str):
     """Apply common date filters to a query."""
     today = date.today()
@@ -136,8 +134,11 @@ def list_payment_outs():
 
         # Dropdown shortcuts
         if request.args.get("party_names_dropdown") == "true":
+            business_id = getattr(g, "business_id", None)
             names = (
                 db.session.query(PaymentOut.party_name)
+                .filter(PaymentOut.business_id == business_id)
+                .filter(PaymentOut.is_deleted == False)
                 .distinct()
                 .order_by(PaymentOut.party_name)
                 .all()
@@ -145,8 +146,11 @@ def list_payment_outs():
             return jsonify([n[0] for n in names if n[0]]), 200
 
         if request.args.get("payment_numbers_dropdown") == "true":
+            business_id = getattr(g, "business_id", None)
             numbers = (
                 db.session.query(PaymentOut.payment_number)
+                .filter(PaymentOut.business_id == business_id)
+                .filter(PaymentOut.is_deleted == False)
                 .distinct()
                 .order_by(PaymentOut.payment_number)
                 .all()
@@ -154,18 +158,33 @@ def list_payment_outs():
             return jsonify([n[0] for n in numbers if n[0]]), 200
 
         business_id = getattr(g, "business_id", None)
-        query = (
-            PaymentOut.query
-            .outerjoin(PurchaseInvoice, PaymentOut.purchase_invoice_id == PurchaseInvoice.uuid)
-            .filter(PaymentOut.business_id == business_id)
-        )
-
-
-        if party_name:
-            query = query.filter(PaymentOut.party_name.ilike(f"%{party_name}%"))
-        if payment_number:
-            query = query.filter(PaymentOut.payment_number.ilike(f"%{payment_number}%"))
         
+        if party_name:
+            # Simple query for party name filtering
+            query = (
+                PaymentOut.query
+                .filter(PaymentOut.business_id == business_id)
+                .filter(PaymentOut.is_deleted == False)
+                .filter(PaymentOut.party_name.ilike(f"%{party_name}%"))
+            )
+        elif payment_number:
+            # Simple query for payment number filtering
+            query = (
+                PaymentOut.query
+                .filter(PaymentOut.business_id == business_id)
+                .filter(PaymentOut.is_deleted == False)
+                .filter(PaymentOut.payment_number.ilike(f"%{payment_number}%"))
+            )
+        else:
+            # Default query with join for other filters
+            query = (
+                PaymentOut.query
+                .outerjoin(PurchaseInvoice, PaymentOut.purchase_invoice_id == PurchaseInvoice.uuid)
+                .filter(PaymentOut.business_id == business_id)
+                .filter(PaymentOut.is_deleted == False)
+            )
+        
+                
 
         # Filter based on CURRENT invoice status
         if payment_status and payment_status != "all":
@@ -470,7 +489,7 @@ def delete_payment_out(payment_id):
         
         # Soft delete
         p.is_deleted = True
-        set_updated_fields(p)
+        p.updated_at = datetime.utcnow()
         db.session.commit()
         
         invoice = p.purchase_invoice

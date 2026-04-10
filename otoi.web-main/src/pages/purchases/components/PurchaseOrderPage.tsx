@@ -181,6 +181,10 @@ const PurchaseOrderPage = () => {
     fetchAutocompleteData();
   }, [searchType]);
 
+  useEffect(() => {
+    fetchAutocompleteData();
+  }, [refreshKey]);
+
   const handleSearchTypeChange = (type: "vendor_name" | "po_number") => {
     setSearchType(type);
     setSearchTerm("");
@@ -423,11 +427,11 @@ const PurchaseOrderPage = () => {
           <DataGridColumnHeader
             title="Date"
             column={column}
-            className="justify-start"
+            className="justify-center"
           />
         ),
         cell: (info) => (
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 text-center">
             {new Date(info.getValue() as string).toLocaleDateString()}
           </div>
         ),
@@ -439,11 +443,11 @@ const PurchaseOrderPage = () => {
           <DataGridColumnHeader
             title="PO Number"
             column={column}
-            className="justify-start"
+            className="justify-center"
           />
         ),
         cell: (info) => (
-          <div className="text-sm font-medium text-gray-900">
+          <div className="text-sm font-medium text-primary hover:underline text-center">
             {info.getValue() as string}
           </div>
         ),
@@ -455,11 +459,11 @@ const PurchaseOrderPage = () => {
           <DataGridColumnHeader
             title="Vendor Name"
             column={column}
-            className="justify-start"
+            className="justify-center"
           />
         ),
         cell: (info) => (
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 text-center">
             {info.getValue() as string}
           </div>
         ),
@@ -471,11 +475,11 @@ const PurchaseOrderPage = () => {
           <DataGridColumnHeader
             title="Due In"
             column={column}
-            className="justify-start"
+            className="justify-center"
           />
         ),
         cell: (info) => (
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 text-center">
             {info.getValue() as string}
           </div>
         ),
@@ -498,17 +502,16 @@ const PurchaseOrderPage = () => {
           <DataGridColumnHeader
             title="Amount"
             column={column}
-            className="justify-end"
+            className="justify-center"
           />
         ),
         cell: (info) => (
-          <div className="text-sm font-medium text-right">
+          <div className="text-sm font-medium text-center">
             ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
           </div>
         ),
         meta: {
-          headerClassName: "min-w-[120px] justify-end",
-          cellClassName: "text-right",
+          headerClassName: "min-w-[120px]",
         },
       },
       {

@@ -168,15 +168,15 @@ export const getVendorNamesDropdown = async (): Promise<ApiResponse> => {
     return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    const url = `${API_URL}/vendors/?dropdown=true`;
-    
+    const url = `${API_URL}/payment-out?party_names_dropdown=true`;
+
     const response = await axios.get(url, {
-      headers: { 
+      headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
-    
+
     // Return the data directly without additional processing
     return { success: true, data: response.data, status: response.status };
   } catch (err: any) {

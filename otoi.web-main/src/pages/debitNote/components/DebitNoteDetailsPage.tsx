@@ -21,6 +21,7 @@ import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 const DebitNoteDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -36,6 +37,7 @@ const DebitNoteDetailsPage: React.FC = () => {
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
   const [originalInvoiceData, setOriginalInvoiceData] = useState<any>(null);
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [newPayment, setNewPayment] = useState({
     payment_amount: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -46,7 +48,7 @@ const DebitNoteDetailsPage: React.FC = () => {
 
   // Helper functions
   const formatCurrency = (amount: number) => {
-    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Calculate balance due from original invoice (same as PurchaseInvoiceDetailsPage)
@@ -156,6 +158,23 @@ const DebitNoteDetailsPage: React.FC = () => {
   };
 
   const isValidData = validateDebitNoteData(debitNoteData);
+
+  // Fetch signature image from global assets
+  useEffect(() => {
+    const fetchGlobalAssets = async () => {
+      try {
+        const { getGlobalAssets } = await import('@/pages/global-config/services/businessConfig.service');
+        const response = await getGlobalAssets();
+        if (response.success && response.data) {
+          setSignatureImage(response.data.esign_path || null);
+        }
+      } catch (error) {
+        console.error('Error fetching global assets:', error);
+      }
+    };
+
+    fetchGlobalAssets();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -622,8 +641,11 @@ const DebitNoteDetailsPage: React.FC = () => {
         <table className="w-full border border-black mb-8 text-xs">
           <thead>
             <tr className="bg-gray-100 border-b border-black">
-              <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-[40%]">
+              <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-[32%]">
                 Item Description
+              </th>
+              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[12%]">
+                Image
               </th>
               <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[10%]">
                 Qty
@@ -656,6 +678,19 @@ const DebitNoteDetailsPage: React.FC = () => {
                       </div>
                     </div>
                   </td>
+                  <td className="p-2 text-center border-r border-black align-top">
+                    {item.item_image || item.image_url ? (
+                      <img
+                        src={toAbsoluteUrl(item.item_image || item.image_url)}
+                        alt={item.item_name || item.product_name}
+                        className="h-12 w-12 object-cover rounded border border-gray-200 mx-auto"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto">
+                        <span className="text-[9px] text-gray-400">No Img</span>
+                      </div>
+                    )}
+                  </td>
                   <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
                     <span className="text-red-600 font-medium">{item.quantity}</span> <span className="text-[10px] ml-0.5">{getMeasuringUnit(item.measuring_unit_id)}</span>
                   </td>
@@ -680,25 +715,29 @@ const DebitNoteDetailsPage: React.FC = () => {
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t border-black bg-gray-50 font-bold">
-              <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
-              <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}</td>
+            <tr className="bg-gray-50">
+              <td colSpan={3} className="border border-black px-4 py-2"></td>
+              <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">
+                Subtotal:
+              </td>
+              <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
+                {formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}
+              </td>
+              <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
+                {formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}
+              </td>
+              <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">
+                {formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}
+              </td>
             </tr>
-            {(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0) > 0 && (
-              <tr className="bg-gray-50 font-bold">
-                <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Discount</td>
-                <td className="p-2 text-right text-sm text-black whitespace-nowrap">-{formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}</td>
-              </tr>
-            )}
-            {(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0) > 0 && (
-              <tr className="bg-gray-50 font-bold">
-                <td colSpan={5} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Tax</td>
-                <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}</td>
-              </tr>
-            )}
-            <tr className="border-t border-black bg-gray-100 font-bold">
-              <td colSpan={5} className="p-2 text-right text-[12px] uppercase tracking-widest text-black border-r border-black">Total Amount</td>
-              <td className="p-2 text-right text-sm font-bold text-black whitespace-nowrap text-red-600">{formatCurrency(debitNoteData.total_amount || 0)}</td>
+            <tr className="bg-gray-100">
+              <td colSpan={5} className="border border-black px-4 py-2"></td>
+              <td colSpan={1} className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">
+                Grand Total:
+              </td>
+              <td className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">
+                {formatCurrency(debitNoteData.total_amount || 0)}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -764,7 +803,15 @@ const DebitNoteDetailsPage: React.FC = () => {
 
         <div className="mt-24 flex justify-end">
           <div className="text-center">
-            <div className="w-48 border-b border-black mb-1"></div>
+            {signatureImage ? (
+              <img
+                src={resolveImageUrl(`/static/uploads/business/${signatureImage}`)}
+                alt="Authorized Signature"
+                className="h-16 w-auto object-contain mb-2 mx-auto"
+              />
+            ) : (
+              <div className="w-48 border-b border-black mb-1"></div>
+            )}
             <p className="text-[10px] font-bold uppercase tracking-wider">Authorized Signatory</p>
           </div>
         </div>

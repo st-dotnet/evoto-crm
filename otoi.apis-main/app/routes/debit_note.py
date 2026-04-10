@@ -1345,7 +1345,48 @@ def update_debit_note(debit_note_id):
             debit_note.debit_note_date = datetime.strptime(data['debit_note_date'], '%Y-%m-%d').date()
         
         if 'status' in data:
-            debit_note.status = data['status']
+            new_status = data['status']
+            
+            # Validation for 'credited' status (fully paid)
+            if new_status == 'credited':
+                # Check if status is already credited
+                if debit_note.status == 'credited':
+                    return jsonify({
+                        "success": False,
+                        "message": "Debit note is already marked as fully paid",
+                        "status": 400
+                    }), 400
+                
+                # Ensure amount_received equals total_amount for credited status
+                amount_received = float(data.get('amount_received', 0))
+                total_amount = float(debit_note.total_amount)
+                
+                if amount_received != total_amount:
+                    return jsonify({
+                        "success": False,
+                        "message": f"Amount received ({amount_received}) must equal total amount ({total_amount}) to mark as fully paid",
+                        "status": 400
+                    }), 400
+                
+                # Set balance_due to 0 for credited status
+                debit_note.balance_due = 0
+                debit_note.amount_received = total_amount
+            else:
+                # Prevent reverting from 'credited' status
+                if debit_note.status == 'credited':
+                    return jsonify({
+                        "success": False,
+                        "message": "Cannot change status from 'credited' (fully paid)",
+                        "status": 400
+                    }), 400
+            
+            debit_note.status = new_status
+        
+        if 'amount_received' in data:
+            debit_note.amount_received = data['amount_received']
+        
+        if 'balance_due' in data:
+            debit_note.balance_due = data['balance_due']
         
         if 'total_amount' in data:
             debit_note.total_amount = data['total_amount']
