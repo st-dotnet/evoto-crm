@@ -350,7 +350,7 @@ const InvoicePage = () => {
             toast.warning('Unable to verify credit note status. Proceed with caution.');
         }
 
-        setInvoiceToDelete(id);
+        setInvoiceToDelete(id);     
         setShowDeleteDialog(true);
     };
 
