@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import {
   Lead,
   QueryLeadApiResponse,
@@ -36,7 +37,6 @@ import { ModalLead } from "./ModalLead";
 import { useNavigate } from "react-router-dom";
 import { ActivityForm } from "./ActivityForm";
 import { Button } from "@/components/ui/button";
-import { SpinnerDotted } from 'spinners-react';
 import {
   Dialog,
   DialogContent,
@@ -643,19 +643,10 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   return (
     <div className="grid gap-5 lg:gap-7.5">
       {/* {(loading || fetchingLead) && leads.length === 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-black">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-          </div>
-        </div>
+        <ScreenLoader />
       )} */}
       {fetchingLead && leads.length > 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
-            <span className="text-sm font-medium">Fetching details...</span>
-          </div>
-        </div>
+        <ScreenLoader />
       )}
       <DataGrid
         key={refreshKey}

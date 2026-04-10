@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate } from "react-router-dom";
 import {
   DataGrid,
@@ -7,7 +8,6 @@ import {
 import { ArrowDown, Search, ArrowRightLeft } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { getLatestTransactions, type Transaction } from "@/services/dashboard.service";
-import { SpinnerDotted } from "spinners-react";
 
 const TYPE_BADGE_MAP: Record<string, string> = {
   'Sales Invoices': 'badge-success',
@@ -122,7 +122,7 @@ export const TransactionsPage = () => {
       <div className="bg-white rounded-lg border overflow-hidden">
         {isLoading && transactions.length === 0 ? (
           <div className="flex justify-center items-center py-20">
-            <SpinnerDotted size={40} color="#2563EB" />
+            <ScreenLoader />
           </div>
         ) : (
           <>

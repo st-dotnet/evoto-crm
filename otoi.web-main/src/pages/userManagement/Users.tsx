@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2, Eye, AlertCircle, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { SpinnerDotted } from 'spinners-react';
 import {
   Dialog,
   DialogContent,
@@ -543,19 +543,10 @@ const UsersContent = ({ refreshStatus }: IUsersContentProps) => {
   return (
     <div className="grid gap-5 lg:gap-7.5">
       {/* {(loading || fetchingUser) && users.length === 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-          </div>
-        </div>
+        <ScreenLoader />
       )} */}
       {fetchingUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
-            <span className="text-sm font-medium">Fetching details...</span>
-          </div>
-        </div>
+        <ScreenLoader />
       )}
       <DataGrid
         key={refreshKey}

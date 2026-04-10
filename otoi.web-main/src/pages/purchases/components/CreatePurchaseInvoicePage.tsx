@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,7 +15,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SpinnerDotted } from "spinners-react";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -561,9 +561,7 @@ const CreatePurchaseInvoicePage = () => {
   return (
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen space-y-4 sm:space-y-6 relative w-full max-w-[100vw] overflow-x-hidden">
       {(isLoading || isInitialLoading) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
-          <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
-        </div>
+        <ScreenLoader />
       )}
 
       {/* Header */}

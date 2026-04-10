@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, FileText, Receipt, Share, Mail } from "lucide-react";
 import {
@@ -14,7 +15,6 @@ import { createQuotation, getQuotationById, updateQuotation } from "../services/
 import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
 import { useAuthContext } from "@/auth/useAuthContext";
 import { createInvoiceFromQuotation, getInvoiceByQuotationId } from "@/pages/invoice/services/invoice.services";
-import { SpinnerDotted } from "spinners-react";
 // import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
@@ -683,12 +683,7 @@ const QuotationPreviewPage: React.FC = () => {
       {isLoading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
           <div className="flex flex-col items-center gap-4">
-            <SpinnerDotted
-              size={50}
-              thickness={100}
-              speed={100}
-              color="#1B84FF"
-            />
+            <ScreenLoader />
             <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">
               Fetching Quotation Details...
             </p>

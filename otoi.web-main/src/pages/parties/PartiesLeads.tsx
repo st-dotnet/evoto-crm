@@ -1,3 +1,4 @@
+import { ScreenLoader } from "@/components/loaders";
 import { Fragment, useState, useRef } from "react";
 import { ModalLead } from "./blocks/leads";
 import { Container } from "@/components/container";
@@ -13,7 +14,6 @@ import { useLayout } from "@/providers";
 import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
 import { toast } from "sonner";
-import { SpinnerDotted } from 'spinners-react';
 
 export interface ILeadModalContentProps {
   state: boolean;
@@ -182,11 +182,7 @@ const LeadsPage = () => {
       </Container>
 
       {loading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 dark:bg-black/50 overflow-hidden">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-          </div>
-        </div>
+        <ScreenLoader />
       )}
     </Fragment>
   );

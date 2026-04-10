@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, FileText, CreditCard, Share, Mail, Receipt } from "lucide-react";
 import {
@@ -14,7 +15,6 @@ import axios from "axios";
 import { getPurchaseOrderById } from "../services/purchaseOrder.services";
 import { createPurchaseInvoiceFromPO } from "../services/purchaseInvoice.services";
 import { useAuthContext } from "@/auth/useAuthContext";
-import { SpinnerDotted } from "spinners-react";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { getShareData, sendShareEmail } from "@/services/share.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
@@ -422,7 +422,7 @@ const PurchaseOrderPreviewPage: React.FC = () => {
             {isLoading && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
                     <div className="flex flex-col items-center gap-4">
-                        <SpinnerDotted size={50} thickness={100} speed={100} color="#1B84FF" />
+                        <ScreenLoader />
                         <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">
                             Fetching Purchase Order Details...
                         </p>

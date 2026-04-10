@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit, Share, Mail } from "lucide-react";
 import {
@@ -13,7 +14,6 @@ import { toast } from "sonner";
 import { getPurchaseInvoiceById, recordPurchaseInvoicePayment } from "../services/purchaseInvoice.services";
 import { checkDebitNoteExistsForInvoice, getDebitNotes, DebitNoteData, DebitNoteItem } from "../../debitNote/service/debitNote.service";
 import { getShareData, sendShareEmail, ShareData } from "@/services/share.service";
-import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { resolveImageUrl } from "@/utils/imageUtils";
@@ -546,7 +546,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
         <div className="flex flex-col items-center gap-4">
-          <SpinnerDotted size={50} color="#1B84FF" />
+          <ScreenLoader />
           <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Fetching Detail...</p>
         </div>
       </div>

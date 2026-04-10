@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,7 +17,6 @@ import {
 import { recordPayment } from "../../invoice/services/invoice.service";
 import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
-import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
 import { ColumnDef } from "@tanstack/react-table";
@@ -1049,7 +1049,7 @@ export const CreatePaymentIn = () => {
               {isPartiesLoading ? (
                 <div className="p-8 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <SpinnerDotted size={20} />
+                    <ScreenLoader />
                   </div>
                   <h3 className="mt-3 text-sm font-medium text-gray-900">
                     Loading Customers...
@@ -1220,12 +1220,7 @@ export const CreatePaymentIn = () => {
             <div className="p-6">
               {isInvoicesLoading && selectedParty ? (
                 <div className="flex items-center justify-center py-12">
-                  <SpinnerDotted
-                    size={30}
-                    thickness={100}
-                    speed={100}
-                    color="#1B84FF"
-                  />
+                  <ScreenLoader />
                   <span className="text-sm text-slate-500">
                     Loading parties...
                   </span>
@@ -1397,12 +1392,7 @@ export const CreatePaymentIn = () => {
             <div className="p-4">
               {isInvoicesLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <SpinnerDotted
-                    size={30}
-                    thickness={100}
-                    speed={100}
-                    color="#1B84FF"
-                  />
+                  <ScreenLoader />
                   <span className="text-sm text-slate-500">
                     Loading invoices...
                   </span>

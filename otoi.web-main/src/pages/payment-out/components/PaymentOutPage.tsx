@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -48,7 +49,6 @@ import {
   getPaymentOutById,
 } from "../services/payment-out.service";
 import { toast } from "sonner";
-import { SpinnerDotted } from "spinners-react";
 
 export const PaymentOutPage = () => {
   const navigate = useNavigate();
@@ -590,11 +590,7 @@ export const PaymentOutPage = () => {
 
   const MobilePaymentList = () => {
     if (mobileLoading) {
-      return (
-        <div className="flex justify-center items-center py-8">
-          <SpinnerDotted size={30} color="#3B82F6" />
-        </div>
-      );
+      return <ScreenLoader />;
     }
 
     if (mobilePayments.length === 0) {

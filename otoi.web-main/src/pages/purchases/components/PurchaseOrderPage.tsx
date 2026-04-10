@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -53,7 +54,6 @@ import {
 } from "../services/purchaseInvoice.services";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
-import { SpinnerDotted } from "spinners-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -661,16 +661,7 @@ const PurchaseOrderPage = () => {
   return (
     <div className="container-fluid p-6 relative">
       {(isDeleting || isDropdownLoading) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
-          <div className="text-primary">
-            <SpinnerDotted
-              size={50}
-              thickness={100}
-              speed={100}
-              color="#3b82f6"
-            />
-          </div>
-        </div>
+        <ScreenLoader />
       )}
 
       {/* Header */}

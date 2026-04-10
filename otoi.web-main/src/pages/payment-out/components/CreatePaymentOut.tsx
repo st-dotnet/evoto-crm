@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Save, User, FileText, Search, X, Filter, Calendar, Circle, Check, ChevronDown } from "lucide-react";
 import {
@@ -9,7 +10,6 @@ import {
   getVendorNamesDropdown,
 } from "../services/payment-out.service";
 import axios from "axios";
-import { SpinnerDotted } from "spinners-react";
 import { toast } from "sonner";
 import { DataGrid, DataGridColumnHeader } from "@/components";
 import { ColumnDef } from "@tanstack/react-table";
@@ -792,7 +792,7 @@ export const CreatePaymentOut = () => {
               {isVendorsLoading ? (
                 <div className="p-8 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <SpinnerDotted size={20} />
+                    <ScreenLoader />
                   </div>
                   <h3 className="mt-3 text-sm font-medium text-gray-900">
                     Loading Vendors...
@@ -963,12 +963,7 @@ export const CreatePaymentOut = () => {
             <div className="p-4 sm:p-6">
               {isInvoicesLoading && selectedVendor ? (
                 <div className="flex items-center justify-center py-12">
-                  <SpinnerDotted
-                    size={30}
-                    thickness={100}
-                    speed={100}
-                    color="#1B84FF"
-                  />
+                  <ScreenLoader />
                   <span className="ml-2 text-sm text-slate-500">
                     Loading vendor data...
                   </span>
@@ -1133,7 +1128,7 @@ export const CreatePaymentOut = () => {
             <div className="p-4">
               {isInvoicesLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <SpinnerDotted size={30} color="#1B84FF" />
+                  <ScreenLoader />
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-lg overflow-hidden">

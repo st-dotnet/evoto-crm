@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { DataGrid, DataGridColumnHeader, DataGridRowSelect, DataGridRowSelectAll } from "@/components";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings, FileText, ChevronDown, Search, Calendar, Filter, Check, Circle, CircleOff, CircleCheck, MoreVertical, Edit, Eye, Copy, Trash2, AlertCircle, List, X } from "lucide-react";
@@ -10,7 +11,6 @@ import { getQuotations, deleteQuotation, getQuotationById, createQuotation, fetc
 import { createInvoiceFromQuotation } from "@/pages/invoice/services/invoice.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
-import { SpinnerDotted } from 'spinners-react';
 
 
 interface Quotation {
@@ -709,11 +709,7 @@ const QuotationPage = () => {
   return (
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
       {(isLoading || isDeleting || isDropdownLoading) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
-          </div>
-        </div>
+        <ScreenLoader />
       )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Quotation</h1>

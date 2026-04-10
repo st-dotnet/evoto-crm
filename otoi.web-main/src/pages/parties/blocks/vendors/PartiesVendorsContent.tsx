@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import { debounce } from "@/lib/helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { SpinnerDotted } from 'spinners-react';
 
 import {
   DataGrid,
@@ -633,20 +633,11 @@ const PartiesVendorsContent = ({
   return (
     <div className="grid gap-5 lg:gap-7.5">
       {/* {loading && vendors.length === 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-          </div>
-        </div>
+        <ScreenLoader />
       )} */}
 
       {fetchingDetails && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
-            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
-            <span className="text-sm font-medium">Fetching details...</span>
-          </div>
-        </div>
+        <ScreenLoader />
       )}
 
       <DataGrid

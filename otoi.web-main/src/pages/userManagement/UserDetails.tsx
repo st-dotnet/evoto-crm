@@ -1,10 +1,10 @@
+import { ScreenLoader } from "@/components/loaders";
 // import { useParams } from "react-router-dom";
 // import { User } from "./user-models"; 
 // import { useEffect, useState } from "react";
 // import axios from "axios";
 // import { KeenIcon } from '@/components';
-// import { SpinnerDotted } from 'spinners-react';
-// import { useNavigate } from "react-router-dom";
+// // import { useNavigate } from "react-router-dom";
 
 // export const UserDetails = () => {
 //   const { id } = useParams<{ id: string }>();
@@ -29,7 +29,7 @@
 //     return (
 //       <div className="fixed inset-0 flex items-center justify-center">
 //         <div className="text-[#0D0E12] dark:text-gray-700">
-//           <SpinnerDotted color="currentColor" />
+//           <ScreenLoader />
 //         </div>
 //       </div>
 //     );
@@ -138,8 +138,7 @@
 // import { useEffect, useState } from "react";
 // import axios from "axios";
 // import { KeenIcon } from '@/components';
-// import { SpinnerDotted } from 'spinners-react';
-// import { toast } from "sonner";
+// // import { toast } from "sonner";
 
 // export const UserDetails = () => {
 //   const { id } = useParams<{ id: string }>();
@@ -177,7 +176,7 @@
 //     return (
 //       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
 //         <div className="text-primary text-black">
-//           <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+//           <ScreenLoader />
 //         </div>
 //       </div>
 //     );
@@ -410,7 +409,6 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { SpinnerDotted } from 'spinners-react';
 import { User } from "./user-models";
 import { Country, State } from "country-state-city";
 
@@ -481,11 +479,7 @@ export const UserDetails = () => {
   const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() : '?';
 
   if (!user || fetchingUser) {
-    return (
-      <div className="flex h-[80vh] w-full items-center justify-center text-[#0D0E12]">
-        <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
-      </div>
-    );
+    return <ScreenLoader />;
   }
 
   return (

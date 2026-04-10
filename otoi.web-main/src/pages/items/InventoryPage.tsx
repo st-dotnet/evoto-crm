@@ -1,3 +1,4 @@
+import { ScreenLoader } from "@/components/loaders";
 import React, {
   useMemo,
   useState,
@@ -60,7 +61,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { SpinnerDotted } from "spinners-react";
 import axios from "axios";
 import CreateItemModal from "./CreateItemModal";
 import {
@@ -841,9 +841,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
       <div className="inv-page">
         {(loading || isDeleting || isEditing) && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80">
-            <SpinnerDotted size={48} thickness={100} speed={100} color="#3b82f6" />
-          </div>
+          <ScreenLoader />
         )}
 
         {/* ── Hero Banner ── */}

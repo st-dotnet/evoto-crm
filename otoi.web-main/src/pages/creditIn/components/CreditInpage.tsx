@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -39,7 +40,6 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
-import { SpinnerDotted } from "spinners-react";
 import {
   getCreditNotes,
   deleteCreditNote,
@@ -840,12 +840,7 @@ const CreditInpage = () => {
         <div className="overflow-auto relative">
           {isLoading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
-              <SpinnerDotted
-                size={50}
-                thickness={100}
-                speed={100}
-                color="#2563eb"
-              />
+              <ScreenLoader />
             </div>
           )}
           <DataGrid

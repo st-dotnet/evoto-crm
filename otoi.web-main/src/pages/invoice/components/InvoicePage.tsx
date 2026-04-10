@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { ScreenLoader } from "@/components/loaders";
 import {
     DataGrid,
     DataGridColumnHeader,
@@ -36,7 +37,6 @@ import { getInvoices, deleteInvoice, getCustomerNamesDropdown, getInvoiceNumbers
 import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
-import { SpinnerDotted } from 'spinners-react';
 
 interface Invoice {
     id: string;
@@ -669,11 +669,7 @@ const InvoicePage = () => {
 
         <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
             {(isDeleting || isDropdownLoading) && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
-                    <div className="text-primary">
-                        <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
-                    </div>
-                </div>
+                <ScreenLoader />
             )}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <h1 className="text-2xl font-bold">Invoices</h1>
