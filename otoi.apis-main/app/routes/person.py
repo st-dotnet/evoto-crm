@@ -444,7 +444,7 @@ def create_lead():
                 "pin": data.get("pin"),
             }
 
-            if not all([address_data["city"], address_data["state"],
+            if not all([address_data["address1"], address_data["city"], address_data["state"],
                         address_data["country"], address_data["pin"]]):
                 return jsonify({"error": "Complete address is required when status is Win"}), 400        
 
@@ -668,7 +668,7 @@ def update_lead(lead_id):
             }
 
             # At least these must be present for Win status validation
-            if not all([address_data["city"], address_data["state"],
+            if not all([address_data["address1"], address_data["city"], address_data["state"],
                         address_data["country"], address_data["pin"]]):
                 return jsonify({"error": "Complete address is required when status is Win"}), 400
 

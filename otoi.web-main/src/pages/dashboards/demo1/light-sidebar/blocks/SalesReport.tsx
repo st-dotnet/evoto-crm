@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatDate = (iso: string): string => {

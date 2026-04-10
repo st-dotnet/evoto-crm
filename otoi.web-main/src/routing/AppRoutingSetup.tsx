@@ -791,6 +791,14 @@ const AppRoutingSetup = (): ReactElement => {
             path="/auth/welcome-message"
             element={<AuthenticationWelcomeMessagePage />}
           />
+          <Route
+            path="/auth/account-deactivated"
+            element={<AuthenticationAccountDeactivatedPage />}
+          />
+          <Route
+            path="/authentication/get-started"
+            element={<AuthenticationGetStartedPage />}
+          />
           <Route path="/parties/leads" element={<LeadsPage />} />
           <Route path="/user-management/users" element={<PartiesUsersPage />} />
           <Route path="/user-management/roles" element={<PartiesRoles />} />
@@ -801,7 +809,6 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/customer/:uuid" element={<CustomerDetails />} />
           <Route path="/customer/:uuid/edit" element={<CustomerEdit />} />
           <Route path="/user/:id" element={<UserDetails />} />
-          <Route path="/user/:id/edit" element={<UserEdit />} />
           <Route path="/items/inventory" element={<InventoryPage />} />
           <Route
             path="/items/inventory/:itemId"
@@ -898,32 +905,6 @@ const AppRoutingSetup = (): ReactElement => {
             element={
               <Suspense fallback={<LoadingFallback />}>
                 <DebitNotePage />
-              </Suspense>
-            }
-          />
-
-          {/* Payment Out Routes */}
-          <Route
-            path="/payment-out"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <PaymentOutPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/payment-out/create"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <CreatePaymentOut />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/payment-out/:id"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <CreatePaymentOut />
               </Suspense>
             }
           />
@@ -1033,15 +1014,6 @@ const AppRoutingSetup = (): ReactElement => {
                 <PurchaseInvoiceDetailsPage />
               </Suspense>
             }
-          />
-
-          <Route
-            path="/auth/account-deactivated"
-            element={<AuthenticationAccountDeactivatedPage />}
-          />
-          <Route
-            path="/authentication/get-started"
-            element={<AuthenticationGetStartedPage />}
           />
         </Route>
       </Route>

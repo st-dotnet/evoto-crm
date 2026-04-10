@@ -11,6 +11,7 @@ from app.models.paymentIn import PaymentIn
 from app.models.paymentOut import PaymentOut
 from app.models.customer import Customer
 from app.models.vendor import Vendor
+from app.models.quotation import Quotation
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
 
@@ -134,22 +135,26 @@ def get_dashboard_summary():
         # PaymentIn
         pin_cash = db.session.query(func.coalesce(func.sum(PaymentIn.amount_received), 0)).filter(
             PaymentIn.business_id == business_id,
+            PaymentIn.is_deleted == False,
             func.lower(PaymentIn.payment_mode) == 'cash'
         ).scalar()
         
         pin_bank = db.session.query(func.coalesce(func.sum(PaymentIn.amount_received), 0)).filter(
             PaymentIn.business_id == business_id,
+            PaymentIn.is_deleted == False,
             func.lower(PaymentIn.payment_mode) != 'cash'
         ).scalar()
         
         # PaymentOut
         pout_cash = db.session.query(func.coalesce(func.sum(PaymentOut.amount_paid), 0)).filter(
             PaymentOut.business_id == business_id,
+            PaymentOut.is_deleted == False,
             func.lower(PaymentOut.payment_mode) == 'cash'
         ).scalar()
         
         pout_bank = db.session.query(func.coalesce(func.sum(PaymentOut.amount_paid), 0)).filter(
             PaymentOut.business_id == business_id,
+            PaymentOut.is_deleted == False,
             func.lower(PaymentOut.payment_mode) != 'cash'
         ).scalar()
 
@@ -335,6 +340,93 @@ def get_latest_transactions():
                 })
         except Exception as e:
             print("Error parsing Purchase Orders transactions:", e)
+
+        # --- Quotations ---
+        try:
+            quotations = (
+                Quotation.query
+                .filter(
+                    Quotation.business_id == business_id,
+                    Quotation.is_deleted == False,
+                )
+                .order_by(desc(Quotation.created_at))
+                .limit(limit)
+                .all()
+            )
+            for quot in quotations:
+                party_name = "-"
+                if quot.customer:
+                    party_name = f"{quot.customer.first_name or ''} {quot.customer.last_name or ''}".strip() or "-"
+                transactions.append({
+                    "id": str(quot.uuid),
+                    "route_path": f"/quotes/{quot.uuid}",
+                    "date": str(quot.quotation_date) if quot.quotation_date else None,
+                    "type": "Quotation / Estimate",
+                    "txn_no": str(quot.quotation_number),
+                    "party_name": party_name,
+                    "amount": round(float(quot.total_amount or 0), 2),
+                    "created_at": str(quot.created_at) if quot.created_at else None,
+                })
+        except Exception as e:
+            print("Error parsing Quotations transactions:", e)
+
+        # --- Credit Notes ---
+        try:
+            credit_notes = (
+                CreditNote.query
+                .filter(
+                    CreditNote.business_id == business_id,
+                    CreditNote.is_deleted == False,
+                )
+                .order_by(desc(CreditNote.created_at))
+                .limit(limit)
+                .all()
+            )
+            for cn in credit_notes:
+                party_name = "-"
+                if cn.customer:
+                    party_name = f"{cn.customer.first_name or ''} {cn.customer.last_name or ''}".strip() or "-"
+                transactions.append({
+                    "id": str(cn.uuid),
+                    "route_path": f"/sales/credit-note/{cn.uuid}",
+                    "date": str(cn.credit_note_date) if cn.credit_note_date else None,
+                    "type": "Credit Note",
+                    "txn_no": str(cn.credit_note_number),
+                    "party_name": party_name,
+                    "amount": round(float(cn.total_amount or 0), 2),
+                    "created_at": str(cn.created_at) if cn.created_at else None,
+                })
+        except Exception as e:
+            print("Error parsing Credit Notes transactions:", e)
+
+        # --- Debit Notes ---
+        try:
+            debit_notes = (
+                DebitNote.query
+                .filter(
+                    DebitNote.business_id == business_id,
+                    DebitNote.is_deleted == False,
+                )
+                .order_by(desc(DebitNote.created_at))
+                .limit(limit)
+                .all()
+            )
+            for dn in debit_notes:
+                party_name = "-"
+                if dn.vendor:
+                    party_name = dn.vendor.company_name or dn.vendor.vendor_name or "-"
+                transactions.append({
+                    "id": str(dn.uuid),
+                    "route_path": f"/debit-note/view/{dn.uuid}",
+                    "date": str(dn.debit_note_date) if dn.debit_note_date else None,
+                    "type": "Debit Note",
+                    "txn_no": str(dn.debit_note_number),
+                    "party_name": party_name,
+                    "amount": round(float(dn.total_amount or 0), 2),
+                    "created_at": str(dn.created_at) if dn.created_at else None,
+                })
+        except Exception as e:
+            print("Error parsing Debit Notes transactions:", e)
 
         # Sort all by created_at descending, take top `limit`
         transactions.sort(key=lambda t: t.get("created_at") or "", reverse=True)

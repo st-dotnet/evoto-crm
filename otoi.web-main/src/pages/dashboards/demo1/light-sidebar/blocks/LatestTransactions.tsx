@@ -9,19 +9,22 @@ const TYPE_BADGE_MAP: Record<string, string> = {
   'Purchase Invoices': 'badge-warning',
   'Purchase Orders': 'badge-primary',
   'Payment Out': 'badge-danger',
+  'Quotation / Estimate': 'badge-info',
+  'Credit Note': 'badge-danger',
+  'Debit Note': 'badge-success',
 };
 
 type FilterTab = 'All' | 'Sales' | 'Purchases' | 'Payments';
 
 const TAB_TYPES: Record<FilterTab, string[]> = {
   All: [],
-  Sales: ['Sales Invoices'],
-  Purchases: ['Purchase Invoices', 'Purchase Orders'],
+  Sales: ['Sales Invoices', 'Quotation / Estimate', 'Credit Note'],
+  Purchases: ['Purchase Invoices', 'Purchase Orders', 'Debit Note'],
   Payments: ['Payment In', 'Payment Out'],
 };
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatDate = (iso: string | null): string => {

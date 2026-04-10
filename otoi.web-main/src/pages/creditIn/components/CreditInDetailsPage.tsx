@@ -5,7 +5,6 @@ import {
   Download,
   Printer,
   Share,
-  Edit,
   FileText,
   Clock,
   Mail,
@@ -291,10 +290,6 @@ const CreditInDetailsPage: React.FC = () => {
     } finally {
       setIsFetchingShareData(false);
     }
-  };
-
-  const handleEdit = () => {
-    navigate(`/sales/credit-note/${id}/edit`);
   };
 
   const formatCurrency = (amount: number) => {
@@ -700,8 +695,6 @@ const CreditInDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
           </div>
         </div>
       </div>

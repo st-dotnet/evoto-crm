@@ -540,8 +540,6 @@ const DebitNoteDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/debit-note/${id}/edit`)} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
           </div>
         </div>
       </div>

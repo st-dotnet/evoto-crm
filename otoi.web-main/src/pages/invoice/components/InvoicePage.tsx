@@ -668,7 +668,7 @@ const InvoicePage = () => {
     return (
 
         <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
-            {(isLoading || isDeleting || isDropdownLoading) && (
+            {(isDeleting || isDropdownLoading) && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
                     <div className="text-primary">
                         <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />

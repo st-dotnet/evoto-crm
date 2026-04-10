@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getOverdueInvoices, type OverdueSummary } from '@/services/dashboard.service';
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const OverdueAlert = () => {

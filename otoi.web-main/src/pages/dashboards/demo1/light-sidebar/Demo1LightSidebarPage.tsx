@@ -8,7 +8,7 @@ const Demo1LightSidebarPage = () => {
     <Fragment>
       <Container>
         <Toolbar>
-          <ToolbarHeading title="Dashboard" description="Central Hub for business overview" />
+          <ToolbarHeading title="Dashboard" />
         </Toolbar>
       </Container>
 

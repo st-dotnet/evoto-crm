@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getTopParties, type TopParty } from '@/services/dashboard.service';
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const TopParties = () => {
@@ -40,21 +40,19 @@ const TopParties = () => {
         <div className="flex gap-0 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('receivable')}
-            className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'receivable'
+            className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === 'receivable'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
           >
             To Collect
           </button>
           <button
             onClick={() => setActiveTab('payable')}
-            className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'payable'
+            className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === 'payable'
                 ? 'border-red-400 text-red-500'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
           >
             To Pay
           </button>
@@ -75,9 +73,8 @@ const TopParties = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold text-white ${
-                      activeTab === 'receivable' ? 'bg-green-400' : 'bg-red-400'
-                    }`}
+                    className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold text-white ${activeTab === 'receivable' ? 'bg-green-400' : 'bg-red-400'
+                      }`}
                   >
                     {party.name.charAt(0).toUpperCase()}
                   </div>
@@ -92,9 +89,8 @@ const TopParties = () => {
               {/* Progress bar */}
               <div className="w-full bg-gray-100 rounded-full h-1.5">
                 <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ${
-                    activeTab === 'receivable' ? 'bg-green-400' : 'bg-red-400'
-                  }`}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${activeTab === 'receivable' ? 'bg-green-400' : 'bg-red-400'
+                    }`}
                   style={{ width: `${(party.amount / maxAmount) * 100}%` }}
                 />
               </div>

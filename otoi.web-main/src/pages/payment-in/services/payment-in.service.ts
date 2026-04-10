@@ -4,7 +4,19 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
 const getAuthToken = (): string | null => {
-  return localStorage.getItem("OTOI-auth-v1.0.0.1");
+  try {
+    const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    if (!authData) return null;
+    const parsedAuth = JSON.parse(authData);
+    return (
+      parsedAuth.token ||
+      parsedAuth.access_token ||
+      parsedAuth.accessToken ||
+      null
+    );
+  } catch (error) {
+    return null;
+  }
 };
 
 interface ApiResponse {
@@ -38,12 +50,18 @@ export const createPaymentIn = async (
   }
 
   try {
-    // Since payment-in endpoint doesn't exist, just return success for now
-    // In real implementation, this would POST to /api/payment-in
+    const response = await axios.post(`${API_URL}/payment-in`, paymentData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: false,
+    });
+
     return {
       success: true,
-      data: paymentData,
-      status: 200,
+      data: response.data,
+      status: response.status,
     };
   } catch (error: any) {
     console.error("Error creating payment-in:", error);
@@ -81,31 +99,26 @@ export const getPaymentInList = async (
   }
 
   try {
-    // Build API URL with filters
-    let apiUrl = `${API_URL}/invoices?page=${page}&per_page=${per_page}`;
-    
-    // Add payment status filter
+    // Build API URL with filters using the new payment-in endpoint
+    let apiUrl = `${API_URL}/payment-in?page=${page}&per_page=${per_page}`;
+
     if (payment_status && payment_status !== 'all') {
       const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
       apiUrl += `&payment_status=${backendStatus}`;
     }
-    
-    // Add search filters
+
     if (party_name) {
       apiUrl += `&party_name=${encodeURIComponent(party_name)}`;
     }
-    
+
     if (payment_number) {
-      // Extract invoice number from payment number (remove PAY- prefix)
-      const invoiceNumber = payment_number.replace('PAY-', '');
-      apiUrl += `&invoice_number=${encodeURIComponent(invoiceNumber)}`;
+      apiUrl += `&payment_number=${encodeURIComponent(payment_number)}`;
     }
-    
-    // Add date filter
+
     if (date_filter) {
       apiUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
     }
-    
+
     const response = await axios.get(apiUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -114,86 +127,9 @@ export const getPaymentInList = async (
       withCredentials: false,
     });
 
-    // Check if response.data is an array, if not try to extract the array
-    let invoicesData = response.data;
-    let paginationData: any = {};
-    
-    if (!Array.isArray(response.data)) {
-      // The actual array is nested under response.data.data
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        invoicesData = response.data.data;
-        paginationData = response.data.pagination || {};
-      } else if (
-        response.data?.invoices &&
-        Array.isArray(response.data.invoices)
-      ) {
-        invoicesData = response.data.invoices;
-        paginationData = response.data.pagination || {};
-      } else {
-        console.error(
-          "Response data is not in expected format:",
-          response.data,
-        );
-        return {
-          success: false,
-          error: "Invalid API response format",
-          status: response.status,
-        };
-      }
-    }
-
-    // For 'all' status, filter out unpaid invoices client-side
-    if (!payment_status || payment_status === 'all') {
-      invoicesData = invoicesData.filter((invoice: any) => {
-        const paymentStatus = invoice.payment_status;
-        return paymentStatus === 'paid' || paymentStatus === 'partial';
-      });
-    }
-
-    // Transform invoice data to payment format
-    const paymentData = invoicesData.map((invoice: any) => ({
-      id: invoice.uuid || invoice.id,
-      payment_number: `PAY-${invoice.invoice_number || "INV"}`,
-      date:
-        invoice.updated_at ||
-        invoice.invoice_date ||
-        new Date().toISOString().split("T")[0],
-      party_name:
-        invoice.customer?.name || invoice.customer_name || "Unknown Customer",
-      total_amount_settled: invoice.total_amount || 0,
-      amount_received: invoice.amount_paid || 0,
-      payment_discount: invoice.payment_discount || invoice.discount_total || 0,
-      payment_mode: "cash",
-      invoice_id: invoice.uuid || invoice.id,
-      invoice_number: invoice.invoice_number || invoice.invoiceNo,
-      balance_due: invoice.balance_due || 0,
-      payment_status:
-        ((invoice.balance_due || 0) === 0
-          ? "paid"
-          : (invoice.amount_paid || 0) > 0
-            ? "partially paid"
-            : "unpaid"),
-    }));
-
-    // Update pagination data for 'all' status to reflect filtered count
-    if (!payment_status || payment_status === 'all') {
-      if (paginationData.total) {
-        paginationData.total = invoicesData.length;
-        paginationData.last_page = Math.ceil(invoicesData.length / per_page);
-      }
-    }
-
     return {
       success: true,
-      data: {
-        data: paymentData,
-        pagination: paginationData || {
-          current_page: page,
-          last_page: 1,
-          per_page: per_page,
-          total: paymentData.length,
-        }
-      },
+      data: response.data,
       status: response?.status || 200,
     };
   } catch (error: any) {
@@ -223,8 +159,8 @@ export const getPaymentById = async (id: string): Promise<ApiResponse> => {
   }
 
   try {
-    // Use invoices API endpoint to get specific invoice
-    const response = await axios.get(`${API_URL}/invoices/${id}`, {
+    // Use payment-in API endpoint to get specific payment
+    const response = await axios.get(`${API_URL}/payment-in/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -265,10 +201,9 @@ export const deletePaymentIn = async (id: string): Promise<ApiResponse> => {
   }
 
   try {
-    // Soft delete by updating the is_deleted column
-    const response = await axios.put(
-      `${API_URL}/invoices/${id}/delete`,
-      { is_deleted: true },
+    // Delete payment-in record (backend will also revert invoice financials)
+    const response = await axios.delete(
+      `${API_URL}/payment-in/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -356,8 +291,8 @@ export const getPaymentNumbersDropdown = async (): Promise<ApiResponse> => {
 
     // Filter invoices that have payments and extract payment numbers
     const paymentNumbers = invoicesData
-      .filter((invoice: any) => 
-        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+      .filter((invoice: any) =>
+        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
         invoice.invoice_number
       )
       .map((invoice: any) => `PAY-${invoice.invoice_number}`);
@@ -413,8 +348,8 @@ export const getPartyNamesDropdown = async (): Promise<ApiResponse> => {
     // Filter invoices that have payments and extract unique party names
     const partyNames = [...new Set(
       invoicesData
-        .filter((invoice: any) => 
-          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+        .filter((invoice: any) =>
+          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
           invoice.customer_name
         )
         .map((invoice: any) => invoice.customer_name)

@@ -151,6 +151,11 @@ const saveLeadSchema = Yup.object().shape({
     then: (schema) => schema.required("City is required"),
     otherwise: (schema) => schema.nullable(),
   }),
+  address1: Yup.string().when("status", {
+    is: (val: string) => val === "4",
+    then: (schema) => schema.required("Address 1 is required"),
+    otherwise: (schema) => schema.nullable(),
+  }),
 }, [["status", "status"]]);
 
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
@@ -587,7 +592,9 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Address 1 */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Address 1</label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                          Address 1{formik.values.status === "4" && <span style={{ color: "red" }}>*</span>}
+                        </label>
                         <input
                           placeholder="Address 1"
                           type="text"
