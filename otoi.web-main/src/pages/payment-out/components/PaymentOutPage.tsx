@@ -78,14 +78,19 @@ export const PaymentOutPage = () => {
         getVendorNamesDropdown(),
         getPaymentOutNumbersDropdown(),
       ]);
-      
+
       if (partyRes.success && partyRes.data) {
-        // Handle vendor objects with name property
-        const vendorData = Array.isArray(partyRes.data) 
-          ? partyRes.data.map((vendor: any) => vendor.name || vendor).filter(Boolean)
+        // Handle party names from payment-out API
+        // Response can be data[0] for party names dropdown
+        let partyData = partyRes.data;
+        if (Array.isArray(partyData) && partyData.length > 0 && Array.isArray(partyData[0])) {
+          partyData = partyData[0];
+        }
+        const partyNames = Array.isArray(partyData)
+          ? partyData.filter((name: any) => typeof name === 'string' && name.trim() !== '')
           : [];
-        setAllPartyNames(vendorData);
-      } else { 
+        setAllPartyNames(partyNames);
+      } else {
         setAllPartyNames([]);
       }
       if (numRes.success && numRes.data) {
@@ -271,8 +276,8 @@ export const PaymentOutPage = () => {
         <DataGridColumnHeader title="Payment Number" column={column} className="justify-center" />
       ),
       cell: (info) => (
-        <div className="text-sm font-medium text-center text-blue-600">
-          #{info.getValue() as string}
+        <div className="text-sm font-medium text-primary text-center text-blue-600 hover:underline ">
+          {info.getValue() as string}
         </div>
       ),
     },
@@ -316,27 +321,19 @@ export const PaymentOutPage = () => {
         const discount = row.payment_discount ?? 0;
 
         return (
-          <div className="text-sm font-medium text-center flex flex-col items-center justify-center min-h-[48px]">
-            <div>
-              ₹{amount?.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </div>
-
-            {/* Always reserve space for discount */}
-            <div className="text-xs h-[18px] leading-[18px]">
-              {discount > 0 ? (
-                <span className="text-red-500">
-                  - ₹{discount.toLocaleString("en-IN", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} discount
-                </span>
-              ) : (
-                <span className="invisible">placeholder</span>
-              )}
-            </div>
+          <div className="text-sm font-medium text-center">
+            <div>₹{amount?.toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}</div>
+            {discount > 0 && (
+              <div className="text-xs text-red-500">
+                - ₹{discount.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} discount
+              </div>
+            )}
           </div>
         );
       },
@@ -429,7 +426,7 @@ export const PaymentOutPage = () => {
                     onSelect={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      navigate(`/payment-out/edit/${row.original.id?.toString() ?? row.original.payment_number}`);
+                      navigate(`/payment-out/${row.original.id?.toString() ?? row.original.payment_number}`);
                       setIsOpen(false);
                     }}
                   >
@@ -493,7 +490,7 @@ export const PaymentOutPage = () => {
               <span className="text-[11px] text-gray-400 shrink-0">
                 {new Date(rowData.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
               </span>
-              <span className="text-xs font-semibold text-blue-600 truncate">#{rowData.payment_number}</span>
+              <span className="text-xs font-semibold text-blue-600 truncate">{rowData.payment_number}</span>
             </div>
             {rowData.invoice_number && (
               <span className="text-[10px] text-gray-400 block">{rowData.invoice_number}</span>
@@ -561,7 +558,7 @@ export const PaymentOutPage = () => {
                     onSelect={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      navigate(`/payment-out/edit/${row.original.id?.toString() ?? row.original.payment_number}`);
+                      navigate(`/payment-out/${row.original.id?.toString() ?? row.original.payment_number}`);
                       setIsOpen(false);
                     }}
                   >
@@ -603,7 +600,13 @@ export const PaymentOutPage = () => {
     if (mobilePayments.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
-          <div className="text-sm">No payments found</div>
+          <div className="text-sm">
+            {searchTerm && searchType === 'party_name' 
+              ? `No payment records found for party "${searchTerm}"`
+              : searchTerm && searchType === 'payment_number'
+              ? `No payment records found for number "${searchTerm}"`
+              : "No payment records found"}
+          </div>
         </div>
       );
     }
@@ -747,15 +750,21 @@ export const PaymentOutPage = () => {
                   >
                     <span className="text-[11px] text-gray-500">All {searchType === "party_name" ? "Vendors" : "Payments"}</span>
                   </DropdownMenuItem>
-                  {(searchType === "party_name" ? allPartyNames : allPaymentNumbers).map((item, idx) => (
-                    <DropdownMenuItem
-                      key={idx}
-                      onClick={() => { setSearchTerm(item); setRefreshKey((k) => k + 1); }}
-                      className={`text-[11px] ${searchTerm === item ? "bg-blue-50 text-blue-600" : ""}`}
-                    >
-                      {item}
+                  {(searchType === "party_name" ? allPartyNames : allPaymentNumbers).length === 0 ? (
+                    <DropdownMenuItem disabled>
+                      <span className="text-[11px] text-gray-400">No {searchType === "party_name" ? "vendors" : "payments"} found</span>
                     </DropdownMenuItem>
-                  ))}
+                  ) : (
+                    (searchType === "party_name" ? allPartyNames : allPaymentNumbers).map((item, idx) => (
+                      <DropdownMenuItem
+                        key={idx}
+                        onClick={() => { setSearchTerm(item); setRefreshKey((k) => k + 1); }}
+                        className={`text-[11px] ${searchTerm === item ? "bg-blue-50 text-blue-600" : ""}`}
+                      >
+                        {item}
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -818,6 +827,13 @@ export const PaymentOutPage = () => {
                 size: 10
               }}
               rowSelection={true}
+              messages={{
+                empty: searchTerm && searchType === 'party_name' 
+                  ? `No payment records found for party "${searchTerm}"`
+                  : searchTerm && searchType === 'payment_number'
+                  ? `No payment records found for number "${searchTerm}"`
+                  : "No payment records found"
+              }}
               onRowClick={(row) => {
                 fetchPaymentDetails(row.original);
               }}

@@ -34,41 +34,14 @@ interface ReportsInventoryItem {
 }
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap');
-
-  .rp-root {
-    font-family: 'DM Sans', sans-serif;
-  }
-
   /* ── Header Band ── */
   .rp-header-band {
-    background: linear-gradient(135deg, #0F1117 0%, #1A1D2E 55%, #21243A 100%);
-    border-radius: 16px;
     padding: 22px 26px;
     position: relative;
     overflow: hidden;
     margin-bottom: 18px;
-    box-shadow: 0 8px 32px rgba(10,12,20,0.22), 0 1px 0 rgba(255,255,255,0.04) inset;
   }
-  .rp-header-band::before {
-    content: '';
-    position: absolute;
-    top: -50px; right: -30px;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(108,99,255,0.22) 0%, transparent 68%);
-    pointer-events: none;
-  }
-  .rp-header-band::after {
-    content: '';
-    position: absolute;
-    bottom: -35px; left: 38%;
-    width: 140px; height: 140px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,196,140,0.1) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .rp-header-content {
+    .rp-header-content {
     position: relative;
     z-index: 1;
     display: flex;
@@ -84,58 +57,53 @@ const styles = `
   .rp-back-btn {
     height: 32px; width: 32px;
     border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.05);
+    border: 1px solid #e5e7eb;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: all 0.15s ease;
-    flex-shrink: 0;
   }
   .rp-back-btn:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.2);
+    border-color: #6c63ff;
   }
   .rp-icon-wrap {
     height: 42px; width: 42px;
     border-radius: 12px;
-    background: linear-gradient(140deg, #6C63FF 0%, #8B85FF 100%);
+    border: 1px solid #e5e7eb;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 14px rgba(108,99,255,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset;
     flex-shrink: 0;
   }
   .rp-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 21px;
-    color: #FFFFFF;
-    letter-spacing: -0.3px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #111318;
     line-height: 1.2;
   }
   .rp-subtitle {
-    font-size: 11.5px;
-    color: #FFFFFF;
-    margin-top: 2px;
+    font-size: 13px;
+    color: #6b7280;
     font-weight: 400;
+    margin-top: 2px;
   }
   .rp-dl-btn {
     height: 34px;
     padding: 0 14px;
     border-radius: 9px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.8);
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
     font-size: 12px;
     font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px;
     cursor: pointer;
     transition: all 0.15s ease;
-    white-space: nowrap;
-    flex-shrink: 0;
   }
   .rp-dl-btn:hover:not(:disabled) {
-    background: rgba(108,99,255,0.28);
-    border-color: rgba(108,99,255,0.55);
-    color: #fff;
+    background: #f9fafb;
+    border-color: #6c63ff;
+    color: #6c63ff;
+  }
+  .rp-dl-btn:hover:not(:disabled) {
     box-shadow: 0 0 18px rgba(108,99,255,0.25);
   }
   .rp-dl-btn:disabled { opacity: 0.38; cursor: not-allowed; }
@@ -422,20 +390,20 @@ const ReportsPage = () => {
   const handlePrintPDF = async () => {
     try {
       await printInventoryPDF({ search: searchTerm });
-      toast.success("PDF downloaded successfully!");
+      // PDF opened in new tab - no additional UI needed
     } catch (error) {
       console.error("PDF generation failed:", error);
-      toast.error("Failed to generate PDF. Please try again.");
+      toast.error("Failed to generate PDF");
     }
   };
 
   const handlePrintForPrint = async () => {
     try {
       await printInventoryForPrint({ search: searchTerm });
-      toast.success("Print dialog opened successfully!");
+      // PDF opened in new tab - no additional UI needed
     } catch (error) {
       console.error("Print failed:", error);
-      toast.error("Failed to open print dialog. Please try again.");
+      toast.error("Failed to open print dialog");
     }
   };
 
@@ -463,11 +431,8 @@ const ReportsPage = () => {
         <div className="rp-header-band rp-anim-band">
           <div className="rp-header-content">
             <div className="rp-header-left">
-              <button className="rp-back-btn" onClick={() => window.history.back()}>
-                <ArrowLeft style={{ width: 14, height: 14, color: "rgba(255,255,255,0.65)" }} />
-              </button>
               <div className="rp-icon-wrap">
-                <FileText style={{ width: 18, height: 18, color: "#fff" }} />
+                <FileText style={{ width: 18, height: 18, color: "#6c63ff" }} />
               </div>
               <div>
                 <div className="rp-title">Rate List</div>

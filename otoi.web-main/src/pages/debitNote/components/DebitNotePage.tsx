@@ -34,7 +34,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
-import { getDebitNotes, deleteDebitNote, getDebitNoteById, updatePurchaseInvoiceStatus, checkDebitNoteExistsForInvoice, getPartyNamesDropdown, getInvoiceNumbersDropdown } from '../service/debitNote.service';
+import { getDebitNotes, deleteDebitNote, getDebitNoteById, updatePurchaseInvoiceStatus, checkDebitNoteExistsForInvoice, getPartyNamesDropdown, getInvoiceNumbersDropdown, getDebitNoteNumbersDropdown } from '../service/debitNote.service';
 import axios from 'axios';
 
 interface DebitNote {
@@ -93,7 +93,7 @@ const DebitNotePage = () => {
             // Use dedicated dropdown endpoints that return simple arrays
             const [customerResponse, debitNoteNumberResponse] = await Promise.all([
                 getPartyNamesDropdown(),
-                getInvoiceNumbersDropdown()
+                getDebitNoteNumbersDropdown()
             ]);
 
             if (customerResponse.success && customerResponse.data) {
@@ -205,7 +205,7 @@ const DebitNotePage = () => {
                     })(),
                     invoice_no: note.invoice_number || note.invoice_no || '',
                     amount: note.total_amount || note.amount || 0,
-                    status: note.invoice_id ? 'credited' : 'unpaid'
+                    status: note.status || 'unpaid'
                 })) : [];
                 
                 // Update the state with the formatted data
@@ -367,11 +367,11 @@ const DebitNotePage = () => {
                 <DataGridColumnHeader
                     title="Debit Note Number"
                     column={column}
-                    className="justify-start"
+                    className="justify-center"
                 />
             ),
             cell: (info) => (
-                <div className="text-sm font-medium text-primary">
+                <div className="text-sm font-medium text-primary hover:underline text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -385,11 +385,11 @@ const DebitNotePage = () => {
                 <DataGridColumnHeader
                     title="Party Name"
                     column={column}
-                    className="justify-start"
+                    className="justify-center"
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900">
+                <div className="text-sm text-gray-900 text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -403,11 +403,11 @@ const DebitNotePage = () => {
                 <DataGridColumnHeader
                     title="Invoice No"
                     column={column}
-                    className="justify-start"
+                    className="justify-center"
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900">
+                <div className="text-sm text-gray-900 text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -421,17 +421,16 @@ const DebitNotePage = () => {
                 <DataGridColumnHeader
                     title="Amount"
                     column={column}
-                    className="justify-end"
+                    className="justify-center"
                 />
             ),
             cell: (info) => (
-                <div className="text-sm font-medium text-right">
+                <div className="text-sm font-medium text-center">
                     ₹{(info.getValue() as number)?.toLocaleString('en-IN') || '0'}
                 </div>
             ),
             meta: {
-                headerClassName: "min-w-[100px] justify-end",
-                cellClassName: "text-right",
+                headerClassName: "min-w-[100px]",
             },
         },
         {

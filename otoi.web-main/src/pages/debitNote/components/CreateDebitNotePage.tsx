@@ -167,6 +167,13 @@ const CreateDebitNotePage = () => {
         totalAmount: 0,
         additional_charges_total: 0,
         auto_round_off: false,
+        mark_as_fully_paid: false,
+        amount_received: 0,
+        balance_due: 0,
+        payment_date: '',
+        payment_method: '',
+        payment_reference: '',
+        payment_notes: ''
     });
 
     const [isInvoicePaid, setIsInvoicePaid] = useState(false);
@@ -250,6 +257,51 @@ const CreateDebitNotePage = () => {
         }
     };
 
+    const handleMarkAsFullyPaid = async () => {
+        if (!isEditMode || !id) {
+            toast.error('This action is only available in edit mode');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            // Update the debit note status to 'credited'
+            const response = await updateDebitNote(id, {
+                ...debitNoteData,
+                status: 'credited',
+                amount_received: debitNoteData.totalAmount,
+                balance_due: 0
+            });
+
+            if (response.success) {
+                toast.success('Debit note marked as fully paid and status changed to credited');
+                // Update local state
+                setDebitNoteData(prev => ({
+                    ...prev,
+                    status: 'credited',
+                    amount_received: prev.totalAmount,
+                    balance_due: 0
+                }));
+            } else {
+                // Handle specific validation errors
+                if (response.error?.includes('already marked as fully paid')) {
+                    toast.error('This debit note is already marked as fully paid');
+                } else if (response.error?.includes('Amount received must equal total amount')) {
+                    toast.error('Amount received must equal total amount to mark as fully paid');
+                } else if (response.error?.includes('Cannot change status from')) {
+                    toast.error('Cannot change status from credited (fully paid)');
+                } else {
+                    toast.error(response.error || 'Failed to update debit note status');
+                }
+            }
+        } catch (error) {
+            console.error('Error marking debit note as fully paid:', error);
+            toast.error('Failed to update debit note status');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!selectedParty) {
             toast.error('Please select a vendor');
@@ -263,12 +315,22 @@ const CreateDebitNotePage = () => {
 
         setIsSaving(true);
         try {
+            // Determine status based on checkbox and invoice linking
+            let finalStatus = debitNoteData.status;
+            if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
+                finalStatus = 'credited';
+            } else if (!isEditMode && debitNoteData.linkToInvoice !== '') {
+                finalStatus = 'credited';
+            } else if (!isEditMode) {
+                finalStatus = 'unpaid';
+            }
+
             const payload = {
                 debitNoteNo: debitNoteData.debitNoteNo,
                 debitNoteDate: debitNoteData.debitNoteDate,
                 linkToInvoice: debitNoteData.linkToInvoice,
                 vendorId: debitNoteData.vendorId, // Include vendor ID from invoice
-                status: debitNoteData.linkToInvoice !== '' ? 'credited' : 'unpaid',
+                status: finalStatus,
                 selectedCustomer: selectedCustomer,
                 debitNoteItems: items.map(item => ({
                     id: item.id || crypto.randomUUID(),
@@ -291,6 +353,11 @@ const CreateDebitNotePage = () => {
                 round_off_amount: debitNoteData.round_off_amount,
                 total_amount: debitNoteData.totalAmount,
                 additional_charges: debitNoteData.additional_charges_total,
+                // Add fully paid fields if checkbox is checked
+                ...(isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited' && {
+                    amount_received: debitNoteData.totalAmount,
+                    balance_due: 0
+                })
             };
 
             
@@ -302,7 +369,22 @@ const CreateDebitNotePage = () => {
             }
 
             if (response.success) {
-                toast.success(isEditMode ? 'Debit note updated successfully' : 'Debit note created successfully');
+                // Show appropriate success message
+                if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
+                    toast.success('Debit note marked as fully paid and updated successfully');
+                } else {
+                    toast.success(isEditMode ? 'Debit note updated successfully' : 'Debit note created successfully');
+                }
+                
+                // Update local state if marked as fully paid
+                if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
+                    setDebitNoteData(prev => ({
+                        ...prev,
+                        status: 'credited',
+                        amount_received: prev.totalAmount,
+                        balance_due: 0
+                    }));
+                }
                 
                 // Update purchase invoice status when debit note is created and linked to an invoice
                 if (!isEditMode && debitNoteData.linkToInvoice) {
@@ -320,7 +402,26 @@ const CreateDebitNotePage = () => {
                 
                 navigate('/debit-note');
             } else {
-                toast.error(response.error || 'Failed to save debit note');
+                // Handle specific validation errors for mark as fully paid
+                if (isEditMode && debitNoteData.mark_as_fully_paid) {
+                    if (response.error?.includes('already marked as fully paid')) {
+                        toast.error('This debit note is already marked as fully paid');
+                        // Revert checkbox on error
+                        setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: false }));
+                    } else if (response.error?.includes('Amount received must equal total amount')) {
+                        toast.error('Amount received must equal total amount to mark as fully paid');
+                        // Revert checkbox on error
+                        setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: false }));
+                    } else if (response.error?.includes('Cannot change status from')) {
+                        toast.error('Cannot change status from credited (fully paid)');
+                        // Revert checkbox on error
+                        setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: false }));
+                    } else {
+                        toast.error(response.error || 'Failed to save debit note');
+                    }
+                } else {
+                    toast.error(response.error || 'Failed to save debit note');
+                }
             }
         } catch (error) {
             console.error('Error saving debit note:', error);
@@ -449,10 +550,10 @@ const CreateDebitNotePage = () => {
                 
                 
                 setVendorInvoices(availableInvoices);
-                setShowInvoiceDropdown(true);
+                if (!isEditMode) { setShowInvoiceDropdown(true); }
             } else {
                 setVendorInvoices([]);
-                setShowInvoiceDropdown(true);
+                if (!isEditMode) { setShowInvoiceDropdown(true); }
             }
         } catch (error) {
             console.error('Error fetching party invoices:', error);
@@ -968,15 +1069,17 @@ const CreateDebitNotePage = () => {
                             }
                         }
                         
+                        const debitNoteStatus = debitNote.status || debitNote.data?.debit_note?.status || 'unpaid';
                         setDebitNoteData(prev => ({
                             ...prev,
                             debitNoteNo: debitNote.debit_note_number || debitNote.data?.debit_note?.debit_note_number || '',
                             debitNoteDate: debitNote.debit_note_date || debitNote.data?.debit_note?.debit_note_date || new Date().toISOString().split('T')[0],
-                            linkToInvoice: debitNote.invoice_number || debitNote.linked_invoice_id || debitNote.data?.debit_note?.invoice_number || debitNote.data?.debit_note?.linked_invoice_id || '',
+                            linkToInvoice: debitNote.data?.invoice_number || debitNote.data?.invoice_no || debitNote.data?.debit_note?.invoice_number || debitNote.data?.debit_note?.invoice_no || debitNote.invoice_number || debitNote.linked_invoice_id || debitNote.data?.debit_note?.linked_invoice_id || '',
                             linkToInvoiceId: finalInvoiceId || '',
-                            status: debitNote.status || debitNote.data?.debit_note?.status || 'unpaid',
+                            status: debitNoteStatus,
                             notes: debitNote.notes || debitNote.data?.debit_note?.notes || '',
                             terms: debitNote.terms_and_conditions || debitNote.data?.debit_note?.terms_and_conditions || '',
+                            mark_as_fully_paid: debitNoteStatus === 'credited',
                         }));
                         
                         // Load customer if available
@@ -1146,8 +1249,8 @@ const CreateDebitNotePage = () => {
                         }
                         
                         // Load debit note items
-                        if (debitNote.data?.items && debitNote.data.items.length > 0) {
-                            const transformedItems = debitNote.data.items.map((item: any) => {
+                        const debitNoteItems = debitNote.debit_note_items || debitNote.items || debitNote.data?.debit_note?.debit_note_items || debitNote.data?.debit_note?.items || debitNote.data?.items || []; if (debitNoteItems.length > 0) {
+                            const transformedItems = debitNoteItems.map((item: any) => {
                                 
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
@@ -1245,20 +1348,22 @@ const CreateDebitNotePage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         {!isViewMode && (
-                            <Button
-                                onClick={handleSave}
-                                disabled={isSaving || isInvoicePaid || debitNoteExistsForCurrentInvoice}
-                                className="min-w-[80px]"
-                            >
-                                {isSaving ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        {isEditMode ? 'Updating...' : 'Creating...'}
-                                    </div>
-                                ) : (
-                                    isEditMode ? 'Update' : 'Create'
-                                )}
-                            </Button>
+                            <>
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={isSaving || isInvoicePaid || debitNoteExistsForCurrentInvoice}
+                                    className="min-w-[80px]"
+                                >
+                                    {isSaving ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            {isEditMode ? 'Updating...' : 'Creating...'}
+                                        </div>
+                                    ) : (
+                                        isEditMode ? 'Update' : 'Create'
+                                    )}
+                                </Button>
+                                                            </>
                         )}
                         {isViewMode && (
                             <Button
@@ -1471,8 +1576,9 @@ const CreateDebitNotePage = () => {
                                             onChange={(e) => setDebitNoteData(prev => ({ ...prev, linkToInvoice: e.target.value }))}
                                             onFocus={() => selectedCustomer && fetchPartyInvoices()}
                                             className="pl-10"
-                                            disabled={!selectedCustomer || isViewMode || isInvoicePaid}
+                                            disabled={!selectedCustomer || isViewMode || isInvoicePaid || debitNoteData.linkToInvoice !== ''}
                                             autoComplete="off"
+                                            readOnly={debitNoteData.linkToInvoice !== ''}
                                         />
                                         {/* Loader indicator on the input field */}
                                         {isInvoiceDropdownLoading && (
@@ -1480,7 +1586,7 @@ const CreateDebitNotePage = () => {
                                                 <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                                             </div>
                                         )}
-                                        {debitNoteData.linkToInvoice && !isViewMode && (
+                                        {debitNoteData.linkToInvoice && !isViewMode && debitNoteData.linkToInvoice === '' && (
                                             <button
                                                 onClick={() => {
                                                     setShowUnlinkConfirmDialog(true);
@@ -1572,47 +1678,32 @@ const CreateDebitNotePage = () => {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {debitNoteData.linkToInvoice && (
-                            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-amber-600">⚠️</span>
-                                    <div>
-                                        <p className="text-sm font-medium text-amber-800">
-                                            Linked to Invoice: {debitNoteData.linkToInvoice}
-                                        </p>
-                                        <p className="text-xs text-amber-700">
-                                            Quantities are limited to original invoice amounts
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50 border-b">
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
                                             NO.
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
                                             Item/Service Details
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
                                             HSN/SAC
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
                                             Quantity
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
                                             PRICE/ITEM (₹)
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
                                             Discount
                                         </th>
-                                        <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-28">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-28">
                                             Tax
                                         </th>
-                                        <th className="text-right p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
+                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
                                             AMOUNT (₹)
                                         </th>
                                         <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
@@ -1645,110 +1736,106 @@ const CreateDebitNotePage = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
+                                            <td className="px-4 py-4 border-r border-gray-200 align-middle">
                                                 <Input
                                                     placeholder="HSN/SAC"
                                                     value={item.hsn_sac || ''}
-                                                    disabled={true}
-                                                    className="w-full bg-gray-100"
+                                                    disabled={false}
+                                                    className="w-full"
                                                 />
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
-                                                <div className="flex flex-col">
-                                                    <div className="relative">
-                                                        <Input
-                                                            type="number"
-                                                            value={item.quantity}
-                                                            min="1"
-                                                            step="1"
-                                                            max={debitNoteData.linkToInvoice !== '' ? item.originalQty : undefined}
-                                                            className={`w-full min-w-[50px] ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}
-                                                            onChange={(e) => {
-                                                                const inputValue = e.target.value;
-                                                                if (inputValue === '' || inputValue === '0') {
-                                                                    handleItemChange(index, 'quantity', 0);
-                                                                    return;
-                                                                }
-                                                                const newQty = parseInt(inputValue);
-                                                                if (isNaN(newQty) || newQty < 0) {
-                                                                    handleItemChange(index, 'quantity', 0);
-                                                                    return;
-                                                                }
-                                                                handleItemChange(index, 'quantity', newQty);
-                                                            }}
-                                                        />
-                                                        {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
-                                                            <span className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                                                                <span>⚠️</span>
-                                                                Max: {item.originalQty} (from invoice)
-                                                            </span>
-                                                        )}
+                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                                <Input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    min="0"
+                                                    step="1"
+                                                    max={debitNoteData.linkToInvoice !== '' ? item.originalQty : undefined}
+                                                    className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}
+                                                    onChange={(e) => {
+                                                        const inputValue = e.target.value;
+                                                        if (inputValue === '' || inputValue === '0') {
+                                                            handleItemChange(index, 'quantity', 0);
+                                                            return;
+                                                        }
+                                                        const newQty = parseInt(inputValue);
+                                                        if (isNaN(newQty) || newQty < 0) {
+                                                            handleItemChange(index, 'quantity', 0);
+                                                            return;
+                                                        }
+                                                        if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && newQty > item.originalQty) {
+                                                            handleItemChange(index, 'quantity', item.originalQty);
+                                                            return;
+                                                        }
+                                                        if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && newQty > item.originalQty) {
+                                                            handleItemChange(index, 'quantity', item.originalQty);
+                                                            return;
+                                                        }
+                                                        handleItemChange(index, 'quantity', newQty);
+                                                    }}
+                                                />
+                                                {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
+                                                    <div className="absolute bottom-1 left-0 right-0 text-center">
+                                                        <span className="text-xs text-amber-600 whitespace-nowrap">
+                                                            Max: {item.originalQty} (from invoice)
+                                                        </span>
                                                     </div>
-                                                </div>
+                                                )}
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
-                                                <div className="flex flex-col">
-                                                    <div className="relative">
-                                                        <Input
-                                                            type="number"
-                                                            value={item.price_per_item}
-                                                            disabled={debitNoteData.linkToInvoice !== ''}
-                                                            className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
-                                                            onChange={(e) => handleItemChange(index, 'price_per_item', parseFloat(e.target.value) || 0)}
-                                                        />
-                                                        <span className="absolute left-3 top-2.5 text-xs font-medium text-gray-500">₹</span>
+                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                                <Input
+                                                    type="number"
+                                                    value={item.price_per_item}
+                                                    disabled={debitNoteData.linkToInvoice !== ''}
+                                                    className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
+                                                    onChange={(e) => handleItemChange(index, 'price_per_item', parseFloat(e.target.value) || 0)}
+                                                />
+                                                <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">₹</span>
+                                            </td>
+                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                                <Input
+                                                    type="number"
+                                                    value={item.discount}
+                                                    disabled={debitNoteData.linkToInvoice !== ''}
+                                                    className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
+                                                    onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
+                                                />
+                                                {item.discount > 0 && (
+                                                    <div className="absolute bottom-1 left-0 right-5 text-right">
+                                                        <span className="text-[10px] font-medium text-red-600 leading-tight whitespace-nowrap">
+                                                            -₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}
+                                                        </span>
+                                                    </  div>
+                                                )}
+                                                <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">%</span>
+                                            </td>
+                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                                <select
+                                                    value={item.tax}
+                                                    disabled={debitNoteData.linkToInvoice !== ''}
+                                                    className={`w-full pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${debitNoteData.linkToInvoice !== '' ? 'bg-gray-100 text-gray-900' : 'bg-white text-gray-900'}`}
+                                                    onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value) || 0)}
+                                                >
+                                                    <option value="0">0%</option>
+                                                    <option value="5">5%</option>
+                                                    <option value="12">12%</option>
+                                                    <option value="18">18%</option>
+                                                    <option value="28">28%</option>
+                                                </select>
+                                                {item.tax > 0 && (
+                                                    <div className="absolute bottom-1 right-4 text-right">
+                                                        <span className="text-[10px] font-medium text-green-600 leading-tight whitespace-nowrap">
+                                                            +₹{((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}
+                                                        </span>
                                                     </div>
-                                                    <div className="mt-0.5 h-3"></div>
-                                                </div>
+                                                )}
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
-                                                <div className="flex flex-col">
-                                                    <div className="relative">
-                                                        <Input
-                                                            type="number"
-                                                            value={item.discount}
-                                                            disabled={debitNoteData.linkToInvoice !== ''}
-                                                            className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
-                                                            onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
-                                                        />
-                                                        <span className="absolute left-3 top-2.5 text-xs font-semibold text-gray-500">%</span>
-                                                    </div>
-                                                    <span className="text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5 h-3">
-                                                        {item.discount > 0
-                                                            ? `-₹${((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}`
-                                                            : ""}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
-                                                <div className="flex flex-col">
-                                                    <div className="relative">
-                                                        <select
-                                                            value={item.tax}
-                                                            disabled={debitNoteData.linkToInvoice !== ''}
-                                                            className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${debitNoteData.linkToInvoice !== '' ? 'bg-gray-100 text-gray-900' : 'bg-white text-gray-900'}`}
-                                                            onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value) || 0)}
-                                                        >
-                                                            <option value="0">0%</option>
-                                                            <option value="5">5%</option>
-                                                            <option value="12">12%</option>
-                                                            <option value="18">18%</option>
-                                                            <option value="28">28%</option>
-                                                        </select>
-                                                    </div>
-                                                    <span className="text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5 h-3">
-                                                        {item.tax > 0
-                                                            ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}`
-                                                            : ""}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-right border-r border-gray-200">
+                                            <td className="px-4 py-4 text-center border-r border-gray-200 align-middle">
                                                 <div className="text-sm text-gray-900">
                                                     ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4">
+                                            <td className="px-4 py-4 text-center align-middle">
                                                 <button
                                                     onClick={() => handleRemoveItem(index)}
                                                     className="text-red-500 hover:text-red-700 transition-colors p-1"
@@ -1789,7 +1876,7 @@ const CreateDebitNotePage = () => {
                                 <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                                     <tr>
                                         <td colSpan={4} className="p-4 border-r border-gray-200"></td>
-                                        <td className="p-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
+                                        <td className="p-4 text-sm text-center font-semibold text-gray-900 text-center border-r border-gray-200">
                                             Subtotal
                                         </td>
                                         <td className="p-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
@@ -1800,7 +1887,7 @@ const CreateDebitNotePage = () => {
                                             {debitNoteData.total_tax > 0 &&
                                                 `+₹${debitNoteData.total_tax.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                                         </td>
-                                        <td className="p-4 text-sm text-gray-900 text-right border-r border-gray-200">
+                                        <td className="p-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                             ₹{debitNoteData.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                         <td className="p-4"></td>
@@ -1878,6 +1965,21 @@ const CreateDebitNotePage = () => {
                                     <label htmlFor="autoRoundOff" className="text-sm font-medium">Auto Round Off</label>
                                 </div>
                             </div>
+                            {isEditMode && debitNoteData.status !== 'credited' && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="markAsFullyPaid"
+                                            checked={debitNoteData.mark_as_fully_paid}
+                                            onCheckedChange={(checked: boolean) => {
+                                                setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: checked }));
+                                            }}
+                                            disabled={isSaving}
+                                        />
+                                        <label htmlFor="markAsFullyPaid" className="text-sm font-medium">Mark as Fully Paid</label>
+                                    </div>
+                                </div>
+                            )}
                             {debitNoteData.auto_round_off && debitNoteData.round_off_amount !== 0 && (
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-600">Round Off</span>
@@ -2117,6 +2219,13 @@ const CreateDebitNotePage = () => {
                                     onClick={() => {
                                         setItems([]);
                                         setDebitNoteExistsForCurrentInvoice(false);
+                                        setDebitNoteData(prev => ({ 
+                                            ...prev, 
+                                            linkToInvoice: '',
+                                            linkToInvoiceId: '',
+                                            vendorId: '',
+                                            status: 'unpaid'
+                                        }));
                                         setShowUnlinkConfirmDialog(false);
                                         toast.success('Invoice unlinked successfully');
                                     }}

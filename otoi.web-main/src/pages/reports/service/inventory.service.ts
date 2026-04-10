@@ -268,7 +268,7 @@ export const printInventoryPDF = async (params?: {
 
   try {
     const businessId = getBusinessId();
-    
+
     const payload = {
       search: params?.search,
       category: params?.category,
@@ -287,19 +287,13 @@ export const printInventoryPDF = async (params?: {
       },
     );
 
-    // Create download link
+    // Open PDF in new tab
     const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `inventory_report_${new Date().toISOString().split('T')[0]}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    window.open(url, '_blank');
 
     return {
       success: true,
-      data: "PDF generated successfully",
+      data: "PDF opened successfully",
       status: response.status,
     };
   } catch (error: any) {
@@ -335,19 +329,13 @@ export const printInventoryForPrint = async (params?: {
       },
     );
 
-    // Open PDF in new window for printing
+    // Open PDF in new tab only
     const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    const printWindow = window.open(url, '_blank');
-    
-    if (printWindow) {
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-    }
+    window.open(url, '_blank');
 
     return {
       success: true,
-      data: "Print PDF opened successfully",
+      data: "PDF opened in new tab",
       status: response.status,
     };
   } catch (error: any) {

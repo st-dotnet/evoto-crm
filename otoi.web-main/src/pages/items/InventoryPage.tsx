@@ -587,11 +587,9 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 
         /* ── Hero banner ── */
         .inv-hero {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2744 100%);
-          border-radius: 1.25rem;
           padding: 2rem 2.25rem 1.75rem;
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           justify-content: space-between;
           gap: 1.5rem;
           flex-wrap: wrap;
@@ -599,25 +597,17 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           overflow: hidden;
           margin: 0 1rem;
         }
-        .inv-hero::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse 80% 60% at 110% -10%, rgba(59,130,246,0.18) 0%, transparent 60%),
-                      radial-gradient(ellipse 50% 50% at -5% 110%, rgba(16,185,129,0.10) 0%, transparent 60%);
-          pointer-events: none;
-        }
         .inv-hero-title {
           font-size: 1.5rem;
           font-weight: 700;
-          color: #fff;
+          color: #111318;
           letter-spacing: -0.02em;
           margin: 0 0 0.25rem;
           font-family: 'DM Sans', sans-serif;
         }
         .inv-hero-sub {
           font-size: 0.8125rem;
-          color: rgba(255,255,255,0.45);
+          color: #6b7280;
           font-weight: 400;
           margin: 0;
         }
@@ -625,34 +615,34 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         /* ── Stat cards inside hero ── */
         .inv-stats {
           display: flex;
-          gap: 0.75rem;
+          gap: 0.5rem;
           flex-wrap: wrap;
         }
         .inv-stat {
-          background: rgba(255,255,255,0.07);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 0.875rem;
-          padding: 0.875rem 1.25rem;
-          min-width: 140px;
-          backdrop-filter: blur(8px);
-          transition: background 0.2s;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.75rem;
+          padding: 0.6rem 1rem;
+          min-width: 120px;
+          transition: all 0.2s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .inv-stat:hover { background: rgba(255,255,255,0.11); }
+        .inv-stat:hover { background: #f9fafb; border-color: #d1d5db; }
         .inv-stat-label {
           font-size: 0.7rem;
           font-weight: 600;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: rgba(255,255,255,0.45);
+          color: #6b7280;
           margin-bottom: 0.375rem;
           display: flex;
           align-items: center;
           gap: 0.375rem;
         }
         .inv-stat-value {
-          font-size: 1.375rem;
+          font-size: 1.2rem;
           font-weight: 700;
-          color: #fff;
+          color: #111318;
           letter-spacing: -0.02em;
           line-height: 1;
         }

@@ -33,6 +33,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { listPurchaseInvoices, deletePurchaseInvoice, recordPurchaseInvoicePayment, getPurchaseInvoicePartyNames, getPurchaseInvoiceNumbers, getPurchaseInvoiceStatuses } from "../services/purchaseInvoice.services";
+import { checkDebitNoteExistsForInvoice } from "../../debitNote/service/debitNote.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
@@ -275,6 +276,30 @@ const PurchaseInvoicePage = () => {
     }, [debouncedSearchTerm, searchType, selectedStatus, selectedDateFilter]);
 
 
+    const handleDelete = async (id: string) => {
+        // Prevent any pending navigation
+        window.event?.stopPropagation();
+        window.event?.preventDefault();
+
+        // Check if debit notes exist for this purchase invoice before allowing delete
+        try {
+            const response = await checkDebitNoteExistsForInvoice(id);
+            if (response.success && response.data && response.data.hasDebitNote) {
+                const debitNotes = response.data.debitNotes || [];
+                const debitNoteNumbers = debitNotes.map((dn: any) => dn.debitNoteNo).join(', ');
+                toast.error(`Cannot delete purchase invoice. A debit note is linked to this invoice. Please unlink it first.`);
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking debit notes:', error);
+            // Still allow delete if check fails, but show warning
+            toast.warning('Unable to verify debit note status. Proceed with caution.');
+        }
+
+        setInvoiceToDelete(id);
+        setShowDeleteDialog(true);
+    };
+
     const handleDeleteConfirm = async () => {
         if (!invoiceToDelete || isDeleting) return;
         setIsDeleting(true);
@@ -492,8 +517,7 @@ const PurchaseInvoicePage = () => {
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem className="text-red-600" onSelect={() => {
-                                    setInvoiceToDelete(row.original.id);
-                                    setShowDeleteDialog(true);
+                                    handleDelete(row.original.id);
                                     setIsOpen(false);
                                 }}>
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
