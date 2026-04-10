@@ -1,9 +1,9 @@
-import { ScreenLoader } from "@/components/loaders";
 // import { useParams } from "react-router-dom";
 // import { useEffect, useState } from "react";
 // import axios from "axios";
 // import { KeenIcon } from "@/components";
-// // import { Country, State } from "country-state-city";
+// import { SpinnerDotted } from "spinners-react";
+// import { Country, State } from "country-state-city";
 
 // interface Customer {
 //   uuid?: string;
@@ -57,7 +57,7 @@ import { ScreenLoader } from "@/components/loaders";
 //   if (!customer)
 //     return (
 //       <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-[#0D0E12]">
-//         <ScreenLoader />
+//         <SpinnerDotted color="currentColor" />
 //       </div>
 //     );
 
@@ -341,6 +341,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { SpinnerDotted } from "spinners-react";
 import { Country, State } from "country-state-city";
 
 interface Customer {
@@ -434,7 +435,11 @@ export const CustomerDetails = () => {
   const initials = customer ? `${customer.first_name?.[0] || ""}${customer.last_name?.[0] || ""}`.toUpperCase() : "?";
 
   if (!customer || fetchingCustomer) {
-    return <ScreenLoader />;
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center text-[#0D0E12]">
+        <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+      </div>
+    );
   }
 
   return (

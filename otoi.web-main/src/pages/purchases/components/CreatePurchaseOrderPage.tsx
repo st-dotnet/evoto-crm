@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,6 +13,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SpinnerDotted } from "spinners-react";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -780,7 +780,14 @@ const CreatePurchaseOrderPage = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen space-y-6 relative">
       {isLoading && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+          <SpinnerDotted
+            size={50}
+            thickness={100}
+            speed={100}
+            color="#1B84FF"
+          />
+        </div>
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -1061,7 +1068,7 @@ const CreatePurchaseOrderPage = () => {
                 <div className="max-h-[300px] overflow-y-auto">
                   {isVendorsLoading ? (
                     <div className="p-8 text-center">
-                      <ScreenLoader />
+                      <SpinnerDotted size={20} />
                       <p className="mt-3 text-sm text-gray-500">
                         Loading vendors...
                       </p>
@@ -1508,7 +1515,7 @@ const CreatePurchaseOrderPage = () => {
                                 <div className="p-0 z-10 relative bg-[#1e2330] rounded-b-lg overflow-hidden">
                                   {isLoadingPurchaseHistory ? (
                                     <div className="flex justify-center items-center py-6">
-                                      <ScreenLoader />
+                                      <SpinnerDotted size={24} color="#60a5fa" thickness={100} />
                                     </div>
                                   ) : purchaseHistoryData.length === 0 ? (
                                     <div className="py-6 px-4 text-center text-[13px] text-gray-400">

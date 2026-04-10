@@ -1,8 +1,8 @@
-import { ScreenLoader } from "@/components/loaders";
 import { useParams, useNavigate } from "react-router-dom";
 import { User } from "./user-models";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { SpinnerDotted } from 'spinners-react';
 import { ModalUser } from "./ModalUsers";
 
 export const UserEdit = () => {
@@ -39,7 +39,11 @@ export const UserEdit = () => {
 
   if (loading) {
     return (
-      <ScreenLoader />
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="text-[#0D0E12] dark:text-gray-700">
+          <SpinnerDotted color="currentColor" />
+        </div>
+      </div>
     );
   }
 

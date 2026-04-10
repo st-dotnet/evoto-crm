@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SpinnerDotted } from "spinners-react";
 import {
   Dialog,
   DialogContent,
@@ -1160,10 +1160,24 @@ const CreateCreditNotePage = () => {
     <div className="min-h-screen bg-gray-50 relative">
       {/* Loading Overlay */}
       {isLoading && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+          <SpinnerDotted
+            size={50}
+            thickness={100}
+            speed={100}
+            color="#3b82f6"
+          />
+        </div>
       )}
       {isAddressLoading && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+          <SpinnerDotted
+            size={50}
+            thickness={100}
+            speed={100}
+            color="#3b82f6"
+          />
+        </div>
       )}
       {/* Header */}
       <div className="bg-white border-b px-6 py-4">
@@ -2293,7 +2307,7 @@ const CreateCreditNotePage = () => {
                     {isPartiesLoading ? (
                       <div className="p-8 text-center">
                         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                          <ScreenLoader />
+                          <SpinnerDotted size={20} />
                         </div>
                         <h3 className="mt-3 text-sm font-medium text-gray-900">
                           Loading Parties...

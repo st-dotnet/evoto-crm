@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, memo } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { cn } from "@/lib/utils";
 import {
   Customer,
@@ -47,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { SpinnerDotted } from 'spinners-react';
 
 import { getCustomers, getCustomerById } from "../../services/customer.service";
 
@@ -653,14 +653,27 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
   return (
     <div className="grid gap-5 lg:gap-7.5 relative">
       {isEditing && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
+          </div>
+        </div>
       )}
       {/* {loading && !customersData?.length && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
+          </div>
+        </div>
       )} */}
 
       {fetchingDetails && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
+            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+            <span className="text-sm font-medium">Fetching details...</span>
+          </div>
+        </div>
       )}
 
       <DataGrid

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import {
     DataGrid,
     DataGridColumnHeader,
@@ -37,6 +36,7 @@ import { listPurchaseInvoices, deletePurchaseInvoice, recordPurchaseInvoicePayme
 import { checkDebitNoteExistsForInvoice } from "../../debitNote/service/debitNote.service";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
+import { SpinnerDotted } from 'spinners-react';
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
@@ -660,7 +660,7 @@ const PurchaseInvoicePage = () => {
                 <div className="overflow-auto relative">
                     {isLoading && (
                         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60">
-                            <ScreenLoader />
+                            <SpinnerDotted size={50} color="#2563eb" />
                         </div>
                     )}
                     <DataGrid

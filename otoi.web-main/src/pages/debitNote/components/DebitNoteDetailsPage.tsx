@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -28,10 +27,12 @@ import { getDebitNoteById, getDebitNotePayments, createDebitNotePayment, getVend
 import { getShareData, sendShareEmail } from "@/services/share.service";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { resolveImageUrl } from "@/utils/imageUtils";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
+import { resolveImageUrl } from "@/utils/imageUtils";
 
 const DebitNoteDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -441,7 +442,11 @@ const DebitNoteDetailsPage: React.FC = () => {
   };
 
   if (isLoading) {
-    return <ScreenLoader />;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <SpinnerDotted size={50} color="#6366f1" />
+      </div>
+    );
   }
 
   if (!debitNoteData) {
@@ -936,7 +941,7 @@ const DebitNoteDetailsPage: React.FC = () => {
             >
               {isAddingPayment ? (
                 <>
-                  <ScreenLoader />
+                  <SpinnerDotted size={16} className="mr-2" />
                   Adding...
                 </>
               ) : (

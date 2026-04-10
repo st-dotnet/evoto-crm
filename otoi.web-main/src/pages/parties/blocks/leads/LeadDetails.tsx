@@ -1,9 +1,9 @@
-import { ScreenLoader } from "@/components/loaders";
 import { KeenIcon } from "@/components";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { SpinnerDotted } from "spinners-react";
 import { Lead } from "./lead-models";
 
 export const LeadDetails = () => {
@@ -69,7 +69,11 @@ export const LeadDetails = () => {
   const initials = lead ? `${lead.first_name?.[0] || ""}${lead.last_name?.[0] || ""}`.toUpperCase() : "?";
 
   if (!lead || fetchingLead) {
-    return <ScreenLoader />;
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center text-[#0D0E12]">
+        <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+      </div>
+    );
   }
 
   return (

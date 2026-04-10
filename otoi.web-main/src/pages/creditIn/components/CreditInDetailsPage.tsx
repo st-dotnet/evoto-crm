@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -24,6 +23,7 @@ import { getCustomerById } from "@/pages/parties/services/customer.service";
 import { getShareData, sendShareEmail } from "@/services/share.service";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { resolveImageUrl } from "@/utils/imageUtils";
@@ -595,7 +595,12 @@ const CreditInDetailsPage: React.FC = () => {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-[4px]">
         <div className="flex flex-col items-center gap-4">
-          <ScreenLoader />
+          <SpinnerDotted
+            size={50}
+            thickness={100}
+            speed={100}
+            color="#1B84FF"
+          />
           <p className="text-sm font-semibold text-gray-700 tracking-wide uppercase">
             Fetching Credit Note Details...
           </p>

@@ -1,4 +1,3 @@
-import { ScreenLoader } from "@/components/loaders";
 import { Fragment, useRef, useState } from "react";
 import { Container } from "@/components/container";
 import {
@@ -12,6 +11,7 @@ import {
 import { useLayout } from "@/providers";
 import axios from "axios";
 import { toast } from "sonner";
+import { SpinnerDotted } from 'spinners-react';
 import { Lead } from "../leads/lead-models";
 import { PartiesCustomerContent } from "./PartiesCustomersContent";
 import { ModalCustomer } from "./ModalCustomer";
@@ -168,7 +168,11 @@ const PartiesCustomersPage = () => {
       </Container>
 
        {loading && (
-        <ScreenLoader />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 dark:bg-black/50 overflow-hidden">
+          <div className="text-primary">
+            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+          </div>
+        </div>
       )}
     </Fragment>
   );

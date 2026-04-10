@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -49,6 +48,7 @@ import {
   getPartyNamesDropdown,
 } from "../services/payment-in.service";
 import { toast } from "sonner";
+import { SpinnerDotted } from "spinners-react";
 
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
@@ -803,7 +803,12 @@ export const PaymentInPage = () => {
         <div className="overflow-auto relative">
           {isLoading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
-              <ScreenLoader />
+              <SpinnerDotted
+                size={50}
+                thickness={100}
+                speed={100}
+                color="#2563eb"
+              />
             </div>
           )}
           <DataGrid
@@ -847,7 +852,12 @@ export const PaymentInPage = () => {
           {modalLoading && (
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[10000]">
               <div className="flex flex-col items-center">
-                <ScreenLoader />
+                <SpinnerDotted
+                  size={40}
+                  thickness={100}
+                  speed={100}
+                  color="#1B84FF"
+                />
                 <p className="mt-3 text-sm font-medium text-gray-600">
                   Loading payment details...
                 </p>
@@ -881,7 +891,12 @@ export const PaymentInPage = () => {
             <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               {modalLoading ? (
                 <div className="flex items-center justify-center py-10">
-                  <ScreenLoader />
+                  <SpinnerDotted
+                    size={30}
+                    thickness={100}
+                    speed={100}
+                    color="#1B84FF"
+                  />
                   <span className="ml-3 text-sm text-gray-600">
                     Loading payment details...
                   </span>

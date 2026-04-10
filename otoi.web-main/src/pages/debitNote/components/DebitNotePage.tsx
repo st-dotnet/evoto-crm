@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import {
   DataGrid,
   DataGridColumnHeader,
@@ -34,6 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
+import { SpinnerDotted } from 'spinners-react';
 import { getDebitNotes, deleteDebitNote, getDebitNoteById, updatePurchaseInvoiceStatus, checkDebitNoteExistsForInvoice, getPartyNamesDropdown, getInvoiceNumbersDropdown, getDebitNoteNumbersDropdown } from '../service/debitNote.service';
 import axios from 'axios';
 

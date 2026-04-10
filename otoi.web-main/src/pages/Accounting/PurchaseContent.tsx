@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { ScreenLoader } from "@/components/loaders";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -23,6 +22,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2, AlertCircle, X, Check } from "lucide-react";
+import { SpinnerDotted } from 'spinners-react';
 import {
     Dialog,
     DialogContent,
@@ -411,7 +411,12 @@ const PurchaseContent = ({ refreshStatus }: IPurchaseContentProps) => {
     return (
         <div className="grid gap-5 lg:gap-7.5">
             {fetchingDetails && (
-                <ScreenLoader />
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
+                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
+                        <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
+                        <span className="text-sm font-medium">Fetching details...</span>
+                    </div>
+                </div>
             )}
             <DataGrid
                 key={refreshKey}
