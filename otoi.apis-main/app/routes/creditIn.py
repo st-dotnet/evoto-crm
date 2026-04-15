@@ -1036,7 +1036,6 @@ def update_credit_note(credit_note_id):
         # Handle status updates with validation
         if "status" in data:
             new_status = data["status"]
-            
             # Validation for 'refunded' status (fully paid)
             if new_status == "refunded":
                 # Check if status is already refunded
