@@ -19,6 +19,8 @@ import {
   BriefcaseIcon,
   MoreVertical,
   Edit,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -312,8 +314,8 @@ const CreateCreditNotePage = () => {
       // Prepare the payload with the updated shipping addresses
       const updatedAddresses = editingAddress
         ? shippingAddresses.map((addr) =>
-            addr.uuid === editingAddress.uuid ? newAddress : addr,
-          )
+          addr.uuid === editingAddress.uuid ? newAddress : addr,
+        )
         : [...shippingAddresses, newAddress];
 
       const payload = {
@@ -524,7 +526,7 @@ const CreateCreditNotePage = () => {
               id: item.uuid || item.id,
               item_id: item.item_id,
               item_name: item.item_name, // Backend returns item_name
-              hsn_sac: item.hsn_sac_code,
+              hsnSac: item.hsn_sac_code, // Unify field name to hsnSac
               quantity: item.quantity,
               originalQty: originalQtyValue, // Set for all linked credit notes
               price_per_item: item.unit_price,
@@ -546,7 +548,7 @@ const CreateCreditNotePage = () => {
         } else {
           // No items - use backend data directly, no recalculation needed
           setItems([]); // Ensure items is empty array
-          
+
           // Backend now provides all fields correctly, no need to recalculate
         }
 
@@ -571,7 +573,7 @@ const CreateCreditNotePage = () => {
       // Don't recalculate to 0, keep existing values
       return;
     }
-    
+
     const subtotal = updatedItems.reduce(
       (sum: number, item: any) => sum + item.quantity * item.price_per_item,
       0,
@@ -588,7 +590,7 @@ const CreateCreditNotePage = () => {
           item.price_per_item *
           (1 - item.discount / 100) *
           item.tax) /
-          100,
+        100,
       0,
     );
 
@@ -675,8 +677,8 @@ const CreateCreditNotePage = () => {
         const transformedItems = response.data.items.map((item: any) => ({
           id: item.uuid || Date.now().toString() + Math.random(), // Use existing UUID or generate temporary ID
           item_id: item.item_id,
-          item: item.product_name, // API returns product_name
-          hsnSac: item.hsn_sac_code, // API returns hsn_sac_code
+          item_name: item.product_name, // Use item_name consistently
+          hsnSac: item.hsn_sac_code, // Use hsnSac consistently
           quantity: item.quantity, //  quantity
           originalQty: item.quantity, // Store original quantity for validation for all linked invoices
           price_per_item: item.unit_price, // UI expects price_per_item
@@ -755,7 +757,7 @@ const CreateCreditNotePage = () => {
       const pricePerItem = parseFloat(item.price_per_item) || 0;
       const discount = parseFloat(item.discount) || 0;
       const tax = parseFloat(item.tax) || 0;
-      
+
       item.amount = quantity * pricePerItem * (1 - discount / 100) * (1 + tax / 100);
     }
 
@@ -1040,7 +1042,7 @@ const CreateCreditNotePage = () => {
       const transformedItems = items.map((item) => ({
         id: item.id || crypto.randomUUID(), // Generate ID if not present
         item_id: item.item_id,
-        item_name: item.item_name || item.name || "", // Add item name
+        item_name: item.item_name || item.item || "", // Support both field names during transition
         quantity: item.quantity, // Use correct property name
         price_per_item: item.price_per_item || 0, // Use correct property name
         amount: item.amount, // Use 'amount' instead of 'total_price'
@@ -1100,7 +1102,7 @@ const CreateCreditNotePage = () => {
             : "Credit note created successfully";
           toast.success(successMessage);
         }
-        
+
         // Update local state if marked as fully paid
         if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
           setCreditNoteData(prev => ({
@@ -1180,8 +1182,8 @@ const CreateCreditNotePage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/sales/credit-note")}
@@ -1197,43 +1199,45 @@ const CreateCreditNotePage = () => {
                   : "Create Credit Note"}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="w-full sm:w-auto">
             {!isViewMode && (
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="min-w-[80px]"
+                className="w-full sm:min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               >
                 {isSaving ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {isEditMode ? "Updating..." : "Creating..."}
+                    <span>{isEditMode ? "Updating..." : "Creating..."}</span>
                   </div>
-                ) : isEditMode ? (
-                  "Update"
                 ) : (
-                  "Create"
+                  <div className="flex items-center gap-2 justify-center">
+                    <FileText className="h-4 w-4" />
+                    <span>{isEditMode ? "Update" : "Create"} Credit Note</span>
+                  </div>
                 )}
               </Button>
             )}
             {isViewMode && (
               <Button
                 onClick={() => navigate(`/sales/credit-note/${id}/edit`)}
-                className="min-w-[80px]"
+                className="w-full sm:min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               >
-                Edit
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Credit Note
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Top Section: Bill To, Ship To, and Credit Note Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:col-span-2">
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Bill To</h3>
+              <h3 className="text-base font-semibold text-gray-800">Bill To</h3>
               {selectedCustomer ? (
                 <div className="border rounded-xl min-h-[180px] p-4 bg-white">
                   <div className="flex justify-between items-start">
@@ -1332,20 +1336,22 @@ const CreateCreditNotePage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex items-center justify-center">
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 flex items-center justify-center bg-gray-50/50">
                   <button
                     onClick={() => setIsPartyDialogOpen(true)}
-                    className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
+                    className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 transition-all hover:scale-105"
                   >
-                    <Plus className="h-5 w-5" />
-                    <span className="font-medium">Add Party</span>
+                    <div className="p-2 border border-blue-200 rounded-lg bg-white shadow-sm">
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <span className="font-semibold">Add Party</span>
                   </button>
                 </div>
               )}
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
+              <h3 className="text-base font-semibold text-gray-800">Ship To</h3>
               {selectedCustomer ? (
                 <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
                   <div className="flex justify-between items-start">
@@ -1502,8 +1508,8 @@ const CreateCreditNotePage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex items-center justify-center">
-                  <p className="text-sm text-gray-400">
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 flex items-center justify-center bg-gray-50/50">
+                  <p className="text-sm font-medium text-gray-400">
                     Shipping address will appear here
                   </p>
                 </div>
@@ -1513,7 +1519,7 @@ const CreateCreditNotePage = () => {
 
           {/* Credit Note Details */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-base font-semibold text-gray-800">
               Credit Note Details
             </h3>
             <div className="border rounded-xl min-h-[180px] p-4 bg-white">
@@ -1654,10 +1660,10 @@ const CreateCreditNotePage = () => {
         </div>
 
         {/* Middle Section: Items/Services Table */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Items/Services</CardTitle>
+        <Card className="shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 bg-gray-50/50 py-4">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <CardTitle className="text-lg font-bold">Items/Services</CardTitle>
               {items.length > 0 && creditNoteData.linkToInvoice !== "" && (
                 <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                   <svg
@@ -1675,10 +1681,11 @@ const CreateCreditNotePage = () => {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end sm:justify-start">
               <Button
                 size="sm"
                 onClick={handleAddItem}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-all active:scale-95"
                 disabled={creditNoteData.linkToInvoice !== ""}
                 title={
                   items.length > 0 && creditNoteData.linkToInvoice !== ""
@@ -1686,14 +1693,15 @@ const CreateCreditNotePage = () => {
                     : "Add new item"
                 }
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 mr-1" />
                 <span>Add Item</span>
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            {/* Desktop Table Container */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="bg-gray-50 border-b">
                     <th className="text-left p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
@@ -1742,11 +1750,10 @@ const CreateCreditNotePage = () => {
                             <textarea
                               value={item.description || ""}
                               disabled={creditNoteData.linkToInvoice !== ""}
-                              className={`w-full resize-none border-none focus:ring-0 text-xs ${
-                                creditNoteData.linkToInvoice !== ""
+                              className={`w-full resize-none border-none focus:ring-0 text-xs ${creditNoteData.linkToInvoice !== ""
                                   ? "text-gray-500 bg-gray-100"
                                   : "text-gray-900 bg-white"
-                              }`}
+                                }`}
                               rows={2}
                               placeholder="Enter Description (optional)"
                               onChange={(e) => {
@@ -1772,14 +1779,13 @@ const CreateCreditNotePage = () => {
                           value={item.quantity}
                           min="1"
                           step="1"
-                          className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            creditNoteData.linkToInvoice !== ""
+                          className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${creditNoteData.linkToInvoice !== ""
                               ? "bg-amber-50 border-amber-200"
                               : "bg-white"
-                          }`}
+                            }`}
                           onChange={(e) => {
                             const inputValue = e.target.value;
-                            
+
                             // Handle empty input (backspace case) - set to 1 to maintain minimum quantity
                             if (inputValue === "") {
                               handleItemChange(index, "quantity", 1);
@@ -1821,11 +1827,10 @@ const CreateCreditNotePage = () => {
                           type="number"
                           value={item.price_per_item}
                           disabled={creditNoteData.linkToInvoice !== ""}
-                          className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            creditNoteData.linkToInvoice !== ""
+                          className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${creditNoteData.linkToInvoice !== ""
                               ? "text-gray-900 bg-gray-100"
                               : "text-gray-900 bg-white"
-                          }`}
+                            }`}
                           onChange={(e) => {
                             const newPrice = parseFloat(e.target.value) || 0;
                             handleItemChange(index, "price_per_item", newPrice);
@@ -1840,11 +1845,10 @@ const CreateCreditNotePage = () => {
                           type="number"
                           value={item.discount}
                           disabled={creditNoteData.linkToInvoice !== ""}
-                          className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            creditNoteData.linkToInvoice !== ""
+                          className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${creditNoteData.linkToInvoice !== ""
                               ? "text-gray-900 bg-gray-100"
                               : "text-gray-900 bg-white"
-                          }`}
+                            }`}
                           onChange={(e) => {
                             const newDiscount = parseFloat(e.target.value) || 0;
                             handleItemChange(index, "discount", newDiscount);
@@ -1865,11 +1869,10 @@ const CreateCreditNotePage = () => {
                         <select
                           value={item.tax}
                           disabled={creditNoteData.linkToInvoice !== ""}
-                          className={`w-full pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${
-                            creditNoteData.linkToInvoice !== ""
+                          className={`w-full pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${creditNoteData.linkToInvoice !== ""
                               ? "bg-gray-100 text-gray-900"
                               : "bg-white text-gray-900"
-                          }`}
+                            }`}
                           onChange={(e) => {
                             const newTax = parseFloat(e.target.value) || 0;
                             handleItemChange(index, "tax", newTax);
@@ -1936,16 +1939,15 @@ const CreateCreditNotePage = () => {
                             </p>
                             <button
                               onClick={handleAddItem}
-                              className={`mt-4 px-4 py-2 rounded-lg transition-colors ${
-                                items.length > 0 &&
-                                creditNoteData.linkToInvoice !== ""
+                              className={`mt-4 px-4 py-2 rounded-lg transition-colors ${items.length > 0 &&
+                                  creditNoteData.linkToInvoice !== ""
                                   ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                                   : "bg-blue-600 text-white hover:bg-blue-700"
-                              }`}
+                                }`}
                               disabled={creditNoteData.linkToInvoice !== ""}
                               title={
                                 items.length > 0 &&
-                                creditNoteData.linkToInvoice !== ""
+                                  creditNoteData.linkToInvoice !== ""
                                   ? "Items are loaded from invoice. Unlink invoice to add custom items."
                                   : "Add your first item"
                               }
@@ -1986,6 +1988,180 @@ const CreateCreditNotePage = () => {
                   </tr>
                 </tfoot>
               </table>
+            </div>
+
+            {/* Mobile View - Card based list */}
+            <div className="md:hidden divide-y divide-gray-200 bg-gray-50/30">
+              {items.length === 0 ? (
+                <div className="px-6 py-16 text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <FileText className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h4 className="text-base font-bold text-gray-900 mb-2">
+                    No items added yet
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-8 max-w-[240px] mx-auto">
+                    Get started by adding your first item to the credit note.
+                  </p>
+                  <Button
+                    onClick={handleAddItem}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md active:scale-95 transition-transform"
+                    disabled={creditNoteData.linkToInvoice !== ""}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Item
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4 p-4">
+                  {items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden ring-1 ring-black/5"
+                    >
+                      {/* Card Header */}
+                      <div className="px-4 py-3.5 bg-gray-50/80 border-b border-gray-100 flex justify-between items-center backdrop-blur-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">
+                            {index + 1}
+                          </span>
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                            Item Details
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-5">
+                        {/* Name & HSN */}
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-base font-bold text-gray-900 leading-tight mb-1 truncate" title={item.item_name || item.item}>
+                              {item.item_name || item.item}
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                                HSN: {item.hsnSac || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description field */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Description</label>
+                          <textarea
+                            value={item.description || ""}
+                            disabled={creditNoteData.linkToInvoice !== ""}
+                            className={`w-full p-3 rounded-xl text-sm border-gray-100 transition-all focus:ring-2 focus:ring-blue-100 focus:border-blue-400 resize-none ${creditNoteData.linkToInvoice !== ""
+                                ? "bg-gray-50 text-gray-500 cursor-not-allowed"
+                                : "bg-gray-50/50 text-gray-800 hover:bg-white"
+                              }`}
+                            rows={2}
+                            placeholder="Enter item description..."
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[index].description = e.target.value;
+                              setItems(newItems);
+                            }}
+                          />
+                        </div>
+
+                        {/* Quantity & Price Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
+                            <div className="relative group">
+                              <Input
+                                type="number"
+                                value={item.quantity}
+                                className={`h-11 rounded-xl transition-all shadow-sm ${creditNoteData.linkToInvoice !== "" ? "bg-amber-50 border-amber-100 text-amber-900" : "bg-white"
+                                  }`}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 1;
+                                  handleItemChange(index, "quantity", val);
+                                }}
+                              />
+                              {creditNoteData.linkToInvoice !== "" && item.originalQty !== undefined && (
+                                <div className="absolute -top-6 right-0">
+                                  <span className="text-[10px] font-bold text-amber-600">Max: {item.originalQty}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Price/Item</label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 select-none">₹</span>
+                              <Input
+                                type="number"
+                                value={item.price_per_item}
+                                disabled={creditNoteData.linkToInvoice !== ""}
+                                className="h-11 rounded-xl pl-7 pr-3 bg-white transition-all shadow-sm disabled:bg-gray-50 disabled:text-gray-500"
+                                onChange={(e) => handleItemChange(index, "price_per_item", parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Discount & Tax Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Discount (%)</label>
+                            <div className="relative">
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 select-none">%</span>
+                              <Input
+                                type="number"
+                                value={item.discount}
+                                disabled={creditNoteData.linkToInvoice !== ""}
+                                className="h-11 rounded-xl pr-7 bg-white transition-all shadow-sm disabled:bg-gray-50 disabled:text-gray-500"
+                                onChange={(e) => handleItemChange(index, "discount", parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                            {item.discount > 0 && (
+                              <p className="text-[10px] font-bold text-red-600 pl-1">-₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Tax (%)</label>
+                            <div className="relative">
+                              <select
+                                value={item.tax}
+                                disabled={creditNoteData.linkToInvoice !== ""}
+                                className="w-full h-11 rounded-xl px-3 bg-white border border-gray-200 text-sm focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500 outline-none transition-all shadow-sm"
+                                onChange={(e) => handleItemChange(index, "tax", parseFloat(e.target.value) || 0)}
+                              >
+                                <option value="0">0%</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
+                              </select>
+                            </div>
+                            {item.tax > 0 && (
+                              <p className="text-[10px] font-bold text-green-600 pl-1">+₹{((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer - Total Amount */}
+                      <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 flex justify-between items-center text-sm font-bold">
+                        <span className="text-blue-700 uppercase tracking-tighter text-[10px]">Total Amount</span>
+                        <span className="text-lg text-indigo-900 drop-shadow-sm">
+                          ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -2141,7 +2317,7 @@ const CreateCreditNotePage = () => {
                       }
                     />
                     <label
-                      htmlFor="markAsFullyPaid" 
+                      htmlFor="markAsFullyPaid"
                       className="text-sm font-medium"
                     >
                       Mark as fully paid
@@ -2330,27 +2506,24 @@ const CreateCreditNotePage = () => {
                         {filteredParties.map((party) => (
                           <li
                             key={party.id}
-                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                              selectedParty?.id === party.id
+                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
                                 ? "bg-gray-100"
                                 : ""
-                            }`}
+                              }`}
                             onClick={() => handleSelectParty(party)}
                           >
                             <div className="flex items-center">
                               <div
-                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
-                                  selectedParty?.id === party.id
+                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
                                     ? "bg-green-100"
                                     : "bg-gray-100"
-                                }`}
+                                  }`}
                               >
                                 <span
-                                  className={`font-medium text-sm ${
-                                    selectedParty?.id === party.id
+                                  className={`font-medium text-sm ${selectedParty?.id === party.id
                                       ? "text-green-700"
                                       : "text-gray-600"
-                                  }`}
+                                    }`}
                                 >
                                   {party.name
                                     .split(" ")
@@ -2531,20 +2704,18 @@ const CreateCreditNotePage = () => {
                         return (
                           <div
                             key={address.uuid || index}
-                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                              isSelected
+                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                            }`}
+                              }`}
                             onClick={() => setSelectedAddress(address)}
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
-                                  isSelected
+                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
                                     ? "bg-blue-100"
                                     : "bg-gray-100 group-hover:bg-gray-200"
-                                }`}
+                                  }`}
                               >
                                 {address.address_type === "home" ? (
                                   <HomeIcon

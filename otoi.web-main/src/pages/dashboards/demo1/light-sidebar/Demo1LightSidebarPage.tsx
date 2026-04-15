@@ -13,7 +13,9 @@ const Demo1LightSidebarPage = () => {
       </Container>
 
       <Container>
-        <Demo1LightSidebarContent />
+        <div className="mt-5 lg:mt-8">
+          <Demo1LightSidebarContent />
+        </div>
       </Container>
     </Fragment>
   );

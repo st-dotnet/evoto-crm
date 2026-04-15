@@ -89,12 +89,12 @@ const CreateDebitNotePage = () => {
     const location = useLocation();
     const isEditMode = !!id && location.pathname.includes('/edit');
     const isViewMode = !!id && !location.pathname.includes('/edit');
-    
+
     // Get invoice_id and vendor_id from URL parameters
     const urlParams = new URLSearchParams(location.search);
     const invoiceId = urlParams.get('invoice_id');
     const vendorId = urlParams.get('vendor_id');
-    
+
     // Business profile state
     const [businessProfile, setBusinessProfile] = useState({
         name: "Evoto Technologies",
@@ -360,7 +360,7 @@ const CreateDebitNotePage = () => {
                 })
             };
 
-            
+
             let response;
             if (isEditMode) {
                 response = await updateDebitNote(id!, payload);
@@ -375,7 +375,7 @@ const CreateDebitNotePage = () => {
                 } else {
                     toast.success(isEditMode ? 'Debit note updated successfully' : 'Debit note created successfully');
                 }
-                
+
                 // Update local state if marked as fully paid
                 if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
                     setDebitNoteData(prev => ({
@@ -385,7 +385,7 @@ const CreateDebitNotePage = () => {
                         balance_due: 0
                     }));
                 }
-                
+
                 // Update purchase invoice status when debit note is created and linked to an invoice
                 if (!isEditMode && debitNoteData.linkToInvoice) {
                     try {
@@ -394,12 +394,12 @@ const CreateDebitNotePage = () => {
                         // Don't show error to user as debit note creation was successful
                     }
                 }
-                
+
                 // Trigger a custom event to notify PurchaseInvoicePage to refresh
-                window.dispatchEvent(new CustomEvent('debitNoteCreated', { 
-                    detail: { invoiceId: debitNoteData.linkToInvoice } 
+                window.dispatchEvent(new CustomEvent('debitNoteCreated', {
+                    detail: { invoiceId: debitNoteData.linkToInvoice }
                 }));
-                
+
                 navigate('/debit-note');
             } else {
                 // Handle specific validation errors for mark as fully paid
@@ -491,8 +491,8 @@ const CreateDebitNotePage = () => {
         setIsInvoiceDropdownLoading(true);
         try {
             const response = await getInvoicesForParty(selectedCustomer.uuid);
-            
-            
+
+
             if (response.success && response.data) {
                 // Handle different possible response structures
                 let invoices = [];
@@ -503,15 +503,15 @@ const CreateDebitNotePage = () => {
                 } else if (response.data.invoices && Array.isArray(response.data.invoices)) {
                     invoices = response.data.invoices;
                 }
-                
-                
+
+
                 // Fetch existing debit notes to check which invoices are already linked
                 const debitNotesResponse = await getDebitNotes({
                     vendor_id: selectedCustomer.uuid,
                     per_page: 1000
                 });
-                
-                     
+
+
                 const linkedInvoiceIds = new Set();
                 if (debitNotesResponse.success && debitNotesResponse.data?.data?.debit_notes) {
                     debitNotesResponse.data.data.debit_notes.forEach((dn: any) => {
@@ -527,28 +527,28 @@ const CreateDebitNotePage = () => {
                         }
                     });
                 }
-                
+
                 // Filter out invoices that already have debit notes, but include the currently linked one in edit mode
                 const availableInvoices = invoices.filter((invoice: any) => {
-                    
+
                     // Try different possible vendor/customer field names
-                    const belongsToSelectedCustomer = 
+                    const belongsToSelectedCustomer =
                         invoice.vendor_id === selectedCustomer.uuid ||
                         invoice.customer_id === selectedCustomer.uuid ||
                         invoice.party_id === selectedCustomer.uuid ||
                         invoice.vendor_uuid === selectedCustomer.uuid ||
                         invoice.customer_uuid === selectedCustomer.uuid;
-                    
+
                     const notRefunded = invoice.payment_status !== 'refunded';
                     const notLinkedToDebitNote = !linkedInvoiceIds.has(invoice.uuid);
-                    
+
                     // In edit mode, include the currently linked invoice even if it has a debit note
                     const isCurrentlyLinkedInvoice = isEditMode && debitNoteData.linkToInvoiceId === invoice.uuid;
-                    
+
                     return belongsToSelectedCustomer && notRefunded && (notLinkedToDebitNote || isCurrentlyLinkedInvoice);
                 });
-                
-                
+
+
                 setVendorInvoices(availableInvoices);
                 if (!isEditMode) { setShowInvoiceDropdown(true); }
             } else {
@@ -566,8 +566,8 @@ const CreateDebitNotePage = () => {
 
     // Function to handle invoice selection
     const handleInvoiceSelect = async (invoice: any) => {
-        setDebitNoteData(prev => ({ 
-            ...prev, 
+        setDebitNoteData(prev => ({
+            ...prev,
             linkToInvoice: invoice.invoice_number,
             linkToInvoiceId: invoice.uuid, // Store the UUID for proper linking
             vendorId: invoice.vendor_id || '', // Store vendor ID from invoice
@@ -747,7 +747,7 @@ const CreateDebitNotePage = () => {
         setIsLoading(true);
         try {
             const response = await getVendorById(vendorUUID);
-            
+
             if (response.success && response.data) {
                 // Create a party object from vendor data
                 const vendorParty: Party = {
@@ -774,7 +774,7 @@ const CreateDebitNotePage = () => {
                     country: response.data.country,
                     pin: response.data.pin,
                 };
-                
+
                 setSelectedParty(vendorParty);
             }
         } catch (error: any) {
@@ -808,19 +808,19 @@ const CreateDebitNotePage = () => {
         try {
             // Remove the address from local state
             const updatedAddresses = shippingAddresses.filter((addr) => addr.uuid !== activeDropdownUuid);
-            
+
             // Update the customer's shipping addresses on the server
             const { updateCustomerShippingAddresses } = await import('@/pages/parties/services/customer.service');
             const response = await updateCustomerShippingAddresses(selectedCustomer.uuid, updatedAddresses);
-            
+
             if (response.success) {
                 setShippingAddresses(updatedAddresses);
-                
+
                 // If the deleted address was selected, clear the selection
                 if (selectedAddress?.uuid === activeDropdownUuid) {
                     setSelectedAddress(updatedAddresses.length > 0 ? updatedAddresses[0] : null);
                 }
-                
+
                 toast.success("Address deleted successfully");
             } else {
                 toast.error(response.error || "Failed to delete address");
@@ -885,10 +885,10 @@ const CreateDebitNotePage = () => {
     const loadCustomerData = async (customerId: string) => {
         try {
             const response = await getCustomerById(customerId);
-            
+
             if (response.success && response.data) {
                 const customer = response.data;
-                
+
                 // Set selected customer
                 setSelectedCustomer(customer);
                 setSelectedParty({
@@ -899,7 +899,7 @@ const CreateDebitNotePage = () => {
                     mobile: customer.mobile,
                     customerData: customer
                 });
-                
+
                 // Load customer's invoices if needed
                 if (debitNoteData.linkToInvoice) {
                     await fetchPartyInvoices();
@@ -980,11 +980,11 @@ const CreateDebitNotePage = () => {
                     const response = await getPurchaseInvoiceById(invoiceId);
                     if (response.success && response.data) {
                         const invoice = response.data;
-                        
+
                         // Set vendor/customer from invoice or URL parameter
                         const invoiceVendorId = invoice.vendor_id || invoice.vendor?.uuid;
                         const finalVendorId = vendorId || invoiceVendorId;
-                        
+
                         if (finalVendorId) {
                             // Find and select the vendor
                             const vendor = parties.find(party => party.uuid === finalVendorId);
@@ -993,7 +993,7 @@ const CreateDebitNotePage = () => {
                                 setSelectedParty(vendor);
                             }
                         }
-                        
+
                         // Set invoice linking details
                         setDebitNoteData(prev => ({
                             ...prev,
@@ -1001,7 +1001,7 @@ const CreateDebitNotePage = () => {
                             linkToInvoiceId: invoice.uuid || invoiceId,
                             status: 'credited'
                         }));
-                        
+
                         const transformedItems = response.data.items.map((item: any) => ({
                             uuid: item.uuid || Date.now().toString() + Math.random(),
                             item_id: item.item_id,
@@ -1026,7 +1026,7 @@ const CreateDebitNotePage = () => {
                     setIsLoading(false);
                 }
             };
-            
+
             handleInvoiceFromParam();
         }
     }, [invoiceId, isEditMode, parties, vendorId]);
@@ -1050,13 +1050,13 @@ const CreateDebitNotePage = () => {
                 try {
                     setIsLoading(true);
                     const response = await getDebitNoteById(id);
-                    
+
                     if (response.success && response.data) {
                         const debitNote = response.data;
-                        
+
                         const invoiceId = debitNote.invoice_id || debitNote.linked_invoice_id || debitNote.data?.debit_note?.invoice_id || debitNote.data?.debit_note?.linked_invoice_id;
                         let finalInvoiceId = invoiceId;
-                        
+
                         if (invoiceId) {
                             try {
                                 const invoiceResponse = await getPurchaseInvoiceById(invoiceId);
@@ -1068,7 +1068,7 @@ const CreateDebitNotePage = () => {
                             } catch (error) {
                             }
                         }
-                        
+
                         const debitNoteStatus = debitNote.status || debitNote.data?.debit_note?.status || 'unpaid';
                         setDebitNoteData(prev => ({
                             ...prev,
@@ -1081,14 +1081,14 @@ const CreateDebitNotePage = () => {
                             terms: debitNote.terms_and_conditions || debitNote.data?.debit_note?.terms_and_conditions || '',
                             mark_as_fully_paid: debitNoteStatus === 'credited',
                         }));
-                        
+
                         // Load customer if available
                         const customerId = debitNote.customer_id || debitNote.data?.debit_note?.customer_id;
                         if (customerId) {
                             const customerResponse = await getCustomerById(customerId);
                             if (customerResponse.success && customerResponse.data) {
                                 setSelectedCustomer(customerResponse.data);
-                                                                
+
                                 // Load customer shipping addresses
                                 let addresses: ShippingAddress[] = [];
                                 if (customerResponse.data.shipping_addresses && Array.isArray(customerResponse.data.shipping_addresses)) {
@@ -1108,18 +1108,18 @@ const CreateDebitNotePage = () => {
                                 }
                             }
                         }
-                        
+
                         // Load vendor if available
-                                                
+
                         // Try to get vendor ID from various possible locations
                         const vendorId = debitNote.vendor_id || debitNote.data?.debit_note?.vendor_id;
-                        
+
                         if (vendorId) {
-                                                        try {
+                            try {
                                 const vendorResponse = await getVendorById(vendorId);
                                 if (vendorResponse.success && vendorResponse.data) {
                                     setSelectedCustomer(vendorResponse.data);
-                                    
+
                                     // Create and set party object for UI display
                                     const vendorParty: Party = {
                                         id: vendorResponse.data.uuid,
@@ -1147,10 +1147,10 @@ const CreateDebitNotePage = () => {
                                     };
                                     setSelectedParty(vendorParty);
 
-                                    
+
                                     // Load vendor shipping addresses
                                     let addresses: ShippingAddress[] = [];
-                                    
+
                                     // First try shipping_addresses array
                                     if (vendorResponse.data.shipping_addresses && Array.isArray(vendorResponse.data.shipping_addresses)) {
                                         addresses = vendorResponse.data.shipping_addresses.map((addr: any, index: number) => ({
@@ -1159,7 +1159,7 @@ const CreateDebitNotePage = () => {
                                             created_at: addr.created_at || new Date().toISOString(),
                                             updated_at: addr.updated_at || new Date().toISOString(),
                                         }));
-                                    } 
+                                    }
                                     // Fallback: try vendor_address object
                                     else if (vendorResponse.data.vendor_address) {
                                         const vendorAddr = vendorResponse.data.vendor_address;
@@ -1227,7 +1227,7 @@ const CreateDebitNotePage = () => {
                                 shipping_addresses: vendorData.shipping_addresses || [],
                                 status: vendorData.status || 'active'
                             });
-                            
+
                             // Load vendor shipping addresses
                             let addresses: ShippingAddress[] = [];
                             if (vendorData.shipping_addresses && Array.isArray(vendorData.shipping_addresses)) {
@@ -1247,22 +1247,22 @@ const CreateDebitNotePage = () => {
                             }
                         } else {
                         }
-                        
+
                         // Load debit note items
                         const debitNoteItems = debitNote.debit_note_items || debitNote.items || debitNote.data?.debit_note?.debit_note_items || debitNote.data?.debit_note?.items || debitNote.data?.items || []; if (debitNoteItems.length > 0) {
                             const transformedItems = debitNoteItems.map((item: any) => {
-                                
+
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
                                 const discount = item.discount_percentage || item.discount?.discount_percentage || item.discount_amount || item.discount || 0;
                                 const tax = item.tax_percentage || item.tax?.tax_percentage || item.tax_amount || item.tax || 0;
                                 const discountType = item.discount_type || 'percentage';
                                 const taxType = item.tax_type || 'percentage';
-                                
-                                
+
+
                                 const calculatedAmount = calculateItemAmount(quantity, pricePerItem, discount, tax, discountType, taxType);
-                                
-                                
+
+
                                 return {
                                     uuid: item.uuid || item.id,
                                     item_id: item.item_id,
@@ -1296,7 +1296,7 @@ const CreateDebitNotePage = () => {
                     setIsLoading(false);
                 }
             };
-            
+
             loadEditData();
         }
     }, [isEditMode, id]);
@@ -1363,7 +1363,7 @@ const CreateDebitNotePage = () => {
                                         isEditMode ? 'Update' : 'Create'
                                     )}
                                 </Button>
-                                                            </>
+                            </>
                         )}
                         {isViewMode && (
                             <Button
@@ -1597,7 +1597,7 @@ const CreateDebitNotePage = () => {
                                                 <X className="h-4 w-4" />
                                             </button>
                                         )}
-                                        
+
                                         {/* Warning if debit note already exists for this invoice */}
                                         {debitNoteExistsForCurrentInvoice && (
                                             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
@@ -2163,7 +2163,7 @@ const CreateDebitNotePage = () => {
                                     </div>
                                 )}
                             </div>
-                            
+
                             {/* Create New Vendor Button */}
                             <div className="pt-2 border-t">
                                 <Button
@@ -2219,8 +2219,8 @@ const CreateDebitNotePage = () => {
                                     onClick={() => {
                                         setItems([]);
                                         setDebitNoteExistsForCurrentInvoice(false);
-                                        setDebitNoteData(prev => ({ 
-                                            ...prev, 
+                                        setDebitNoteData(prev => ({
+                                            ...prev,
                                             linkToInvoice: '',
                                             linkToInvoiceId: '',
                                             vendorId: '',

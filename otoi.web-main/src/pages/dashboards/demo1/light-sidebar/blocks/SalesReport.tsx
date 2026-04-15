@@ -168,31 +168,33 @@ const SalesReport = () => {
         </div>
 
         {/* Summary sidebar */}
-        <div className="flex flex-col gap-5 lg:w-[180px] shrink-0 py-4 lg:border-l lg:pl-5 border-gray-200">
-          <Select
-            defaultValue="daily"
-            onValueChange={(val) => setPeriod(val as 'daily' | 'weekly' | 'monthly')}
-          >
-            <SelectTrigger className="w-full" size="sm">
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent className="w-32">
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col gap-4 sm:flex-row lg:flex-col lg:w-[200px] shrink-0 py-4 lg:border-l lg:pl-6 border-gray-200">
+          <div className="flex-1">
+            <Select
+              defaultValue="daily"
+              onValueChange={(val) => setPeriod(val as 'daily' | 'weekly' | 'monthly')}
+            >
+              <SelectTrigger className="w-full bg-gray-50 border-gray-200" size="sm">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent className="w-32">
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-2sm text-gray-500 text-end">{periodLabel}</span>
-            <span className="text-2xl font-bold text-gray-900 text-end">
+          <div className="flex flex-col gap-1 flex-1 text-start sm:text-end lg:text-end">
+            <span className="text-2sm text-gray-500">{periodLabel}</span>
+            <span className="text-2xl font-bold text-gray-900">
               {report ? formatINR(report.total_sales) : '—'}
             </span>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-2sm text-gray-500 text-end">Invoices Made</span>
-            <span className="text-2xl font-bold text-gray-900 text-end">
+          <div className="flex flex-col gap-1 flex-1 text-start sm:text-end lg:text-end">
+            <span className="text-2sm text-gray-500">Invoices Made</span>
+            <span className="text-2xl font-bold text-gray-900">
               {report?.invoices_made ?? '—'}
             </span>
           </div>

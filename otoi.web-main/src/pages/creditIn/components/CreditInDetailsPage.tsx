@@ -8,6 +8,7 @@ import {
   FileText,
   Clock,
   Mail,
+  Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +22,6 @@ import { toast } from "sonner";
 import { getCreditNoteById } from '../service/creditIn.service';
 import { getCustomerById } from "@/pages/parties/services/customer.service";
 import { getShareData, sendShareEmail } from "@/services/share.service";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -202,41 +201,48 @@ const CreditInDetailsPage: React.FC = () => {
   };
 
   const handleDownloadPDF = async () => {
-    if (!creditNoteRef.current) return;
+    if (!creditNoteData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
-      const element = creditNoteRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-      });
+      const token = (() => {
+        try {
+          const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+          if (!authData) return null;
+          const parsedAuth = JSON.parse(authData);
+          return (
+            parsedAuth.token ||
+            parsedAuth.access_token ||
+            parsedAuth.accessToken ||
+            null
+          );
+        } catch (error) {
+          return null;
+        }
+      })();
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      const response = await fetch(
+        `${import.meta.env.VITE_APP_API_URL}/credit-notes/${creditNoteData.uuid}/pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
       }
 
-      pdf.save(`Credit-Note-${creditNoteData?.credit_note_number || "Draft"}.pdf`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Credit-Note-${creditNoteData.credit_note_number || "Draft"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
       toast.success("PDF downloaded successfully", { id: downloadToast });
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -653,9 +659,9 @@ const CreditInDetailsPage: React.FC = () => {
         `}
       </style>
       {/* Sticky Header Actions */}
-      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
+      <div className="bg-white px-4 sm:px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
             <Button
               variant="ghost"
               size="icon"
@@ -663,8 +669,8 @@ const CreditInDetailsPage: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-black">
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold text-black truncate">
                 Credit Note #{creditNoteData.credit_note_number}
               </h1>
               <div className="flex items-center gap-2 mt-1">
@@ -673,13 +679,28 @@ const CreditInDetailsPage: React.FC = () => {
                 >
                   {creditNoteData.status}
                 </span>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {new Date(
+                    creditNoteData.credit_note_date || creditNoteData.creditNoteDate || "",
+                  ).toLocaleDateString()}
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm w-full sm:w-auto"
+              size="sm"
+              onClick={() => navigate(`/sales/credit-note/${id}/edit`)}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Note
+            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 flex-1 sm:flex-none"><Download className="h-4 w-4" />PDF</Button>
+              <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 flex-1 sm:flex-none"><Printer className="h-4 w-4" />Print</Button>
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
@@ -703,37 +724,39 @@ const CreditInDetailsPage: React.FC = () => {
       <div
         id="credit-note-print-area"
         ref={creditNoteRef}
-        className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm"
+        className="max-w-4xl mx-auto p-4 sm:p-12 bg-white mt-8 shadow-sm overflow-x-auto"
       >
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-6 md:gap-0">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
               <>
-                <div className="mt-12">
-                  <h1 className="text-2xl font-semibold text-black leading-tight">
+                <div className="mt-0 md:mt-12 text-center md:text-left order-2 md:order-1">
+                  <h1 className="text-2xl font-bold text-black leading-tight mb-2">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
-                  {businessInfo?.email && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.email}
-                    </p>
-                  )}
-                  {businessInfo?.phone && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.phone}
-                    </p>
-                  )}
-                  {businessInfo?.address && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.address}
-                    </p>
-                  )}
+                  <div className="space-y-1">
+                    {businessInfo?.email && (
+                      <p className="text-xs text-gray-600 font-medium">
+                        {businessInfo.email}
+                      </p>
+                    )}
+                    {businessInfo?.phone && (
+                      <p className="text-xs text-gray-600 font-medium">
+                        {businessInfo.phone}
+                      </p>
+                    )}
+                    {businessInfo?.address && (
+                      <p className="text-xs text-gray-600 font-medium max-w-xs mx-auto md:mx-0">
+                        {businessInfo.address}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end -mt-8">
+                <div className="flex flex-col items-center md:items-end order-1 md:order-2">
                   <img
                     src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                    className="h-40 w-auto object-contain"
+                    className="h-24 md:h-40 w-auto object-contain"
                     alt="Evoto Technologies"
                   />
                 </div>
@@ -863,7 +886,7 @@ const CreditInDetailsPage: React.FC = () => {
 
         {/* Items Table */}
         <div className="mb-8">
-          <table className="w-full border-collapse border border-black">
+          <table className="w-full border-collapse border border-black hidden md:table print:table">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-black px-4 py-2 text-left text-[12px] font-semibold text-black uppercase">
@@ -965,16 +988,71 @@ const CreditInDetailsPage: React.FC = () => {
                   {formatCurrency(creditNoteData.subtotal || 0)}
                 </td>
               </tr>
-              <tr>
-                <td colSpan={7} className="border border-black px-4 py-2 text-right text-sm font-bold text-black">
-                  Grand Total:
-                </td>
-                <td className="border border-black px-4 py-2 text-right text-sm font-bold text-black">
-                  {formatCurrency(creditNoteData.total_amount)}
-                </td>
-              </tr>
             </tbody>
           </table>
+
+          {/* Mobile Card View (Matched to Invoice Style) */}
+          <div className="md:hidden space-y-4 mb-8 no-print">
+            {(creditNoteData.items || []).map((item, index) => (
+              <div key={item.uuid} className="border border-black rounded-lg overflow-hidden border-b-2 bg-white ring-1 ring-black/5">
+                {/* Card Header */}
+                <div className="grid grid-cols-[1fr,auto] gap-2 p-3 border-b border-black bg-gray-50/50">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest pl-1">ITEM DESCRIPTION</p>
+                    <div className="flex items-start gap-1">
+                      <span className="text-sm font-bold text-black">{index + 1}.</span>
+                      <div>
+                        <p className="text-sm font-bold text-black leading-tight">{item.item_name}</p>
+                        {item.description && (
+                          <p className="text-[10px] text-gray-600 mt-1 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-16 h-16 border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 bg-white shadow-sm">
+                    {item.image ? (
+                      <img src={resolveImageUrl(item.image)} className="w-full h-full object-cover" alt={item.item_name} />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pricing Grid (3 Columns) */}
+                <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
+                  <div className="p-2.5 text-center">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1 tracking-wider">PRICE/ITEM</p>
+                    <p className="text-[11px] font-bold text-black">{formatCurrency(item.unit_price)}</p>
+                  </div>
+                  <div className="p-2.5 text-center bg-gray-50/20">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1 tracking-wider">DISCOUNT</p>
+                    <p className="text-[11px] font-bold text-red-600">-{formatCurrency(item.discount_amount || 0)}</p>
+                    {(item.discount_percentage || 0) > 0 && (
+                      <span className="text-[8px] font-bold text-red-400 block tracking-tighter">({item.discount_percentage}%)</span>
+                    )}
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1 tracking-wider">TAX</p>
+                    <p className="text-[11px] font-bold text-green-600">
+                      +{formatCurrency(item.tax_amount || 0)}
+                      <span className="text-[8px] font-bold text-green-400 block tracking-tighter">({item.tax_percentage}%)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card Footer (Totals) */}
+                <div className="flex justify-between items-center p-3.5 bg-gradient-to-r from-gray-50 to-white">
+                  <p className="text-[11px] font-bold text-black uppercase tracking-wider">
+                    QTY: <span className="text-blue-600 ml-1">{item.quantity}</span>
+                  </p>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5 tracking-widest">Total Amount</p>
+                    <p className="text-sm font-black text-black">{formatCurrency(item.total_price || 0)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Summary Section */}

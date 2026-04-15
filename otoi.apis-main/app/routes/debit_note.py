@@ -1,5 +1,7 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import func, and_, or_, desc, asc
 from app.extensions import db
 from app.models.debit_note import DebitNote, DebitNoteItem, DebitNotePayment
 from app.models.vendor import Vendor
@@ -8,11 +10,12 @@ from app.models.invoice import Invoice
 from app.models.purchase_invoice import PurchaseInvoice, PurchaseInvoiceItem
 from app.models import Customer
 from app.utils.decorators import login_required
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func, and_, or_, desc, asc
+from app.config import Config
 from datetime import datetime
 import uuid
 import os
+import base64
+from app.services.pdf_service import generate_debit_note_pdf
 
 
 def calculate_debit_note_balance_due(debit_note):
@@ -1171,6 +1174,14 @@ def get_debit_note(debit_note_id):
         # Get items
         items = []
         for item in debit_note.items:
+            item_image = None
+            if item.item and item.item.images:
+                main_img = next((img for img in item.item.images if img.is_main), None)
+                if not main_img and item.item.images:
+                    main_img = item.item.images[0]
+                if main_img:
+                    item_image = f"/static/itemImages/{main_img.item_id}/{main_img.image}"
+                    
             items.append({
                 "uuid": item.uuid,
                 "item_id": item.item_id,
@@ -1181,7 +1192,8 @@ def get_debit_note(debit_note_id):
                 "discount": item.discount,
                 "tax": item.tax,
                 "total_price": float(item.total_price),
-                "hsn_sac_code": item.hsn_sac_code
+                "hsn_sac_code": item.hsn_sac_code,
+                "item_image": item_image
             })
         
         # Get payments
@@ -1821,4 +1833,71 @@ def get_debit_note_payments(debit_note_id):
             "success": False,
             "message": "Failed to get payments",
             "status": 500
+        }), 500
+@debit_note_blueprint.route('/<uuid:debit_note_id>/pdf', methods=['GET'])
+@login_required
+@jwt_required()
+def download_debit_note_pdf(debit_note_id):
+    """Download debit note as a PDF"""
+    try:
+        debit_note = DebitNote.query.options(
+            joinedload(DebitNote.business),
+            joinedload(DebitNote.vendor)
+        ).get_or_404(debit_note_id)
+
+        # Build items data (with product names, HSN codes, and images)
+        items_data = []
+        for item in debit_note.items:
+            item_info = {
+                "description": item.description,
+                "quantity": float(item.quantity) if item.quantity else 0,
+                "unit_price": float(item.unit_price) if item.unit_price else 0,
+                "discount": item.discount or {},
+                "tax": item.tax or {},
+                "total_price": float(item.total_price) if item.total_price else 0,
+            }
+            if item.item_id:
+                inventory_item = Item.query.options(
+                    selectinload(Item.images)
+                ).get(item.item_id)
+                if inventory_item:
+                    item_info["product_name"] = inventory_item.item_name
+                    item_info["hsn_sac_code"] = inventory_item.hsn_code
+                    # Get the feature image for the item
+                    main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
+                    if not main_image_obj and inventory_item.images:
+                        main_image_obj = inventory_item.images[0]
+                    if main_image_obj:
+                        # Resolve absolute path for PDF generation
+                        image_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(main_image_obj.item_id), main_image_obj.image)
+                        if os.path.exists(image_path):
+                            try:
+                                with open(image_path, "rb") as img_file:
+                                    encoded_string = base64.b64encode(img_file.read()).decode('utf-8')
+                                    extension = os.path.splitext(image_path)[1].lower()
+                                    mime_type = "image/png" if extension == ".png" else "image/jpeg"
+                                    item_info["image"] = f"data:{mime_type};base64,{encoded_string}"
+                            except Exception as e:
+                                current_app.logger.error(f"Error encoding image for PDF: {e}")
+                                item_info["image"] = None
+            items_data.append(item_info)
+
+        pdf_buffer = generate_debit_note_pdf(debit_note, items_data)
+
+        # Build download filename
+        filename = f"DebitNote-{debit_note.debit_note_number or 'Draft'}.pdf"
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating debit note PDF: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate PDF",
+            "error": str(e)
         }), 500

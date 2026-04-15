@@ -39,7 +39,7 @@ def get_amount_in_words(amount):
         if paise > 0:
             words += f" And {num2words(paise, lang='en_IN').title()} Paise"
         
-        return words
+        return words + " Only"
     except Exception:
         return ""
 
@@ -879,10 +879,18 @@ def generate_purchase_order_pdf(po, items_data: list) -> BytesIO:
 def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
     """
     Generate a professional A4 PDF for a Credit Note.
+
+    Args:
+        credit_note: CreditNote SQLAlchemy model instance.
+        items_data: Pre-built list of dicts with item details.
+
+    Returns:
+        BytesIO buffer with the PDF content.
     """
     business = credit_note.business
     customer = credit_note.customer
 
+    # Try to get the business address
     business_address = None
     if business and business.addresses:
         business_address = business.addresses[0]
@@ -890,25 +898,99 @@ def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
     charges = credit_note.charges or {}
     notes = credit_note.additional_notes or {}
 
+    # Build typed dicts for template safety
     items = []
     for item in items_data:
+        raw_discount = item.get("discount")
+        if not isinstance(raw_discount, dict):
+            raw_discount = {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax")
+        if not isinstance(raw_tax, dict):
+            raw_tax = {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+            
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+        
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
-            "quantity": item.get("quantity", 0),
+            "image": item.get("image", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity": qty,
             "unit_price": item.get("unit_price", 0),
-            "discount": item.get("discount") or {},
-            "tax": item.get("tax") or {},
+            "discount": fixed_discount,
+            "tax": fixed_tax,
             "total_price": item.get("total_price", 0),
         })
+
+    tax_total = float(charges.get("tax_total", 0) or 0)
+    subtotal = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+    taxable_amount = subtotal - discount_total
+
+    cgst = float(charges.get("cgst", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+    igst = float(charges.get("igst", 0) or 0)
+    igst_rate = float(charges.get("igst_rate", 0) or 0)
+    utgst = float(charges.get("utgst", 0) or 0)
+    utgst_rate = float(charges.get("utgst_rate", 0) or 0)
+
+    # Auto-calculate breakdown if missing
+    if tax_total > 0 and not any([cgst, sgst, igst, utgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        
+        b_state = (business_address.state or "").strip().lower() if business_address else ""
+        c_state = (customer.state or "").strip().lower() if customer else ""
+        
+        # Determine if Interstate (IGST) or Intra-state (CGST + SGST/UTGST)
+        if b_state and c_state and b_state != c_state:
+            igst = tax_total
+            igst_rate = total_rate
+        else:
+            half_rate = total_rate / 2.0
+            half_tax = tax_total / 2.0
+            
+            cgst = half_tax
+            cgst_rate = half_rate
+            
+            ut_keywords = ['andaman', 'chandigarh', 'dadra', 'daman', 'lakshadweep', 'delhi', 'puducherry', 'ladakh', 'jammu']
+            is_ut = any(ut in b_state for ut in ut_keywords) if b_state else False
+            
+            if is_ut:
+                utgst = half_tax
+                utgst_rate = half_rate
+            else:
+                sgst = half_tax
+                sgst_rate = half_rate
 
     context = {
         "credit_note": {
             "credit_note_number": credit_note.credit_note_number,
             "credit_note_date": credit_note.credit_note_date.strftime("%d %b %Y") if credit_note.credit_note_date else "—",
-            "invoice_number": getattr(credit_note, 'invoice_number', "—") or (credit_note.invoice.invoice_number if credit_note.invoice else "—"),
+            "invoice_number": getattr(credit_note, 'invoice_number', "—") or (credit_note.invoice.invoice_number if hasattr(credit_note, 'invoice') and credit_note.invoice else "—"),
             "total_amount": float(credit_note.total_amount or 0),
             "amount_in_words": get_amount_in_words(float(credit_note.total_amount or 0)),
+            "amount_refunded": float(getattr(credit_note, 'amount_received', 0) or 0),
             "status": credit_note.status,
         },
         "logo_data_uri": get_logo_data_uri(business.id if business else None),
@@ -922,9 +1004,11 @@ def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
         },
         "business_address": {
             "address1": business_address.address1 if business_address else "",
+            "address2": getattr(business_address, "address2", ""),
             "city": business_address.city if business_address else "",
             "state": business_address.state if business_address else "",
             "pin": business_address.pin if business_address else "",
+            "country": business_address.country if business_address else "",
         },
         "customer": {
             "first_name": customer.first_name if customer else "",
@@ -935,9 +1019,27 @@ def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
             "address1": customer.address1 if customer else "",
             "city": customer.city if customer else "",
             "state": customer.state if customer else "",
+            "pin": customer.pin if customer else "",
         },
-        "charges": charges,
-        "notes": notes,
+        "charges": {
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "tax_total": tax_total,
+            "additional_charges_total": float(charges.get("additional_charges_total", 0) or 0),
+            "round_off": float(charges.get("round_off", 0) or charges.get("round_off_amount", 0) or 0),
+            "cgst": cgst,
+            "cgst_rate": cgst_rate,
+            "sgst": sgst,
+            "sgst_rate": sgst_rate,
+            "igst": igst,
+            "igst_rate": igst_rate,
+            "utgst": utgst,
+            "utgst_rate": utgst_rate,
+        },
+        "notes": {
+            "notes": notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
         "items": items,
     }
 
@@ -949,10 +1051,18 @@ def generate_credit_note_pdf(credit_note, items_data: list) -> BytesIO:
 def generate_debit_note_pdf(debit_note, items_data: list) -> BytesIO:
     """
     Generate a professional A4 PDF for a Debit Note.
+
+    Args:
+        debit_note: DebitNote SQLAlchemy model instance.
+        items_data: Pre-built list of dicts with item details.
+
+    Returns:
+        BytesIO buffer with the PDF content.
     """
     business = debit_note.business
     vendor = debit_note.vendor
 
+    # Try to get the business address
     business_address = None
     if business and business.addresses:
         business_address = business.addresses[0]
@@ -960,17 +1070,90 @@ def generate_debit_note_pdf(debit_note, items_data: list) -> BytesIO:
     charges = debit_note.charges or {}
     notes = debit_note.additional_notes or {}
 
+    # Build typed dicts for template safety
     items = []
     for item in items_data:
+        raw_discount = item.get("discount")
+        if not isinstance(raw_discount, dict):
+            raw_discount = {}
+        discount_pct = raw_discount.get("discount_percentage", 0)
+        if isinstance(discount_pct, dict):
+            discount_pct = discount_pct.get("discount_percentage", 0)
+
+        raw_tax = item.get("tax")
+        if not isinstance(raw_tax, dict):
+            raw_tax = {}
+        tax_pct = raw_tax.get("tax_percentage", 0)
+        if isinstance(tax_pct, dict):
+            tax_pct = tax_pct.get("tax_percentage", 0)
+            
+        fixed_discount = {
+            "discount_percentage": discount_pct if discount_pct else 0,
+            "discount_amount": raw_discount.get("discount_amount", 0)
+        }
+        
+        fixed_tax = {
+            "tax_percentage": tax_pct if tax_pct else 0,
+            "tax_amount": raw_tax.get("tax_amount", 0)
+        }
+
+        qty = float(item.get("quantity", 0))
+        if qty.is_integer():
+            qty = int(qty)
+
         items.append({
             "product_name": item.get("product_name", ""),
             "description": item.get("description", ""),
-            "quantity": item.get("quantity", 0),
+            "image": item.get("image", ""),
+            "hsn_sac_code": item.get("hsn_sac_code", ""),
+            "quantity": qty,
             "unit_price": item.get("unit_price", 0),
-            "discount": item.get("discount") or {},
-            "tax": item.get("tax") or {},
+            "discount": fixed_discount,
+            "tax": fixed_tax,
             "total_price": item.get("total_price", 0),
         })
+
+    tax_total = float(charges.get("tax_total", 0) or 0)
+    subtotal = float(charges.get("subtotal", 0) or 0)
+    discount_total = float(charges.get("discount_total", 0) or 0)
+    taxable_amount = float(charges.get("taxable_amount", 0) or (subtotal - discount_total))
+
+    cgst = float(charges.get("cgst", 0) or charges.get("cgst_amount", 0) or 0)
+    cgst_rate = float(charges.get("cgst_rate", 0) or 0)
+    sgst = float(charges.get("sgst", 0) or charges.get("sgst_amount", 0) or 0)
+    sgst_rate = float(charges.get("sgst_rate", 0) or 0)
+    igst = float(charges.get("igst", 0) or charges.get("igst_amount", 0) or 0)
+    igst_rate = float(charges.get("igst_rate", 0) or 0)
+    utgst = float(charges.get("utgst", 0) or charges.get("utgst_amount", 0) or 0)
+    utgst_rate = float(charges.get("utgst_rate", 0) or 0)
+
+    # Auto-calculate breakdown if missing
+    if tax_total > 0 and not any([cgst, sgst, igst, utgst]):
+        total_rate = round((tax_total / taxable_amount) * 100, 2) if taxable_amount > 0 else 0
+        
+        b_state = (business_address.state or "").strip().lower() if business_address else ""
+        v_state = (vendor.state or "").strip().lower() if vendor else ""
+        
+        # Determine if Interstate (IGST) or Intra-state (CGST + SGST/UTGST)
+        if b_state and v_state and b_state != v_state:
+            igst = tax_total
+            igst_rate = total_rate
+        else:
+            half_rate = total_rate / 2.0
+            half_tax = tax_total / 2.0
+            
+            cgst = half_tax
+            cgst_rate = half_rate
+            
+            ut_keywords = ['andaman', 'chandigarh', 'dadra', 'daman', 'lakshadweep', 'delhi', 'puducherry', 'ladakh', 'jammu']
+            is_ut = any(ut in b_state for ut in ut_keywords) if b_state else False
+            
+            if is_ut:
+                utgst = half_tax
+                utgst_rate = half_rate
+            else:
+                sgst = half_tax
+                sgst_rate = half_rate
 
     context = {
         "debit_note": {
@@ -979,6 +1162,8 @@ def generate_debit_note_pdf(debit_note, items_data: list) -> BytesIO:
             "invoice_number": debit_note.invoice_number or "—",
             "total_amount": float(debit_note.total_amount or 0),
             "amount_in_words": get_amount_in_words(float(debit_note.total_amount or 0)),
+            "amount_credited": float(debit_note.amount_received or 0),
+            "balance_due": float(debit_note.balance_amount or 0),
             "status": debit_note.status,
         },
         "logo_data_uri": get_logo_data_uri(business.id if business else None),
@@ -992,21 +1177,44 @@ def generate_debit_note_pdf(debit_note, items_data: list) -> BytesIO:
         },
         "business_address": {
             "address1": business_address.address1 if business_address else "",
+            "address2": getattr(business_address, "address2", ""),
             "city": business_address.city if business_address else "",
             "state": business_address.state if business_address else "",
             "pin": business_address.pin if business_address else "",
+            "country": business_address.country if business_address else "",
         },
         "vendor": {
             "vendor_name": vendor.vendor_name if vendor else "",
+            "company_name": vendor.company_name if vendor else "",
             "mobile": vendor.mobile if vendor else "",
             "email": vendor.email if vendor else "",
             "gst": vendor.gst if vendor else "",
             "address1": vendor.address1 if vendor else "",
             "city": vendor.city if vendor else "",
             "state": vendor.state if vendor else "",
-        } if vendor else None,
-        "charges": charges,
-        "notes": notes,
+            "country": vendor.country if vendor else "",
+            "pin": vendor.pin if vendor else "",
+        },
+        "charges": {
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "tax_total": tax_total,
+            "taxable_amount": taxable_amount,
+            "additional_charges_total": float(charges.get("additional_charges_total", 0) or charges.get("additional_charges_amount", 0) or 0),
+            "round_off": float(charges.get("round_off", 0) or charges.get("round_off_amount", 0) or 0),
+            "cgst": cgst,
+            "cgst_rate": cgst_rate,
+            "sgst": sgst,
+            "sgst_rate": sgst_rate,
+            "igst": igst,
+            "igst_rate": igst_rate,
+            "utgst": utgst,
+            "utgst_rate": utgst_rate,
+        },
+        "notes": {
+            "notes": notes.get("notes", ""),
+            "terms_and_conditions": notes.get("terms_and_conditions", ""),
+        },
         "items": items,
     }
 

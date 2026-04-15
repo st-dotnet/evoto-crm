@@ -78,7 +78,7 @@ const TopParties = () => {
                   >
                     {party.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-medium text-gray-800 truncate max-w-[120px]">
+                  <span className="text-sm font-medium text-gray-800 truncate min-w-0 flex-1">
                     {party.name}
                   </span>
                 </div>
