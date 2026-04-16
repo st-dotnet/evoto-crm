@@ -359,6 +359,10 @@ def create_debit_note():
         
         data = request.get_json()
         
+        # Handle field mapping from frontend to backend
+        if 'balance_due' in data:
+            data['balance_amount'] = data['balance_due']
+        
         # Handle both customer_id and vendor_id for backward compatibility
         if 'customer_id' in data and data['customer_id']:
             data['vendor_id'] = data['customer_id']
@@ -495,12 +499,18 @@ def create_debit_note():
             # Calculate total amount
             total_amount = subtotal + total_tax - total_discount + additional_charges + round_off
             
-            # For "credited" status, amount_received should equal total_amount
-            status = data.get('status', 'Unpaid')
-            if status and status.lower() == 'credited':
+            # Auto-set status based on mark_as_fully_paid checkbox
+            mark_as_fully_paid = data.get("mark_as_fully_paid", False)
+            
+            # Use mark_as_fully_paid to determine status
+            if mark_as_fully_paid:
+                # When marked as fully paid, status should be credited
+                debit_note_status = "credited"
                 amount_received = total_amount
                 balance_amount = 0
             else:
+                # When not marked as fully paid, status should be unpaid
+                debit_note_status = "unpaid"
                 amount_received = 0
                 balance_amount = total_amount
             
@@ -519,7 +529,21 @@ def create_debit_note():
             
         elif 'total_amount' in data:
             total_amount = data['total_amount']
-            balance_amount = total_amount
+            
+            # Auto-set status based on mark_as_fully_paid checkbox
+            mark_as_fully_paid = data.get("mark_as_fully_paid", False)
+            
+            # Use mark_as_fully_paid to determine status
+            if mark_as_fully_paid:
+                # When marked as fully paid, status should be credited
+                debit_note_status = "credited"
+                amount_received = total_amount
+                balance_amount = 0
+            else:
+                # When not marked as fully paid, status should be unpaid
+                debit_note_status = "unpaid"
+                amount_received = 0
+                balance_amount = total_amount
         
         # Create debit note
         debit_note = DebitNote(
@@ -529,10 +553,11 @@ def create_debit_note():
             invoice_id=invoice.uuid if invoice else None,
             invoice_number=invoice.invoice_number if invoice else None,
             debit_note_date=datetime.strptime(data['debit_note_date'], '%Y-%m-%d').date(),
-            status=data.get('status', 'Unpaid'),
+            status=debit_note_status,
             total_amount=total_amount,
             amount_received=amount_received,
             balance_amount=balance_amount,
+            mark_as_fully_paid=mark_as_fully_paid,
             created_by=user_id,
             updated_by=user_id
         )
@@ -637,7 +662,8 @@ def create_debit_note():
             "amount_received": float(debit_note.amount_received),
             "balance_amount": float(debit_note.balance_amount),
             "balance_due": float(balance_due),  # NEW: Quantity-based balance calculation
-            "status": debit_note.status
+            "status": debit_note.status,
+            "mark_as_fully_paid": debit_note.mark_as_fully_paid
         }
         
         # Include charges data if calculated
@@ -655,9 +681,12 @@ def create_debit_note():
                 "total_amount": float(invoice.total_amount)
             }
         
-        # Return flat response structure to match purchase invoice API
-        
-        return jsonify(response_data), 201
+        # Return response in expected frontend format
+        return jsonify({
+            "success": True,
+            "data": response_data,
+            "status": 201
+        }), 201
         
     except Exception as e:
         db.session.rollback()
@@ -1168,10 +1197,23 @@ def get_debit_note(debit_note_id):
         else:
             pass
         
+        # Get original invoice quantities if linked to invoice
+        original_quantities = {}
+        if debit_note.invoice_id:
+            try:
+                invoice = PurchaseInvoice.query.filter_by(uuid=debit_note.invoice_id).first()
+                if invoice:
+                    invoice_items = PurchaseInvoiceItem.query.filter_by(purchase_invoice_id=invoice.uuid).all()
+                    for inv_item in invoice_items:
+                        if inv_item.item_id:
+                            original_quantities[str(inv_item.item_id)] = float(inv_item.quantity) if inv_item.quantity else 0
+            except Exception as e:
+                pass  # If fetching fails, proceed without original quantities
+        
         # Get items
         items = []
         for item in debit_note.items:
-            items.append({
+            item_data = {
                 "uuid": item.uuid,
                 "item_id": item.item_id,
                 "item_name": item.item.item_name if item.item else "",
@@ -1182,7 +1224,13 @@ def get_debit_note(debit_note_id):
                 "tax": item.tax,
                 "total_price": float(item.total_price),
                 "hsn_sac_code": item.hsn_sac_code
-            })
+            }
+            
+            # Add original quantity from invoice if available
+            if item.item_id and str(item.item_id) in original_quantities:
+                item_data["original_quantity"] = original_quantities[str(item.item_id)]
+            
+            items.append(item_data)
         
         # Get payments
         payments = []
@@ -1257,10 +1305,68 @@ def get_debit_note(debit_note_id):
         }), 500
 
 
+def _build_debit_note_item(item_data):
+    """Build a DebitNoteItem object from request data (backend calculates total_price)"""
+    # Get and validate quantity
+    quantity = item_data.get("quantity")
+    if quantity is None or quantity == "":
+        raise ValueError("Quantity is required")
+    
+    try:
+        quantity_val = float(quantity)
+        if quantity_val < 0:
+            raise ValueError("Quantity cannot be negative")
+    except (ValueError, TypeError):
+        raise ValueError("Quantity must be a valid number")
+    
+    # Get unit price for backend calculation
+    unit_price = item_data.get("unit_price") or item_data.get("price_per_item")
+    if not unit_price:
+        raise ValueError("Unit price is required for the calculation")
+    
+    # Calculate total_price on backend
+    unit_price_val = float(unit_price)
+    discount_percentage = float(item_data.get("discount", 0))
+    tax_percentage = float(item_data.get("tax", 0))
+    
+    print(f"🧮 DEBUG - Tax calculation: quantity={quantity_val}, unit_price={unit_price_val}, discount={discount_percentage}%, tax={tax_percentage}%")
+    
+    # Calculate item totals
+    item_subtotal = quantity_val * unit_price_val
+    item_discount = item_subtotal * (discount_percentage / 100)
+    item_taxable_amount = item_subtotal - item_discount
+    item_tax = item_taxable_amount * (tax_percentage / 100)
+    total_price = item_subtotal - item_discount + item_tax
+    
+    print(f"💰 DEBUG - Calculated totals: subtotal={item_subtotal}, discount={item_discount}, tax={item_tax}, total={total_price}")
+    
+    return DebitNoteItem(
+        item_id=item_data.get("item_id"),
+        description=item_data.get("description"),
+        quantity=quantity_val,
+        unit_price=unit_price_val,
+        discount=discount_percentage,
+        tax=tax_percentage,
+        total_price=total_price,  # Backend calculated
+        hsn_sac_code=item_data.get("hsn_sac_code")
+    )
+
+
+@debit_note_blueprint.route('/test-debug', methods=['GET'])
+def test_debug():
+    """Test endpoint to verify debug logging is working"""
+    print("🔧 DEBUG - Test endpoint called successfully!")
+    return jsonify({
+        "success": True,
+        "message": "Debug logging is working",
+        "timestamp": datetime.now().isoformat()
+    }), 200
+
 @debit_note_blueprint.route('/<debit_note_id>', methods=['PUT'])
 @login_required
 @jwt_required()
 def update_debit_note(debit_note_id):
+    print(f"🚀 DEBUG - Update debit note endpoint called with ID: {debit_note_id}")
     """Update an existing debit note"""
     try:
         # Get JWT claims
@@ -1273,7 +1379,13 @@ def update_debit_note(debit_note_id):
         else:
             user_id = jwt_claims.get('sub') or jwt_claims.get('user_id')
             business_id = jwt_claims.get('business_id', 1)
+        
         data = request.get_json()
+        print(f"📨 DEBUG - Raw request data: {data}")
+        
+        # Handle field mapping from frontend to backend
+        if 'balance_due' in data:
+            data['balance_amount'] = data['balance_due']
         
         debit_note = DebitNote.query.filter_by(
             uuid=debit_note_id,
@@ -1344,7 +1456,23 @@ def update_debit_note(debit_note_id):
         if 'debit_note_date' in data:
             debit_note.debit_note_date = datetime.strptime(data['debit_note_date'], '%Y-%m-%d').date()
         
-        if 'status' in data:
+        # Handle "mark as fully paid" functionality
+        if "mark_as_fully_paid" in data:
+            if data["mark_as_fully_paid"]:
+                # Checkbox checked - Set status to credited
+                debit_note.status = "credited"
+                debit_note.mark_as_fully_paid = True
+                debit_note.amount_received = float(debit_note.total_amount)
+                debit_note.balance_amount = 0
+            else:
+                # Checkbox unchecked - Set status to unpaid
+                debit_note.status = "Unpaid"
+                debit_note.mark_as_fully_paid = False
+                debit_note.amount_received = 0
+                debit_note.balance_amount = float(debit_note.total_amount)
+        
+        # Handle status updates with validation (only if not already handled by mark_as_fully_paid)
+        elif "status" in data:
             new_status = data['status']
             
             # Validation for 'credited' status (fully paid)
@@ -1368,16 +1496,22 @@ def update_debit_note(debit_note_id):
                         "status": 400
                     }), 400
                 
-                # Set balance_due to 0 for credited status
-                debit_note.balance_due = 0
+                # Set balance_amount to 0 for credited status
+                debit_note.balance_amount = 0
                 debit_note.amount_received = total_amount
+                debit_note.mark_as_fully_paid = True
+            elif new_status.lower() == 'unpaid':
+                # Validation for 'unpaid' status
+                # Set amount_received to 0 and balance_amount to total_amount
+                debit_note.amount_received = 0
+                debit_note.balance_amount = float(debit_note.total_amount)
+                debit_note.mark_as_fully_paid = False
             else:
-                # Prevent reverting from 'credited' status
-                if debit_note.status == 'credited':
+                # Prevent reverting from 'credited' status to other statuses
+                if debit_note.status == 'credited' and new_status.lower() not in ['credited', 'unpaid']:
                     return jsonify({
                         "success": False,
-                        "message": "Cannot change status from 'credited' (fully paid)",
-                        "status": 400
+                        "message": "Cannot change status from 'credited' (fully paid) to other statuses"
                     }), 400
             
             debit_note.status = new_status
@@ -1385,8 +1519,8 @@ def update_debit_note(debit_note_id):
         if 'amount_received' in data:
             debit_note.amount_received = data['amount_received']
         
-        if 'balance_due' in data:
-            debit_note.balance_due = data['balance_due']
+        if 'balance_amount' in data:
+            debit_note.balance_amount = data['balance_amount']
         
         if 'total_amount' in data:
             debit_note.total_amount = data['total_amount']
@@ -1401,29 +1535,21 @@ def update_debit_note(debit_note_id):
         
         # Update items if provided
         if 'items' in data and data['items']:
+            print(f"🔍 DEBUG - Updating debit note {debit_note.debit_note_number} with {len(data['items'])} items")
+            print(f"📦 DEBUG - Item data received: {data['items']}")
+            
             # Delete existing items
             DebitNoteItem.query.filter_by(debit_note_id=debit_note.uuid).delete()
             
-            # Create new items
-            for item_data in data['items']:
-                debit_note_item = DebitNoteItem(
-                    debit_note_id=debit_note.uuid,
-                    item_id=item_data['item_id'],
-                    description=item_data.get('description'),
-                    quantity=item_data['quantity'],
-                    unit_price=item_data['unit_price'],
-                    total_price=item_data['total_price'],
-                    hsn_sac_code=item_data.get('hsn_sac_code'),
-                    created_by=user_id,
-                    updated_by=user_id
-                )
-                
-                if 'discount' in item_data:
-                    debit_note_item.discount = item_data['discount']
-                
-                if 'tax' in item_data:
-                    debit_note_item.tax = item_data['tax']
-                
+            # Add new items using helper function
+            items_data = data['items']
+            for item_data in items_data:
+                print(f"🔍 DEBUG - Processing item: {item_data}")
+                debit_note_item = _build_debit_note_item(item_data)
+                debit_note_item.debit_note_id = debit_note.uuid  # FIX: Set the debit_note_id
+                debit_note_item.created_by = user_id
+                debit_note_item.updated_by = user_id
+                print(f"✅ DEBUG - Created debit note item: quantity={debit_note_item.quantity}")
                 db.session.add(debit_note_item)
         
         db.session.commit()
@@ -1651,9 +1777,9 @@ def get_debit_note_statistics():
         ).scalar() or 0
         
         statistics = {
-            "total_debit_notes": status_dict.get('Unpaid', 0) + status_dict.get('Credited', 0),
+            "total_debit_notes": status_dict.get('Unpaid', 0) + status_dict.get('credited', 0),
             "unpaid_count": status_dict.get('Unpaid', 0),
-            "credited_count": status_dict.get('Credited', 0),
+            "credited_count": status_dict.get('credited', 0),
             "total_amount": float(total_amount),
             "this_month_count": this_month_count,
             "this_month_amount": float(this_month_amount)
@@ -1738,7 +1864,7 @@ def create_debit_note_payment(debit_note_id):
         # Check if fully paid using calculated balance due
         calculated_balance_due = calculate_debit_note_balance_due(debit_note)
         if calculated_balance_due <= 0:
-            debit_note.status = 'Credited'
+            debit_note.status = 'credited'
             debit_note.mark_as_fully_paid = True
             debit_note.balance_amount = 0
         else:

@@ -165,6 +165,7 @@ const CreateDebitNotePage = () => {
         total_tax: 0,
         round_off_amount: 0,
         totalAmount: 0,
+        total_amount: 0,
         additional_charges_total: 0,
         auto_round_off: false,
         mark_as_fully_paid: false,
@@ -177,6 +178,9 @@ const CreateDebitNotePage = () => {
     });
 
     const [isInvoicePaid, setIsInvoicePaid] = useState(false);
+    const [itemsLoaded, setItemsLoaded] = useState(false);
+    const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+    const editDataLoadedRef = useRef(false);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -218,27 +222,49 @@ const CreateDebitNotePage = () => {
     };
 
     const recalculateTotals = (updatedItems: any[]) => {
+        console.log('DEBUG - recalculateTotals called with items:', updatedItems);
+        
+        // Use the pre-calculated item amounts for consistency
+        const totalAmount = updatedItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        
+        // Calculate individual components for display purposes
         const subtotal = updatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.price_per_item), 0);
         const totalDiscount = updatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.price_per_item * item.discount / 100), 0);
         const totalTax = updatedItems.reduce((sum: number, item: any) => sum + ((item.quantity * item.price_per_item * (1 - item.discount / 100)) * item.tax / 100), 0);
 
-        let totalAmount = subtotal - totalDiscount + totalTax;
         let roundOff = 0;
+        let finalTotal = totalAmount;
 
         if (debitNoteData.auto_round_off) {
-            const roundedTotal = Math.round(totalAmount);
-            roundOff = roundedTotal - totalAmount;
-            totalAmount = roundedTotal;
+            const roundedTotal = Math.round(finalTotal);
+            roundOff = roundedTotal - finalTotal;
+            finalTotal = roundedTotal;
         }
 
-        setDebitNoteData(prev => ({
-            ...prev,
+        console.log('DEBUG - Calculation results:', {
+            totalAmount,
             subtotal,
-            total_discount: totalDiscount,
-            total_tax: totalTax,
-            round_off_amount: roundOff,
-            totalAmount
-        }));
+            totalDiscount,
+            totalTax,
+            roundOff,
+            finalTotal,
+            itemAmounts: updatedItems.map(item => ({ name: item.item_name, amount: item.amount }))
+        });
+
+        console.log('DEBUG - About to update debitNoteData with total_amount:', finalTotal);
+        setDebitNoteData(prev => {
+            console.log('DEBUG - Current debitNoteData.total_amount:', prev.total_amount);
+            console.log('DEBUG - Setting debitNoteData.total_amount to:', finalTotal);
+            return {
+                ...prev,
+                subtotal,
+                total_discount: totalDiscount,
+                total_tax: totalTax,
+                round_off_amount: roundOff,
+                totalAmount: finalTotal,
+                total_amount: finalTotal
+            };
+        });
     };
 
     const calculateTotals = (itemsList: any[]) => {
@@ -303,6 +329,15 @@ const CreateDebitNotePage = () => {
     };
 
     const handleSave = async () => {
+        console.log('DEBUG - handleSave called');
+        console.log('DEBUG - Button state checks:', {
+            isSaving,
+            isInvoicePaid,
+            debitNoteExistsForCurrentInvoice,
+            selectedParty: !!selectedParty,
+            itemsLength: items.length
+        });
+
         if (!selectedParty) {
             toast.error('Please select a vendor');
             return;
@@ -315,69 +350,154 @@ const CreateDebitNotePage = () => {
 
         setIsSaving(true);
         try {
-            // Determine status based on checkbox and invoice linking
-            let finalStatus = debitNoteData.status;
-            if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
-                finalStatus = 'credited';
-            } else if (!isEditMode && debitNoteData.linkToInvoice !== '') {
-                finalStatus = 'credited';
-            } else if (!isEditMode) {
-                finalStatus = 'unpaid';
-            }
+            console.log('DEBUG - Save - Checkbox state:', debitNoteData.mark_as_fully_paid);
+            console.log('DEBUG - Save - Current status:', debitNoteData.status);
+            // Determine status based on checkbox only
+            let finalStatus = debitNoteData.mark_as_fully_paid ? "credited" : "unpaid";
+            console.log('DEBUG - Save - Final status:', finalStatus);
+            console.log('DEBUG - Current items state before building payload:', JSON.stringify(items, null, 2));
 
-            const payload = {
-                debitNoteNo: debitNoteData.debitNoteNo,
-                debitNoteDate: debitNoteData.debitNoteDate,
-                linkToInvoice: debitNoteData.linkToInvoice,
-                vendorId: debitNoteData.vendorId, // Include vendor ID from invoice
-                status: finalStatus,
-                selectedCustomer: selectedCustomer,
-                debitNoteItems: items.map(item => ({
-                    id: item.id || crypto.randomUUID(),
-                    item_id: item.item_id,
-                    item_name: item.item_name,
-                    description: item.description,
-                    quantity: item.quantity,
-                    price_per_item: item.price_per_item,
-                    discount: item.discount,
-                    tax: item.tax,
-                    amount: item.amount,
-                    measuring_unit_id: item.measuring_unit_id,
-                    hsn_sac: item.hsn_sac,
-                })),
-                notes: debitNoteData.notes,
-                terms: debitNoteData.terms_and_conditions,
-                subtotal: debitNoteData.subtotal,
-                total_discount: debitNoteData.total_discount,
-                total_tax: debitNoteData.total_tax,
-                round_off_amount: debitNoteData.round_off_amount,
-                total_amount: debitNoteData.totalAmount,
-                additional_charges: debitNoteData.additional_charges_total,
-                // Add fully paid fields if checkbox is checked
-                ...(isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited' && {
-                    amount_received: debitNoteData.totalAmount,
-                    balance_due: 0
-                })
-            };
-
-            
             let response;
             if (isEditMode) {
-                response = await updateDebitNote(id!, payload);
+                // For update, send simplified payload as expected by new backend
+                console.log('💰 DEBUG - Items state before building update payload:', items.map(item => ({
+                    item_id: item.item_id,
+                    quantity: item.quantity,
+                    price_per_item: item.price_per_item,
+                    tax: item.tax,
+                    tax_amount: item.tax_amount,
+                    amount: item.amount
+                })));
+                
+                const updatePayload = {
+                    items: items.map(item => ({
+                        item_id: item.item_id,
+                        quantity: item.quantity,
+                        unit_price: item.price_per_item, // Backend expects unit_price
+                        tax: item.tax, // Backend needs tax percentage for calculations
+                        description: item.description || null,
+                        hsn_sac_code: item.hsn_sac || null, // Backend expects hsn_sac_code
+                    })),
+                    total_amount: debitNoteData.total_amount,
+                    subtotal: debitNoteData.subtotal,
+                    total_discount: debitNoteData.total_discount,
+                    total_tax: debitNoteData.total_tax,
+                    round_off_amount: debitNoteData.round_off_amount,
+                    mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false
+                };
+                
+                console.log('DEBUG - Update payload being sent to API:', JSON.stringify(updatePayload, null, 2));
+                response = await updateDebitNote(id!, updatePayload);
             } else {
-                response = await createDebitNote(payload);
+                // For create, send full payload as expected by createDebitNote
+                console.log('DEBUG - debitNoteData before creating payload:', {
+                    totalAmount: debitNoteData.totalAmount,
+                    total_amount: debitNoteData.total_amount,
+                    subtotal: debitNoteData.subtotal,
+                    itemsLength: items.length
+                });
+                const createPayload = {
+                    debitNoteNo: debitNoteData.debitNoteNo,
+                    debitNoteDate: debitNoteData.debitNoteDate,
+                    linkToInvoice: debitNoteData.linkToInvoice,
+                    vendorId: debitNoteData.vendorId,
+                    status: finalStatus,
+                    selectedCustomer: selectedCustomer,
+                    debitNoteItems: items.map(item => ({
+                        id: item.id || crypto.randomUUID(),
+                        item_id: item.item_id,
+                        item_name: item.item_name,
+                        description: item.description,
+                        quantity: item.quantity,
+                        price_per_item: item.price_per_item,
+                        discount: item.discount,
+                        tax: item.tax,
+                        amount: item.amount,
+                        measuring_unit_id: item.measuring_unit_id,
+                        hsn_sac: item.hsn_sac,
+                    })),
+                    notes: debitNoteData.notes,
+                    terms: debitNoteData.terms_and_conditions,
+                    subtotal: debitNoteData.subtotal,
+                    total_discount: debitNoteData.total_discount,
+                    total_tax: debitNoteData.total_tax,
+                    round_off_amount: debitNoteData.round_off_amount,
+                    total_amount: debitNoteData.total_amount,
+                    additional_charges: debitNoteData.additional_charges_total,
+                    mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false,
+                };
+                
+                console.log('DEBUG - Create payload being sent to API:', JSON.stringify(createPayload, null, 2));
+                response = await createDebitNote(createPayload);
             }
 
             if (response.success) {
                 // Show appropriate success message
-                if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
-                    toast.success('Debit note marked as fully paid and updated successfully');
+                if (debitNoteData.mark_as_fully_paid) {
+                    toast.success(isEditMode ? 'Debit note marked as fully paid and updated successfully' : 'Debit note marked as fully paid and created successfully');
                 } else {
                     toast.success(isEditMode ? 'Debit note updated successfully' : 'Debit note created successfully');
                 }
                 
+                // Refresh UI with backend response data for edit mode
+                if (isEditMode) {
+                    console.log('DEBUG - Update successful, fetching updated debit note data...');
+                    
+                    // Fetch the updated debit note data to get correct tax values
+                    try {
+                        const updatedDebitNoteResponse = await getDebitNoteById(id!);
+                        if (updatedDebitNoteResponse.success && updatedDebitNoteResponse.data) {
+                            console.log('DEBUG - Refreshing UI with fetched debit note data:', updatedDebitNoteResponse.data);
+                            
+                            // Update items with backend-calculated values
+                            if (updatedDebitNoteResponse.data.items && Array.isArray(updatedDebitNoteResponse.data.items)) {
+                                const updatedItems = updatedDebitNoteResponse.data.items.map((backendItem: any) => ({
+                                    uuid: backendItem.uuid || crypto.randomUUID(),
+                                    item_id: backendItem.item_id,
+                                    item_name: backendItem.product_name || backendItem.item_name,
+                                    hsn_sac: backendItem.hsn_sac_code,
+                                    quantity: backendItem.quantity,
+                                    originalQty: backendItem.quantity, // Update original quantity to match new quantity
+                                    price_per_item: backendItem.unit_price,
+                                    discount: backendItem.discount?.discount_percentage || backendItem.discount_percentage || 0,
+                                    tax: backendItem.tax?.tax_percentage || backendItem.tax_percentage || 0,
+                                    amount: backendItem.total_price,
+                                    measuring_unit_id: backendItem.measuring_unit_id,
+                                    description: backendItem.description,
+                                    discount_type: 'percentage',
+                                    tax_type: 'percentage',
+                                    subtotal: backendItem.quantity * backendItem.unit_price,
+                                    discount_amount: backendItem.discount_amount || 0,
+                                    tax_amount: backendItem.tax_amount || (backendItem.quantity * backendItem.unit_price * (backendItem.tax?.tax_percentage || backendItem.tax_percentage || 0) / 100) || 0
+                                }));
+                                
+                                console.log('DEBUG - Updated items from fetched data:', updatedItems);
+                                setItems(updatedItems);
+                                recalculateTotals(updatedItems);
+                            }
+                            
+                            // Update debit note data with backend totals
+                            if (updatedDebitNoteResponse.data.charges) {
+                                setDebitNoteData(prev => ({
+                                    ...prev,
+                                    subtotal: updatedDebitNoteResponse.data.charges.subtotal || 0,
+                                    total_discount: (updatedDebitNoteResponse.data.charges.item_discount || 0) + (updatedDebitNoteResponse.data.charges.overall_discount || 0),
+                                    total_tax: updatedDebitNoteResponse.data.charges.tax_total || 0,
+                                    round_off_amount: updatedDebitNoteResponse.data.charges.round_off || 0,
+                                    totalAmount: updatedDebitNoteResponse.data.total_amount || 0,
+                                    total_amount: updatedDebitNoteResponse.data.total_amount || 0,
+                                    balance_due: updatedDebitNoteResponse.data.balance_due || 0,
+                                    amount_received: updatedDebitNoteResponse.data.amount_paid || 0
+                                }));
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching updated debit note data:', error);
+                    }
+                }
+                
                 // Update local state if marked as fully paid
-                if (isEditMode && debitNoteData.mark_as_fully_paid && debitNoteData.status !== 'credited') {
+                if (debitNoteData.mark_as_fully_paid) {
                     setDebitNoteData(prev => ({
                         ...prev,
                         status: 'credited',
@@ -440,46 +560,63 @@ const CreateDebitNotePage = () => {
         setShowAddItemPage(false);
     };
 
-    const handleRemoveItem = (index: number) => {
-        const newItems = items.filter((_, i) => i !== index);
-        setItems(newItems);
-        recalculateTotals(newItems);
-    };
-
     const handleItemChange = (index: number, field: string, value: any) => {
+        console.log('DEBUG - handleItemChange called:', { index, field, value });
+        
         const updatedItems = [...items];
-        const item = { ...updatedItems[index], [field]: value };
-
-        // Validate quantity doesn't exceed original invoice quantity
-        if (field === 'quantity' && item.originalQty) {
-            const newQuantity = parseFloat(value) || 0;
-            if (newQuantity > item.originalQty) {
-                toast.error(`Quantity cannot exceed original invoice quantity (${item.originalQty})`);
-                return; // Don't update if quantity exceeds original
-            }
-            if (newQuantity < 0) {
-                toast.error('Quantity cannot be negative');
-                return;
-            }
+        const item = updatedItems[index];
+        
+        if (field === 'quantity') {
+            console.log('DEBUG - Quantity validation:', { newQuantity: value, originalQty: item.originalQty });
+            item.quantity = value;
+        } else if (field === 'price_per_item') {
+            item.price_per_item = value;
+        } else if (field === 'tax') {
+            console.log('DEBUG - Tax field changed:', { oldTax: item.tax, newTax: value });
+            item.tax = value;
+        } else if (field === 'discount') {
+            item.discount = value;
+        } else if (field === 'description') {
+            item.description = value;
+        } else if (field === 'hsn_sac') {
+            item.hsn_sac = value;
         }
-
-        // Recalculate amount when quantity, price, discount, or tax changes
-        if (['quantity', 'price_per_item', 'discount', 'tax'].includes(field)) {
-            item.amount = item.quantity * item.price_per_item * (1 - item.discount / 100) * (1 + item.tax / 100);
-        }
-
-        updatedItems[index] = item;
+        
+        // Recalculate amount for this item
+        const subtotal = item.quantity * item.price_per_item;
+        const discountAmount = (subtotal * item.discount) / 100;
+        const taxableAmount = subtotal - discountAmount;
+        const taxAmount = (taxableAmount * item.tax) / 100;
+        item.amount = subtotal - discountAmount + taxAmount;
+        
+        // Update derived fields
+        item.subtotal = subtotal;
+        item.discount_amount = discountAmount;
+        item.tax_amount = taxAmount;
+        
+        console.log('DEBUG - Tax calculation for item:', {
+            itemName: item.item_name,
+            quantity: item.quantity,
+            price_per_item: item.price_per_item,
+            discount: item.discount,
+            tax: item.tax,
+            subtotal,
+            discountAmount,
+            taxableAmount,
+            taxAmount,
+            finalAmount: item.amount
+        });
+        
+        console.log('DEBUG - Updated item:', item);
         setItems(updatedItems);
+        console.log('DEBUG - Items state updated successfully');
         recalculateTotals(updatedItems);
     };
 
-    const handleCustomerSelect = (vendor: Party) => {
-        console.log('Selected vendor:', vendor);
-        setSelectedParty(vendor);
-        setSelectedCustomer(vendor.customerData || null);
+    const handleRemoveItem = (index: number) => {
+        const newItems = items.filter((_, i) => i !== index);
+        setItems(newItems);
         setIsPartyDialogOpen(false);
-        // Don't fetch customer data for vendors - use vendor data directly
-        // fetchCustomerData(vendor.uuid);
     };
 
     // Function to fetch vendor invoices
@@ -571,11 +708,13 @@ const CreateDebitNotePage = () => {
             linkToInvoice: invoice.invoice_number,
             linkToInvoiceId: invoice.uuid, // Store the UUID for proper linking
             vendorId: invoice.vendor_id || '', // Store vendor ID from invoice
-            status: 'credited' // Set status to credited when invoice is linked
+            status: prev.status // Keep existing status, don't auto-set to credited
         }));
         setShowInvoiceDropdown(false);
 
         const invoiceId = invoice.uuid;
+        console.log('DEBUG - Manual Selection - invoice object:', invoice);
+        console.log('DEBUG - Manual Selection - invoiceId (invoice.uuid):', invoiceId);
         if (!invoiceId) {
             console.error('No valid invoice ID found in invoice object:', invoice);
             toast.error('Invalid invoice data - missing ID');
@@ -586,30 +725,40 @@ const CreateDebitNotePage = () => {
             // Check if debit note already exists for this invoice
             const debitNoteCheckResponse = await checkDebitNoteExistsForInvoice(invoiceId);
             if (debitNoteCheckResponse.success && debitNoteCheckResponse.data?.hasDebitNote === true) {
-                setDebitNoteExistsForCurrentInvoice(true);
+                setDebitNoteExistsForCurrentInvoice(false);
                 toast.error('A debit note already exists for this invoice. Please select a different invoice.');
                 return;
             } else {
                 setDebitNoteExistsForCurrentInvoice(false);
             }
 
+            console.log('DEBUG - Manual Selection - Calling API with invoiceId:', invoiceId);
             const response = await getPurchaseInvoiceById(invoiceId);
+            console.log('DEBUG - Invoice response:', response);
             if (response.success && response.data?.items && response.data.items.length > 0) {
-                const transformedItems = response.data.items.map((item: any) => ({
-                    uuid: item.uuid || Date.now().toString() + Math.random(),
-                    item_id: item.item_id,
-                    item_name: item.product_name || item.item_name,
-                    hsn_sac: item.hsn_sac_code,
-                    quantity: item.quantity,
-                    originalQty: item.quantity,
-                    price_per_item: item.unit_price,
-                    discount: item.discount?.discount_percentage || 0,
-                    tax: item.tax?.tax_percentage || 0,
-                    amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
-                    measuring_unit_id: item.measuring_unit_id,
-                    description: item.description || null,
-                }));
+                console.log('DEBUG - Invoice items:', response.data.items);
+                const transformedItems = response.data.items.map((item: any) => {
+                    console.log('DEBUG - Processing item:', item);
+                    console.log('DEBUG - Item quantity:', item.quantity);
+                    const transformed = {
+                        uuid: item.uuid || Date.now().toString() + Math.random(),
+                        item_id: item.item_id,
+                        item_name: item.product_name || item.item_name,
+                        hsn_sac: item.hsn_sac_code,
+                        quantity: item.quantity,
+                        originalQty: item.quantity,
+                        price_per_item: item.unit_price,
+                        discount: item.discount?.discount_percentage || 0,
+                        tax: item.tax?.tax_percentage || 0,
+                        amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
+                        measuring_unit_id: item.measuring_unit_id,
+                        description: item.description || null,
+                    };
+                    console.log('DEBUG - Transformed item:', transformed);
+                    return transformed;
+                });
 
+                console.log('DEBUG - Final transformed items:', transformedItems);
                 setItems(transformedItems);
                 recalculateTotals(transformedItems);
                 toast.success(`Items from invoice ${invoice.invoice_number} loaded successfully`);
@@ -641,6 +790,20 @@ const CreateDebitNotePage = () => {
         setIsVendorModalOpen(false);
         // Refresh the vendors list
         fetchParties();
+    };
+
+    // Function to handle customer/vendor selection
+    const handleCustomerSelect = (vendor: any) => {
+        setSelectedParty(vendor);
+        setSelectedCustomer(vendor);
+        setIsPartyDialogOpen(false);
+        
+        // Update debit note data with selected party information
+        setDebitNoteData(prev => ({
+            ...prev,
+            customer_uuid: vendor.uuid,
+            customer_name: vendor.name,
+        }));
     };
 
     // Function to fetch vendors
@@ -977,9 +1140,12 @@ const CreateDebitNotePage = () => {
                         setDebitNoteExistsForCurrentInvoice(false);
                     }
 
+                    console.log('DEBUG - URL Path - invoiceId:', invoiceId);
                     const response = await getPurchaseInvoiceById(invoiceId);
+                    console.log('DEBUG - URL Path - API response:', response);
                     if (response.success && response.data) {
                         const invoice = response.data;
+                        console.log('DEBUG - URL Path - Invoice data:', invoice);
                         
                         // Set vendor/customer from invoice or URL parameter
                         const invoiceVendorId = invoice.vendor_id || invoice.vendor?.uuid;
@@ -999,7 +1165,7 @@ const CreateDebitNotePage = () => {
                             ...prev,
                             linkToInvoice: invoice.invoice_number,
                             linkToInvoiceId: invoice.uuid || invoiceId,
-                            status: 'credited'
+                            status: prev.status || 'unpaid' // Keep existing status or default to unpaid
                         }));
                         
                         const transformedItems = response.data.items.map((item: any) => ({
@@ -1043,9 +1209,10 @@ const CreateDebitNotePage = () => {
         }
     }, [vendorId, invoiceId, isEditMode, parties]);
 
-    // Simple edit mode loader - load debit note data when in edit mode
+    // Simple edit mode loader - load debit note data when in edit mode (only once)
     useEffect(() => {
-        if (isEditMode && id) {
+        if (isEditMode && id && !editDataLoadedRef.current) {
+            editDataLoadedRef.current = true; // Set immediately to prevent re-runs
             const loadEditData = async () => {
                 try {
                     setIsLoading(true);
@@ -1079,7 +1246,7 @@ const CreateDebitNotePage = () => {
                             status: debitNoteStatus,
                             notes: debitNote.notes || debitNote.data?.debit_note?.notes || '',
                             terms: debitNote.terms_and_conditions || debitNote.data?.debit_note?.terms_and_conditions || '',
-                            mark_as_fully_paid: debitNoteStatus === 'credited',
+                            mark_as_fully_paid: debitNote.mark_as_fully_paid !== undefined ? debitNote.mark_as_fully_paid : debitNoteStatus === 'credited',
                         }));
                         
                         // Load customer if available
@@ -1248,9 +1415,13 @@ const CreateDebitNotePage = () => {
                         } else {
                         }
                         
-                        // Load debit note items
-                        const debitNoteItems = debitNote.debit_note_items || debitNote.items || debitNote.data?.debit_note?.debit_note_items || debitNote.data?.debit_note?.items || debitNote.data?.items || []; if (debitNoteItems.length > 0) {
+                        // Load debit note items - only if not already loaded to prevent overwriting user changes
+                        const debitNoteItems = debitNote.debit_note_items || debitNote.items || debitNote.data?.debit_note?.debit_note_items || debitNote.data?.debit_note?.items || debitNote.data?.items || []; 
+                        console.log('DEBUG - Edit mode - Debit note items:', debitNoteItems);
+                        
+                        if (debitNoteItems.length > 0 && !itemsLoaded) {
                             const transformedItems = debitNoteItems.map((item: any) => {
+                                console.log('DEBUG - Edit mode - Processing item:', item);
                                 
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
@@ -1259,17 +1430,22 @@ const CreateDebitNotePage = () => {
                                 const discountType = item.discount_type || 'percentage';
                                 const taxType = item.tax_type || 'percentage';
                                 
+                                console.log('DEBUG - Edit mode - Item quantity:', quantity);
+                                
+                                // Use backend-provided original_quantity field, fallback to original backend quantity
+                                const originalQty = item.original_quantity || item.quantity || 0;
+                                console.log('DEBUG - Edit mode - User set quantity:', quantity);
+                                console.log('DEBUG - Edit mode - Original quantity from backend (max allowed):', originalQty);
                                 
                                 const calculatedAmount = calculateItemAmount(quantity, pricePerItem, discount, tax, discountType, taxType);
                                 
-                                
-                                return {
+                                const transformed = {
                                     uuid: item.uuid || item.id,
                                     item_id: item.item_id,
                                     item_name: item.item_name,
                                     hsn_sac: item.hsn_sac_code || item.hsn_sac,
-                                    quantity,
-                                    originalQty: quantity,
+                                    quantity, // Keep user-set quantity
+                                    originalQty: originalQty, // Use backend original_quantity as max allowed
                                     price_per_item: pricePerItem,
                                     discount,
                                     tax,
@@ -1283,9 +1459,13 @@ const CreateDebitNotePage = () => {
                                     discount_amount: discountType === 'percentage' ? (quantity * pricePerItem * discount / 100) : discount,
                                     tax_amount: taxType === 'percentage' ? ((quantity * pricePerItem - (discountType === 'percentage' ? (quantity * pricePerItem * discount / 100) : discount)) * tax / 100) : tax,
                                 };
+                                console.log('DEBUG - Edit mode - Transformed item:', transformed);
+                                return transformed;
                             });
+                            console.log('DEBUG - Edit mode - Final transformed items:', transformedItems);
                             setItems(transformedItems);
                             recalculateTotals(transformedItems);
+                            setItemsLoaded(true); // Mark as loaded to prevent re-loading
                         } else {
                         }
                     }
@@ -1298,6 +1478,7 @@ const CreateDebitNotePage = () => {
             };
             
             loadEditData();
+            setInitialDataLoaded(true);
         }
     }, [isEditMode, id]);
 
@@ -1742,6 +1923,7 @@ const CreateDebitNotePage = () => {
                                                     value={item.hsn_sac || ''}
                                                     disabled={false}
                                                     className="w-full"
+                                                    onChange={(e) => handleItemChange(index, 'hsn_sac', e.target.value)}
                                                 />
                                             </td>
                                             <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
@@ -1753,26 +1935,25 @@ const CreateDebitNotePage = () => {
                                                     max={debitNoteData.linkToInvoice !== '' ? item.originalQty : undefined}
                                                     className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}
                                                     onChange={(e) => {
-                                                        const inputValue = e.target.value;
-                                                        if (inputValue === '' || inputValue === '0') {
+                                                        const newQty = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+
+                                                        if (newQty === 0) {
                                                             handleItemChange(index, 'quantity', 0);
                                                             return;
                                                         }
-                                                        const newQty = parseInt(inputValue);
                                                         if (isNaN(newQty) || newQty < 0) {
                                                             handleItemChange(index, 'quantity', 0);
                                                             return;
                                                         }
-                                                        if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && newQty > item.originalQty) {
-                                                            handleItemChange(index, 'quantity', item.originalQty);
-                                                            return;
-                                                        }
+                                                        // Allow quantity changes even when linked to invoice
                                                         if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && newQty > item.originalQty) {
                                                             handleItemChange(index, 'quantity', item.originalQty);
                                                             return;
                                                         }
                                                         handleItemChange(index, 'quantity', newQty);
                                                     }}
+                                                    {...(debitNoteData.linkToInvoice !== '' && { max: item.originalQty })}
+                                                    {...(debitNoteData.linkToInvoice !== '' && { disabled: false })}
                                                 />
                                                 {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
                                                     <div className="absolute bottom-1 left-0 right-0 text-center">
@@ -1965,8 +2146,7 @@ const CreateDebitNotePage = () => {
                                     <label htmlFor="autoRoundOff" className="text-sm font-medium">Auto Round Off</label>
                                 </div>
                             </div>
-                            {isEditMode && debitNoteData.status !== 'credited' && (
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
                                             id="markAsFullyPaid"
@@ -1979,7 +2159,6 @@ const CreateDebitNotePage = () => {
                                         <label htmlFor="markAsFullyPaid" className="text-sm font-medium">Mark as Fully Paid</label>
                                     </div>
                                 </div>
-                            )}
                             {debitNoteData.auto_round_off && debitNoteData.round_off_amount !== 0 && (
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-600">Round Off</span>
@@ -2137,7 +2316,7 @@ const CreateDebitNotePage = () => {
                                                         <div className="flex items-center">
                                                             <div className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === vendor.id ? "bg-green-100" : "bg-gray-100"}`}>
                                                                 <span className={`font-medium text-sm ${selectedParty?.id === vendor.id ? "text-green-700" : "text-gray-600"}`}>
-                                                                    {vendor.name.split(" ").map((n: string) => n[0]).join("").toUpperCase()}
+                                                                    {vendor.name.split(" ").map((n: string, i: number) => n[0]).join("").toUpperCase()}
                                                                 </span>
                                                             </div>
                                                             <div className="ml-4">

@@ -365,7 +365,21 @@ const PurchaseInvoicePage = () => {
         return styles[status] || 'bg-gray-100 text-gray-800';
     };
 
-    const handleCreateDebitNote = (invoice: PurchaseInvoice) => {
+    const handleCreateDebitNote = async (invoice: PurchaseInvoice) => {
+        // Check if debit note already exists for this invoice
+        try {
+            const response = await checkDebitNoteExistsForInvoice(invoice.id);
+            if (response.success && response.data && response.data.hasDebitNote) {
+                const debitNotes = response.data.debitNotes || [];
+                const debitNoteNumbers = debitNotes.map((dn: any) => dn.debitNoteNo).join(', ');
+                toast.error(`A debit note already exists for this invoice ${debitNoteNumbers}`);
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking debit notes:', error);
+            toast.warning('Unable to verify debit note status. Proceeding with creation.');
+        }
+
         // Navigate to debit note creation page with prefilled data
         const vendorId = invoice.vendor?.uuid || invoice.vendor_id;
         const url = vendorId 
@@ -699,7 +713,7 @@ const PurchaseInvoicePage = () => {
                                         <label className="text-sm font-medium text-gray-700">Amount Paid <span className="text-red-500">*</span></label>
                                         <Input
                                             type="number"
-                                            value={paymentForm.amount || ""}
+                                            value={paymentForm.amount === 0 ? "0" : paymentForm.amount || ""}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
                                             className="h-10"
                                             placeholder="0.00"
@@ -712,7 +726,7 @@ const PurchaseInvoicePage = () => {
                                         </div>
                                         <Input
                                             type="number"
-                                            value={paymentForm.discount || ""}
+                                            value={paymentForm.discount === 0 ? "0" : paymentForm.discount || ""}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, discount: parseFloat(e.target.value) || 0 })}
                                             className="h-10"
                                             placeholder="0.00"

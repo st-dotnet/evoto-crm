@@ -1533,6 +1533,16 @@ const InvoiceDetailsPage: React.FC = () => {
                     {formatCurrency(invoiceData.amount_paid)}
                   </span>
                 </div>
+                {invoiceData.payment_discount && invoiceData.payment_discount > 0 && (
+                  <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                    <span className="text-gray-500 font-medium tracking-tight">
+                      Payment Discount Applied
+                    </span>
+                    <span className="text-red-600 font-bold">
+                      -{formatCurrency(invoiceData.payment_discount)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Payments List */}
@@ -1557,7 +1567,9 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center"></div>
+                  <div className="text-center text-gray-500 text-sm">
+                    No payments recorded
+                  </div>
                 )}
               </div>
 

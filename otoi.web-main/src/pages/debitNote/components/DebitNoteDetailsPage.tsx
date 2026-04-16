@@ -30,7 +30,6 @@ import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
-import { resolveImageUrl } from "@/utils/imageUtils";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 import { resolveImageUrl } from "@/utils/imageUtils";
 

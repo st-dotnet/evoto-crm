@@ -151,9 +151,13 @@ export const getPaymentInList = async (
     }
 
     // Transform invoice data to payment format
-    const paymentData = invoicesData.map((invoice: any) => ({
-      id: invoice.uuid || invoice.id,
-      payment_number: `PAY-${invoice.invoice_number || "INV"}`,
+    const paymentData = invoicesData.map((invoice: any) => {
+      // Use invoice UUID for payment deletion as backend expects invoice-based endpoint
+      const invoiceId = invoice.uuid || invoice.id;
+      
+      return {
+        id: invoiceId,
+        payment_number: `PAY-${invoice.invoice_number || "INV"}`,
       date:
         invoice.updated_at ||
         invoice.invoice_date ||
@@ -173,7 +177,8 @@ export const getPaymentInList = async (
           : (invoice.amount_paid || 0) > 0
             ? "partially paid"
             : "unpaid"),
-    }));
+      };
+    });
 
     // Update pagination data for 'all' status to reflect filtered count
     if (!payment_status || payment_status === 'all') {
@@ -265,10 +270,9 @@ export const deletePaymentIn = async (id: string): Promise<ApiResponse> => {
   }
 
   try {
-    // Soft delete by updating the is_deleted column
-    const response = await axios.put(
-      `${API_URL}/invoices/${id}/delete`,
-      { is_deleted: true },
+    // Use invoice-based endpoint as specified by backend
+    const response = await axios.delete(
+      `${API_URL}/payment-in/invoice/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

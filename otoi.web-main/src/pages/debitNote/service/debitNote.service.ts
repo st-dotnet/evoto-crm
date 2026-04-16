@@ -135,6 +135,9 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
       hsn_sac_code: item.hsn_sac || null
     })),
     
+    // Total amount - ensure frontend calculated total is sent
+    total_amount: debitNoteData.total_amount || 0,
+    
     // Charges JSON structure matching backend
     charges: {
       subtotal: debitNoteData.subtotal || 0,
@@ -293,8 +296,19 @@ export const updateDebitNote = async (id: string, debitNoteData: any): Promise<A
     };
   }
 
+  // Transform frontend data to match new backend structure
+  const payload = {
+    items: debitNoteData.items || [], // Backend expects items array
+    total_amount: debitNoteData.total_amount || 0,
+    subtotal: debitNoteData.subtotal || 0,
+    total_discount: debitNoteData.total_discount || 0,
+    total_tax: debitNoteData.total_tax || 0,
+    round_off_amount: debitNoteData.round_off_amount || 0,
+    mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false
+  };
+
   try {
-    const response = await axios.put(`${API_URL}/debit-notes/${id}`, debitNoteData, {
+    const response = await axios.put(`${API_URL}/debit-notes/${id}`, payload, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

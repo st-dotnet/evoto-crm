@@ -4,7 +4,8 @@ from sqlalchemy import or_, func, desc, asc, and_
 from sqlalchemy.orm import selectinload
 import base64
 import os
-import os
+from app.models.paymentIn import PaymentIn
+from datetime import datetime
 from app.extensions import db
 from app.models.invoice import Invoice, InvoiceItem
 from app.models.customer import Customer
@@ -1141,6 +1142,49 @@ def record_payment(invoice_id):
         # Use the helper function to update payment status (considers credit notes)
         update_invoice_payment_status(str(invoice.uuid))
         
+        # Create or Update PaymentIn record for tracking (after all invoice updates)
+        try:
+            from app.models.paymentIn import PaymentIn
+            from datetime import datetime
+            
+            # Check if there's already a payment for this invoice
+            existing_payment = PaymentIn.query.filter_by(invoice_id=str(invoice.uuid), is_deleted=False).first()
+            
+            # Determine payment status based on balance
+            payment_status = "paid" if float(invoice.balance_due) <= 0 else "partial"
+            
+            if existing_payment:
+                # Update existing payment record
+                existing_payment.amount_received = float(invoice.amount_paid)
+                existing_payment.balance_due = float(invoice.balance_due)
+                existing_payment.discount = float(invoice.payment_discount or 0)
+                existing_payment.payment_status = payment_status
+                existing_payment.payment_date = datetime.now().strftime("%Y-%m-%d")
+            else:
+                # Create new PaymentIn record
+                payment_count = PaymentIn.query.filter_by(invoice_id=str(invoice.uuid)).count()
+                payment_number = f"PAY-{invoice.invoice_number}-{payment_count + 1}"
+                
+                payment_in = PaymentIn(
+                    payment_number=payment_number,
+                    payment_date=datetime.now().strftime("%Y-%m-%d"),
+                    invoice_id=str(invoice.uuid),
+                    party_name=invoice.customer.first_name if invoice.customer else "Unknown",
+                    invoice_number=invoice.invoice_number,
+                    total_amount=float(invoice.total_amount),
+                    amount_received=float(invoice.amount_paid),
+                    balance_due=float(invoice.balance_due),
+                    discount=float(invoice.payment_discount or 0),
+                    payment_mode=data.get("payment_mode", "Cash"),
+                    payment_status=payment_status,
+                    business_id=invoice.business_id
+                )
+                
+                db.session.add(payment_in)
+        except Exception as e:
+            # If PaymentIn creation fails, don't break the payment recording
+            pass
+        
         # Force refresh the invoice object to ensure latest values
         db.session.flush()  # Ensure changes are written to session
         
@@ -1288,7 +1332,6 @@ def download_invoice_pdf(invoice_id):
                                     mime_type = "image/png" if extension == ".png" else "image/jpeg"
                                     item_info["image"] = f"data:{mime_type};base64,{encoded_string}"
                             except Exception as e:
-                                print(f"Error encoding image for PDF: {e}")
                                 item_info["image"] = None
             items_data.append(item_info)
 
