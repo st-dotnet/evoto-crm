@@ -969,7 +969,7 @@ const QuotationPage = () => {
             />
           </DataGrid>
         </div>
-      </div>  
+      </div>
     </div>
   );
 };

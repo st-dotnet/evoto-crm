@@ -660,7 +660,7 @@ const PurchaseOrderPage = () => {
 
   return (
     <div className="container-fluid p-6 relative">
-      {(isLoading || isDeleting || isDropdownLoading) && (
+      {(isDeleting || isDropdownLoading) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
           <div className="text-primary">
             <SpinnerDotted

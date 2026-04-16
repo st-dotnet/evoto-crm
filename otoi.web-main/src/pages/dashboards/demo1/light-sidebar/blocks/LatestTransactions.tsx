@@ -9,19 +9,22 @@ const TYPE_BADGE_MAP: Record<string, string> = {
   'Purchase Invoices': 'badge-warning',
   'Purchase Orders': 'badge-primary',
   'Payment Out': 'badge-danger',
+  'Quotation / Estimate': 'badge-info',
+  'Credit Note': 'badge-danger',
+  'Debit Note': 'badge-success',
 };
 
 type FilterTab = 'All' | 'Sales' | 'Purchases' | 'Payments';
 
 const TAB_TYPES: Record<FilterTab, string[]> = {
   All: [],
-  Sales: ['Sales Invoices'],
-  Purchases: ['Purchase Invoices', 'Purchase Orders'],
+  Sales: ['Sales Invoices', 'Quotation / Estimate', 'Credit Note'],
+  Purchases: ['Purchase Invoices', 'Purchase Orders', 'Debit Note'],
   Payments: ['Payment In', 'Payment Out'],
 };
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatDate = (iso: string | null): string => {
@@ -80,76 +83,96 @@ const LatestTransactions = () => {
   return (
     <Fragment>
       <div className="card">
-        <div className="card-header flex-col items-start gap-0 pb-0">
+        <div className="card-header flex-col items-start gap-0 pb-2">
           <h3 className="card-title mb-3">Latest Transactions</h3>
 
-          {/* Filter tabs */}
-          <div className="flex gap-0 border-b border-gray-200 w-full -mb-px">
-            {tabs.map((tab) => {
-              const count =
-                tab === 'All'
-                  ? transactions.length
-                  : transactions.filter((t) => TAB_TYPES[tab].includes(t.type)).length;
+          {/* Filter tabs - Scrollable on mobile */}
+          <div className="flex gap-0 border-b border-gray-200 w-full -mb-px overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max px-5 lg:px-0">
+              {tabs.map((tab) => {
+                const count =
+                  tab === 'All'
+                    ? transactions.length
+                    : transactions.filter((t) => TAB_TYPES[tab].includes(t.type)).length;
 
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                >
-                  {tab}
-                  {!loading && (
-                    <span
-                      className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab
-                        ? 'bg-primary/10 text-primary'
-                        : 'bg-gray-100 text-gray-400'
-                        }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-5 py-3 text-xs font-semibold border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === tab
+                      ? 'border-primary text-primary bg-primary/[0.02]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {tab}
+                    {!loading && (
+                      <span
+                        className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${activeTab === tab
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-gray-100 text-gray-400'
+                          }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         <div className="card-body p-0">
-          <div className="scrollable-x-auto">
-            <table className="table table-auto table-border">
-              <thead>
-                <tr>
-                  <th className="min-w-[130px]">
-                    <span className="text-gray-700 font-normal">Date</span>
-                  </th>
-                  <th className="min-w-[160px]">
-                    <span className="text-gray-700 font-normal">Type</span>
-                  </th>
-                  <th className="min-w-[100px]">
-                    <span className="text-gray-700 font-normal">Txn No</span>
-                  </th>
-                  <th className="min-w-[170px]">
-                    <span className="text-gray-700 font-normal">Party Name</span>
-                  </th>
-                  <th className="min-w-[120px] text-end">
-                    <span className="text-gray-700 font-normal">Amount</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <>
-                    <SkeletonRow />
-                    <SkeletonRow />
-                    <SkeletonRow />
-                    <SkeletonRow />
-                    <SkeletonRow />
-                  </>
-                ) : displayedTxns.length === 0 ? null : (
-                  displayedTxns.map((txn, index) => (
+          {loading ? (
+            <div className="scrollable-x-auto">
+              <table className="table table-auto table-border">
+                <thead>
+                  <tr>
+                    <th className="min-w-[130px]"><span className="text-gray-700 font-normal">Date</span></th>
+                    <th className="min-w-[160px]"><span className="text-gray-700 font-normal">Type</span></th>
+                    <th className="min-w-[100px]"><span className="text-gray-700 font-normal">Txn No</span></th>
+                    <th className="min-w-[170px]"><span className="text-gray-700 font-normal">Party Name</span></th>
+                    <th className="min-w-[120px] text-end"><span className="text-gray-700 font-normal">Amount</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SkeletonRow />
+                  <SkeletonRow />
+                  <SkeletonRow />
+                  <SkeletonRow />
+                  <SkeletonRow />
+                </tbody>
+              </table>
+            </div>
+          ) : displayedTxns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-2">
+              <i className="ki-filled ki-notepad-edit text-3xl text-gray-300"></i>
+              <span className="text-sm text-gray-400 font-medium">No transactions found</span>
+            </div>
+          ) : (
+            <div className="scrollable-x-auto">
+              <table className="table table-auto table-border">
+                <thead>
+                  <tr>
+                    <th className="min-w-[130px]">
+                      <span className="text-gray-700 font-normal">Date</span>
+                    </th>
+                    <th className="min-w-[160px]">
+                      <span className="text-gray-700 font-normal">Type</span>
+                    </th>
+                    <th className="min-w-[100px]">
+                      <span className="text-gray-700 font-normal">Txn No</span>
+                    </th>
+                    <th className="min-w-[170px]">
+                      <span className="text-gray-700 font-normal">Party Name</span>
+                    </th>
+                    <th className="min-w-[120px] text-end">
+                      <span className="text-gray-700 font-normal">Amount</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedTxns.map((txn, index) => (
                     <tr
                       key={index}
                       onClick={() => txn.route_path && navigate(txn.route_path)}
@@ -181,21 +204,25 @@ const LatestTransactions = () => {
                         </span>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
+
         <div className="card-footer justify-center">
-          <Link
-            to="/transactions"
-            className="btn btn-link text-primary hover:text-primary-active text-sm font-medium"
-          >
-            See All Transactions
-          </Link>
+          {transactions.length > 0 && (
+            <Link
+              to="/transactions"
+              className="btn btn-link text-primary hover:text-primary-active text-sm font-medium"
+            >
+              See All Transactions
+            </Link>
+          )}
         </div>
+
       </div>
     </Fragment>
   );

@@ -25,13 +25,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { getDebitNoteById, getDebitNotePayments, createDebitNotePayment, getVendorById } from '../service/debitNote.service';
 import { getShareData, sendShareEmail } from "@/services/share.service";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
-import { resolveImageUrl } from "@/utils/imageUtils";
 
 const DebitNoteDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -296,42 +293,49 @@ const DebitNoteDetailsPage: React.FC = () => {
     if (!debitNoteRef.current || !debitNoteData) return;
     const downloadToast = toast.loading("Generating PDF...");
     try {
-      const canvas = await html2canvas(debitNoteRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-      });
+      const token = (() => {
+        try {
+          const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+          if (!authData) return null;
+          const parsedAuth = JSON.parse(authData);
+          return (
+            parsedAuth.token ||
+            parsedAuth.access_token ||
+            parsedAuth.accessToken ||
+            null
+          );
+        } catch (error) {
+          return null;
+        }
+      })();
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_APP_API_URL}/debit-notes/${debitNoteData.uuid}/pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
       }
 
-      pdf.save(`debit-note-${debitNoteData.debit_note_number}.pdf`);
-      toast.success("PDF downloaded successfully");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DebitNote-${debitNoteData.debit_note_number || "Draft"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully", { id: downloadToast });
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error("Failed to generate PDF");
-    } finally {
-      toast.dismiss(downloadToast);
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF", { id: downloadToast });
     }
   };
 
@@ -541,8 +545,6 @@ const DebitNoteDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/debit-note/${id}/edit`)} className="gap-2"><Edit className="h-4 w-4" />Edit</Button>
           </div>
         </div>
       </div>
@@ -708,9 +710,9 @@ const DebitNoteDetailsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-2 text-center border-r border-black align-top">
-                    {item.item_image || item.image_url ? (
+                    {item.item_image || item.image_url || item.image ? (
                       <img
-                        src={toAbsoluteUrl(item.item_image || item.image_url)}
+                        src={resolveImageUrl(item.item_image || item.image_url || item.image)}
                         alt={item.item_name || item.product_name}
                         className="h-12 w-12 object-cover rounded border border-gray-200 mx-auto"
                       />

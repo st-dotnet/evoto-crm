@@ -16,6 +16,9 @@ const TYPE_BADGE_MAP: Record<string, string> = {
   'Purchase Invoices': 'badge-warning',
   'Purchase Orders': 'badge-primary',
   'Payment Out': 'badge-danger',
+  'Quotation / Estimate': 'badge-info',
+  'Credit Note': 'badge-danger',
+  'Debit Note': 'badge-success',
 };
 
 const formatINR = (value: number): string => {

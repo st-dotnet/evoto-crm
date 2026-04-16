@@ -43,7 +43,7 @@ def generate_pdf_token(uuid, obj_type):
     s = get_serializer()
     return s.dumps({"uuid": uuid, "type": obj_type})
 
-def verify_pdf_token(token, max_age=86400):  # 24 hours expiry
+def verify_pdf_token(token, max_age=604800):  # 7 days expiry
     s = get_serializer()
     try:
         data = s.loads(token, max_age=max_age)

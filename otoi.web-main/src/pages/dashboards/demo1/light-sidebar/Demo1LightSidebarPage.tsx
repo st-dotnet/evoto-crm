@@ -8,12 +8,14 @@ const Demo1LightSidebarPage = () => {
     <Fragment>
       <Container>
         <Toolbar>
-          <ToolbarHeading title="Dashboard" description="Central Hub for business overview" />
+          <ToolbarHeading title="Dashboard" />
         </Toolbar>
       </Container>
 
       <Container>
-        <Demo1LightSidebarContent />
+        <div className="mt-5 lg:mt-8">
+          <Demo1LightSidebarContent />
+        </div>
       </Container>
     </Fragment>
   );

@@ -15,7 +15,7 @@ interface IStatCard {
 }
 
 const formatINR = (value: number): string => {
-  return `₹ ${value.toLocaleString('en-IN')}`;
+  return `₹ ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 /* ── Skeleton placeholder ── */
@@ -125,20 +125,20 @@ const StatCards = () => {
         <div
           key={index}
           onClick={() => card.navigateTo && navigate(card.navigateTo)}
-          className={`card border-l-4 ${card.borderColor} ${card.bgColor} p-5 flex flex-col gap-1 cursor-pointer
-                      hover:shadow-md hover:scale-[1.02] transition-all duration-200`}
+          className={`card border-l-4 ${card.borderColor} ${card.bgColor} p-5 flex flex-col gap-2 cursor-pointer
+                      hover:shadow-md transition-shadow duration-300`}
         >
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between">
             <div
-              className={`flex items-center gap-1.5 text-xs font-medium ${card.labelColor}`}
+              className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${card.labelColor}`}
             >
               <i className={`${card.icon} text-sm`}></i>
               <span>{card.label}</span>
             </div>
-            <i className="ki-filled ki-arrow-right text-xs text-gray-400 group-hover:text-gray-600 transition-colors"></i>
+            <i className="ki-filled ki-arrow-right text-xs text-gray-400"></i>
           </div>
-          <span className="text-2xl font-bold text-gray-900 leading-none">{card.amount}</span>
-          {card.subText && <div>{card.subText}</div>}
+          <span className="text-2xl font-bold text-gray-900 leading-tight">{card.amount}</span>
+          {card.subText && <div className="mt-auto pt-2">{card.subText}</div>}
         </div>
       ))}
     </Fragment>

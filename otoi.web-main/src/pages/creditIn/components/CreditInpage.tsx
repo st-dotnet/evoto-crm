@@ -20,6 +20,7 @@ import {
   Trash2,
   CreditCard,
   FileText,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -278,6 +279,8 @@ const CreditInpage = () => {
             })
             : [];
 
+          setCreditNotes(formattedData);
+
           // Check if backend returned pagination info
           let totalCount =
             response.data.data?.pagination?.total ||
@@ -401,6 +404,111 @@ const CreditInpage = () => {
       unpaid: "bg-red-100 text-red-800",
     };
     return styles[status] || "bg-gray-100 text-gray-800";
+  };
+
+  const MobileView = ({
+    onEdit,
+    onDetails,
+    onDelete,
+  }: {
+    onEdit: (id: string) => void;
+    onDetails: (id: string) => void;
+    onDelete: (id: string) => void;
+  }) => {
+    return (
+      <div className="flex flex-col lg:hidden border-t border-gray-100">
+        {creditNotes.map((creditNote) => (
+          <div
+            key={creditNote.id}
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+          >
+            <div
+              className="flex flex-col cursor-pointer grow pr-4"
+              onClick={() => onDetails(creditNote.id)}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-gray-900 text-sm">
+                  {creditNote.credit_note_number}
+                </span>
+                <span
+                  className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${getStatusBadge(
+                    creditNote.status,
+                  )}`}
+                >
+                  {creditNote.status.charAt(0).toUpperCase() +
+                    creditNote.status.slice(1)}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-gray-700 mb-0.5">
+                {creditNote.party_name}
+              </span>
+              <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {new Date(creditNote.date).toLocaleDateString()}
+                </span>
+                {creditNote.invoice_no && (
+                  <span className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    Inv: {creditNote.invoice_no}
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <div className="font-bold text-primary text-sm">
+                  ₹{creditNote.amount?.toLocaleString("en-IN") || "0"}
+                </div>
+              </div>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                  <MoreVertical className="h-4.5 w-4.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-40 p-1 shadow-lg border-gray-200"
+              >
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={() => onEdit(creditNote.id)}
+                >
+                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={() => onDetails(creditNote.id)}
+                >
+                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                  View Details
+                </DropdownMenuItem>
+                <div className="my-1 border-t border-gray-100"></div>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                  onClick={() => onDelete(creditNote.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ))}
+        {creditNotes.length === 0 && !isLoading && (
+          <div className="p-16 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <Search className="text-3xl text-gray-200" />
+              <span className="text-gray-400 text-sm font-medium">
+                No credit notes found.
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const columns = useMemo<ColumnDef<CreditNote>[]>(
@@ -614,11 +722,11 @@ const CreditInpage = () => {
   );
 
   return (
-    <div className="container-fluid p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container-fluid p-4 sm:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Credit Notes</h1>
-        <div className="flex items-start gap-2">
-          <div className="w-44">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-44">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -678,7 +786,7 @@ const CreditInpage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="w-36">
+          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-36">
             <Button variant="outline" size="sm" className="h-8 w-full gap-1">
               <Calendar className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -689,7 +797,7 @@ const CreditInpage = () => {
 
           <Button
             size="sm"
-            className="h-8 gap-1"
+            className="h-8 gap-1 w-full sm:w-auto mt-2 sm:mt-0"
             onClick={() => navigate("/sales/credit-note/create")}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -786,6 +894,8 @@ const CreditInpage = () => {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+              <div className="relative w-full sm:w-auto">
                 <DropdownMenu
                   open={showFilterDropdown}
                   onOpenChange={setShowFilterDropdown}
@@ -794,7 +904,7 @@ const CreditInpage = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
+                      className="h-9 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto"
                     >
                       <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
                       {searchTerm
@@ -840,7 +950,7 @@ const CreditInpage = () => {
             </div>
           </div>
         </div>
-        <div className="overflow-auto relative">
+        <div className="overflow-auto relative w-full">
           {isLoading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
               <SpinnerDotted
@@ -873,11 +983,19 @@ const CreditInpage = () => {
               navigate(`/sales/credit-note/${row.original.id}`);
             }}
             layout={{
+              card: true,
               classes: {
+                container: 'hidden lg:block',
                 table: "cursor-pointer [&_tr:hover]:bg-gray-50",
               },
             }}
-          />
+          >
+            <MobileView
+              onEdit={(id) => navigate(`/sales/credit-note/${id}/edit`)}
+              onDetails={(id) => navigate(`/sales/credit-note/${id}`)}
+              onDelete={(id) => handleDelete(id)}
+            />
+          </DataGrid>
         </div>
       </div>
 

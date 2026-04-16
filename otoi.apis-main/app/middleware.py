@@ -45,7 +45,10 @@ def extract_jwt_info():
         '/api/items/export/pdf',
         
         # Print PDF - Public endpoint (allow query params for browser compatibility)
-        '/api/items/export/print-pdf'
+        '/api/items/export/print-pdf',
+
+        # Shared Documents - Public endpoint
+        '/api/share-data/public/pdf'
     ]
     
     # Check if current endpoint is a static file or a public endpoint

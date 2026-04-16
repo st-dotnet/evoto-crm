@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from app.extensions import db
@@ -7,7 +8,10 @@ from app.utils.stamping import set_created_fields, set_updated_fields
 from app.utils.decorators import login_required
 import uuid
 import sys
+import os
 from datetime import datetime, timedelta
+from app.config import Config
+from app.services.pdf_service import generate_credit_note_pdf
 
 credit_note_blueprint = Blueprint("credit_note", __name__)
 
@@ -1043,7 +1047,6 @@ def update_credit_note(credit_note_id):
         # Handle status updates with validation (only if not already handled by mark_as_fully_paid)
         elif "status" in data:
             new_status = data["status"]
-            
             # Validation for 'refunded' status (fully paid)
             if new_status == "refunded":
                 # Ensure amount_received equals total_amount for refunded status
@@ -1451,3 +1454,67 @@ def update_status(credit_note_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": "An error occurred", "details": str(e)}), 500
+@credit_note_blueprint.route("/<uuid:credit_note_id>/pdf", methods=["GET"])
+@login_required
+def download_credit_note_pdf(credit_note_id):
+    """Download credit note as a PDF"""
+    try:
+        credit_note = CreditNote.query.get_or_404(credit_note_id)
+
+        # Build items data (with product names, HSN codes, and images)
+        items_data = []
+        for item in credit_note.items:
+            item_info = {
+                "description": item.description,
+                "quantity": float(item.quantity) if item.quantity else 0,
+                "unit_price": float(item.unit_price) if item.unit_price else 0,
+                "discount": item.discount or {},
+                "tax": item.tax or {},
+                "total_price": float(item.total_price) if item.total_price else 0,
+            }
+            if item.item_id:
+                inventory_item = Item.query.options(
+                    selectinload(Item.images)
+                ).get(item.item_id)
+                if inventory_item:
+                    item_info["product_name"] = inventory_item.item_name
+                    item_info["hsn_sac_code"] = inventory_item.hsn_code
+                    # Get the feature image for the item
+                    main_image_obj = next((img for img in (inventory_item.images or []) if img.is_main), None)
+                    if not main_image_obj and inventory_item.images:
+                        main_image_obj = inventory_item.images[0]
+                    if main_image_obj:
+                        import base64
+                        # Resolve absolute path for PDF generation
+                        image_path = os.path.join(Config.ITEM_IMAGES_FOLDER, str(main_image_obj.item_id), main_image_obj.image)
+                        if os.path.exists(image_path):
+                            try:
+                                with open(image_path, "rb") as img_file:
+                                    encoded_string = base64.b64encode(img_file.read()).decode('utf-8')
+                                    extension = os.path.splitext(image_path)[1].lower()
+                                    mime_type = "image/png" if extension == ".png" else "image/jpeg"
+                                    item_info["image"] = f"data:{mime_type};base64,{encoded_string}"
+                            except Exception as e:
+                                current_app.logger.error(f"Error encoding image for PDF: {e}")
+                                item_info["image"] = None
+            items_data.append(item_info)
+
+        pdf_buffer = generate_credit_note_pdf(credit_note, items_data)
+
+        # Build download filename
+        filename = f"CreditNote-{credit_note.credit_note_number or 'Draft'}.pdf"
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating credit note PDF: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate PDF",
+            "error": str(e)
+        }), 500

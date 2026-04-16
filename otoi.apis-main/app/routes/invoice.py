@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, g
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func, desc, asc, and_
 from sqlalchemy.orm import selectinload
@@ -16,7 +16,7 @@ from app.utils.stamping import set_updated_fields
 from app.routes.creditIn import update_invoice_payment_status
 from app.utils.decorators import login_required
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.config import Config
 
 
@@ -1187,6 +1187,40 @@ def record_payment(invoice_id):
         
         # Force refresh the invoice object to ensure latest values
         db.session.flush()  # Ensure changes are written to session
+        
+        # ── Create PaymentIn record so Cash+Bank Balance updates ─────────
+        from app.models.paymentIn import PaymentIn
+        from app.routes.payment_in import generate_payment_in_number
+
+        # Resolve party name from customer
+        party_name = ""
+        if invoice.customer_id:
+            cust = Customer.query.get(invoice.customer_id)
+            if cust:
+                party_name = f"{cust.first_name or ''} {cust.last_name or ''}".strip()
+        if not party_name:
+            party_name = data.get("party_name", "Unknown Customer")
+
+        payment_mode = data.get("payment_method") or data.get("payment_mode", "cash")
+
+        pi_record = PaymentIn(
+            payment_number      = generate_payment_in_number(),
+            payment_date        = date.today(),
+            invoice_id          = invoice.uuid,
+            party_name          = party_name,
+            invoice_number      = invoice.invoice_number,
+            total_amount        = float(invoice.total_amount or 0),
+            amount_received     = payment_amount,
+            balance_due         = round(invoice.balance_due, 2),
+            discount            = payment_discount,
+            payment_status      = invoice.payment_status,
+            payment_mode        = payment_mode,
+            payment_notes       = data.get("reference", ""),
+            business_id         = invoice.business_id,
+            created_by          = getattr(g, "current_user_id", None),
+        )
+        db.session.add(pi_record)
+        # ─────────────────────────────────────────────────────────────────
         
         db.session.commit()
         

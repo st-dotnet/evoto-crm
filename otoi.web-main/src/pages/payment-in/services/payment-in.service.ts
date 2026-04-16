@@ -4,7 +4,19 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
 const getAuthToken = (): string | null => {
-  return localStorage.getItem("OTOI-auth-v1.0.0.1");
+  try {
+    const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    if (!authData) return null;
+    const parsedAuth = JSON.parse(authData);
+    return (
+      parsedAuth.token ||
+      parsedAuth.access_token ||
+      parsedAuth.accessToken ||
+      null
+    );
+  } catch (error) {
+    return null;
+  }
 };
 
 interface ApiResponse {
@@ -38,12 +50,18 @@ export const createPaymentIn = async (
   }
 
   try {
-    // Since payment-in endpoint doesn't exist, just return success for now
-    // In real implementation, this would POST to /api/payment-in
+    const response = await axios.post(`${API_URL}/payment-in`, paymentData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      withCredentials: false,
+    });
+
     return {
       success: true,
-      data: paymentData,
-      status: 200,
+      data: response.data,
+      status: response.status,
     };
   } catch (error: any) {
     console.error("Error creating payment-in:", error);
@@ -81,31 +99,26 @@ export const getPaymentInList = async (
   }
 
   try {
-    // Build API URL with filters
-    let apiUrl = `${API_URL}/invoices?page=${page}&per_page=${per_page}`;
-    
-    // Add payment status filter
+    // Build API URL with filters using the new payment-in endpoint
+    let apiUrl = `${API_URL}/payment-in?page=${page}&per_page=${per_page}`;
+
     if (payment_status && payment_status !== 'all') {
       const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
       apiUrl += `&payment_status=${backendStatus}`;
     }
-    
-    // Add search filters
+
     if (party_name) {
       apiUrl += `&party_name=${encodeURIComponent(party_name)}`;
     }
-    
+
     if (payment_number) {
-      // Extract invoice number from payment number (remove PAY- prefix)
-      const invoiceNumber = payment_number.replace('PAY-', '');
-      apiUrl += `&invoice_number=${encodeURIComponent(invoiceNumber)}`;
+      apiUrl += `&payment_number=${encodeURIComponent(payment_number)}`;
     }
-    
-    // Add date filter
+
     if (date_filter) {
       apiUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
     }
-    
+
     const response = await axios.get(apiUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -190,15 +203,7 @@ export const getPaymentInList = async (
 
     return {
       success: true,
-      data: {
-        data: paymentData,
-        pagination: paginationData || {
-          current_page: page,
-          last_page: 1,
-          per_page: per_page,
-          total: paymentData.length,
-        }
-      },
+      data: response.data,
       status: response?.status || 200,
     };
   } catch (error: any) {
@@ -228,8 +233,8 @@ export const getPaymentById = async (id: string): Promise<ApiResponse> => {
   }
 
   try {
-    // Use invoices API endpoint to get specific invoice
-    const response = await axios.get(`${API_URL}/invoices/${id}`, {
+    // Use payment-in API endpoint to get specific payment
+    const response = await axios.get(`${API_URL}/payment-in/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -360,8 +365,8 @@ export const getPaymentNumbersDropdown = async (): Promise<ApiResponse> => {
 
     // Filter invoices that have payments and extract payment numbers
     const paymentNumbers = invoicesData
-      .filter((invoice: any) => 
-        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+      .filter((invoice: any) =>
+        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
         invoice.invoice_number
       )
       .map((invoice: any) => `PAY-${invoice.invoice_number}`);
@@ -417,8 +422,8 @@ export const getPartyNamesDropdown = async (): Promise<ApiResponse> => {
     // Filter invoices that have payments and extract unique party names
     const partyNames = [...new Set(
       invoicesData
-        .filter((invoice: any) => 
-          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') && 
+        .filter((invoice: any) =>
+          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
           invoice.customer_name
         )
         .map((invoice: any) => invoice.customer_name)

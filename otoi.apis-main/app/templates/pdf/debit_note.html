@@ -102,17 +102,49 @@
       margin-bottom: 8px;
     }
 
-    .vendor-name {
+    .address-customer-name {
       font-size: 14px;
       font-weight: bold;
       color: #1a1a1a;
       margin-bottom: 5px;
     }
 
-    .vendor-detail {
+    .address-detail {
       font-size: 12px;
       color: #333333;
       line-height: 1.7;
+    }
+
+    .address-detail strong {
+      color: #1a1a1a;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 15px;
+    }
+
+    .badge-credited {
+      background-color: #dcfce7;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .badge-partial {
+      background-color: #fef3c7;
+      color: #d97706;
+      border: 1px solid #fde68a;
+    }
+
+    .badge-unpaid {
+      background-color: #fecaca;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
     }
 
     .items-table {
@@ -157,6 +189,29 @@
       border-top: 1.5px solid #aaaaaa;
     }
 
+    .bottom-table {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .notes-title {
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #444444;
+      border-bottom: 1.5px solid #1a1a1a;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+
+    .notes-content {
+      font-size: 10px;
+      color: #555555;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
     .totals-table {
       width: 100%;
       border-collapse: collapse;
@@ -179,6 +234,12 @@
       color: #1a1a1a;
     }
 
+    .totals-divider {
+      border: none;
+      border-top: 1px solid #cccccc;
+      margin: 6px 0;
+    }
+
     .grand-total-label {
       font-size: 14px;
       font-weight: bold;
@@ -199,6 +260,12 @@
       text-align: right;
       padding-top: 4px;
       font-style: italic;
+      line-height: 1.5;
+    }
+
+    .signature-section {
+      width: 100%;
+      margin-top: 50px;
     }
 
     .signature-line {
@@ -208,6 +275,7 @@
       font-size: 10px;
       font-weight: bold;
       text-transform: uppercase;
+      letter-spacing: 0.6px;
       text-align: center;
       color: #1a1a1a;
       display: inline-block;
@@ -217,6 +285,7 @@
 
 <body>
 
+  <!-- ══ HEADER ══ -->
   <table class="header-table" cellpadding="0" cellspacing="0">
     <tr>
       <td style="width: 65%; vertical-align: top; padding-top: 15px;">
@@ -224,12 +293,14 @@
         <div class="company-meta">
           {% if business.email %}<div>{{ business.email }}</div>{% endif %}
           {% if business.phone_number %}<div>{{ business.phone_number }}</div>{% endif %}
-          {% if business_address.address1 %}
+          {% if business_address %}
           <div>
-            {{ business_address.address1 }}, {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }}
+            {{ business_address.address1 }}{% if business_address.address2 %}, {{ business_address.address2
+            }}{% endif %},
+            {{ business_address.city }}, {{ business_address.state }} &ndash; {{ business_address.pin }},
+            {{ business_address.country }}
           </div>
           {% endif %}
-          {% if business.gst_number %}<div><strong>GSTIN:</strong> {{ business.gst_number }}</div>{% endif %}
         </div>
       </td>
       <td style="width: 35%; text-align: right; vertical-align: top;">
@@ -242,106 +313,235 @@
 
   <hr class="divider">
 
-  <div style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">Debit Note</div>
+  <!-- ══ DOCUMENT HEADER ══ -->
+  <div
+    style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; margin-bottom: 14px;">
+    Debit Note</div>
 
   <table class="meta-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th style="width: 33%;">Debit Note No.</th>
-        <th style="width: 33%;">Debit Note Date</th>
-        <th style="width: 34%;">Invoice No.</th>
+        <th style="width: 33%;">DEBIT NOTE NO.</th>
+        <th style="width: 33%;">DEBIT NOTE DATE</th>
+        <th style="width: 34%;">INVOICE NO.</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>{{ debit_note.debit_note_number }}</td>
         <td>{{ debit_note.debit_note_date }}</td>
-        <td>{{ debit_note.invoice_number }}</td>
+        <td>{{ debit_note.invoice_number or '&mdash;' }}</td>
       </tr>
     </tbody>
   </table>
 
-  <div class="address-table">
-    <div class="address-section-title">BILL TO</div>
-    {% if vendor %}
-    <div class="vendor-name">{{ vendor.vendor_name }}</div>
-    <div class="vendor-detail">
-      {% if vendor.email %}<div><strong>Email:</strong> {{ vendor.email }}</div>{% endif %}
-      {% if vendor.mobile %}<div><strong>Mobile:</strong> {{ vendor.mobile }}</div>{% endif %}
-      {% if vendor.gst %}<div><strong>GSTIN:</strong> {{ vendor.gst }}</div>{% endif %}
-      {% if vendor.address1 %}<div>{{ vendor.address1 }}, {{ vendor.city }}, {{ vendor.state }}</div>{% endif %}
-    </div>
-    {% endif %}
-  </div>
+  <!-- ══ BILL TO / VENDOR ══ -->
+  <table class="address-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 100%; vertical-align: top;">
+        <div class="address-section-title">BILL TO</div>
+        {% if vendor %}
+        <div class="address-customer-name">{{ vendor.vendor_name }}</div>
+        <div class="address-detail">
+          {% if vendor.email %}<div><strong>Email:</strong> {{ vendor.email }}</div>{% endif %}
+          {% if vendor.mobile %}<div><strong>Mobile:</strong> {{ vendor.mobile }}</div>{% endif %}
+          {% if vendor.gst %}<div><strong>GSTIN:</strong> {{ vendor.gst }}</div>{% endif %}
+          {% if vendor.address1 %}
+          <div><strong>Address:</strong>
+            {{ vendor.address1 }}, {{ vendor.city }}, {{ vendor.state }} &ndash; {{ vendor.pin }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
 
+  <!-- ══ STATUS BADGE ══ -->
+  {% if debit_note.status == 'credited' %}
+  <div class="badge badge-credited">CREDITED</div>
+  {% elif debit_note.status == 'partial' %}
+  <div class="badge badge-partial">PARTIALLY PAID</div>
+  {% else %}
+  <div class="badge badge-unpaid">UNPAID</div>
+  {% endif %}
+
+  <!-- ══ ITEMS TABLE ══ -->
   <table class="items-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th style="width: 40%; text-align: left;">Item Description</th>
-        <th style="width: 10%; text-align: center;">Qty</th>
-        <th style="width: 15%; text-align: right;">Price</th>
-        <th style="width: 15%; text-align: right;">Tax</th>
-        <th style="width: 20%; text-align: right;">Total</th>
+        <th style="width: 26%; text-align: left;">ITEM DESCRIPTION</th>
+        <th style="width: 10%; text-align: center;">IMAGE</th>
+        <th style="width: 7%; text-align: center;">QTY</th>
+        <th style="width: 13%; text-align: center;">PRICE</th>
+        <th style="width: 13%; text-align: center;">DISC.</th>
+        <th style="width: 13%; text-align: center;">TAX</th>
+        <th style="width: 18%; text-align: center;">TOTAL</th>
       </tr>
     </thead>
     <tbody>
       {% for item in items %}
       <tr>
         <td>
-          <div class="item-name">{{ loop.index }}. {{ item.product_name }}</div>
-          {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
+          <div class="item-name">{{ loop.index }}. &nbsp;{{ item.product_name or '&mdash;' }}</div>
+          {% if item.description %}
+          <div class="item-desc">&nbsp;&nbsp;&nbsp;{{ item.description }}</div>
+          {% endif %}
         </td>
-        <td style="text-align: center;">{{ item.quantity }}</td>
-        <td style="text-align: right;">₹{{ "%.2f"|format(item.unit_price) }}</td>
-        <td style="text-align: right;">
-          {% if item.tax.tax_amount %}₹{{ "%.2f"|format(item.tax.tax_amount) }}{% else %}₹0.00{% endif %}
+        <td style="text-align: center;">
+          {% if item.image %}
+          <img src="{{ item.image }}" width="40" height="40" style="object-fit: cover; border: 1px solid #eeeeee;">
+          {% else %}
+          <span style="color: #888888;">&mdash;</span>
+          {% endif %}
         </td>
-        <td style="text-align: right; font-weight: bold;">₹{{ "%.2f"|format(item.total_price) }}</td>
+        <td style="text-align: center;">
+          {{ item.quantity }}
+        </td>
+        <td style="text-align: center;">
+          Rs.&nbsp;{{ "%.2f"|format(item.unit_price) }}
+        </td>
+        <td style="text-align: center;">
+          {% if item.discount and item.discount.discount_amount %}
+          -Rs.&nbsp;{{ "%.2f"|format(item.discount.discount_amount) }}
+          {% else %}
+          Rs.&nbsp;0.00
+          {% endif %}
+        </td>
+        <td style="text-align: center;">
+          {% if item.tax and item.tax.tax_amount %}
+          Rs.&nbsp;{{ "%.2f"|format(item.tax.tax_amount) }}
+          {% else %}
+          Rs.&nbsp;0.00
+          {% endif %}
+        </td>
+        <td style="text-align: center; font-weight: bold;">
+          Rs.&nbsp;{{ "%.2f"|format(item.total_price) }}
+        </td>
       </tr>
       {% endfor %}
+
+      <!-- SUBTOTAL ROW -->
+      <tr class="subtotal-row">
+        <td colspan="3" style="text-align: center; font-size: 10px; color: #555; text-transform: uppercase;">Subtotal
+        </td>
+        <td style="text-align: center;">Rs.&nbsp;{{ "%.2f"|format(charges.subtotal or 0) }}</td>
+        <td style="text-align: center;">-Rs.&nbsp;{{ "%.2f"|format(charges.discount_total or 0) }}</td>
+        <td style="text-align: center;">Rs.&nbsp;{{ "%.2f"|format(charges.tax_total or 0) }}</td>
+        <td style="text-align: center;">Rs.&nbsp;{{ "%.2f"|format((charges.subtotal or 0) - (charges.discount_total or 0) +
+          (charges.tax_total or 0)) }}</td>
+      </tr>
     </tbody>
   </table>
 
-  <table width="100%" cellpadding="0" cellspacing="0">
+  <!-- ══ BOTTOM ══ -->
+  <table class="bottom-table" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="width: 50%; vertical-align: top;">
+      <td style="width: 44%; vertical-align: top; padding-right: 20px;">
         {% if notes.notes %}
-        <div style="font-size: 10px; font-weight: bold; margin-bottom: 4px;">NOTES:</div>
-        <div style="font-size: 10px; color: #555;">{{ notes.notes }}</div>
+        <div class="notes-title">Notes</div>
+        <div class="notes-content">{{ notes.notes|safe }}</div>
         {% endif %}
       </td>
-      <td style="width: 50%; vertical-align: top;">
-        <table class="totals-table">
+
+      <td style="width: 56%; vertical-align: top; padding-left: 10px;">
+        <table class="totals-table" cellpadding="0" cellspacing="0">
           <tr>
-            <td class="totals-label">Subtotal</td>
-            <td class="totals-value">₹{{ "%.2f"|format(charges.subtotal or 0) }}</td>
+            <td class="totals-label">TAXABLE AMOUNT</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.taxable_amount or 0) }}</td>
           </tr>
-          {% if charges.total_tax %}
+          {% if charges.cgst %}
           <tr>
-            <td class="totals-label">Tax Total</td>
-            <td class="totals-value">₹{{ "%.2f"|format(charges.total_tax) }}</td>
+            <td class="totals-label">CGST {% if charges.cgst_rate %}({{ charges.cgst_rate }}%){% endif %}</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.cgst) }}</td>
           </tr>
           {% endif %}
+          {% if charges.sgst %}
           <tr>
-            <td class="grand-total-label">Grand Total</td>
-            <td class="grand-total-value">₹{{ "%.2f"|format(debit_note.total_amount) }}</td>
+            <td class="totals-label">SGST {% if charges.sgst_rate %}({{ charges.sgst_rate }}%){% endif %}</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.sgst) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.igst %}
+          <tr>
+            <td class="totals-label">IGST {% if charges.igst_rate %}({{ charges.igst_rate }}%){% endif %}</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.igst) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.utgst %}
+          <tr>
+            <td class="totals-label">UTGST {% if charges.utgst_rate %}({{ charges.utgst_rate }}%){% endif %}</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.utgst) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.additional_charges_total %}
+          <tr>
+            <td class="totals-label">ADDITIONAL CHARGES</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.additional_charges_total) }}</td>
+          </tr>
+          {% endif %}
+          {% if charges.round_off %}
+          <tr>
+            <td class="totals-label">ROUND OFF</td>
+            <td class="totals-value">Rs.&nbsp;{{ "%.2f"|format(charges.round_off) }}</td>
+          </tr>
+          {% endif %}
+        </table>
+
+        <hr class="totals-divider">
+
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="grand-total-label">TOTAL RETURN AMOUNT</td>
+            <td class="grand-total-value">Rs.&nbsp;{{ "%.2f"|format(debit_note.total_amount) }}</td>
+          </tr>
+          {% if debit_note.amount_in_words %}
+          <tr>
+            <td colspan="2" class="in-words">
+              <strong>IN WORDS:</strong> {{ debit_note.amount_in_words }}
+            </td>
+          </tr>
+          {% endif %}
+          <tr style="height: 10px;">
+            <td></td>
+          </tr>
+          <tr>
+            <td class="totals-label" style="color: #16a34a; font-weight: bold;">AMOUNT CREDITED</td>
+            <td class="totals-value" style="color: #16a34a;">Rs.&nbsp;{{ "%.2f"|format(debit_note.amount_credited or 0) }}</td>
+          </tr>
+          <tr>
+            <td class="totals-label" style="color: #dc2626; font-weight: bold;">BALANCE DUE</td>
+            <td class="totals-value" style="color: #dc2626;">Rs.&nbsp;{{ "%.2f"|format(debit_note.balance_due or 0) }}</td>
           </tr>
         </table>
-        <div class="in-words"><strong>In Words:</strong> {{ debit_note.amount_in_words }}</div>
       </td>
     </tr>
   </table>
 
-  <div style="margin-top: 50px; text-align: right;">
-    {% if esign_data_uri %}
-    <img src="{{ esign_data_uri }}" width="120" style="margin-bottom: 5px;"><br>
-    {% endif %}
-    <div class="signature-line">Authorized Signatory</div>
-  </div>
+  <!-- ══ SIGNATURE ══ -->
+  <table class="signature-section" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="width: 60%;"></td>
+      <td style="width: 40%; text-align: right;">
+        {% if esign_data_uri %}
+        <div style="margin-bottom: 5px; text-align: center; width: 200px; display: inline-block;">
+          <img src="{{ esign_data_uri }}" width="120" style="max-height: 60px;">
+        </div>
+        <br>
+        {% endif %}
+        <div class="signature-line">Authorized Signatory</div>
+      </td>
+    </tr>
+  </table>
 
+  <!-- ══ FOOTER STRIP ══ -->
   <div id="footer_content">
-    {{ business.name }} &nbsp;|&nbsp; Thank you!
+    {{ business.name }} &nbsp;|&nbsp;
+    {% if business.email %}{{ business.email }} &nbsp;|&nbsp;{% endif %}
+    {% if business.phone_number %}{{ business.phone_number }}{% endif %}
+    &nbsp;&mdash;&nbsp; Thank you!
   </div>
 
 </body>
+
 </html>
