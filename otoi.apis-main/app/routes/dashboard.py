@@ -130,22 +130,17 @@ def get_dashboard_summary():
         to_pay = round(float(invoices_to_pay) - float(debit_notes_to_receive) + credit_notes_refund, 2)
 
         # ------- Cash Book (Cash vs Bank Balance) -------
-        # Let's split payment_mode == "cash" vs others to compute genuine Cash in Hand vs Bank
+        # Calculate from invoice payments since PaymentIn records are no longer created
         
-        # PaymentIn
-        pin_cash = db.session.query(func.coalesce(func.sum(PaymentIn.amount_received), 0)).filter(
-            PaymentIn.business_id == business_id,
-            PaymentIn.is_deleted == False,
-            func.lower(PaymentIn.payment_mode) == 'cash'
+        # Get payment info from invoices (amount_paid field stores total payments received)
+        # Note: This is a simplified approach - for detailed cash/bank split, we'd need payment mode tracking at invoice level
+        total_payments_in = db.session.query(func.coalesce(func.sum(Invoice.amount_paid), 0)).filter(
+            Invoice.business_id == business_id,
+            Invoice.is_deleted == False,
+            Invoice.amount_paid > 0
         ).scalar()
         
-        pin_bank = db.session.query(func.coalesce(func.sum(PaymentIn.amount_received), 0)).filter(
-            PaymentIn.business_id == business_id,
-            PaymentIn.is_deleted == False,
-            func.lower(PaymentIn.payment_mode) != 'cash'
-        ).scalar()
-        
-        # PaymentOut
+        # PaymentOut remains the same (uses PaymentOut records)
         pout_cash = db.session.query(func.coalesce(func.sum(PaymentOut.amount_paid), 0)).filter(
             PaymentOut.business_id == business_id,
             PaymentOut.is_deleted == False,
@@ -158,8 +153,10 @@ def get_dashboard_summary():
             func.lower(PaymentOut.payment_mode) != 'cash'
         ).scalar()
 
-        cash_in_hand = round(float(pin_cash) - float(pout_cash), 2)
-        bank_balance = round(float(pin_bank) - float(pout_bank), 2)
+        # Since we can't distinguish cash vs bank from invoice payments alone, 
+        # we'll show all payments as bank balance (most common case)
+        cash_in_hand = 0.0  # No cash tracking without PaymentIn records
+        bank_balance = round(float(total_payments_in) - float(pout_cash) - float(pout_bank), 2)
         cash_bank_balance = cash_in_hand + bank_balance
 
         return jsonify({
@@ -241,7 +238,10 @@ def get_latest_transactions():
         try:
             pay_ins = (
                 PaymentIn.query
-                .filter(PaymentIn.business_id == business_id)
+                .filter(
+                    PaymentIn.business_id == business_id,
+                    PaymentIn.is_deleted == False,
+                )
                 .order_by(desc(PaymentIn.created_at))
                 .limit(limit)
                 .all()
@@ -256,6 +256,36 @@ def get_latest_transactions():
                     "party_name": pi.party_name or "-",
                     "amount": round(float(pi.amount_received or 0), 2),
                     "created_at": str(pi.created_at) if pi.created_at else None,
+                })
+        except Exception as e:
+            print("Error parsing Payment In transactions:", e)
+
+        # --- Invoice Payments (from amount_paid field) ---
+        try:
+            inv_payments = (
+                Invoice.query
+                .filter(
+                    Invoice.business_id == business_id,
+                    Invoice.is_deleted == False,
+                    Invoice.amount_paid > 0
+                )
+                .order_by(desc(Invoice.updated_at))
+                .limit(limit)
+                .all()
+            )
+            for inv in inv_payments:
+                customer_name = "-"
+                if inv.customer:
+                    customer_name = f"{inv.customer.first_name or ''} {inv.customer.last_name or ''}".strip() or "-"
+                transactions.append({
+                    "id": str(inv.uuid),
+                    "route_path": f"/invoices/{inv.uuid}",
+                    "date": str(inv.updated_at) if inv.updated_at else None,
+                    "type": "Payment In",
+                    "txn_no": f"PAY-{inv.invoice_number}",
+                    "party_name": customer_name,
+                    "amount": round(float(inv.amount_paid or 0), 2),
+                    "created_at": str(inv.updated_at) if inv.updated_at else None,
                 })
         except Exception as e:
             print("Error parsing Payment In transactions:", e)

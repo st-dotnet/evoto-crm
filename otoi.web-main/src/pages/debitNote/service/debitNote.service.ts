@@ -43,6 +43,7 @@ export interface DebitNoteData {
   round_off_amount?: number;
   additional_charges?: number;
   round_off?: number;
+  mark_as_fully_paid?: boolean;
 }
 
 const getAuthToken = (): string | null => {
@@ -153,8 +154,8 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
       terms_and_conditions: debitNoteData.terms || ''
     },
     
-    // Status - ensure correct status based on invoice linkage
-    status: debitNoteData.linkToInvoice ? 'credited' : (debitNoteData.status || 'unpaid')
+    // Status - respect mark_as_fully_paid flag, otherwise use provided status
+    status: debitNoteData.mark_as_fully_paid ? 'credited' : (debitNoteData.status || 'unpaid')
   };
 
   try {

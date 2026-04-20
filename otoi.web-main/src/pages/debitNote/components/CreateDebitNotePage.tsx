@@ -222,9 +222,7 @@ const CreateDebitNotePage = () => {
     };
 
     const recalculateTotals = (updatedItems: any[]) => {
-        console.log('DEBUG - recalculateTotals called with items:', updatedItems);
-        
-        // Use the pre-calculated item amounts for consistency
+        // Use pre-calculated item amounts for consistency
         const totalAmount = updatedItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
         
         // Calculate individual components for display purposes
@@ -241,20 +239,7 @@ const CreateDebitNotePage = () => {
             finalTotal = roundedTotal;
         }
 
-        console.log('DEBUG - Calculation results:', {
-            totalAmount,
-            subtotal,
-            totalDiscount,
-            totalTax,
-            roundOff,
-            finalTotal,
-            itemAmounts: updatedItems.map(item => ({ name: item.item_name, amount: item.amount }))
-        });
-
-        console.log('DEBUG - About to update debitNoteData with total_amount:', finalTotal);
         setDebitNoteData(prev => {
-            console.log('DEBUG - Current debitNoteData.total_amount:', prev.total_amount);
-            console.log('DEBUG - Setting debitNoteData.total_amount to:', finalTotal);
             return {
                 ...prev,
                 subtotal,
@@ -279,8 +264,7 @@ const CreateDebitNotePage = () => {
                 toast.error('This invoice is already paid and cannot be linked to a debit note');
             }
         } catch (error) {
-            console.error('Error checking invoice status:', error);
-        }
+                    }
     };
 
     const handleMarkAsFullyPaid = async () => {
@@ -321,23 +305,14 @@ const CreateDebitNotePage = () => {
                 }
             }
         } catch (error) {
-            console.error('Error marking debit note as fully paid:', error);
-            toast.error('Failed to update debit note status');
+                        toast.error('Failed to update debit note status');
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleSave = async () => {
-        console.log('DEBUG - handleSave called');
-        console.log('DEBUG - Button state checks:', {
-            isSaving,
-            isInvoicePaid,
-            debitNoteExistsForCurrentInvoice,
-            selectedParty: !!selectedParty,
-            itemsLength: items.length
-        });
-
+        
         if (!selectedParty) {
             toast.error('Please select a vendor');
             return;
@@ -347,28 +322,14 @@ const CreateDebitNotePage = () => {
             toast.error('Please add at least one item');
             return;
         }
-
         setIsSaving(true);
         try {
-            console.log('DEBUG - Save - Checkbox state:', debitNoteData.mark_as_fully_paid);
-            console.log('DEBUG - Save - Current status:', debitNoteData.status);
             // Determine status based on checkbox only
             let finalStatus = debitNoteData.mark_as_fully_paid ? "credited" : "unpaid";
-            console.log('DEBUG - Save - Final status:', finalStatus);
-            console.log('DEBUG - Current items state before building payload:', JSON.stringify(items, null, 2));
 
             let response;
             if (isEditMode) {
                 // For update, send simplified payload as expected by new backend
-                console.log('💰 DEBUG - Items state before building update payload:', items.map(item => ({
-                    item_id: item.item_id,
-                    quantity: item.quantity,
-                    price_per_item: item.price_per_item,
-                    tax: item.tax,
-                    tax_amount: item.tax_amount,
-                    amount: item.amount
-                })));
-                
                 const updatePayload = {
                     items: items.map(item => ({
                         item_id: item.item_id,
@@ -386,17 +347,10 @@ const CreateDebitNotePage = () => {
                     mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false
                 };
                 
-                console.log('DEBUG - Update payload being sent to API:', JSON.stringify(updatePayload, null, 2));
                 response = await updateDebitNote(id!, updatePayload);
             } else {
                 // For create, send full payload as expected by createDebitNote
-                console.log('DEBUG - debitNoteData before creating payload:', {
-                    totalAmount: debitNoteData.totalAmount,
-                    total_amount: debitNoteData.total_amount,
-                    subtotal: debitNoteData.subtotal,
-                    itemsLength: items.length
-                });
-                const createPayload = {
+                                const createPayload = {
                     debitNoteNo: debitNoteData.debitNoteNo,
                     debitNoteDate: debitNoteData.debitNoteDate,
                     linkToInvoice: debitNoteData.linkToInvoice,
@@ -427,7 +381,6 @@ const CreateDebitNotePage = () => {
                     mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false,
                 };
                 
-                console.log('DEBUG - Create payload being sent to API:', JSON.stringify(createPayload, null, 2));
                 response = await createDebitNote(createPayload);
             }
 
@@ -441,14 +394,11 @@ const CreateDebitNotePage = () => {
                 
                 // Refresh UI with backend response data for edit mode
                 if (isEditMode) {
-                    console.log('DEBUG - Update successful, fetching updated debit note data...');
-                    
+                                        
                     // Fetch the updated debit note data to get correct tax values
                     try {
                         const updatedDebitNoteResponse = await getDebitNoteById(id!);
                         if (updatedDebitNoteResponse.success && updatedDebitNoteResponse.data) {
-                            console.log('DEBUG - Refreshing UI with fetched debit note data:', updatedDebitNoteResponse.data);
-                            
                             // Update items with backend-calculated values
                             if (updatedDebitNoteResponse.data.items && Array.isArray(updatedDebitNoteResponse.data.items)) {
                                 const updatedItems = updatedDebitNoteResponse.data.items.map((backendItem: any) => ({
@@ -471,7 +421,6 @@ const CreateDebitNotePage = () => {
                                     tax_amount: backendItem.tax_amount || (backendItem.quantity * backendItem.unit_price * (backendItem.tax?.tax_percentage || backendItem.tax_percentage || 0) / 100) || 0
                                 }));
                                 
-                                console.log('DEBUG - Updated items from fetched data:', updatedItems);
                                 setItems(updatedItems);
                                 recalculateTotals(updatedItems);
                             }
@@ -492,7 +441,6 @@ const CreateDebitNotePage = () => {
                             }
                         }
                     } catch (error) {
-                        console.error('Error fetching updated debit note data:', error);
                     }
                 }
                 
@@ -544,7 +492,6 @@ const CreateDebitNotePage = () => {
                 }
             }
         } catch (error) {
-            console.error('Error saving debit note:', error);
             toast.error('Failed to save debit note');
         } finally {
             setIsSaving(false);
@@ -561,19 +508,16 @@ const CreateDebitNotePage = () => {
     };
 
     const handleItemChange = (index: number, field: string, value: any) => {
-        console.log('DEBUG - handleItemChange called:', { index, field, value });
-        
+                
         const updatedItems = [...items];
         const item = updatedItems[index];
         
         if (field === 'quantity') {
-            console.log('DEBUG - Quantity validation:', { newQuantity: value, originalQty: item.originalQty });
-            item.quantity = value;
+                        item.quantity = value;
         } else if (field === 'price_per_item') {
             item.price_per_item = value;
         } else if (field === 'tax') {
-            console.log('DEBUG - Tax field changed:', { oldTax: item.tax, newTax: value });
-            item.tax = value;
+                        item.tax = value;
         } else if (field === 'discount') {
             item.discount = value;
         } else if (field === 'description') {
@@ -594,22 +538,7 @@ const CreateDebitNotePage = () => {
         item.discount_amount = discountAmount;
         item.tax_amount = taxAmount;
         
-        console.log('DEBUG - Tax calculation for item:', {
-            itemName: item.item_name,
-            quantity: item.quantity,
-            price_per_item: item.price_per_item,
-            discount: item.discount,
-            tax: item.tax,
-            subtotal,
-            discountAmount,
-            taxableAmount,
-            taxAmount,
-            finalAmount: item.amount
-        });
-        
-        console.log('DEBUG - Updated item:', item);
         setItems(updatedItems);
-        console.log('DEBUG - Items state updated successfully');
         recalculateTotals(updatedItems);
     };
 
@@ -693,7 +622,6 @@ const CreateDebitNotePage = () => {
                 if (!isEditMode) { setShowInvoiceDropdown(true); }
             }
         } catch (error) {
-            console.error('Error fetching party invoices:', error);
             setVendorInvoices([]);
             setShowInvoiceDropdown(false);
         } finally {
@@ -713,10 +641,7 @@ const CreateDebitNotePage = () => {
         setShowInvoiceDropdown(false);
 
         const invoiceId = invoice.uuid;
-        console.log('DEBUG - Manual Selection - invoice object:', invoice);
-        console.log('DEBUG - Manual Selection - invoiceId (invoice.uuid):', invoiceId);
         if (!invoiceId) {
-            console.error('No valid invoice ID found in invoice object:', invoice);
             toast.error('Invalid invoice data - missing ID');
             return;
         }
@@ -732,14 +657,9 @@ const CreateDebitNotePage = () => {
                 setDebitNoteExistsForCurrentInvoice(false);
             }
 
-            console.log('DEBUG - Manual Selection - Calling API with invoiceId:', invoiceId);
             const response = await getPurchaseInvoiceById(invoiceId);
-            console.log('DEBUG - Invoice response:', response);
             if (response.success && response.data?.items && response.data.items.length > 0) {
-                console.log('DEBUG - Invoice items:', response.data.items);
                 const transformedItems = response.data.items.map((item: any) => {
-                    console.log('DEBUG - Processing item:', item);
-                    console.log('DEBUG - Item quantity:', item.quantity);
                     const transformed = {
                         uuid: item.uuid || Date.now().toString() + Math.random(),
                         item_id: item.item_id,
@@ -754,11 +674,8 @@ const CreateDebitNotePage = () => {
                         measuring_unit_id: item.measuring_unit_id,
                         description: item.description || null,
                     };
-                    console.log('DEBUG - Transformed item:', transformed);
                     return transformed;
                 });
-
-                console.log('DEBUG - Final transformed items:', transformedItems);
                 setItems(transformedItems);
                 recalculateTotals(transformedItems);
                 toast.success(`Items from invoice ${invoice.invoice_number} loaded successfully`);
@@ -1140,12 +1057,9 @@ const CreateDebitNotePage = () => {
                         setDebitNoteExistsForCurrentInvoice(false);
                     }
 
-                    console.log('DEBUG - URL Path - invoiceId:', invoiceId);
                     const response = await getPurchaseInvoiceById(invoiceId);
-                    console.log('DEBUG - URL Path - API response:', response);
                     if (response.success && response.data) {
                         const invoice = response.data;
-                        console.log('DEBUG - URL Path - Invoice data:', invoice);
                         
                         // Set vendor/customer from invoice or URL parameter
                         const invoiceVendorId = invoice.vendor_id || invoice.vendor?.uuid;
@@ -1417,12 +1331,9 @@ const CreateDebitNotePage = () => {
                         
                         // Load debit note items - only if not already loaded to prevent overwriting user changes
                         const debitNoteItems = debitNote.debit_note_items || debitNote.items || debitNote.data?.debit_note?.debit_note_items || debitNote.data?.debit_note?.items || debitNote.data?.items || []; 
-                        console.log('DEBUG - Edit mode - Debit note items:', debitNoteItems);
                         
                         if (debitNoteItems.length > 0 && !itemsLoaded) {
-                            const transformedItems = debitNoteItems.map((item: any) => {
-                                console.log('DEBUG - Edit mode - Processing item:', item);
-                                
+                            const transformedItems = debitNoteItems.map((item: any) => {                                
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
                                 const discount = item.discount_percentage || item.discount?.discount_percentage || item.discount_amount || item.discount || 0;
@@ -1430,12 +1341,9 @@ const CreateDebitNotePage = () => {
                                 const discountType = item.discount_type || 'percentage';
                                 const taxType = item.tax_type || 'percentage';
                                 
-                                console.log('DEBUG - Edit mode - Item quantity:', quantity);
                                 
                                 // Use backend-provided original_quantity field, fallback to original backend quantity
                                 const originalQty = item.original_quantity || item.quantity || 0;
-                                console.log('DEBUG - Edit mode - User set quantity:', quantity);
-                                console.log('DEBUG - Edit mode - Original quantity from backend (max allowed):', originalQty);
                                 
                                 const calculatedAmount = calculateItemAmount(quantity, pricePerItem, discount, tax, discountType, taxType);
                                 
@@ -1459,10 +1367,8 @@ const CreateDebitNotePage = () => {
                                     discount_amount: discountType === 'percentage' ? (quantity * pricePerItem * discount / 100) : discount,
                                     tax_amount: taxType === 'percentage' ? ((quantity * pricePerItem - (discountType === 'percentage' ? (quantity * pricePerItem * discount / 100) : discount)) * tax / 100) : tax,
                                 };
-                                console.log('DEBUG - Edit mode - Transformed item:', transformed);
                                 return transformed;
                             });
-                            console.log('DEBUG - Edit mode - Final transformed items:', transformedItems);
                             setItems(transformedItems);
                             recalculateTotals(transformedItems);
                             setItemsLoaded(true); // Mark as loaded to prevent re-loading

@@ -222,6 +222,8 @@ export const PaymentInPage = () => {
         toast.success("Payment deleted successfully");
         // Remove the entry from the UI without page reload
         setPayments(prev => prev.filter(p => p.id !== paymentToDelete && p.payment_number !== paymentToDelete));
+        // Refresh dashboard to update bank balance
+        window.dispatchEvent(new Event('dashboard-refresh'));
       } else {
         toast.error(response.error || "Failed to delete payment");
       }

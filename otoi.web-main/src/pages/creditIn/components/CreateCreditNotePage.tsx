@@ -1050,10 +1050,6 @@ const CreateCreditNotePage = () => {
         tax: item.tax,
       }));
 
-      // Debug logging to track checkbox value
-      console.log('DEBUG - markAsFullyPaid value:', creditNoteData.markAsFullyPaid);
-      console.log('DEBUG - creditNoteData:', creditNoteData);
-
       const creditNotePayload = {
         creditNoteNo: creditNoteData.creditNoteNo,
         creditNoteDate: creditNoteData.creditNoteDate,
@@ -1079,9 +1075,7 @@ const CreateCreditNotePage = () => {
         })
       };
 
-      console.log('DEBUG - Payload being sent:', JSON.stringify(creditNotePayload, null, 2));
-
-      
+     
       let response;
       if (isEditMode && id) {
         // Update existing credit note
@@ -1112,23 +1106,8 @@ const CreateCreditNotePage = () => {
           }));
         }
 
-        // Temporarily disable event dispatch to isolate the issue
-        console.log('DEBUG - SKIPPING creditNoteUpdated event dispatch for testing');
-        // window.dispatchEvent(
-        //   new CustomEvent("creditNoteUpdated", {
-        //     detail: {
-        //       creditNoteId: isEditMode ? id : response.data?.uuid,
-        //       action: isEditMode ? "updated" : "created",
-        //       invoiceId:
-        //         response.data?.invoice_id || creditNoteData.linkToInvoice,
-        //     },
-        //   }),
-        // );
-
-        console.log('DEBUG - About to navigate to credit note list');
         // Add delay to see if navigation is causing the issue
         setTimeout(() => {
-          console.log('DEBUG - Navigating now...');
           
           // Show success message only after navigation is about to happen
           if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
@@ -2326,10 +2305,7 @@ const CreateCreditNotePage = () => {
                       id="markAsFullyPaid"
                       checked={creditNoteData.markAsFullyPaid}
                       onCheckedChange={(checked) => {
-                        console.log('DEBUG - Checkbox changed, checked:', checked);
-                        console.log('DEBUG - Before update, markAsFullyPaid:', creditNoteData.markAsFullyPaid);
                         const newValue = Boolean(checked);
-                        console.log('DEBUG - Setting markAsFullyPaid to:', newValue);
                         setCreditNoteData({
                           ...creditNoteData,
                           markAsFullyPaid: newValue,

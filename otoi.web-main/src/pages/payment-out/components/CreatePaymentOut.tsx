@@ -36,7 +36,23 @@ export const CreatePaymentOut = () => {
   
   // API function to get vendors
   const getVendorsDropdown = async () => {
-    const token = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    const getAuthToken = (): string | null => {
+      try {
+        const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+        if (!authData) return null;
+        const parsedAuth = JSON.parse(authData);
+        return (
+          parsedAuth.token ||
+          parsedAuth.access_token ||
+          parsedAuth.accessToken ||
+          null
+        );
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const token = getAuthToken();
     if (!token) {
       return { success: false, error: "Authentication required", status: 401 };
     }
@@ -58,7 +74,7 @@ export const CreatePaymentOut = () => {
     } catch (error: any) {
       return {
         success: false,
-        error: "Failed to fetch vendors",
+        error: error.response?.data?.error || "Failed to fetch vendors",
         status: error.response?.status ?? 500,
       };
     }
@@ -218,14 +234,105 @@ export const CreatePaymentOut = () => {
     }
   };
 
-  // Fetch vendors
+  // Fetch vendors and filter for partial payments
   const fetchVendors = async () => {
     setIsVendorsLoading(true);
     try {
-      const response = await getVendorsDropdown();
+      // First get all vendors
+      const vendorResponse = await getVendorsDropdown();
+      
+      if (!vendorResponse.success) {
+        toast.error(vendorResponse.error || "Failed to fetch vendors");
+        return;
+      }
 
-      if (response.success && response.data) {
-        const vendorsList = response.data
+      const allVendors = vendorResponse.data || [];
+      let allAvailableVendors = allVendors; // Initialize with API vendors
+      
+      // Try to get payment records to check which vendors have partial payments
+      try {
+        const paymentResponse = await getPaymentOutList(1, 1000, '', '', '');
+        
+        if (paymentResponse.success) {
+          const paymentData = paymentResponse.data.data || paymentResponse.data;
+          
+          // Create a set of vendor names that have partial or paid payments
+          const vendorsWithPayments = new Set();
+          const vendorsWithPaymentsData = new Map(); // Store full payment data
+          paymentData.forEach((payment: any) => {
+            const hasPayment = payment.payment_status === 'partially paid' || 
+                              payment.payment_status === 'partial' || 
+                              payment.payment_status === 'paid';
+            
+            if (hasPayment && payment.party_name) {
+              vendorsWithPayments.add(payment.party_name);
+              // Store payment data for vendors not in vendor list
+              if (!vendorsWithPaymentsData.has(payment.party_name)) {
+                vendorsWithPaymentsData.set(payment.party_name, {
+                  uuid: `payment-${payment.party_name.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: payment.party_name,
+                  mobile: "",
+                  hasInvoices: true,
+                });
+              }
+            }
+          });
+
+          // Add vendors from payment records that are missing from vendor API
+          const vendorNamesInAPI = new Set(allVendors.map((v: any) => v.name));
+          const missingVendors = Array.from(vendorsWithPaymentsData.values()).filter(
+            (vendor: any) => !vendorNamesInAPI.has(vendor.name)
+          );
+          
+          // Combine vendor API vendors with missing vendors from payments
+          allAvailableVendors = [...allVendors, ...missingVendors];
+
+          // Filter vendors to only include those with partial payments
+          const filteredVendors = allAvailableVendors
+            .filter((vendor: any) => vendor && vendor.name && vendor.name.trim() !== "")
+            .filter((vendor: any) => {
+              // Check for exact match first
+              let hasPayment = vendorsWithPayments.has(vendor.name);
+              
+              // If no exact match, try case-insensitive matching
+              if (!hasPayment) {
+                const vendorNameLower = vendor.name.toLowerCase();
+                for (const paymentVendor of vendorsWithPayments) {
+                  if ((paymentVendor as string).toLowerCase() === vendorNameLower) {
+                    hasPayment = true;
+                    break;
+                  }
+                }
+              }
+              
+              // If still no match, try partial matching (contains)
+              if (!hasPayment) {
+                const vendorNameLower = vendor.name.toLowerCase();
+                for (const paymentVendor of vendorsWithPayments) {
+                  if ((paymentVendor as string).toLowerCase().includes(vendorNameLower) || 
+                      vendorNameLower.includes((paymentVendor as string).toLowerCase())) {
+                    hasPayment = true;
+                    break;
+                  }
+                }
+              }
+              
+              return hasPayment;
+            })
+            .map((vendor: any) => ({
+              uuid: vendor.uuid || vendor.id,
+              name: vendor.name || "Unknown Vendor",
+              mobile: vendor.mobile || "",
+              hasInvoices: true,
+            }));
+          setVendors(filteredVendors);
+        } else {
+          throw new Error(paymentResponse.error || "Payment API failed");
+        }
+      } catch (paymentError) {
+        console.warn("Payment API failed, using all vendors:", paymentError);
+        // Fallback: use all vendors if payment API fails
+        const fallbackVendors = allAvailableVendors
           .filter((vendor: any) => vendor && vendor.name && vendor.name.trim() !== "")
           .map((vendor: any) => ({
             uuid: vendor.uuid || vendor.id,
@@ -233,12 +340,13 @@ export const CreatePaymentOut = () => {
             mobile: vendor.mobile || "",
             hasInvoices: true,
           }));
-        setVendors(vendorsList);
-      } else {
-        toast.error(response.error || "Failed to fetch vendors");
+        setVendors(fallbackVendors);
+        toast.info("Using all vendors (payment data unavailable)");
       }
     } catch (error) {
+      console.error("Error fetching vendors:", error);
       toast.error("Failed to fetch vendors");
+      setVendors([]);
     } finally {
       setIsVendorsLoading(false);
       setIsLoading(false);

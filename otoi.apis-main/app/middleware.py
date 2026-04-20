@@ -61,7 +61,7 @@ def extract_jwt_info():
     # Require authentication for all other endpoints
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-        abort(401, description="Not authorized.")
+        return jsonify({"error": "Authentication required", "message": "Missing Authorization header"}), 401
 
     try:
         verify_jwt_in_request()

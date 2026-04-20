@@ -1116,8 +1116,10 @@ def record_payment(invoice_id):
         # Add small epsilon tolerance for floating-point precision
         epsilon = 0.01  # 1 paisa tolerance
         
-        # Check for overpayment with tolerance
-        if payment_amount > max_allowed_payment + epsilon:
+        # Check for overpayment with tolerance - use absolute difference for better precision
+        payment_diff = abs(payment_amount - max_allowed_payment)
+        
+        if payment_amount > max_allowed_payment and payment_diff > epsilon:
             return jsonify({
                 "error": "Overpayment not allowed",
                 "details": f"Maximum allowed payment is ₹{max_allowed_payment:.2f}, but you attempted to pay ₹{payment_amount:.2f}",
@@ -1133,98 +1135,41 @@ def record_payment(invoice_id):
         if "payment_discount" in data or "discount" in data:
             invoice.payment_discount = payment_discount
         
-        invoice.amount_paid = float(invoice.amount_paid or 0) + payment_amount
+        old_amount_paid = float(invoice.amount_paid or 0)
+        invoice.amount_paid = old_amount_paid + payment_amount
         # Calculate balance due considering both amount paid and total payment discount
         calculated_balance = float(invoice.total_amount)- invoice.amount_paid - (float(invoice.payment_discount) or 0)
         # Round to 2 decimal places and cap at 0 to prevent negative values
         invoice.balance_due = round(max(0, calculated_balance), 2)
         
-        # Use the helper function to update payment status (considers credit notes)
-        update_invoice_payment_status(str(invoice.uuid))
+        # Update payment status directly to avoid stale data issues
+        if invoice.balance_due <= 0:
+            invoice.payment_status = "paid"
+        elif invoice.amount_paid > 0:
+            invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
         
-        # Create or Update PaymentIn record for tracking (after all invoice updates)
-        try:
+        # Check if this is a full payment scenario and update existing payment record if needed
+        if invoice.balance_due <= 0:
+            # Check if payment record already exists for this invoice
             from app.models.paymentIn import PaymentIn
-            from datetime import datetime
-            
-            # Check if there's already a payment for this invoice
-            existing_payment = PaymentIn.query.filter_by(invoice_id=str(invoice.uuid), is_deleted=False).first()
-            
-            # Determine payment status based on balance
-            payment_status = "paid" if float(invoice.balance_due) <= 0 else "partial"
+            existing_payment = PaymentIn.query.filter_by(
+                invoice_id=str(invoice.uuid),
+                is_deleted=False
+            ).first()
             
             if existing_payment:
-                # Update existing payment record
-                existing_payment.amount_received = float(invoice.amount_paid)
-                existing_payment.balance_due = float(invoice.balance_due)
-                existing_payment.discount = float(invoice.payment_discount or 0)
-                existing_payment.payment_status = payment_status
-                existing_payment.payment_date = datetime.now().strftime("%Y-%m-%d")
-            else:
-                # Create new PaymentIn record
-                payment_count = PaymentIn.query.filter_by(invoice_id=str(invoice.uuid)).count()
-                payment_number = f"PAY-{invoice.invoice_number}-{payment_count + 1}"
-                
-                payment_in = PaymentIn(
-                    payment_number=payment_number,
-                    payment_date=datetime.now().strftime("%Y-%m-%d"),
-                    invoice_id=str(invoice.uuid),
-                    party_name=invoice.customer.first_name if invoice.customer else "Unknown",
-                    invoice_number=invoice.invoice_number,
-                    total_amount=float(invoice.total_amount),
-                    amount_received=float(invoice.amount_paid),
-                    balance_due=float(invoice.balance_due),
-                    discount=float(invoice.payment_discount or 0),
-                    payment_mode=data.get("payment_mode", "Cash"),
-                    payment_status=payment_status,
-                    business_id=invoice.business_id
-                )
-                
-                db.session.add(payment_in)
-        except Exception as e:
-            # If PaymentIn creation fails, don't break the payment recording
-            pass
-        
-        # Force refresh the invoice object to ensure latest values
-        db.session.flush()  # Ensure changes are written to session
-        
-        # ── Create PaymentIn record so Cash+Bank Balance updates ─────────
-        from app.models.paymentIn import PaymentIn
-        from app.routes.payment_in import generate_payment_in_number
-
-        # Resolve party name from customer
-        party_name = ""
-        if invoice.customer_id:
-            cust = Customer.query.get(invoice.customer_id)
-            if cust:
-                party_name = f"{cust.first_name or ''} {cust.last_name or ''}".strip()
-        if not party_name:
-            party_name = data.get("party_name", "Unknown Customer")
-
-        payment_mode = data.get("payment_method") or data.get("payment_mode", "cash")
-
-        pi_record = PaymentIn(
-            payment_number      = generate_payment_in_number(),
-            payment_date        = date.today(),
-            invoice_id          = invoice.uuid,
-            party_name          = party_name,
-            invoice_number      = invoice.invoice_number,
-            total_amount        = float(invoice.total_amount or 0),
-            amount_received     = payment_amount,
-            balance_due         = round(invoice.balance_due, 2),
-            discount            = payment_discount,
-            payment_status      = invoice.payment_status,
-            payment_mode        = payment_mode,
-            payment_notes       = data.get("reference", ""),
-            business_id         = invoice.business_id,
-            created_by          = getattr(g, "current_user_id", None),
-        )
-        db.session.add(pi_record)
-        # ─────────────────────────────────────────────────────────────────
+                # Update existing payment record instead of letting trigger create duplicate
+                existing_payment.amount_received = invoice.amount_paid
+                existing_payment.total_amount = invoice.total_amount
+                existing_payment.balance_due = invoice.balance_due
+                existing_payment.payment_status = "paid"
+                set_updated_fields(existing_payment)
         
         db.session.commit()
         
-        # Refresh the invoice to get the latest committed values
+        # Refresh invoice to get the latest committed values
         db.session.refresh(invoice)
         
         # Calculate effective balance due considering credit notes for response

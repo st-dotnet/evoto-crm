@@ -206,8 +206,7 @@ const CreditInpage = () => {
   // Removed the problematic refresh effect
 
   const handleCreditNoteUpdate = (event: CustomEvent) => {
-    console.log('DEBUG - CreditInpage received creditNoteUpdated event:', event.detail);
-    // Refresh the credit note data to show updated status
+    // Refresh credit note data to show updated status
     setRefreshKey((prev) => prev + 1);
   };
 

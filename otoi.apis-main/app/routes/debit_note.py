@@ -350,6 +350,7 @@ def create_debit_note():
         # Get JWT claims
         jwt_claims = get_jwt()
         
+                
         # Handle different JWT token formats
         if isinstance(jwt_claims, str):
             # If JWT identity is a string (UUID), parse it
@@ -450,20 +451,8 @@ def create_debit_note():
                 if invoice:
                     invoice_uuid = invoice.uuid
             
-            # Now check if this invoice already has a debit note
-            if invoice_uuid:
-                existing_debit_note = DebitNote.query.filter_by(
-                    invoice_id=invoice_uuid,
-                    business_id=business_id,
-                    is_deleted=False
-                ).first()
-                
-                if existing_debit_note:
-                    return jsonify({
-                        "success": False,
-                        "message": f"Debit note already exists for this invoice (DN-{existing_debit_note.debit_note_number}). Only one debit note is allowed per purchase invoice.",
-                        "status": 400
-                    }), 400
+            # NOTE: Removed invoice uniqueness check to match credit note behavior
+            # Credit notes allow multiple notes for same invoice, so debit notes should too
             
             if not invoice:
                 # Let's check what invoices exist in both tables
@@ -502,20 +491,29 @@ def create_debit_note():
             # Calculate total amount
             total_amount = subtotal + total_tax - total_discount + additional_charges + round_off
             
-            # Auto-set status based on mark_as_fully_paid checkbox
+            # Accept status from frontend, but also check mark_as_fully_paid
             mark_as_fully_paid = data.get("mark_as_fully_paid", False)
+            frontend_status = data.get("status", "unpaid")
             
-            # Use mark_as_fully_paid to determine status
-            if mark_as_fully_paid:
-                # When marked as fully paid, status should be credited
+            # Use frontend status, but ensure it's consistent with mark_as_fully_paid
+            if mark_as_fully_paid and frontend_status != "credited":
+                debit_note_status = "credited"
+                amount_received = total_amount
+                balance_amount = 0
+            elif not mark_as_fully_paid and frontend_status == "credited":
+                # If frontend says credited but checkbox not checked, respect frontend
                 debit_note_status = "credited"
                 amount_received = total_amount
                 balance_amount = 0
             else:
-                # When not marked as fully paid, status should be unpaid
-                debit_note_status = "unpaid"
-                amount_received = 0
-                balance_amount = total_amount
+                # Use frontend status as-is
+                debit_note_status = frontend_status
+                if debit_note_status == "credited":
+                    amount_received = total_amount
+                    balance_amount = 0
+                else:
+                    amount_received = 0
+                    balance_amount = total_amount
             
             # Build charges data for response
             charges_data = {
@@ -533,20 +531,39 @@ def create_debit_note():
         elif 'total_amount' in data:
             total_amount = data['total_amount']
             
-            # Auto-set status based on mark_as_fully_paid checkbox
+            # Accept status from frontend, but also check mark_as_fully_paid
             mark_as_fully_paid = data.get("mark_as_fully_paid", False)
+            frontend_status = data.get("status", "unpaid")
             
-            # Use mark_as_fully_paid to determine status
-            if mark_as_fully_paid:
-                # When marked as fully paid, status should be credited
+            # Use frontend status, but ensure it's consistent with mark_as_fully_paid
+            if mark_as_fully_paid and frontend_status != "credited":
+                debit_note_status = "credited"
+                amount_received = total_amount
+                balance_amount = 0
+            elif not mark_as_fully_paid and frontend_status == "credited":
+                # If frontend says credited but checkbox not checked, respect frontend
                 debit_note_status = "credited"
                 amount_received = total_amount
                 balance_amount = 0
             else:
-                # When not marked as fully paid, status should be unpaid
-                debit_note_status = "unpaid"
-                amount_received = 0
-                balance_amount = total_amount
+                # Use frontend status as-is
+                debit_note_status = frontend_status
+                if debit_note_status == "credited":
+                    amount_received = total_amount
+                    balance_amount = 0
+                else:
+                    amount_received = 0
+                    balance_amount = total_amount
+        
+        # Ensure data consistency - if status is credited, mark_as_fully_paid should be true
+        if debit_note_status == "credited":
+            mark_as_fully_paid = True
+            amount_received = total_amount
+            balance_amount = 0
+        elif debit_note_status == "unpaid":
+            mark_as_fully_paid = False
+            amount_received = 0
+            balance_amount = total_amount
         
         # Create debit note
         debit_note = DebitNote(
@@ -618,36 +635,24 @@ def create_debit_note():
         
         db.session.commit()
         
-        # Update purchase invoice status using the helper function if debit note is linked to a purchase invoice
+                
+        # Update purchase invoice status using simple credit note pattern
         if invoice and isinstance(invoice, PurchaseInvoice):
             try:
                 # Store original payment_status in debit note before updating
                 debit_note.original_invoice_payment_status = invoice.payment_status
                 
                 # Update purchase invoice balance to account for debit note
-                # Calculate new balance: current balance - debit note total amount
-                current_balance = float(invoice.balance_due or 0)
-                new_balance = max(0.0, current_balance - float(debit_note.total_amount))
-                
-                
-                # Update the invoice balance directly
-                invoice.balance_due = new_balance
+                invoice.balance_due = max(0.0, float(invoice.balance_due) - float(debit_note.total_amount))
                 
                 # Update payment status based on new balance
-                if new_balance <= 0:
+                if invoice.balance_due <= 0:
                     invoice.payment_status = "paid"
-                elif float(invoice.amount_paid) > 0:
-                    invoice.payment_status = "partial"
                 else:
-                    invoice.payment_status = "unpaid"
+                    invoice.payment_status = "partial"
                 
-                # Use the helper function to ensure consistency
-                update_purchase_invoice_payment_status(invoice.uuid)
-                
-                # Force commit to ensure status updates are saved immediately
+                # Commit invoice updates
                 db.session.commit()
-                
-                # Refresh invoice to get updated values
                 db.session.refresh(invoice)
                 
             except Exception as e:
@@ -1291,14 +1296,10 @@ def get_debit_note(debit_note_id):
             "updated_at": debit_note.updated_at.isoformat()
         }
         
-        
-        # Debug response structure
-        
         # Flatten response structure to match purchase invoice API
         response_data = debit_note_data.copy()
         response_data["items"] = items
         response_data["payments"] = payments
-        
         
         return jsonify(response_data), 200
         
@@ -1335,17 +1336,13 @@ def _build_debit_note_item(item_data):
     discount_percentage = float(item_data.get("discount", 0))
     tax_percentage = float(item_data.get("tax", 0))
     
-    print(f"🧮 DEBUG - Tax calculation: quantity={quantity_val}, unit_price={unit_price_val}, discount={discount_percentage}%, tax={tax_percentage}%")
-    
     # Calculate item totals
     item_subtotal = quantity_val * unit_price_val
     item_discount = item_subtotal * (discount_percentage / 100)
     item_taxable_amount = item_subtotal - item_discount
     item_tax = item_taxable_amount * (tax_percentage / 100)
     total_price = item_subtotal - item_discount + item_tax
-    
-    print(f"💰 DEBUG - Calculated totals: subtotal={item_subtotal}, discount={item_discount}, tax={item_tax}, total={total_price}")
-    
+        
     return DebitNoteItem(
         item_id=item_data.get("item_id"),
         description=item_data.get("description"),
@@ -1358,21 +1355,10 @@ def _build_debit_note_item(item_data):
     )
 
 
-@debit_note_blueprint.route('/test-debug', methods=['GET'])
-def test_debug():
-    """Test endpoint to verify debug logging is working"""
-    print("🔧 DEBUG - Test endpoint called successfully!")
-    return jsonify({
-        "success": True,
-        "message": "Debug logging is working",
-        "timestamp": datetime.now().isoformat()
-    }), 200
-
 @debit_note_blueprint.route('/<debit_note_id>', methods=['PUT'])
 @login_required
 @jwt_required()
 def update_debit_note(debit_note_id):
-    print(f"🚀 DEBUG - Update debit note endpoint called with ID: {debit_note_id}")
     """Update an existing debit note"""
     try:
         # Get JWT claims
@@ -1387,7 +1373,6 @@ def update_debit_note(debit_note_id):
             business_id = jwt_claims.get('business_id', 1)
         
         data = request.get_json()
-        print(f"📨 DEBUG - Raw request data: {data}")
         
         # Handle field mapping from frontend to backend
         if 'balance_due' in data:
@@ -1541,33 +1526,23 @@ def update_debit_note(debit_note_id):
         
         # Update items if provided
         if 'items' in data and data['items']:
-            print(f"🔍 DEBUG - Updating debit note {debit_note.debit_note_number} with {len(data['items'])} items")
-            print(f"📦 DEBUG - Item data received: {data['items']}")
-            
+              
             # Delete existing items
             DebitNoteItem.query.filter_by(debit_note_id=debit_note.uuid).delete()
             
             # Add new items using helper function
             items_data = data['items']
             for item_data in items_data:
-                print(f"🔍 DEBUG - Processing item: {item_data}")
                 debit_note_item = _build_debit_note_item(item_data)
                 debit_note_item.debit_note_id = debit_note.uuid  # FIX: Set the debit_note_id
                 debit_note_item.created_by = user_id
                 debit_note_item.updated_by = user_id
-                print(f"✅ DEBUG - Created debit note item: quantity={debit_note_item.quantity}")
                 db.session.add(debit_note_item)
         
         db.session.commit()
         
-        # Update purchase invoice status using the helper function if debit note is linked to a purchase invoice
-        if debit_note.invoice_id:
-            try:
-                # Use the helper function to update purchase invoice payment status
-                update_purchase_invoice_payment_status(debit_note.invoice_id)
-            except Exception as e:
-                # Log error but don't fail the debit note update
-                pass
+        # Invoice status already updated above - no need for helper function
+        # Commit already done above
         
         return jsonify({
             "success": True,
@@ -1696,15 +1671,8 @@ def delete_debit_note(debit_note_id):
         
         db.session.commit()
         
-        # Update purchase invoice status using helper function if debit note was linked to a purchase invoice
-        if linked_invoice_id:
-            try:
-                # Use the helper function to recalculate purchase invoice payment status
-                # This will automatically handle the case where no debit notes remain
-                update_purchase_invoice_payment_status(linked_invoice_id)
-            except Exception as e:
-                # Log error but don't fail the debit note deletion
-                pass
+        # Invoice status already handled - no need for helper function
+        # Status already updated when debit note was deleted
         
         return jsonify({
             "success": True,
