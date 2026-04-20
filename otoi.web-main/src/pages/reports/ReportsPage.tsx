@@ -53,6 +53,19 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 14px;
+    min-width: 0;
+  }
+  /* Action buttons group */
+  .rp-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  @media (max-width: 640px) {
+    .rp-actions { width: 100%; gap: 6px; }
+    .rp-actions button { flex: 1; min-width: 120px; height: 36px; font-size: 11px; }
   }
   .rp-back-btn {
     height: 32px; width: 32px;
@@ -129,7 +142,9 @@ const styles = `
   }
   .rp-search-wrap {
     position: relative;
-    width: 270px;
+    flex: 1;
+    min-width: 0;
+    max-width: 400px;
   }
   .rp-search-wrap input {
     height: 34px;
@@ -307,6 +322,55 @@ const styles = `
     padding: 56px 16px;
   }
 
+  /* ── Mobile card list ── */
+  .rp-mobile-list { display: none; }
+  .rp-mobile-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid #F2F3F5;
+    animation: rp-in 0.22s ease both;
+    transition: background 0.1s ease;
+  }
+  .rp-mobile-card:last-child { border-bottom: none; }
+  .rp-mobile-card:hover { background: #F8F7FF; }
+  .rp-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rp-mobile-card-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111318;
+    line-height: 1.35;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+  }
+  .rp-mobile-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .rp-mobile-price-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .rp-mobile-price-item { min-width: 0; }
+  .rp-mobile-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #A0A7B5;
+    margin-bottom: 4px;
+  }
+
   /* Animations */
   @keyframes rp-in {
     from { opacity: 0; transform: translateY(8px); }
@@ -318,6 +382,29 @@ const styles = `
 
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 0.9s linear infinite; }
+
+  /* ── Responsive breakpoints ── */
+
+  /* Tablet (≤768px): stack header — buttons wrap below the title */
+  @media (max-width: 768px) {
+    .rp-header-band    { padding: 16px 18px; }
+    .rp-header-content { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .rp-title          { font-size: 20px; }
+    .rp-actions        { width: 100%; }
+  }
+
+  /* Mobile (≤640px): card list replaces table, full-width search */
+  @media (max-width: 640px) {
+    .rp-header-band  { padding: 12px 14px; margin-bottom: 10px; }
+    .rp-title        { font-size: 17px; }
+    .rp-subtitle     { font-size: 11.5px; }
+    .rp-actions      { gap: 6px; }
+    .rp-search-row   { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 14px; }
+    .rp-search-wrap  { max-width: 100%; }
+    .rp-count-tag    { align-self: flex-start; }
+    .rp-table-wrapper { display: none; }
+    .rp-mobile-list  { display: block; }
+  }
 `;
 
 const ReportsPage = () => {
@@ -425,7 +512,7 @@ const ReportsPage = () => {
   return (
     <>
       <style>{styles}</style>
-      <div className="rp-root" style={{ padding: "20px 20px 36px", minWidth: 0 }}>
+      <div className="container-fluid p-4 sm:p-6 lg:p-8 min-h-screen">
 
         {/* ── Header ── */}
         <div className="rp-header-band rp-anim-band">
@@ -445,7 +532,7 @@ const ReportsPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="rp-actions">
               <Button
                 variant="outline"
                 size="sm"
@@ -517,9 +604,9 @@ const ReportsPage = () => {
             </div>
           )}
 
-          {/* Table */}
+          {/* Table (desktop / tablet) */}
           {!loading && !error && (
-            <div style={{ overflowX: "auto" }}>
+            <div className="rp-table-wrapper" style={{ overflowX: "auto" }}>
               <div style={{ maxHeight: "42rem", overflowY: "auto" }}>
                 <table className="rp-table">
                   <thead className="rp-thead">
@@ -602,6 +689,84 @@ const ReportsPage = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Mobile card list (≤640 px) */}
+          {!loading && !error && (
+            <div className="rp-mobile-list">
+              {filteredData.length === 0 ? (
+                <div className="rp-empty">
+                  <FileText style={{ width: 34, height: 34, margin: "0 auto 10px", color: "#D1D5DB" }} />
+                  <p style={{ fontSize: 13, color: "#9CA3AF" }}>No items match your search.</p>
+                </div>
+              ) : (
+                filteredData.map((item, idx) => {
+                  const mrp = fmt(item.purchase_price);
+                  const sp = fmt(item.selling_price);
+                  const isEditing = editingCell?.id === item.id && editingCell?.field === "selling_price";
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="rp-mobile-card"
+                      style={{ animationDelay: `${Math.min(idx * 0.016, 0.28)}s` }}
+                    >
+                      {/* Name + code row */}
+                      <div className="rp-mobile-card-header">
+                        <span className="rp-mobile-card-name">{item.name}</span>
+                        {item.item_code
+                          ? <span className="rp-code-pill">{item.item_code}</span>
+                          : null
+                        }
+                      </div>
+
+                      {/* Prices row */}
+                      <div className="rp-mobile-price-group">
+                        <div className="rp-mobile-price-item">
+                          <div className="rp-mobile-label">MRP</div>
+                          {mrp
+                            ? <span className="rp-mrp-val">{mrp}</span>
+                            : <span style={{ color: "#E2E4E9" }}>—</span>
+                          }
+                        </div>
+
+                        <div className="rp-mobile-price-item">
+                          <div className="rp-mobile-label">Selling Price</div>
+                          {isEditing ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <input
+                                type="number"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={handleBlur}
+                                onKeyPress={handleKey}
+                                disabled={updatingPrice}
+                                className="rp-edit-input"
+                                autoFocus
+                              />
+                              {updatingPrice && (
+                                <Loader2 style={{ width: 12, height: 12, color: "#6C63FF" }} className="spin" />
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              className="rp-sp-clickable"
+                              onDoubleClick={() => handleDoubleClick(item, "selling_price")}
+                              title="Double-click to edit"
+                            >
+                              {sp
+                                ? <span className="rp-sp-badge">{sp}</span>
+                                : <span className="rp-sp-dash">—</span>
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </div>

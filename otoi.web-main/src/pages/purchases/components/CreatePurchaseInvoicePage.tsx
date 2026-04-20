@@ -659,7 +659,7 @@ const CreatePurchaseInvoicePage = () => {
         {/* Invoice Details */}
         <div className="lg:col-span-1 bg-white border rounded-xl p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Invoice Details</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs text-gray-600">Invoice No.</label>
               <Input name="invoiceNo" value={formData.invoiceNo} onChange={handleChange} placeholder="Auto" className="h-8 text-sm" />
@@ -807,9 +807,118 @@ const CreatePurchaseInvoicePage = () => {
         </div>
 
         {/* Mobile View Omitted here, just generic fallback */}
-        <div className="block md:hidden border-t border-gray-100 p-4">
-          {/* Add Mobile List items view here if needed */}
-          <p className="text-sm text-gray-500 italic text-center">Mobile view layout omitted. Switch to desktop.</p>
+        {/* Mobile View for Items */}
+        <div className="md:hidden space-y-4 p-4 bg-gray-50/30">
+          {invoiceItems.length === 0 ? (
+            <div className="text-center py-10 bg-white rounded-xl border-2 border-dashed border-gray-100">
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Plus className="h-6 w-6 text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-500 font-medium">No items added yet</p>
+              <button
+                onClick={() => setShowAddItemModal(true)}
+                className="mt-4 text-sm font-bold text-blue-600 hover:text-blue-700"
+              >
+                + Add First Item
+              </button>
+            </div>
+          ) : (
+            invoiceItems.map((item, index) => (
+              <div key={item.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-4 space-y-4">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold shrink-0">{index + 1}</span>
+                        <h4 className="font-bold text-gray-900 text-sm truncate uppercase tracking-tight">{item.item_name}</h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">HSN: {item.hsn_sac || "N/A"}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold uppercase">₹{item.price_per_item.toLocaleString()} / Unit</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full shrink-0"
+                      onClick={() => handleRemoveItem(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Quantity</label>
+                      <div className="flex items-center h-10 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleUpdateQuantity(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full bg-transparent px-3 text-sm font-bold text-gray-900 border-none focus:outline-none text-center"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Price (₹)</label>
+                      <div className="relative h-10">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">₹</span>
+                        <input
+                          type="number"
+                          value={item.price_per_item}
+                          onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full h-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Discount (%)</label>
+                      <div className="relative h-10">
+                        <input
+                          type="number"
+                          value={item.discount}
+                          onChange={(e) => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full h-full bg-gray-50 border border-gray-200 rounded-lg px-3 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all text-right pr-7"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">%</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Tax Rate</label>
+                      <select
+                        value={item.tax}
+                        onChange={(e) => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
+                        className="w-full h-10 px-3 text-sm font-bold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
+                      >
+                        {[0, 5, 12, 18, 28].map(t => (
+                          <option key={t} value={t}>{t}% Tax</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Item Description</label>
+                    <textarea
+                      value={item.description || ""}
+                      onChange={(e) => setInvoiceItems(prev => prev.map(i => i.id === item.id ? { ...i, description: e.target.value } : i))}
+                      className="w-full min-h-[60px] p-3 text-xs text-gray-600 bg-gray-50/50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                      placeholder="Add specific details about this item..."
+                    />
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between bg-blue-50/30 -mx-4 px-4 py-2 mt-2">
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Item Total</span>
+                    <span className="text-sm font-black text-blue-600">₹{(item.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

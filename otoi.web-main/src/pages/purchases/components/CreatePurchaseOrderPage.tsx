@@ -285,6 +285,96 @@ const CreatePurchaseOrderPage = () => {
     }
   };
 
+  const PurchaseHistoryTooltip = ({ itemId: itemUuid, vendorId }: { itemId: string, vendorId?: string | null }) => {
+    const item = poItems.find(i => i.id === itemUuid);
+    if (!item) return null;
+
+    return (
+      <div className="relative">
+        <TooltipProvider delayDuration={100}>
+          <Tooltip
+            open={purchaseHistoryItem?.itemId === item.id}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                if (purchaseHistoryItem?.itemId !== item.id) {
+                  handleOpenPurchaseHistory(item);
+                }
+              } else if (purchaseHistoryItem?.itemId === item.id) {
+                setPurchaseHistoryItem(null);
+              }
+            }}
+          >
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 hover:text-blue-700 bg-blue-50/50 px-2 py-1 rounded-md transition-all active:scale-95"
+              >
+                <Info className="h-3 w-3" />
+                History
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              align="end"
+              sideOffset={10}
+              className="w-[320px] p-0 bg-[#1e2330] border border-gray-700 shadow-2xl rounded-xl text-left font-sans flex flex-col z-[100] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="px-4 py-3 bg-[#252a38] border-b border-gray-700 flex justify-between items-center bg-gradient-to-r from-[#252a38] to-[#1e2330]">
+                <h4 className="text-[11px] font-black text-white leading-snug uppercase tracking-widest opacity-90">
+                  Last Purchase Prices
+                </h4>
+                <div className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded uppercase">{item.item_name}</div>
+              </div>
+
+              {/* Body */}
+              <div className="p-0 z-10 relative bg-[#1e2330]">
+                {isLoadingPurchaseHistory ? (
+                  <div className="flex justify-center items-center py-8">
+                    <SpinnerDotted size={24} color="#60a5fa" thickness={100} />
+                  </div>
+                ) : purchaseHistoryData.length === 0 ? (
+                  <div className="py-8 px-4 text-center text-[12px] font-bold text-gray-500 italic">
+                    No recent purchases found.
+                  </div>
+                ) : (
+                  <>
+                    <table className="w-full text-[12px]">
+                      <thead>
+                        <tr className="border-b border-gray-700 bg-[#252a38]/50 text-gray-400">
+                          <th className="px-4 py-2 text-left font-black uppercase tracking-widest">Date</th>
+                          <th className="px-4 py-2 text-right font-black uppercase tracking-widest">Price</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {purchaseHistoryData.map((ph, idx) => {
+                          const d = ph.date ? new Date(ph.date) : null;
+                          const dateStr = d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "N/A";
+                          return (
+                            <tr key={idx} className="hover:bg-white/5 transition-colors">
+                              <td className="px-4 py-2.5 text-gray-300 font-medium">{dateStr}</td>
+                              <td className="px-4 py-2.5 text-right text-white font-black">₹{ph.price?.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {/* Footer */}
+                    <div className="px-4 py-2 bg-[#252a38] text-center border-t border-gray-800">
+                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-tighter">
+                        Price excludes tax and discount
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  };
+
   // ── Fetch vendors ───────────────────────────────────────────────────────────
   const fetchVendors = async () => {
     setIsVendorsLoading(true);
@@ -380,7 +470,7 @@ const CreatePurchaseOrderPage = () => {
                 item.item_name ||
                 item.description ||
                 "Item",
-                image: item.image,
+              image: item.image,
               description: item.description || "",
               quantity: Number(item.quantity) || 1,
               price_per_item: Number(item.unit_price) || 0,
@@ -683,6 +773,14 @@ const CreatePurchaseOrderPage = () => {
     );
   };
 
+  const handleUpdateDescription = (itemId: string, desc: string) => {
+    setPoItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, description: desc } : item
+      )
+    );
+  };
+
   const handleAddAdditionalCharge = () => {
     if (newChargeName.trim() && newChargeAmount > 0) {
       setAdditionalCharges((prev) => [
@@ -791,45 +889,48 @@ const CreatePurchaseOrderPage = () => {
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-[70px] z-10 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-[70px] z-[20] flex flex-col md:flex-row items-start md:items-center justify-between bg-white border-b border-gray-200 px-4 py-3 gap-3 shadow-md md:shadow-sm">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={() => setShowConfirmModal(true)}
+            className="shrink-0"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {isEditMode ? "Edit Purchase Order" : "Create Purchase Order"}
+          <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight truncate">
+            {isEditMode ? "Edit PO" : "Create Purchase Order"}
           </h1>
         </div>
-        <Button
-          type="button"
-          className="bg-[#1B84FF] hover:bg-[#0F6FE0] text-white gap-2 px-4 py-2 rounded-lg"
-          disabled={isSaving}
-          onClick={async () => {
-            if (!selectedVendor) {
-              toast.error("Please select a Vendor");
-              return;
-            }
-            if (poItems.length === 0) {
-              toast.error("Please add at least one item");
-              return;
-            }
-            if (isEditMode) {
-              await handleSavePO(true);
-              return;
-            }
-            const saved = await handleSavePO(false);
-            if (!saved) return;
-            navigate(`/purchases/purchase-orders/${saved.uuid || saved.id}`);
-          }}
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save Purchase Order"}
-        </Button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Button
+            type="button"
+            className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black text-sm gap-2 px-6 py-2.5 rounded-xl shadow-lg shadow-blue-100 active:scale-95 transition-all"
+            disabled={isSaving}
+            onClick={async () => {
+              if (!selectedVendor) {
+                toast.error("Please select a Party");
+                return;
+              }
+              if (poItems.length === 0) {
+                toast.error("Add at least one item");
+                return;
+              }
+              if (isEditMode) {
+                await handleSavePO(true);
+                return;
+              }
+              const saved = await handleSavePO(false);
+              if (!saved) return;
+              navigate(`/purchases/purchase-orders/${saved.uuid || saved.id}`);
+            }}
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : "Save Purchase Order"}
+          </Button>
+        </div>
       </div>
 
       {/* ── Top grid: Bill To + PO Details ────────────────────────────────── */}
@@ -1199,7 +1300,8 @@ const CreatePurchaseOrderPage = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
@@ -1393,6 +1495,9 @@ const CreatePurchaseOrderPage = () => {
                           {getMeasuringUnit(item.measuring_unit_id)}
                         </span>
                       </div>
+                      <div className="mt-2">
+                        <PurchaseHistoryTooltip itemId={item.id} vendorId={selectedVendor?.id} />
+                      </div>
                     </td>
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
                       <div className="flex items-center" style={{ marginTop: "0.7rem" }}>
@@ -1474,87 +1579,7 @@ const CreatePurchaseOrderPage = () => {
                           )}
                         </div>
                         <div className="relative ml-2">
-                          <TooltipProvider delayDuration={100}>
-                            <Tooltip
-                              open={purchaseHistoryItem?.itemId === item.id}
-                              onOpenChange={(isOpen) => {
-                                if (isOpen) {
-                                  // Add check to prevent rapid re-fetching if already open/loading
-                                  if (purchaseHistoryItem?.itemId !== item.id) {
-                                    handleOpenPurchaseHistory(item);
-                                  }
-                                } else if (purchaseHistoryItem?.itemId === item.id) {
-                                  setPurchaseHistoryItem(null);
-                                }
-                              }}
-                            >
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="text-gray-400 hover:text-blue-600 focus:outline-none outline-none"
-                                >
-                                  <Info className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                align="end"
-                                sideOffset={10}
-                                className="w-[340px] p-0 bg-[#1e2330] border border-gray-700 shadow-2xl rounded-lg text-left font-sans flex flex-col z-[100]"
-                              >
-                                {/* Header */}
-                                <div className="px-3 py-2.5 bg-[#252a38] border-b border-gray-700 flex justify-between items-start gap-2 rounded-t-lg relative z-10">
-                                  <div className="flex gap-2 items-start mt-0.5">
-                                    <h4 className="text-xs font-semibold text-white leading-snug">
-                                      Recent Purchase Prices for {item.item_name} to this party
-                                    </h4>
-                                  </div>
-                                </div>
-
-                                {/* Body */}
-                                <div className="p-0 z-10 relative bg-[#1e2330] rounded-b-lg overflow-hidden">
-                                  {isLoadingPurchaseHistory ? (
-                                    <div className="flex justify-center items-center py-6">
-                                      <SpinnerDotted size={24} color="#60a5fa" thickness={100} />
-                                    </div>
-                                  ) : purchaseHistoryData.length === 0 ? (
-                                    <div className="py-6 px-4 text-center text-[13px] text-gray-400">
-                                      No recent purchases found.
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <table className="w-full text-[13px]">
-                                        <thead>
-                                          <tr className="border-b border-gray-700 bg-[#252a38] text-gray-300">
-                                            <th className="px-5 py-2.5 text-left font-semibold border-r border-gray-700 w-1/2">Date</th>
-                                            <th className="px-5 py-2.5 text-right font-semibold w-1/2">Price/Item</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-700">
-                                          {purchaseHistoryData.map((ph, idx) => {
-                                            const d = ph.date ? new Date(ph.date) : null;
-                                            const dateStr = d ? `${("0" + d.getDate()).slice(-2)}-${("0" + (d.getMonth() + 1)).slice(-2)}-${d.getFullYear()}` : "N/A";
-                                            return (
-                                              <tr key={idx} className="hover:bg-[#252a38]/50 transition-colors">
-                                                <td className="px-5 py-3 border-r border-gray-700 text-white">{dateStr}</td>
-                                                <td className="px-5 py-3 text-right text-white">₹{ph.price?.toFixed(2)}</td>
-                                              </tr>
-                                            );
-                                          })}
-                                        </tbody>
-                                      </table>
-                                      {/* Footer */}
-                                      <div className="px-4 py-2 bg-[#2d3748] text-left">
-                                        <p className="text-[11px] text-[#a0aec0]">
-                                          Note : Price excludes tax and discount
-                                        </p>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <PurchaseHistoryTooltip itemId={item.id} vendorId={selectedVendor?.id} />
                         </div>
                       </div>
                     </td>
@@ -1673,6 +1698,123 @@ const CreatePurchaseOrderPage = () => {
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        {/* Mobile Item Cards */}
+        <div className="md:hidden space-y-4 p-4 bg-gray-50/50">
+          {poItems.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center gap-3 bg-white rounded-xl border-2 border-dashed border-gray-200">
+              <Plus className="h-10 w-10 text-gray-200" />
+              <div>
+                <p className="text-sm font-black text-gray-900 tracking-tight uppercase">No items added</p>
+                <p className="text-xs text-gray-400 font-bold">Add an item to get started</p>
+              </div>
+            </div>
+          ) : (
+            poItems.map((item, index) => (
+              <div key={item.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm shadow-blue-500/5">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-start gap-4 bg-gradient-to-br from-white to-gray-50/30">
+                  <div className="flex gap-3 overflow-hidden">
+                    <div className="shrink-0 w-12 h-12 rounded-lg border border-gray-100 bg-white flex items-center justify-center text-gray-300 shadow-sm">
+                      {item.image ? (
+                        <img src={resolveImageUrl(item.image)} alt="" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <Plus className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <h4 className="font-black text-gray-900 text-[13px] truncate leading-tight uppercase tracking-tight">{item.item_name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-black bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">HSN: {item.hsn_sac || "—"}</span>
+                        <span className="text-[11px] font-black text-blue-600">₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 -mr-1 rounded-full"
+                    onClick={() => handleRemoveItem(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-white space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest ml-1">Quantity</label>
+                      <div className="flex items-center bg-gray-50/50 border border-gray-200 rounded-lg overflow-hidden h-9">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 0)}
+                          className="w-full px-2 text-sm font-black bg-transparent text-center focus:outline-none"
+                        />
+                        <span className="px-3 h-full flex items-center text-[10px] font-black text-gray-400 bg-white border-l border-gray-200 uppercase whitespace-nowrap">
+                          {getMeasuringUnit(item.measuring_unit_id)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest ml-1">Price/Item</label>
+                      <div className="relative h-9">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xs">₹</span>
+                        <input
+                          type="number"
+                          value={item.price_per_item}
+                          onChange={(e) => handleUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full pl-6 pr-2 h-full text-sm font-black bg-gray-50/50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 text-right"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest ml-1">Discount (%)</label>
+                      <div className="relative h-9 group">
+                        <input
+                          type="number"
+                          value={item.discount}
+                          onChange={(e) => handleUpdateDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full pr-7 h-full text-sm font-black bg-gray-50/50 border border-gray-200 rounded-lg text-right focus:ring-2 focus:ring-blue-100"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 group-focus-within:text-blue-500">%</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest ml-1">Tax Rate</label>
+                      <select
+                        value={item.tax}
+                        onChange={(e) => handleUpdateTax(item.id, parseFloat(e.target.value) || 0)}
+                        className="w-full h-9 px-2 text-sm font-black bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none appearance-none cursor-pointer"
+                      >
+                        {[0, 5, 12, 18, 28].map(t => (
+                          <option key={t} value={t}>{t}% Tax</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest ml-1">Description</label>
+                    <textarea
+                      placeholder="Add specific details..."
+                      value={item.description || ""}
+                      onChange={(e) => handleUpdateDescription(item.id, e.target.value)}
+                      className="w-full text-xs font-bold text-gray-600 bg-gray-50/50 border border-gray-200 rounded-lg p-3 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all resize-none min-h-[50px]"
+                      rows={1}
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
+                    <PurchaseHistoryTooltip itemId={item.item_id} vendorId={selectedVendor?.id} />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* ── Notes / Terms / Totals ─────────────────────────────────────── */}
