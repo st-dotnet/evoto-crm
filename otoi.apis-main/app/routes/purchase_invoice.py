@@ -726,9 +726,7 @@ def list_purchase_invoices():
                     })
 
         result = []
-        print(f"DEBUG: Processing {len(invoices)} invoices in list endpoint")
         for inv in invoices:
-            print(f"DEBUG: Processing invoice {inv.invoice_number}")
             # Update status for each invoice to ensure up-to-date values
             try:
                 update_purchase_invoice_payment_status(inv.uuid)
@@ -747,23 +745,17 @@ def list_purchase_invoices():
                 # Calculate total debit note amount
                 total_debit_amount = sum(float(dn.total_amount) for dn in debit_notes)
                 
-                print(f"DEBUG: Invoice {inv.invoice_number} - Total: {inv.total_amount}, Paid: {inv.amount_paid}, Discount: {inv.payment_discount or 0}, Debit Notes: {total_debit_amount}")
-                
                 # Force recalculate balance_due to ensure discount and debit notes are included
                 calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0) - total_debit_amount)
-                
-                print(f"DEBUG: Invoice {inv.invoice_number} - Calculated Balance: {calculated_balance}, Current Balance: {inv.balance_due}")
                 
                 # Update the invoice balance if different
                 if float(inv.balance_due) != calculated_balance:
                     inv.balance_due = calculated_balance
-                    print(f"DEBUG: Updated balance for invoice {inv.invoice_number}")
                 
             except Exception as e:
                 # Fallback to simple calculation without debit notes
                 calculated_balance = max(0.0, float(inv.total_amount) - float(inv.amount_paid) - float(inv.payment_discount or 0))
                 total_debit_amount = 0.0
-                print(f"DEBUG: Error calculating balance for invoice {inv.invoice_number}: {e}")
             
             v = vendor_map.get(inv.vendor_id)
             invoice_data = {

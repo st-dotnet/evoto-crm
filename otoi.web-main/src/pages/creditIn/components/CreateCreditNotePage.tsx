@@ -1050,21 +1050,11 @@ const CreateCreditNotePage = () => {
         tax: item.tax,
       }));
 
-      // Determine status based on checkbox and invoice linking
-      let finalStatus = creditNoteData.status || "draft";
-      if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
-        finalStatus = 'refunded';
-      } else if (!isEditMode && creditNoteData.linkToInvoice) {
-        finalStatus = 'refunded';
-      } else if (!isEditMode) {
-        finalStatus = 'unpaid';
-      }
-
       const creditNotePayload = {
         creditNoteNo: creditNoteData.creditNoteNo,
         creditNoteDate: creditNoteData.creditNoteDate,
         linkToInvoice: creditNoteData.linkToInvoice,
-        status: finalStatus,
+        status: creditNoteData.markAsFullyPaid ? "refunded" : (creditNoteData.status || "draft"),
         selectedCustomer: selectedCustomer,
         creditNoteItems: transformedItems,
         notes: creditNoteData.notes || "",
@@ -1076,13 +1066,16 @@ const CreateCreditNotePage = () => {
         total_tax: creditNoteData.total_tax || 0,
         taxable_amount: creditNoteData.taxableAmount || 0,
         round_off_amount: creditNoteData.round_off_amount || 0,
-        // Add fully paid fields if checkbox is checked
+        // Backend expects this boolean field to determine status
+        mark_as_fully_paid: creditNoteData.markAsFullyPaid || false,
+        // Add fully paid fields if checkbox is checked (for edit mode)
         ...(isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded' && {
           amount_received: creditNoteData.totalAmount,
           balance_amount: 0
         })
       };
 
+     
       let response;
       if (isEditMode && id) {
         // Update existing credit note
@@ -1113,24 +1106,26 @@ const CreateCreditNotePage = () => {
           }));
         }
 
-        // Dispatch event to notify invoice list about credit note changes
-        window.dispatchEvent(
-          new CustomEvent("creditNoteUpdated", {
-            detail: {
-              creditNoteId: isEditMode ? id : response.data?.uuid,
-              action: isEditMode ? "updated" : "created",
-              invoiceId:
-                response.data?.invoice_id || creditNoteData.linkToInvoice,
-            },
-          }),
-        );
-
-        navigate("/sales/credit-note");
+        // Add delay to see if navigation is causing the issue
+        setTimeout(() => {
+          
+          // Show success message only after navigation is about to happen
+          if (isEditMode && creditNoteData.markAsFullyPaid && creditNoteData.status !== 'refunded') {
+            toast.success('Credit note marked as fully refunded and updated successfully');
+          } else {
+            const successMessage = isEditMode
+              ? "Credit note updated successfully"
+              : "Credit note created successfully";
+            toast.success(successMessage);
+          }
+          
+          navigate("/sales/credit-note");
+        }, 2000);
       } else {
         // Handle specific validation errors for mark as fully paid
         if (isEditMode && creditNoteData.markAsFullyPaid) {
-          if (response.error?.includes('already marked as fully refunded')) {
-            toast.error('This credit note is already marked as fully refunded');
+          if (response.error?.includes('already marked as fully refunded') || response.error?.includes('Credit note is already marked as fully refunded')) {
+            toast.error('Credit note is already marked as fully refunded');
             // Revert checkbox on error
             setCreditNoteData(prev => ({ ...prev, markAsFullyPaid: false }));
           } else if (response.error?.includes('Amount received must equal total amount')) {
@@ -1145,10 +1140,10 @@ const CreateCreditNotePage = () => {
             toast.error(response.error || 'Failed to save credit note');
           }
         } else {
-          const errorMessage = isEditMode
+          // Show backend's specific error message first, fallback to generic message
+          toast.error(response.error || (isEditMode
             ? "Failed to update credit note"
-            : "Failed to create credit note";
-          toast.error(response.error || errorMessage);
+            : "Failed to create credit note"));
         }
       }
     } catch (error: any) {
@@ -1856,9 +1851,9 @@ const CreateCreditNotePage = () => {
                         />
                         <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
                           %
-                        </span>
+                        </span> 
                         {item.discount > 0 && (
-                          <div className="absolute -bottom-5 left-0 right-0 text-right">
+                          <div className="absolute bottom-1 right-4 text-right">
                             <span className="text-[10px] font-medium text-red-600 leading-tight whitespace-nowrap">
                               -₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}
                             </span>
@@ -2309,12 +2304,13 @@ const CreateCreditNotePage = () => {
                     <Checkbox
                       id="markAsFullyPaid"
                       checked={creditNoteData.markAsFullyPaid}
-                      onCheckedChange={(checked) =>
+                      onCheckedChange={(checked) => {
+                        const newValue = Boolean(checked);
                         setCreditNoteData({
                           ...creditNoteData,
-                          markAsFullyPaid: Boolean(checked),
-                        })
-                      }
+                          markAsFullyPaid: newValue,
+                        });
+                      }}
                     />
                     <label
                       htmlFor="markAsFullyPaid"

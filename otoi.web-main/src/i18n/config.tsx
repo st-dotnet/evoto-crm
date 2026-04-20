@@ -15,7 +15,7 @@ const I18N_MESSAGES = {
 const I18N_CONFIG_KEY = 'i18nConfig';
 
 const I18N_LANGUAGES: readonly TLanguage[] = [
-  {
+  { 
     label: 'English',
     code: 'en',
     direction: 'ltr',

@@ -21,6 +21,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const CreatePaymentOut = () => {
   const navigate = useNavigate();
@@ -29,7 +36,23 @@ export const CreatePaymentOut = () => {
   
   // API function to get vendors
   const getVendorsDropdown = async () => {
-    const token = localStorage.getItem("OTOI-auth-v1.0.0.1");
+    const getAuthToken = (): string | null => {
+      try {
+        const authData = localStorage.getItem("OTOI-auth-v1.0.0.1");
+        if (!authData) return null;
+        const parsedAuth = JSON.parse(authData);
+        return (
+          parsedAuth.token ||
+          parsedAuth.access_token ||
+          parsedAuth.accessToken ||
+          null
+        );
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const token = getAuthToken();
     if (!token) {
       return { success: false, error: "Authentication required", status: 401 };
     }
@@ -51,7 +74,7 @@ export const CreatePaymentOut = () => {
     } catch (error: any) {
       return {
         success: false,
-        error: "Failed to fetch vendors",
+        error: error.response?.data?.error || "Failed to fetch vendors",
         status: error.response?.status ?? 500,
       };
     }
@@ -211,14 +234,105 @@ export const CreatePaymentOut = () => {
     }
   };
 
-  // Fetch vendors
+  // Fetch vendors and filter for partial payments
   const fetchVendors = async () => {
     setIsVendorsLoading(true);
     try {
-      const response = await getVendorsDropdown();
+      // First get all vendors
+      const vendorResponse = await getVendorsDropdown();
+      
+      if (!vendorResponse.success) {
+        toast.error(vendorResponse.error || "Failed to fetch vendors");
+        return;
+      }
 
-      if (response.success && response.data) {
-        const vendorsList = response.data
+      const allVendors = vendorResponse.data || [];
+      let allAvailableVendors = allVendors; // Initialize with API vendors
+      
+      // Try to get payment records to check which vendors have partial payments
+      try {
+        const paymentResponse = await getPaymentOutList(1, 1000, '', '', '');
+        
+        if (paymentResponse.success) {
+          const paymentData = paymentResponse.data.data || paymentResponse.data;
+          
+          // Create a set of vendor names that have partial or paid payments
+          const vendorsWithPayments = new Set();
+          const vendorsWithPaymentsData = new Map(); // Store full payment data
+          paymentData.forEach((payment: any) => {
+            const hasPayment = payment.payment_status === 'partially paid' || 
+                              payment.payment_status === 'partial' || 
+                              payment.payment_status === 'paid';
+            
+            if (hasPayment && payment.party_name) {
+              vendorsWithPayments.add(payment.party_name);
+              // Store payment data for vendors not in vendor list
+              if (!vendorsWithPaymentsData.has(payment.party_name)) {
+                vendorsWithPaymentsData.set(payment.party_name, {
+                  uuid: `payment-${payment.party_name.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: payment.party_name,
+                  mobile: "",
+                  hasInvoices: true,
+                });
+              }
+            }
+          });
+
+          // Add vendors from payment records that are missing from vendor API
+          const vendorNamesInAPI = new Set(allVendors.map((v: any) => v.name));
+          const missingVendors = Array.from(vendorsWithPaymentsData.values()).filter(
+            (vendor: any) => !vendorNamesInAPI.has(vendor.name)
+          );
+          
+          // Combine vendor API vendors with missing vendors from payments
+          allAvailableVendors = [...allVendors, ...missingVendors];
+
+          // Filter vendors to only include those with partial payments
+          const filteredVendors = allAvailableVendors
+            .filter((vendor: any) => vendor && vendor.name && vendor.name.trim() !== "")
+            .filter((vendor: any) => {
+              // Check for exact match first
+              let hasPayment = vendorsWithPayments.has(vendor.name);
+              
+              // If no exact match, try case-insensitive matching
+              if (!hasPayment) {
+                const vendorNameLower = vendor.name.toLowerCase();
+                for (const paymentVendor of vendorsWithPayments) {
+                  if ((paymentVendor as string).toLowerCase() === vendorNameLower) {
+                    hasPayment = true;
+                    break;
+                  }
+                }
+              }
+              
+              // If still no match, try partial matching (contains)
+              if (!hasPayment) {
+                const vendorNameLower = vendor.name.toLowerCase();
+                for (const paymentVendor of vendorsWithPayments) {
+                  if ((paymentVendor as string).toLowerCase().includes(vendorNameLower) || 
+                      vendorNameLower.includes((paymentVendor as string).toLowerCase())) {
+                    hasPayment = true;
+                    break;
+                  }
+                }
+              }
+              
+              return hasPayment;
+            })
+            .map((vendor: any) => ({
+              uuid: vendor.uuid || vendor.id,
+              name: vendor.name || "Unknown Vendor",
+              mobile: vendor.mobile || "",
+              hasInvoices: true,
+            }));
+          setVendors(filteredVendors);
+        } else {
+          throw new Error(paymentResponse.error || "Payment API failed");
+        }
+      } catch (paymentError) {
+        console.warn("Payment API failed, using all vendors:", paymentError);
+        // Fallback: use all vendors if payment API fails
+        const fallbackVendors = allAvailableVendors
           .filter((vendor: any) => vendor && vendor.name && vendor.name.trim() !== "")
           .map((vendor: any) => ({
             uuid: vendor.uuid || vendor.id,
@@ -226,12 +340,13 @@ export const CreatePaymentOut = () => {
             mobile: vendor.mobile || "",
             hasInvoices: true,
           }));
-        setVendors(vendorsList);
-      } else {
-        toast.error(response.error || "Failed to fetch vendors");
+        setVendors(fallbackVendors);
+        toast.info("Using all vendors (payment data unavailable)");
       }
     } catch (error) {
+      console.error("Error fetching vendors:", error);
       toast.error("Failed to fetch vendors");
+      setVendors([]);
     } finally {
       setIsVendorsLoading(false);
       setIsLoading(false);
@@ -384,10 +499,17 @@ export const CreatePaymentOut = () => {
   const filteredVendors = vendors.filter((vendor) => {
     if (!vendor) return false;
     const searchLower = searchQuery.toLowerCase();
+    console.log('DEBUG - PaymentOut search:', { searchQuery, vendorName: vendor.name, vendorMobile: vendor.mobile });
     return (
       (vendor.name && vendor.name.toLowerCase().includes(searchLower)) ||
       (vendor.mobile && vendor.mobile.includes(searchQuery))
     );
+  });
+  
+  console.log('DEBUG - PaymentOut totals:', { 
+    totalVendors: vendors.length, 
+    filteredVendors: filteredVendors.length,
+    searchQuery 
   });
 
   // Custom Tooltip Cell component for settled payments
@@ -731,7 +853,7 @@ export const CreatePaymentOut = () => {
 
   const renderEmptyVendor = () => (
     <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-      <div className="text-center">
+      <div className="text-center w-full max-w-sm px-4">
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
             <User className="h-6 w-6 sm:h-8 sm:w-8" />
@@ -740,17 +862,87 @@ export const CreatePaymentOut = () => {
         <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
           No Vendor Selected
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6 px-4">
+        <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6">
           Select a vendor to record payment
         </p>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs sm:text-sm rounded-lg transition-all duration-200"
-        >
-          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          Select Vendor
-        </button>
+        <VendorSelectionDropdown />
       </div>
+    </div>
+  );
+
+  // ─── Vendor Selection Dropdown ────────
+  const VendorSelectionDropdown = () => (
+    <div className="space-y-2">
+      <Select value={selectedVendor?.id || ""} onValueChange={(value) => {
+        const vendor = vendors.find(v => v.id === value);
+        if (vendor) {
+          handleVendorSelect(vendor);
+        }
+      }}>
+        <SelectTrigger className="w-full h-12 px-4 bg-white border border-gray-300 rounded-xl shadow-sm hover:border-blue-400 hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <SelectValue placeholder="Select a vendor..." className="text-sm font-medium text-gray-700" />
+          </div>
+        </SelectTrigger>
+        <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[280px] bg-white border border-gray-200 rounded-xl shadow-xl">
+          {isVendorsLoading ? (
+            <div className="p-6 text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                <SpinnerDotted size={24} className="text-blue-600" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-600">Loading vendors...</p>
+            </div>
+          ) : filteredVendors.length > 0 ? (
+            <div className="py-2">
+              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Available Vendors ({filteredVendors.length})
+              </div>
+              {filteredVendors.map((vendor) => (
+                <SelectItem
+                  key={vendor.id}
+                  value={vendor.id}
+                  className="mx-2 my-1 px-3 py-3 rounded-lg cursor-pointer hover:bg-blue-50 focus:bg-blue-50 focus:text-blue-700 data-[state=checked]:bg-blue-100 data-[state=checked]:text-blue-700 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-600 font-semibold text-sm">
+                      {(vendor.name || "V")
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-gray-900 truncate">
+                        {vendor.name || "Unnamed Vendor"}
+                      </div>
+                      {vendor.mobile && (
+                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                          </svg>
+                          {vendor.mobile}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <User className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-900">No vendors found</p>
+              <p className="mt-1 text-xs text-gray-500">Try adjusting your search</p>
+            </div>
+          )}
+        </SelectContent>
+      </Select>
     </div>
   );
 
@@ -764,112 +956,8 @@ export const CreatePaymentOut = () => {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-6 space-y-5">
-          {/* Search Bar */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <Input
-              placeholder="Search Vendors by name or mobile..."
-              className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Vendor List */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-            <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {isVendorsLoading ? (
-                <div className="p-8 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <SpinnerDotted size={20} />
-                  </div>
-                  <h3 className="mt-3 text-sm font-medium text-gray-900">
-                    Loading Vendors...
-                  </h3>
-                </div>
-              ) : filteredVendors.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <User className="h-5 w-5 text-gray-600" />
-                  </div>
-                  <h3 className="mt-3 text-sm font-medium text-gray-900">
-                    No Vendor found
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Try adjusting your search criteria.
-                  </p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {filteredVendors.map((vendor) => (
-                    <li
-                      key={vendor.id}
-                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        selectedVendor?.id === vendor.id
-                          ? "bg-gray-100"
-                          : ""
-                      }`}
-                      onClick={() => handleVendorSelect(vendor)}
-                    >
-                      <div className="flex items-center">
-                        <div
-                          className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
-                            selectedVendor?.id === vendor.id
-                              ? "bg-green-100"
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          <span
-                            className={`font-medium text-sm ${
-                              selectedVendor?.id === vendor.id
-                                ? "text-green-700"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            {(vendor.name || "Unknown")
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")
-                              .toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
-                            {vendor.name || "Unknown Vendor"}
-                          </div>
-                          {vendor.mobile && (
-                            <div className="text-sm text-gray-500 flex items-center mt-1">
-                              <span className="text-gray-400 mr-1.5">
-                                <svg
-                                  className="h-3.5 w-3.5"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                                </svg>
-                              </span>
-                              {vendor.mobile}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <div className="p-6">
+          <VendorSelectionDropdown />
         </div>
       </DialogContent>
     </Dialog>

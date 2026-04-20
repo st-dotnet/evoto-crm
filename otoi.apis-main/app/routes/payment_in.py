@@ -5,6 +5,8 @@ from app.extensions import db
 from app.models.paymentIn import PaymentIn
 from app.models.invoice import Invoice
 from app.models.customer import Customer
+from app.utils.stamping import set_updated_fields
+from app.utils.decorators import login_required
 
 payment_in_blueprint = Blueprint("payment_in", __name__)
 
@@ -13,14 +15,28 @@ payment_in_blueprint = Blueprint("payment_in", __name__)
 
 def generate_payment_in_number() -> str:
     """Generate a unique payment-in number like PIN-1001."""
-    last = PaymentIn.query.order_by(PaymentIn.created_at.desc()).first()
-    if last and last.payment_number:
-        try:
-            last_num = int(last.payment_number.split("-")[1])
-            return f"PIN-{last_num + 1}"
-        except (IndexError, ValueError):
-            pass
-    return "PIN-1001"
+    # Get the maximum payment number from existing payments (including soft-deleted)
+    result = db.session.execute(
+        db.text("""
+            SELECT MAX(CAST(SUBSTRING(payment_number FROM 5) AS INTEGER)) as max_num 
+            FROM payment_ins 
+            WHERE payment_number LIKE 'PIN-%' 
+            AND payment_number ~ 'PIN-[0-9]{4}$'
+        """)
+    )
+    max_num = result.scalar()
+    
+    if max_num and max_num >= 1000:
+        # Start from max_num + 1, but keep it 4 digits
+        new_num = max_num + 1
+        # Ensure it doesn't exceed 9999
+        if new_num > 9999:
+            new_num = 1000  # Reset to 1000 if we exceed 9999
+    else:
+        new_num = 1000  # Start from PIN-1000
+    
+    # Format as 4-digit number
+    return f"PIN-{new_num:04d}"
 
 
 def _date_filter_query(query, model, date_filter: str):
@@ -187,7 +203,7 @@ def list_payment_ins():
         return jsonify({"error": "Failed to fetch payment-in records", "details": str(e)}), 500
 
 
-# ── CREATE ────────────────────────────────────────────────────────────────────
+# ── CREATE ─────────────
 
 @payment_in_blueprint.route("/", methods=["POST"])
 def create_payment_in():
@@ -326,15 +342,14 @@ def delete_payment_in(payment_id):
             else:
                 invoice.payment_status = "partial"
 
-        # Hard delete the payment record
-        db.session.delete(p)
+        # Soft delete the payment record
+        p.is_deleted = True
+        set_updated_fields(p)
         db.session.commit()
         return jsonify({"message": "Payment-in deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        import traceback
-        print(traceback.format_exc())
         return jsonify({"error": "Failed to delete payment", "details": str(e)}), 500
 
 
@@ -369,18 +384,20 @@ def get_customer_invoices():
             Invoice.query
             .filter(
                 Invoice.is_deleted == False,
-                Invoice.business_id == business_id,
             )
-            .outerjoin(Customer, Invoice.customer_id == Customer.uuid)
         )
-
+        
         if customer_name:
-            query = query.filter(
-                or_(
-                    Customer.first_name.ilike(f"%{customer_name}%"),
-                    Customer.last_name.ilike(f"%{customer_name}%"),
-                )
-            )
+            query = query.filter(Invoice.customer_id.has(
+                Customer.query.filter(
+                    Customer.is_deleted == False,
+                    Customer.first_name.ilike(f"%{customer_name}%")
+                ).subquery()
+            ))
+        
+        query = query.filter(
+            Invoice.business_id == business_id,
+        ).outerjoin(Customer, Invoice.customer_id == Customer.uuid)
 
         invoices = query.limit(per_page).all()
 
@@ -430,3 +447,141 @@ def get_customer_invoices():
 
     except Exception as e:
         return jsonify({"error": "Failed to fetch customer invoices", "details": str(e)}), 500
+
+payment_in_blueprint = Blueprint("payment_in", __name__)
+
+@payment_in_blueprint.route("/<uuid:payment_id>", methods=["DELETE"])
+@login_required
+def delete_payment(payment_id):
+    """
+    Delete a payment record and update invoice payment status
+    ---
+    tags:
+      - Payment In
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: Payment deleted successfully
+      404:
+        description: Payment not found
+      400:
+        description: Cannot delete payment
+    """
+    try:
+        payment = PaymentIn.query.filter_by(uuid=payment_id, is_deleted=False).first()
+        
+        if not payment:
+            return jsonify({"error": "Payment not found"}), 404
+        
+        # Get associated invoice
+        invoice = Invoice.query.filter_by(uuid=payment.invoice_id).first()
+        if not invoice:
+            return jsonify({"error": "Associated invoice not found"}), 404
+        
+        # Store payment amount before deletion
+        payment_amount = float(payment.amount_received)
+        
+        # Soft delete payment
+        payment.is_deleted = True
+        set_updated_fields(payment)
+        
+        # Update invoice payment status
+        invoice.amount_paid = max(0, float(invoice.amount_paid) - payment_amount)
+        
+        # Recalculate payment_discount from remaining (non-deleted) payments
+        remaining_payments = PaymentIn.query.filter_by(invoice_id=invoice.uuid, is_deleted=False).all()
+        total_discount = sum(float(p.discount or 0) for p in remaining_payments)
+        invoice.payment_discount = total_discount
+        
+        invoice.balance_due = float(invoice.total_amount) - float(invoice.amount_paid) - float(invoice.payment_discount or 0)
+        
+        # Update payment status based on remaining balance
+        if invoice.balance_due <= 0:
+            invoice.payment_status = "paid"
+        elif invoice.amount_paid > 0:
+            invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
+            
+        set_updated_fields(invoice)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Payment deleted successfully",
+            "invoice_payment_status": invoice.payment_status,
+            "amount_paid": float(invoice.amount_paid),
+            "balance_due": float(invoice.balance_due)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete payment", "details": str(e)}), 500
+
+
+
+@payment_in_blueprint.route("/invoice/<uuid:invoice_id>", methods=["DELETE"])
+@login_required
+def delete_payments_by_invoice(invoice_id):
+    """
+    Delete ALL payment records for a specific invoice and update invoice payment status
+    ---
+    tags:
+      - Payment In
+    parameters:
+      - name: invoice_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+    responses:
+      200:
+        description: All payments deleted successfully
+      404:
+        description: No payments found for invoice
+    """
+    print(f"DEBUG: delete_payments_by_invoice called with invoice_id: {invoice_id}")
+    
+    try:
+        # Get the associated invoice first
+        invoice = Invoice.query.filter_by(uuid=str(invoice_id)).first()
+        if not invoice:
+            print(f"DEBUG: Invoice not found for UUID: {invoice_id}")
+            return jsonify({"error": "Associated invoice not found"}), 404
+        
+        # Check if invoice has any payments recorded
+        current_paid = float(invoice.amount_paid or 0)
+        print(f"DEBUG: Invoice current amount_paid: {current_paid}")
+        
+        if current_paid <= 0:
+            print(f"DEBUG: No payments found for invoice - amount_paid is {current_paid}")
+            return jsonify({"error": "No payments found for invoice"}), 404
+        
+        # Store current payment amount before deletion
+        current_payment_amount = float(invoice.amount_paid or 0)
+        
+        # Reset all payment fields since we're using new payment system
+        invoice.amount_paid = 0
+        invoice.payment_discount = 0
+        invoice.balance_due = float(invoice.total_amount)
+        invoice.payment_status = "unpaid"
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Payment deleted successfully",
+            "invoice_uuid": str(invoice.uuid),
+            "invoice_number": invoice.invoice_number,
+            "total_amount_deleted": current_payment_amount,
+            "updated_amount_paid": 0.0,
+            "updated_balance_due": float(invoice.balance_due),
+            "updated_payment_status": invoice.payment_status
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete payments", "details": str(e)}), 500

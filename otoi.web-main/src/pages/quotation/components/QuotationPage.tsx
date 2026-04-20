@@ -185,7 +185,7 @@ const QuotationPage = () => {
 
       const response = await getQuotations({
         search: searchTerm,
-        party_name: searchType === 'party_name' ? searchTerm : '',
+        party_name: searchType === 'party_name'  ? searchTerm : '',
         quotation_number: searchType === 'quotation_number' ? searchTerm : '',
         status: selectedStatus === 'all' ? '' : selectedStatus, // Empty string fetches all statuses without API exact match issue
         page: params.pageIndex + 1,

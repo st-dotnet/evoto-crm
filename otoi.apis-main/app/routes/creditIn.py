@@ -166,7 +166,7 @@ def _build_credit_note_item(item_data):
     # Get unit price for backend calculation
     unit_price = item_data.get("unit_price") or item_data.get("price_per_item")
     if not unit_price:
-        raise ValueError("Unit price is required for backend calculation")
+        raise ValueError("Unit price is required for the calculation")
     
     # Calculate total_price on backend
     unit_price_val = float(unit_price)
@@ -395,18 +395,25 @@ def create_credit_note():
                 
             # Require unit_price for backend calculation
             if not item.get("unit_price") and not item.get("price_per_item"):
-                return jsonify({"error": f"Item {i+1}: Unit price is required for backend calculation"}), 400
+                return jsonify({"error": f"Item {i+1}: Unit price is required for the calculation"}), 400
         
         # Calculate totals using backend calculation
         auto_round_off = data.get("auto_round_off", False)
         totals = _calculate_credit_note_totals_from_items(items_data, auto_round_off)
         
-        # Auto-set status based on invoice linkage
-        if invoice_id:
-            # When invoice is linked, items are from sales invoice, so set to refunded
+        # Auto-set status based on mark_as_fully_paid checkbox or status field
+        mark_as_fully_paid = data.get("mark_as_fully_paid", False)
+        received_status = data.get("status", "")
+        
+        # Use mark_as_fully_paid first, fallback to status field
+        if mark_as_fully_paid:
+            # When marked as fully paid, status should be refunded
+            credit_note_status = "refunded"
+        elif received_status == "refunded":
+            # Fallback: if status is refunded but checkbox not provided, treat as fully paid
             credit_note_status = "refunded"
         else:
-            # When no invoice linked, manual credit note, so set to unpaid (ignore any "draft" from payload)
+            # When not marked as fully paid and status not refunded, status should be unpaid
             credit_note_status = "unpaid"
         
         # Handle credit note number - use user-provided or auto-generate
@@ -418,7 +425,7 @@ def create_credit_note():
                 credit_note_number=user_credit_note_number, 
                 is_deleted=False
             ).first()
-            
+        
             if existing_credit_note:
                 return jsonify({
                     "success": False,
@@ -467,7 +474,7 @@ def create_credit_note():
         
         # Add items
         for item_data in items_data:
-            credit_note.items.append(_build_credit_note_item(item_data))
+            credit_note.items.append(_build_credit_note_item(item_data))    
         
         db.session.add(credit_note)
         db.session.commit()
@@ -909,6 +916,10 @@ def update_credit_note(credit_note_id):
         application/json:
           schema:
             type: object
+            required:
+              - customer_id
+              - business_id
+              - items
             properties:
               customer_id:
                 type: string
@@ -1007,19 +1018,19 @@ def update_credit_note(credit_note_id):
             credit_note.auto_round_off = auto_round_off
         
         # Handle "mark as fully paid" functionality
-        if "mark_as_fully_paid" in data and data["mark_as_fully_paid"]:
-            # Validation for fully paid
-            if credit_note.status == "refunded":
-                return jsonify({
-                    "success": False,
-                    "error": "Credit note is already marked as fully refunded"
-                }), 400
-            
-            # Set status to refunded
-            credit_note.status = "refunded"
-            credit_note.mark_as_fully_paid = True
-            credit_note.amount_received = float(credit_note.total_amount)
-            credit_note.balance_amount = 0
+        if "mark_as_fully_paid" in data:
+            if data["mark_as_fully_paid"]:
+                # Checkbox checked - Set status to refunded
+                credit_note.status = "refunded"
+                credit_note.mark_as_fully_paid = True
+                credit_note.amount_received = float(credit_note.total_amount)
+                credit_note.balance_amount = 0
+            else:
+                # Checkbox unchecked - Set status to unpaid
+                credit_note.status = "unpaid"
+                credit_note.mark_as_fully_paid = False
+                credit_note.amount_received = 0
+                credit_note.balance_amount = float(credit_note.total_amount)
         
         # Update charges if provided (without items)
         elif "charges" in data:
@@ -1033,18 +1044,11 @@ def update_credit_note(credit_note_id):
             credit_note.total_amount = totals["total_amount"]
             credit_note.balance_amount = credit_note.total_amount - float(credit_note.amount_received)
         
-        # Handle status updates with validation
-        if "status" in data:
+        # Handle status updates with validation (only if not already handled by mark_as_fully_paid)
+        elif "status" in data:
             new_status = data["status"]
             # Validation for 'refunded' status (fully paid)
             if new_status == "refunded":
-                # Check if status is already refunded
-                if credit_note.status == "refunded":
-                    return jsonify({
-                        "success": False,
-                        "error": "Credit note is already marked as fully refunded"
-                    }), 400
-                
                 # Ensure amount_received equals total_amount for refunded status
                 amount_received = float(data.get('amount_received', credit_note.amount_received))
                 total_amount = float(credit_note.total_amount)
@@ -1063,12 +1067,18 @@ def update_credit_note(credit_note_id):
                 credit_note.balance_amount = 0
                 credit_note.amount_received = total_amount
                 credit_note.mark_as_fully_paid = True
+            elif new_status == "unpaid":
+                # Validation for 'unpaid' status
+                # Set amount_received to 0 and balance_amount to total_amount
+                credit_note.amount_received = 0
+                credit_note.balance_amount = float(credit_note.total_amount)
+                credit_note.mark_as_fully_paid = False
             else:
-                # Prevent reverting from 'refunded' status
-                if credit_note.status == "refunded":
+                # Prevent reverting from 'refunded' status to other statuses
+                if credit_note.status == "refunded" and new_status not in ["refunded", "unpaid"]:
                     return jsonify({
                         "success": False,
-                        "error": "Cannot change status from refunded (fully paid)"
+                        "error": "Cannot change status from refunded (fully paid) to other statuses"
                     }), 400
             
             credit_note.status = new_status

@@ -206,7 +206,7 @@ const CreditInpage = () => {
   // Removed the problematic refresh effect
 
   const handleCreditNoteUpdate = (event: CustomEvent) => {
-    // Refresh the credit note data to show updated status
+    // Refresh credit note data to show updated status
     setRefreshKey((prev) => prev + 1);
   };
 
@@ -808,10 +808,10 @@ const CreditInpage = () => {
       </div>
 
       <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="p-4 border-b">
-          <div className="relative w-full">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              <div className="relative w-full sm:w-auto">
+        <div className="p-4 bg-white border-b justify-center ">
+          <div className="relative w-fit">
+            <div className="flex items-center gap-2">
+              <div className="relative">
                 <DropdownMenu
                   open={showSuggestions}
                   onOpenChange={setShowSuggestions}
@@ -820,7 +820,7 @@ const CreditInpage = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 w-full sm:w-80 justify-start px-3"
+                      className="h-10 w-80 justify-start px-3"
                       disabled={isDropdownLoading}
                     >
                       {isDropdownLoading ? (
@@ -918,31 +918,33 @@ const CreditInpage = () => {
                         handleSearchTypeChange("party_name");
                         setShowFilterDropdown(false);
                       }}
-                      className={
+                      className={`flex items-center gap-2 ${
                         searchType === "party_name"
                           ? "bg-blue-50 text-blue-600"
                           : ""
-                      }
+                      }`}
                     >
                       <Filter className="h-3.5 w-3.5 mr-2" />
-                      Party Name
+                      <span>Party Name</span>
+                      {searchType === "party_name" && <Check className="h-4 w-4 ml-auto" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
                         handleSearchTypeChange("credit_note_number");
                         setShowFilterDropdown(false);
                       }}
-                      className={
+                      className={`flex items-center gap-2 ${
                         searchType === "credit_note_number"
                           ? "bg-blue-50 text-blue-600"
                           : ""
-                      }
+                      }`}
                     >
                       <Filter className="h-3.5 w-3.5 mr-2" />
-                      Credit Note Number
+                      <span>Credit Note Number</span>
+                      {searchType === "credit_note_number" && <Check className="h-4 w-4 ml-auto" />}
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
               </div>
             </div>
           </div>

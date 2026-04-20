@@ -22,6 +22,13 @@ import { DataGrid, DataGridColumnHeader } from "@/components";
 import { ColumnDef } from "@tanstack/react-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const CreatePaymentIn = () => {
   const navigate = useNavigate();
@@ -548,10 +555,17 @@ export const CreatePaymentIn = () => {
   const filteredParties = parties.filter((party) => {
     if (!party || !party.hasInvoices) return false;
     const searchLower = searchQuery.toLowerCase();
+    console.log('DEBUG - PaymentIn search:', { searchQuery, partyName: party.name, partyMobile: party.mobile });
     return (
       (party.name && party.name.toLowerCase().includes(searchLower)) ||
       (party.mobile && party.mobile.includes(searchQuery))
     );
+  });
+
+  console.log('DEBUG - PaymentIn totals:', { 
+    totalParties: parties.length, 
+    filteredParties: filteredParties.length,
+    searchQuery 
   });
 
   // Custom Tooltip Cell component for settled payments
@@ -744,65 +758,47 @@ export const CreatePaymentIn = () => {
     [selectedParty],
   );
 
-  // --- Party Search Dropdown (inline in left panel) --------
+  // --- Party Dropdown (inline in left panel) --------
   const renderInlinePartySearch = () => (
     <div className="space-y-4" ref={dropdownRef}>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-2">
-          Search Party
+          Select Party
         </label>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search parties..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            autoFocus
-          />
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400" />
-          </div>
-        </div>
-      </div>
-
-      {isPartiesLoading ? (
-        <div className="text-center py-6">
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-            <span className="text-sm text-slate-500">Loading parties...</span>
-          </div>
-        </div>
-      ) : (
-        <div className="border border-slate-200 rounded-lg h-[250px] overflow-y-auto">
-          {filteredParties.length > 0 ? (
-            <>
-              {filteredParties.map((party) => (
-                <div
-                  key={party.id}
-                  onClick={() => handlePartySelect(party)}
-                  className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors duration-150"
-                >
-                  <div className="font-medium text-sm text-slate-900">
-                    {party.name}
-                  </div>
-                  {party.mobile && (
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {party.mobile}
-                    </div>
-                  )}
+        <Select value={selectedParty?.id || ""} onValueChange={(value) => {
+          const party = parties.find(p => p.id === value);
+          if (party) {
+            handlePartySelect(party);
+          }
+        }}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a party..." />
+          </SelectTrigger>
+          <SelectContent>
+            {isPartiesLoading ? (
+              <div className="p-4 text-center">
+                <div className="flex items-center space-y-2">
+                  <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+                  <span className="text-sm text-slate-500">Loading parties...</span>
                 </div>
-              ))}
-            </>
-          ) : (
-            <div className="p-6 text-center">
-              <div className="text-sm text-slate-500">
-                No parties found
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            ) : parties.length > 0 ? (
+              parties.map((party) => (
+                <SelectItem key={party.id} value={party.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{party.name}</span>
+                    {party.mobile && <span className="text-xs text-slate-500">{party.mobile}</span>}
+                  </div>
+                </SelectItem>
+              ))
+            ) : (
+              <div className="p-4 text-center text-slate-500">
+                <span className="text-sm font-medium">No parties available</span>
+              </div>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 
@@ -987,27 +983,96 @@ export const CreatePaymentIn = () => {
   );
 
   const renderEmptyParty = () => (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="text-center">
-        <div className="mb-6">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
-            <User className="h-8 w-8" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+      <div className="text-center w-full max-w-sm px-4">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
+            <User className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
-        <h3 className="text-lg font-medium text-slate-900 mb-2">
+        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
           No Party Selected
         </h3>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6">
           Select a party to record payment
         </p>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-all duration-200"
-        >
-          <User className="h-4 w-4" />
-          Select Vendor
-        </button>
+        <PartySelectionDropdown />
       </div>
+    </div>
+  );
+
+  const PartySelectionDropdown = () => (
+    <div className="space-y-2">
+      <Select value={selectedParty?.id || ""} onValueChange={(value) => {
+        const party = parties.find(p => p.id === value);
+        if (party) {
+          handlePartySelect(party);
+        }
+      }}>
+        <SelectTrigger className="w-full h-12 px-4 bg-white border border-gray-300 rounded-xl shadow-sm hover:border-blue-400 hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <SelectValue placeholder="Select a party..." className="text-sm font-medium text-gray-700" />
+          </div>
+        </SelectTrigger>
+        <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[280px] bg-white border border-gray-200 rounded-xl shadow-xl">
+          {isPartiesLoading ? (
+            <div className="p-6 text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                <SpinnerDotted size={24} className="text-blue-600" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-600">Loading parties...</p>
+            </div>
+          ) : filteredParties.length > 0 ? (
+            <div className="py-2">
+              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Available Parties ({filteredParties.length})
+              </div>
+              {filteredParties.map((party) => (
+                <SelectItem
+                  key={party.id}
+                  value={party.id}
+                  className="mx-2 my-1 px-3 py-3 rounded-lg cursor-pointer hover:bg-blue-50 focus:bg-blue-50 focus:text-blue-700 data-[state=checked]:bg-blue-100 data-[state=checked]:text-blue-700 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-600 font-semibold text-sm">
+                      {(party.name || "P")
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-gray-900 truncate">
+                        {party.name || "Unnamed Party"}
+                      </div>
+                      {party.mobile && (
+                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                          </svg>
+                          {party.mobile}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <User className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-900">No parties found</p>
+              <p className="mt-1 text-xs text-gray-500">Try adjusting your search</p>
+            </div>
+          )}
+        </SelectContent>
+      </Select>
     </div>
   );
 
@@ -1031,7 +1096,10 @@ export const CreatePaymentIn = () => {
               placeholder="Search Customers by name or mobile..."
               className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
               value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                console.log('DEBUG - PaymentIn input changed:', e.target.value);
+                setSearchQuery(e.target.value);
+              }}
             />
             {searchQuery && (
               <button
@@ -1150,18 +1218,18 @@ export const CreatePaymentIn = () => {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleBackClick}
-                className="flex-shrink-0 flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
+                className="flex-shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">
-                  {isEditMode ? "Edit Payment" : "Record Payment"}
+                <h1 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">
+                  {isEditMode ? "Edit Payment" : "Record Payment In"}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">
                   {isEditMode
@@ -1192,32 +1260,32 @@ export const CreatePaymentIn = () => {
       </header>
 
       {/* ── Main Content ────────────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* ── Party Selection Card ─────────────────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600">
-                    <User className="h-4 w-4" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 text-blue-600">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
-                  <h2 className="text-lg font-semibold text-slate-900">
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                     Party Information
                   </h2>
                 </div>
                 {selectedParty && (
                   <button
                     onClick={handlePartyDeselect}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
+                    className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {isInvoicesLoading && selectedParty ? (
                 <div className="flex items-center justify-center py-12">
                   <SpinnerDotted
@@ -1227,7 +1295,7 @@ export const CreatePaymentIn = () => {
                     color="#1B84FF"
                   />
                   <span className="text-sm text-slate-500">
-                    Loading parties...
+                    Loading invoices...
                   </span>
                 </div>
               ) : (
@@ -1244,40 +1312,40 @@ export const CreatePaymentIn = () => {
 
           {/* ── Payment Details Card ─────────────────────────────────── */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-600">
-                  <FileText className="h-4 w-4" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 text-green-600">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                   Payment Details
                 </h2>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Date / Mode / Number */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Payment Date
                   </label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
                     disabled={isFullyPaid}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Payment Mode
                   </label>
                   <select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
                     disabled={isFullyPaid}
                   >
                     <option value="cash">Cash</option>
@@ -1289,7 +1357,7 @@ export const CreatePaymentIn = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                     Choose Invoice
                   </label>
                   {(() => {
@@ -1311,10 +1379,10 @@ export const CreatePaymentIn = () => {
                           value={selectedInvoiceId || ""}
                           onChange={(e) => {
                             handleInvoiceSelection(e.target.value);
-                            setInvoiceFieldError(false); // Clear error when user selects
-                            setIsShaking(false); // Stop shaking when user selects
+                            setInvoiceFieldError(false);
+                            setIsShaking(false);
                           }}
-                          className={`w-full h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-slate-50 disabled:text-slate-500 ${invoiceFieldError
+                          className={`w-full h-9 sm:h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm ${invoiceFieldError
                             ? "border-red-500 bg-red-50"
                             : "border-slate-300"
                             } ${isShaking ? "animate-pulse" : ""}`}
@@ -1339,7 +1407,7 @@ export const CreatePaymentIn = () => {
                           type="text"
                           value={paidInvoices[0].invoice_number}
                           readOnly
-                          className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm"
+                          className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-xs sm:text-sm"
                           placeholder="No unpaid invoices"
                         />
                       );
@@ -1351,7 +1419,7 @@ export const CreatePaymentIn = () => {
                         type="text"
                         value=""
                         readOnly
-                        className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-400 text-sm"
+                        className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-400 text-xs sm:text-sm"
                         placeholder="No invoices found"
                       />
                     );
@@ -1359,9 +1427,9 @@ export const CreatePaymentIn = () => {
                 </div>
               </div>
 
-              {/* Notes Section */}
+              {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
                   Notes
                 </label>
                 <textarea
@@ -1372,7 +1440,7 @@ export const CreatePaymentIn = () => {
                   }
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Enter notes..."
-                  className="w-full h-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                  className="w-full h-20 sm:h-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-xs sm:text-sm disabled:bg-slate-50"
                   readOnly={isFullyPaid}
                 />
               </div>
@@ -1382,19 +1450,19 @@ export const CreatePaymentIn = () => {
 
         {/* ── Invoice Table Section */}
         {selectedParty && (
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 text-purple-600">
-                  <FileText className="h-4 w-4" />
+          <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-600">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Related Invoices with this party
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                  Invoices for this Party
                 </h2>
               </div>
             </div>
 
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               {isInvoicesLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <SpinnerDotted
@@ -1540,4 +1608,4 @@ export const CreatePaymentIn = () => {
   );
 };
 
-export default CreatePaymentIn;
+export default CreatePaymentIn;                    
