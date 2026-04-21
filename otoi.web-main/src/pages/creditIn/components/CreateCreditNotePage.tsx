@@ -53,6 +53,27 @@ import {
   checkCreditNoteExistsForInvoice,
 } from "../service/creditIn.service";
 import { getInvoiceById } from "../../invoice/services/invoice.service";
+import { MoveLeft } from "lucide-react";
+
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') return parseFloat(val) || 0;
+  
+  // Handle nested objects: tax_percentage, discount_percentage, etc.
+  if (typeof val === 'object') {
+    // Check for common property names
+    const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+    for (const key of possibleKeys) {
+      if (val[key] !== undefined) {
+        // Recursively extract if the value found is also an object (handles double nesting)
+        return extractNumericValue(val[key]);
+      }
+    }
+  }
+  return 0;
+};
 
 interface Party {
   id: string;
@@ -530,13 +551,13 @@ const CreateCreditNotePage = () => {
               quantity: item.quantity,
               originalQty: originalQtyValue, // Set for all linked credit notes
               price_per_item: item.unit_price,
-              discount: item.discount?.discount_percentage || 0,
-              tax: item.tax?.tax_percentage || 0,
+              discount: extractNumericValue(item.discount),
+              tax: extractNumericValue(item.tax),
               amount:
                 item.quantity *
                 item.unit_price *
-                (1 - (item.discount?.discount_percentage || 0) / 100) *
-                (1 + (item.tax?.tax_percentage || 0) / 100), // Calculate amount with tax
+                (1 - extractNumericValue(item.discount) / 100) *
+                (1 + extractNumericValue(item.tax) / 100), // Calculate amount with tax
               description: item.description || "",
             };
             return transformed;
@@ -682,13 +703,13 @@ const CreateCreditNotePage = () => {
           quantity: item.quantity, //  quantity
           originalQty: item.quantity, // Store original quantity for validation for all linked invoices
           price_per_item: item.unit_price, // UI expects price_per_item
-          discount: item.discount?.discount_percentage || 0, // API returns discount_percentage directly
-          tax: item.tax?.tax_percentage || 0, // API returns tax_percentage directly
+          discount: extractNumericValue(item.discount), 
+          tax: extractNumericValue(item.tax),
           amount:
             item.quantity *
             item.unit_price *
-            (1 - (item.discount?.discount_percentage || 0) / 100) *
-            (1 + (item.tax?.tax_percentage || 0) / 100), // Calculate amount with tax
+            (1 - extractNumericValue(item.discount) / 100) *
+            (1 + extractNumericValue(item.tax) / 100), // Calculate amount with tax
           measuring_unit_id: item.measuring_unit_id,
           description: item.description || null,
         }));

@@ -28,6 +28,24 @@ import { toAbsoluteUrl } from "@/utils/Assets";
 import { resolveImageUrl } from "@/utils/imageUtils";
 import { getGlobalAssets } from "@/pages/global-config/services/businessConfig.service";
 
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') return parseFloat(val) || 0;
+  
+  // Handle nested objects: tax_percentage, discount_percentage, etc.
+  if (typeof val === 'object') {
+    const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+    for (const key of possibleKeys) {
+      if (val[key] !== undefined) {
+        return extractNumericValue(val[key]);
+      }
+    }
+  }
+  return 0;
+};
+
 interface CreditNoteItem {
   uuid: string;
   item_id: string;
@@ -950,22 +968,14 @@ const CreditInDetailsPage: React.FC = () => {
                       {formatCurrency(item.unit_price)}
                     </td>
                     <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                      {item.discount?.discount_percentage && item.discount.discount_percentage > 0
-                        ? `${item.discount.discount_percentage}%`
-                        : typeof item.discount === 'number' && item.discount > 0
-                          ? `${item.discount}%`
-                          : item.discount_percentage !== undefined && item.discount_percentage > 0
-                            ? `${item.discount_percentage}%`
-                            : "-"}
+                      {extractNumericValue(item.discount) > 0
+                        ? `${extractNumericValue(item.discount)}%`
+                        : "-"}
                     </td>
                     <td className="border border-black px-4 py-2 text-right text-sm text-black">
-                      {item.tax?.tax_percentage && item.tax.tax_percentage > 0
-                        ? `${item.tax.tax_percentage}%`
-                        : typeof item.tax === 'number' && item.tax > 0
-                          ? `${item.tax}%`
-                          : item.tax_percentage !== null && item.tax_percentage !== undefined && item.tax_percentage > 0
-                            ? `${item.tax_percentage}%`
-                            : "-"}
+                      {extractNumericValue(item.tax) > 0
+                        ? `${extractNumericValue(item.tax)}%`
+                        : "-"}
                     </td>
                     <td className="border border-black px-4 py-2 text-right text-sm font-medium text-black">
                       {formatCurrency(item.total_price)}

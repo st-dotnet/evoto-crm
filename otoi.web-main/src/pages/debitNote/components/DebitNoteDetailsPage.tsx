@@ -25,6 +25,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { getDebitNoteById, getDebitNotePayments, createDebitNotePayment, getVendorById } from '../service/debitNote.service';
 import { getShareData, sendShareEmail } from "@/services/share.service";
+
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseFloat(val) || 0;
+    
+    // Handle nested objects: tax_percentage, discount_percentage, etc.
+    if (typeof val === 'object') {
+        const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+        for (const key of possibleKeys) {
+            if (val[key] !== undefined) {
+                return extractNumericValue(val[key]);
+            }
+        }
+    }
+    return 0;
+};
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -728,18 +746,14 @@ const DebitNoteDetailsPage: React.FC = () => {
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price || item.price_per_item)}</td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    {item.discount && item.discount.discount_percentage > 0
-                      ? `${item.discount.discount_percentage}% (${formatCurrency(item.discount.discount_amount)})`
-                      : typeof item.discount === 'number' && item.discount > 0
-                        ? `${item.discount}%`
-                        : "-"}
+                    {extractNumericValue(item.discount) > 0
+                      ? `${extractNumericValue(item.discount)}%`
+                      : "-"}
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    {item.tax && item.tax.tax_percentage > 0
-                      ? `${item.tax.tax_percentage}% (${formatCurrency(item.tax.tax_amount)})`
-                      : typeof item.tax === 'number' && item.tax > 0
-                        ? `${item.tax}%`
-                        : "-"}
+                    {extractNumericValue(item.tax) > 0
+                      ? `${extractNumericValue(item.tax)}%`
+                      : "-"}
                   </td>
                   <td className="p-2 text-right font-medium align-top whitespace-nowrap text-red-600">{formatCurrency(item.total_price || item.amount)}</td>
                 </tr>

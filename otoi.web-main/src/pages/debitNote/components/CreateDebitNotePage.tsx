@@ -25,6 +25,26 @@ import { getCustomerNamesDropdown, getAllCustomersDropdown, getInvoicesForParty,
 import { getPurchaseInvoiceById } from '../../purchases/services/purchaseInvoice.services';
 import { getVendorsDropdown } from '../service/debitNote.service';
 
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseFloat(val) || 0;
+    
+    // Handle nested objects: tax_percentage, discount_percentage, etc.
+    if (typeof val === 'object') {
+        // Check for common property names
+        const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+        for (const key of possibleKeys) {
+            if (val[key] !== undefined) {
+                // Recursively extract if the value found is also an object (handles double nesting)
+                return extractNumericValue(val[key]);
+            }
+        }
+    }
+    return 0;
+};
+
 interface Party {
     id: string;
     uuid: string;
@@ -668,9 +688,9 @@ const CreateDebitNotePage = () => {
                         quantity: item.quantity,
                         originalQty: item.quantity,
                         price_per_item: item.unit_price,
-                        discount: item.discount?.discount_percentage || 0,
-                        tax: item.tax?.tax_percentage || 0,
-                        amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
+                        discount: extractNumericValue(item.discount),
+                        tax: extractNumericValue(item.tax),
+                        amount: item.quantity * item.unit_price * (1 - extractNumericValue(item.discount) / 100) * (1 + extractNumericValue(item.tax) / 100),
                         measuring_unit_id: item.measuring_unit_id,
                         description: item.description || null,
                     };
@@ -1090,9 +1110,9 @@ const CreateDebitNotePage = () => {
                             quantity: item.quantity,
                             originalQty: item.quantity,
                             price_per_item: item.unit_price,
-                            discount: item.discount?.discount_percentage || 0,
-                            tax: item.tax?.tax_percentage || 0,
-                            amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
+                            discount: extractNumericValue(item.discount),
+                            tax: extractNumericValue(item.tax),
+                            amount: item.quantity * item.unit_price * (1 - extractNumericValue(item.discount) / 100) * (1 + extractNumericValue(item.tax) / 100),
                             measuring_unit_id: item.measuring_unit_id,
                             description: item.description || null,
                         }));
@@ -1336,8 +1356,8 @@ const CreateDebitNotePage = () => {
                             const transformedItems = debitNoteItems.map((item: any) => {                                
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
-                                const discount = item.discount_percentage || item.discount?.discount_percentage || item.discount_amount || item.discount || 0;
-                                const tax = item.tax_percentage || item.tax?.tax_percentage || item.tax_amount || item.tax || 0;
+                                const discount = extractNumericValue(item.discount_percentage || item.discount);
+                                const tax = extractNumericValue(item.tax_percentage || item.tax);
                                 const discountType = item.discount_type || 'percentage';
                                 const taxType = item.tax_type || 'percentage';
                                 

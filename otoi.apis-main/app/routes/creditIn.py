@@ -405,16 +405,25 @@ def create_credit_note():
         mark_as_fully_paid = data.get("mark_as_fully_paid", False)
         received_status = data.get("status", "")
         
+        # Initial values from payload if provided
+        amount_received = float(data.get("amount_received", 0))
+        
         # Use mark_as_fully_paid first, fallback to status field
         if mark_as_fully_paid:
             # When marked as fully paid, status should be refunded
             credit_note_status = "refunded"
+            amount_received = totals["total_amount"]
+            balance_amount = 0.0
         elif received_status == "refunded":
             # Fallback: if status is refunded but checkbox not provided, treat as fully paid
             credit_note_status = "refunded"
+            mark_as_fully_paid = True
+            amount_received = totals["total_amount"]
+            balance_amount = 0.0
         else:
             # When not marked as fully paid and status not refunded, status should be unpaid
             credit_note_status = "unpaid"
+            balance_amount = totals["total_amount"] - amount_received
         
         # Handle credit note number - use user-provided or auto-generate
         user_credit_note_number = data.get("credit_note_number", "").strip()
@@ -454,8 +463,8 @@ def create_credit_note():
             customer_id=data["customer_id"],
             credit_note_date=datetime.strptime(data.get("credit_note_date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d").date(),
             total_amount=totals["total_amount"],
-            amount_received=float(data.get("amount_received", 0)),
-            balance_amount=totals["total_amount"] - float(data.get("amount_received", 0)),
+            amount_received=amount_received,
+            balance_amount=balance_amount,
             charges={
                 "total_discount": totals["total_discount"],
                 "total_tax": totals["total_tax"],

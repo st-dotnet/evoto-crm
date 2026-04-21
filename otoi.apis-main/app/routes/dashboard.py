@@ -103,8 +103,18 @@ def get_dashboard_summary():
                     # Standalone unpaid CN – offset from receivables
                     credit_notes_offset += cn_balance
 
-        credit_notes_to_refund = round(credit_notes_offset + credit_notes_refund, 2)
-        to_collect = round(float(invoices_to_collect) - credit_notes_offset, 2)
+        # Sum of balance_amount on outstanding Debit Notes (money vendors owe back to us)
+        debit_notes_to_receive = (
+            db.session.query(func.coalesce(func.sum(DebitNote.balance_amount), 0))
+            .filter(
+                DebitNote.business_id == business_id,
+                DebitNote.is_deleted == False,
+                func.lower(DebitNote.status) != "credited",
+            )
+            .scalar()
+        )
+
+        to_collect = round(float(invoices_to_collect) - credit_notes_offset + float(debit_notes_to_receive), 2)
 
         # ------- To Pay (Net Payables) -------
         # Sum of balance_due on all non-deleted, non-paid purchase invoices
@@ -117,27 +127,25 @@ def get_dashboard_summary():
             )
             .scalar()
         )
-        # Minus outstanding Debit Notes (money vendors owe back to us)
-        debit_notes_to_receive = (
-            db.session.query(func.coalesce(func.sum(DebitNote.balance_amount), 0))
-            .filter(
-                DebitNote.business_id == business_id,
-                DebitNote.is_deleted == False,
-                DebitNote.status != "paid",
-            )
-            .scalar()
-        )
-        to_pay = round(float(invoices_to_pay) - float(debit_notes_to_receive) + credit_notes_refund, 2)
+        
+        # Credit notes refund added to To Pay (money owed to customers)
+        to_pay = round(float(invoices_to_pay) + credit_notes_refund, 2)
 
         # ------- Cash Book (Cash vs Bank Balance) -------
         # Calculate from invoice payments since PaymentIn records are no longer created
         
         # Get payment info from invoices (amount_paid field stores total payments received)
-        # Note: This is a simplified approach - for detailed cash/bank split, we'd need payment mode tracking at invoice level
         total_payments_in = db.session.query(func.coalesce(func.sum(Invoice.amount_paid), 0)).filter(
             Invoice.business_id == business_id,
             Invoice.is_deleted == False,
             Invoice.amount_paid > 0
+        ).scalar()
+
+        # Add payments received from 'credited' debit notes
+        debit_notes_credited_amount = db.session.query(func.coalesce(func.sum(DebitNote.amount_received), 0)).filter(
+            DebitNote.business_id == business_id,
+            DebitNote.is_deleted == False,
+            func.lower(DebitNote.status) == "credited"
         ).scalar()
         
         # PaymentOut remains the same (uses PaymentOut records)
@@ -153,10 +161,13 @@ def get_dashboard_summary():
             func.lower(PaymentOut.payment_mode) != 'cash'
         ).scalar()
 
+        # Sum all receipts
+        total_receipts = float(total_payments_in) + float(debit_notes_credited_amount)
+
         # Since we can't distinguish cash vs bank from invoice payments alone, 
-        # we'll show all payments as bank balance (most common case)
-        cash_in_hand = 0.0  # No cash tracking without PaymentIn records
-        bank_balance = round(float(total_payments_in) - float(pout_cash) - float(pout_bank), 2)
+        # we'll show all payments as bank balance
+        cash_in_hand = 0.0
+        bank_balance = round(total_receipts - float(pout_cash) - float(pout_bank), 2)
         cash_bank_balance = cash_in_hand + bank_balance
 
         return jsonify({

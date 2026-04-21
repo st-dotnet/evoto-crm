@@ -115,7 +115,7 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
 
   // Transform frontend data to match backend model structure
   let vendorId = debitNoteData.selectedCustomer?.uuid || debitNoteData.vendorId || null;
-  
+
   const payload = {
     // Core fields
     debit_note_number: debitNoteData.debitNoteNo,
@@ -123,7 +123,7 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
     business_id: getBusinessId(),
     invoice_id: debitNoteData.linkToInvoiceId || debitNoteData.linkToInvoice || null, // Use UUID if available, fallback to invoice number
     debit_note_date: debitNoteData.debitNoteDate,
-    
+
     // Items - transform to match backend expectations
     items: debitNoteData.debitNoteItems.map(item => ({
       item_id: item.item_id,
@@ -135,10 +135,10 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
       total_price: item.amount,
       hsn_sac_code: item.hsn_sac || null
     })),
-    
+
     // Total amount - ensure frontend calculated total is sent
     total_amount: debitNoteData.total_amount || 0,
-    
+
     // Charges JSON structure matching backend
     charges: {
       subtotal: debitNoteData.subtotal || 0,
@@ -147,15 +147,18 @@ export const createDebitNote = async (debitNoteData: DebitNoteData): Promise<Api
       taxable_amount: debitNoteData.taxable_amount || 0,
       round_off_amount: debitNoteData.round_off_amount || 0
     },
-    
+
     // Additional notes
     additional_notes: {
       notes: debitNoteData.notes || '',
       terms_and_conditions: debitNoteData.terms || ''
     },
-    
+
     // Status - respect mark_as_fully_paid flag, otherwise use provided status
-    status: debitNoteData.mark_as_fully_paid ? 'credited' : (debitNoteData.status || 'unpaid')
+    status: debitNoteData.mark_as_fully_paid ? 'credited' : (debitNoteData.status || 'unpaid'),
+
+    // Mark as fully paid
+    mark_as_fully_paid: debitNoteData.mark_as_fully_paid || false
   };
 
   try {
@@ -213,10 +216,10 @@ export const getDebitNoteById = async (id: string): Promise<ApiResponse> => {
 
     // Transform backend response to frontend format
     const data = response.data;
-    
+
     // Extract the actual debit note data from nested structure
     const debitNoteData = data.debit_note || data;
-    
+
     const transformedData = {
       ...debitNoteData,
       subtotal: debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0,
@@ -258,7 +261,7 @@ export const getDebitNoteById = async (id: string): Promise<ApiResponse> => {
         };
       }) || [],
     };
-    
+
 
     return {
       success: true,
@@ -410,7 +413,7 @@ export const getDebitNotes = async (params?: {
 
   try {
     const queryParams = new URLSearchParams();
-        
+
     // Add search parameters
     if (params?.search) queryParams.append('search', params.search);
     if (params?.customer_id) queryParams.append('customer_id', params.customer_id);
@@ -421,7 +424,7 @@ export const getDebitNotes = async (params?: {
     if (params?.date_from) queryParams.append('date_from', params.date_from);
     if (params?.date_to) queryParams.append('date_to', params.date_to);
     if (params?.date_filter) queryParams.append('date_filter', params.date_filter);
-    
+
     // Add dropdown parameters
     if (params?.vendor_dropdown_all) queryParams.append('vendor_dropdown_all', 'true');
     if (params?.vendor_names_dropdown) queryParams.append('vendor_names_dropdown', 'true');
@@ -429,11 +432,11 @@ export const getDebitNotes = async (params?: {
     if (params?.debit_note_numbers_dropdown) queryParams.append('debit_note_numbers_dropdown', 'true');
     if (params?.statuses_dropdown) queryParams.append('statuses_dropdown', 'true');
     if (params?.invoice_numbers_dropdown) queryParams.append('invoice_numbers_dropdown', 'true');
-    
+
     // Add pagination parameters
     queryParams.append('page', String(params?.page || 1));
     queryParams.append('per_page', String(params?.per_page || 20));
-    
+
     // Add sorting parameters
     if (params?.sort) queryParams.append('sort', params.sort);
     if (params?.order) queryParams.append('order', params.order || 'desc');
@@ -625,7 +628,7 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
       // Extract only the minimal data needed for dropdown from actual debit notes
       if (fallbackResponse.data && fallbackResponse.data.data) {
         const uniqueCustomers = new Map();
-        
+
         fallbackResponse.data.data.forEach((item: any) => {
           if (item.party_name && item.party_name.trim()) {
             const customerName = item.party_name.trim();
@@ -637,16 +640,16 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
             }
           }
         });
-        
+
         const result = Array.from(uniqueCustomers.values());
-        
+
         return {
           success: true,
           data: result,
           status: fallbackResponse.status,
         };
       }
-      
+
       return {
         success: false,
         error: 'No debit notes found',
@@ -725,10 +728,10 @@ export const getInvoicesForParty = async (partyId: string): Promise<ApiResponse>
 
   try {
     const params = new URLSearchParams();
-    
+
     // Add vendor_id parameter for proper server-side filtering (purchase invoices use vendor_id, not customer_id)
     params.append('vendor_id', partyId);
-    
+
     // Add pagination parameters to get all invoices for this vendor
     params.append('per_page', '5'); // Get all invoices for this vendor
 
@@ -845,7 +848,7 @@ export const checkDebitNoteExistsForInvoice = async (invoiceId: string): Promise
   try {
     // First, get the invoice details to get the invoice number
     let invoiceNumber = invoiceId; // Default to using the ID directly
-    
+
     // Try to get invoice number from invoice data if available
     try {
       const { getPurchaseInvoiceById } = await import("../../purchases/services/purchaseInvoice.services");
@@ -855,15 +858,15 @@ export const checkDebitNoteExistsForInvoice = async (invoiceId: string): Promise
       }
     } catch (error) {
     }
-    
+
     // Use the existing getDebitNotes function to search
     const params = {
       search: invoiceNumber, // Enable search by invoice number
       invoice_id: invoiceId, // Enable filter by invoice UUID
       per_page: 100, // Get more results to be thorough
     };
-    
-    
+
+
     const response = await getDebitNotes(params);
 
     let debitNotes = [];
@@ -871,15 +874,15 @@ export const checkDebitNoteExistsForInvoice = async (invoiceId: string): Promise
       debitNotes = response.data.data?.debit_notes || [];
     } else {
     }
-    
-    
+
+
     // Since we're now filtering by invoice_id and search, all returned debit notes should be linked
     const hasDebitNote = debitNotes.length > 0;
-    
+
     return {
       success: true,
-      data: { 
-        hasDebitNote: hasDebitNote, 
+      data: {
+        hasDebitNote: hasDebitNote,
         debitNotes: debitNotes, // Return the actual debit notes from API
         allDebitNotes: debitNotes
       },

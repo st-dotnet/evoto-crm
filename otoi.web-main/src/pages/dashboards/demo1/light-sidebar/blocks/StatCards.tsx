@@ -79,8 +79,11 @@ const StatCards = () => {
       navigateTo: '/invoices/list',
       subText: summary ? (
         <div className="flex justify-between text-[11px] text-gray-500 mt-0.5">
-          <span>Invoices: {formatINR(summary.total_receivables_gross)}</span>
-          {summary.total_credit_notes > 0 && <span>- CN: {formatINR(summary.total_credit_notes)}</span>}
+          <div className="flex gap-3">
+            <span>Invoices: {formatINR(summary.total_receivables_gross)}</span>
+            {summary.total_credit_notes > 0 && <span>- CN: {formatINR(summary.total_credit_notes)}</span>}
+            {summary.total_debit_notes > 0 && <span className="text-blue-600 font-medium">+ DN: {formatINR(summary.total_debit_notes)}</span>}
+          </div>
         </div>
       ) : null
     },
@@ -95,9 +98,10 @@ const StatCards = () => {
       navigateTo: '/purchases/purchase-invoices',
       subText: summary ? (
         <div className="flex justify-between text-[11px] text-gray-500 mt-0.5">
-          <span>Purchases: {formatINR(summary.total_payables_gross)}</span>
-          {summary.credit_notes_refund > 0 && <span>+ Refund: {formatINR(summary.credit_notes_refund)}</span>}
-          {summary.total_debit_notes > 0 && <span>- DN: {formatINR(summary.total_debit_notes)}</span>}
+          <div className="flex gap-3">
+            <span>Purchases: {formatINR(summary.total_payables_gross)}</span>
+            {summary.credit_notes_refund > 0 && <span>+ Refund: {formatINR(summary.credit_notes_refund)}</span>}
+          </div>
         </div>
       ) : null
     },
