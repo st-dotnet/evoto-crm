@@ -61,7 +61,7 @@ const saveVendorSchema = Yup.object().shape({
     .trim()
     .min(2, "Minimum 2 symbols")
     .max(100, "Maximum 100 symbols"),
-  // .required("Vendor Name is required"),
+    .required("Vendor Name is required"),
   company_name: Yup.string()
     .trim()
     .min(2, "Minimum 2 symbols")
@@ -210,7 +210,7 @@ const ModalVendor = ({ open, onOpenChange, vendor }: IModalVendorProps) => {
               {/* Vendor Name */}
               <div className="flex flex-col gap-1">
                 <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                  Vendor Name
+                  Vendor Name<span className="text-red-500">*</span>
                 </label>
                 <input
                   placeholder="Vendor name"
