@@ -147,6 +147,13 @@ def get_dashboard_summary():
             DebitNote.is_deleted == False,
             func.lower(DebitNote.status) == "credited"
         ).scalar()
+
+        # Subtract refunds paid to customers via credit notes
+        credit_notes_refunded_amount = db.session.query(func.coalesce(func.sum(CreditNote.amount_received), 0)).filter(
+            CreditNote.business_id == business_id,
+            CreditNote.is_deleted == False,
+            CreditNote.amount_received > 0
+        ).scalar()
         
         # PaymentOut remains the same (uses PaymentOut records)
         pout_cash = db.session.query(func.coalesce(func.sum(PaymentOut.amount_paid), 0)).filter(
@@ -161,13 +168,16 @@ def get_dashboard_summary():
             func.lower(PaymentOut.payment_mode) != 'cash'
         ).scalar()
 
-        # Sum all receipts
+        # Sum all receipts (inflows)
         total_receipts = float(total_payments_in) + float(debit_notes_credited_amount)
+        
+        # Sum all payments (outflows)
+        total_payments = float(pout_cash) + float(pout_bank) + float(credit_notes_refunded_amount)
 
         # Since we can't distinguish cash vs bank from invoice payments alone, 
         # we'll show all payments as bank balance
         cash_in_hand = 0.0
-        bank_balance = round(total_receipts - float(pout_cash) - float(pout_bank), 2)
+        bank_balance = round(total_receipts - total_payments, 2)
         cash_bank_balance = cash_in_hand + bank_balance
 
         return jsonify({
@@ -181,6 +191,7 @@ def get_dashboard_summary():
             "total_payables_gross": round(float(invoices_to_pay), 2),
             "total_debit_notes": round(float(debit_notes_to_receive), 2),
             "credit_notes_refund": round(credit_notes_refund, 2),
+            "credit_notes_refunded_amount": round(float(credit_notes_refunded_amount), 2),
         }), 200
 
     except Exception as e:
@@ -439,6 +450,40 @@ def get_latest_transactions():
                 })
         except Exception as e:
             print("Error parsing Credit Notes transactions:", e)
+
+        # --- Credit Note Refund Payments ---
+        try:
+            from app.models.creditIn import CreditNotePayment
+            cn_payments = (
+                CreditNotePayment.query
+                .join(CreditNote)
+                .filter(
+                    CreditNote.business_id == business_id,
+                    CreditNotePayment.is_deleted == False,
+                    CreditNotePayment.status == "completed"
+                )
+                .order_by(desc(CreditNotePayment.created_at))
+                .limit(limit)
+                .all()
+            )
+            for cp in cn_payments:
+                party_name = "-"
+                if cp.credit_note and cp.credit_note.customer:
+                    cn_cust = cp.credit_note.customer
+                    party_name = f"{cn_cust.first_name or ''} {cn_cust.last_name or ''}".strip() or "-"
+                
+                transactions.append({
+                    "id": str(cp.uuid),
+                    "route_path": f"/sales/credit-note/{cp.credit_note_id}",
+                    "date": str(cp.payment_date) if cp.payment_date else None,
+                    "type": "Payment Out", # Categorize as Payment Out since it's a refund
+                    "txn_no": f"REF-{cp.credit_note.credit_note_number}" if cp.credit_note else "REF-CN",
+                    "party_name": party_name,
+                    "amount": round(float(cp.payment_amount or 0), 2),
+                    "created_at": str(cp.created_at) if cp.created_at else None,
+                })
+        except Exception as e:
+            print("Error parsing Credit Note Refund transactions:", e)
 
         # --- Debit Notes ---
         try:
