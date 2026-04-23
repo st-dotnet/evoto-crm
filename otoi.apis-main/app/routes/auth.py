@@ -162,83 +162,45 @@ def signup():
         }
     }), 201
 
-@auth_blueprint.route("/signup", methods=["POST"])
-def register():
-    # Alias to support frontend REGISTER_URL
-    return signup()
-
 @auth_blueprint.route("/login", methods=["POST"])
 def login():
-    """
-    Login a user
-    ---
-    tags:
-      - Authentication
-    consumes:
-      - application/json
-      - application/x-www-form-urlencoded
-    parameters:
-      - in: formData
-        name: username
-        type: string
-        required: true
-        description: User email (OAuth2 uses username field)
-      - in: formData
-        name: password
-        type: string
-        required: true
-        description: User password
-    responses:
-      200:
-        description: Successful login
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                access_token:
-                  type: string
-                token_type:
-                  type: string
-      401:
-        description: Invalid credentials
-    """
     try:
-        
-        # Handle both JSON and form data
-        if request.is_json:
-            data = request.get_json()
-        elif request.form:
-            data = request.form.to_dict()
-        else:
-            # Try to get JSON as fallback
-            data = request.get_json() or {}
-        
-        # Handle OAuth2 password flow - it might send username instead of email
+        print("STEP 1: login route hit", flush=True)
+ 
+        data = request.get_json(silent=True)
+        print("STEP 2: parsed json =", data, flush=True)
+ 
+        if not data:
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
+ 
         email = data.get("email") or data.get("username", "")
         password = data.get("password", "")
-        
-        
+        print(f"STEP 3: email={email}, password_present={bool(password)}", flush=True)
+ 
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
-
+ 
+        print("STEP 4: before user query", flush=True)
         user = User.query.filter_by(email=email).first()
-
+        print("STEP 5: after user query", flush=True)
+ 
         if not user:
             return jsonify({"error": "Invalid email or password"}), 401
-
+ 
+        print("STEP 6: before password check", flush=True)
         if not user.check_password(password):
             return jsonify({"error": "Invalid password"}), 401
-
+        print("STEP 7: after password check", flush=True)
+ 
         if not user.isActive:
             return jsonify({"error": "Account Deactivated"}), 403
-
+ 
         business_id = user.businesses[0].id if user.businesses and len(user.businesses) > 0 else None
-        
-        # Ensure user has a role
+ 
         if not user.role:
             return jsonify({"error": "User role not found"}), 403
-
+ 
+        print("STEP 8: before token creation", flush=True)
         token = create_access_token(
             identity=str(user.uuid),
             additional_claims={
@@ -247,14 +209,16 @@ def login():
                 "business_id": business_id
             }
         )
-        
+        print("STEP 9: after token creation", flush=True)
+ 
         g.user_id = user.uuid
         g.business_id = business_id
-
-        # Update UT status on login
+ 
+        print("STEP 10: before update_ut_status", flush=True)
         user.update_ut_status()
         db.session.commit()
-        
+        print("STEP 11: after commit", flush=True)
+ 
         return jsonify({
             "access_token": token,
             "token_type": "Bearer",
@@ -269,11 +233,14 @@ def login():
                 "isUT": user.isUT
             }
         }), 200
-        
+ 
     except Exception as e:
-        # Log the error for debugging
-        return jsonify({"error": "An error occurred during login. Please try again."}), 500
-
+        import traceback
+        print("LOGIN ERROR:", str(e), flush=True)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    
+    
 @auth_blueprint.route("/check-email", methods=["POST"])
 def check_email():
     """
