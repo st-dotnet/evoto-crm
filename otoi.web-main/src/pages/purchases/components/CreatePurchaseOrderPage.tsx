@@ -798,6 +798,11 @@ const CreatePurchaseOrderPage = () => {
   // ── Save ────────────────────────────────────────────────────────────────────
   const handleSavePO = async (navigateAfterSave = false): Promise<any> => {
     setIsSaving(true);
+    if (!selectedVendor) {
+      toast.error("Please select a vendor");
+      setIsSaving(false);
+      return null;
+    }
     try {
       const subtotal = calculateSubtotal();
       const totalDiscount = calculateDiscount();
@@ -939,7 +944,7 @@ const CreatePurchaseOrderPage = () => {
         <div className="lg:col-span-4 bg-white border rounded-xl p-5 shadow-sm space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Vendor</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Bill To <span className="text-red-500">*</span></h3>
               {selectedVendor ? (
                 <div className="border rounded-xl min-h-[180px] p-4 bg-white">
                   <div className="flex justify-between items-start">
