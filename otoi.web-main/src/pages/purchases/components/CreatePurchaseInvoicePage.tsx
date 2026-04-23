@@ -592,7 +592,7 @@ const CreatePurchaseInvoicePage = () => {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
             {/* Bill From (Vendor) */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Bill From</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Bill From <span className="text-red-500">*</span></h3>
               {selectedVendor ? (
                 <div className="border rounded-xl min-h-[180px] p-3 sm:p-4 bg-white">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">

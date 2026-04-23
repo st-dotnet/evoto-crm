@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  DataGrid,
-  DataGridColumnHeader,
-  DataGridRowSelect,
-  DataGridRowSelectAll,
+    DataGrid,
+    DataGridColumnHeader,
+    DataGridRowSelect,
+    DataGridRowSelectAll,
 } from "@/components";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -183,14 +183,14 @@ const DebitNotePage = () => {
             };
 
             const response = await getDebitNotes(apiParams);
-            
+
             if (response.success && response.data) {
                 // Handle the actual API response structure: {data: {debit_notes: [...], pagination: {...}}}
                 const notesArray = response.data.data?.debit_notes || response.data.debit_notes || [];
-                
+
                 // Store the raw data for edit navigation
                 setRawDebitNotesData(notesArray);
-               
+
                 const formattedData = Array.isArray(notesArray) ? notesArray.map((note: any) => ({
                     id: note.uuid?.toString() || note.id?.toString() || '',
                     date: note.debit_note_date || note.date || '',
@@ -207,13 +207,13 @@ const DebitNotePage = () => {
                     amount: note.total_amount || note.amount || 0,
                     status: note.status || 'unpaid'
                 })) : [];
-                
+
                 // Update the state with the formatted data
                 setDebitNotes(formattedData);
-                
+
                 // Check if backend returned pagination info
                 let totalCount = response.data.data?.pagination?.total || response.data.pagination?.total || response.data.total;
-                
+
                 if (!totalCount) {
                     // Backend didn't return pagination info, fetch all items to get total count
                     try {
@@ -226,7 +226,7 @@ const DebitNotePage = () => {
                             }),
                             status: selectedStatus === 'all' ? '' : selectedStatus
                         });
-                        
+
                         if (allItemsResponse.success && allItemsResponse.data) {
                             const allNotesArray = allItemsResponse.data.data?.debit_notes || allItemsResponse.data.debit_notes || [];
                             totalCount = Array.isArray(allNotesArray) ? allNotesArray.length : formattedData.length;
@@ -237,7 +237,7 @@ const DebitNotePage = () => {
                         totalCount = formattedData.length;
                     }
                 }
-                
+
                 return {
                     data: formattedData,
                     totalCount: totalCount,
@@ -284,12 +284,12 @@ const DebitNotePage = () => {
             // Get the debit note details to find linked invoice
             const debitNoteResponse = await getDebitNoteById(debitNoteToDelete);
             const linkedInvoiceId = debitNoteResponse.success && debitNoteResponse.data?.invoice_id;
-            
+
             const response = await deleteDebitNote(debitNoteToDelete);
             if (response.success) {
                 toast.success('Debit note deleted successfully');
                 setRefreshKey(prev => prev + 1); // Refresh autocomplete data
-                
+
                 // Update purchase invoice status if there was a linked invoice
                 if (linkedInvoiceId) {
                     try {
@@ -298,12 +298,12 @@ const DebitNotePage = () => {
                         // Don't show error to user as deletion was successful
                     }
                 }
-                
+
                 // Trigger a custom event to notify CreateDebitNotePage to refresh invoice dropdown
-                window.dispatchEvent(new CustomEvent('debitNoteDeleted', { 
-                    detail: { debitNoteId: debitNoteToDelete } 
+                window.dispatchEvent(new CustomEvent('debitNoteDeleted', {
+                    detail: { debitNoteId: debitNoteToDelete }
                 }));
-            } 
+            }
         } catch (error: any) {
             toast.error(error.message || 'Failed to delete debit note');
         } finally {
@@ -492,11 +492,11 @@ const DebitNotePage = () => {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         // Find raw data for this specific debit note
-                                        const rawDebitNote = rawDebitNotesData.find(note => 
+                                        const rawDebitNote = rawDebitNotesData.find(note =>
                                             (note.uuid?.toString() || note.id?.toString()) === row.original.id
                                         );
-                                        navigate(`/debit-note/view/${row.original.id}`, { 
-                                            state: { debitNoteData: rawDebitNote } 
+                                        navigate(`/debit-note/view/${row.original.id}`, {
+                                            state: { debitNoteData: rawDebitNote }
                                         });
                                         setIsOpen(false);
                                     }}
@@ -510,11 +510,11 @@ const DebitNotePage = () => {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         // Find the raw data for this specific debit note
-                                        const rawDebitNote = rawDebitNotesData.find(note => 
+                                        const rawDebitNote = rawDebitNotesData.find(note =>
                                             (note.uuid?.toString() || note.id?.toString()) === row.original.id
                                         );
-                                        navigate(`/debit-note/edit/${row.original.id}`, { 
-                                            state: { debitNoteData: rawDebitNote } 
+                                        navigate(`/debit-note/edit/${row.original.id}`, {
+                                            state: { debitNoteData: rawDebitNote }
                                         });
                                         setIsOpen(false);
                                     }}
@@ -767,7 +767,7 @@ const DebitNotePage = () => {
                                             </DropdownMenuItem>
                                         ) : (
                                             <>
-                                                {searchType === 'party_name' ? 
+                                                {searchType === 'party_name' ?
                                                     allCustomerNames.map((item: PartyNameItem) => {
                                                         const displayValue = item.name;
                                                         const keyValue = item.uuid;
@@ -850,7 +850,7 @@ const DebitNotePage = () => {
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* Custom Date Range Inputs */}
                     {showCustomDateRange && (
                         <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 rounded-lg">
@@ -926,8 +926,8 @@ const DebitNotePage = () => {
                         <Button variant="outline" onClick={handleDeleteCancel}>
                             Cancel
                         </Button>
-                        <Button 
-                            variant="destructive" 
+                        <Button
+                            variant="destructive"
                             onClick={handleDeleteConfirm}
                             disabled={isDeleting}
                         >
