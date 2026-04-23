@@ -10,11 +10,14 @@ def extract_jwt_info():
     Middleware to verify JWT and extract user_id and business_id.
     Blocks all requests except public endpoints and OPTIONS requests.
     """
-    
-    # Allow CORS preflight requests
+
+    # Allow CORS preflight
     if request.method == "OPTIONS":
         return None
-    
+
+    # Normalize path (fix trailing slash issue)
+    path = request.path.rstrip('/')
+
     public_endpoints = [
         '/api/auth/signup',
         '/api/auth/login',
@@ -26,59 +29,65 @@ def extract_jwt_info():
 
         # Swagger / Docs
         '/apidocs',
-        '/apidocs/',
         '/apidocs/index.html',
         '/apidocs/swagger.json',
-
-    # Flask-apispec spec endpoint (IMPORTANT)
         '/apispec_1.json',
 
-    # Other
+        # Other
         '/flasgger',
-        '/flasgger/',
         '/favicon.ico',
-        
-        # Excel Export - Public endpoint
+
+        # Public exports
         '/api/items/export/excel',
-        
-        # PDF Export - Public endpoint
         '/api/items/export/pdf',
-        
-        # Print PDF - Public endpoint (allow query params for browser compatibility)
         '/api/items/export/print-pdf',
 
-        # Shared Documents - Public endpoint
+        # Shared Documents
         '/api/share-data/public/pdf'
     ]
-    
-    # Check if current endpoint is a static file or a public endpoint
-    path = request.path
-    if path.startswith('/static/') or path.startswith('/api/static/') or \
-       path == '/static' or path == '/api/static' or \
-       any(path.startswith(endpoint) for endpoint in public_endpoints):
+
+    # Normalize public endpoints
+    public_paths = [endpoint.rstrip('/') for endpoint in public_endpoints]
+
+    # Allow static + public endpoints
+    if (
+        path.startswith('/static') or
+        path.startswith('/api/static') or
+        path in public_paths or
+        any(path.startswith(p) for p in public_paths)
+    ):
         return None
 
-    # Require authentication for all other endpoints
+    # Require Authorization for everything else
     auth_header = request.headers.get("Authorization")
+
     if not auth_header:
-        return jsonify({"error": "Authentication required", "message": "Missing Authorization header"}), 401
+        return jsonify({
+            "error": "Authentication required",
+            "message": "Missing Authorization header"
+        }), 401
 
     try:
         verify_jwt_in_request()
+
         user_id = get_jwt_identity()
-        
-        # Check if the user is still active in the database
+
+        # Check user active
         user = User.query.filter_by(uuid=user_id).first()
         if not user or not user.isActive:
             return jsonify({
                 "message": "Account deactivated or user not found. Please log in again."
             }), 403
 
+        # Store in global context
         g.user_id = user_id
+
         claims = get_jwt()
         g.business_id = claims.get("business_id")
         g.role = claims.get("role")
 
     except Exception as e:
         logging.error(f"JWT Verification Error: {e}")
-        abort(401, description="Invalid or expired token ")
+        return jsonify({
+            "message": "Invalid or expired token"
+        }), 401
