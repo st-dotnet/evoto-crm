@@ -1074,7 +1074,10 @@ const ModalCustomer = ({
               )}
               {(() => {
                 const selectedStatus = formik.values.status;
-                if (selectedStatus === "4") {
+                const winStatus = statusList.find((s) => s.name.toLowerCase() === "win");
+                const winStatusId = winStatus?.id?.toString();
+                // Show fields if status is Win (either by ID or if no status is set yet but we have win status)
+                if (selectedStatus === winStatusId || (!selectedStatus && winStatusId)) {
                   return (
                     <>
                       {/* Billing Address Fields */}

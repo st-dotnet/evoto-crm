@@ -70,7 +70,7 @@ const QuotationPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'open' | 'closed' | 'converted'>('open');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'open' | 'closed' | 'converted'>('all');
   const [activeTab, setActiveTab] = useState<'quotations' | 'items'>('quotations');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');

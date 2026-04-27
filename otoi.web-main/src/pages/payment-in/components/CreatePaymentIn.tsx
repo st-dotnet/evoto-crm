@@ -555,17 +555,10 @@ export const CreatePaymentIn = () => {
   const filteredParties = parties.filter((party) => {
     if (!party || !party.hasInvoices) return false;
     const searchLower = searchQuery.toLowerCase();
-    console.log('DEBUG - PaymentIn search:', { searchQuery, partyName: party.name, partyMobile: party.mobile });
     return (
       (party.name && party.name.toLowerCase().includes(searchLower)) ||
       (party.mobile && party.mobile.includes(searchQuery))
     );
-  });
-
-  console.log('DEBUG - PaymentIn totals:', { 
-    totalParties: parties.length, 
-    filteredParties: filteredParties.length,
-    searchQuery 
   });
 
   // Custom Tooltip Cell component for settled payments
@@ -655,28 +648,28 @@ export const CreatePaymentIn = () => {
       },
       {
         accessorKey: "discount",
-        header: ({ column }) => (
-          <DataGridColumnHeader
-            title="Discount"
-            column={column}
-            className="justify-center"
-          />
-        ),
-        cell: (info) => (
+        header: ({ column }) => (                                       
+          <DataGridColumnHeader                                                          
+            title="Discount"                                                                              
+            column={column}                                                                                                                   
+            className="justify-center"                                                                
+          />                                               
+        ),                                        
+        cell: (info) => (                        
           <TooltipCell row={info.row}>
             <div className="text-sm font-medium text-center">
               ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
-            </div>
+            </div>                
           </TooltipCell>
         ),
-        meta: {
+        meta: {                 
           headerClassName: "w-[130px]",
-          cellClassName: "text-center",
+          cellClassName: "text-center",                   
         },
       },
       {
         accessorKey: "amount_received",
-        header: ({ column }) => (
+        header: ({ column }) => (             
           <DataGridColumnHeader
             title="Amount Received"
             column={column}
@@ -1097,7 +1090,6 @@ export const CreatePaymentIn = () => {
               className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                console.log('DEBUG - PaymentIn input changed:', e.target.value);
                 setSearchQuery(e.target.value);
               }}
             />

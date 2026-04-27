@@ -568,11 +568,6 @@ const CreateCreditNotePage = () => {
 
   // Function to recalculate totals
   const recalculateTotals = (updatedItems: any[]) => {
-    // If there are no items, preserve the existing balance amount
-    if (updatedItems.length === 0) {
-      // Don't recalculate to 0, keep existing values
-      return;
-    }
 
     const subtotal = updatedItems.reduce(
       (sum: number, item: any) => sum + item.quantity * item.price_per_item,

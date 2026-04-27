@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock, Mail } from "lucide-react";
+import { ArrowLeft, Download, Printer, Share, CreditCard, Edit, X, FileText, Clock, Mail, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -832,8 +832,6 @@ const InvoiceDetailsPage: React.FC = () => {
     );
   }
 
-  if (!invoiceData) return;
-
   if (!invoiceData) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -900,28 +898,27 @@ const InvoiceDetailsPage: React.FC = () => {
       </style>
       {/* Sticky Header Actions */}
       <div className="bg-white px-4 md:px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-4 flex-wrap">
-          <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center justify-between max-w-7xl mx-auto gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate("/invoices")}
-              className="md:h-10 md:w-10 h-8 w-8"
+              className="md:h-10 md:w-10 h-8 w-8 flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-lg md:text-xl font-semibold text-black">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h1 className="text-base md:text-xl font-semibold text-black truncate">
                 Invoice #{invoiceData.invoice_number}
               </h1>
-              <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
-                  {invoiceData.payment_status}
-                </span>
-              </div>
+              <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize flex-shrink-0 ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
+                {invoiceData.payment_status}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Desktop buttons */}
+          <div className="hidden md:flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
 
@@ -940,13 +937,44 @@ const InvoiceDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* <Button variant="outline" size="sm" onClick={handleEdit} className="gap-2"><Edit className="h-4 w-4" />Edit</Button> */}
             <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2"><Clock className="h-4 w-4" />Payment History</Button>
             {Math.max(0, invoiceData.total_amount - (invoiceData.amount_paid + getTotalCreditNoteAmount())) > 0 && (
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
                 <CreditCard className="h-4 w-4" />Record Payment
               </Button>
             )}
+          </div>
+          {/* Mobile hamburger menu */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleDownloadPDF} className="gap-2 cursor-pointer">
+                  <Download className="h-4 w-4" /> Download PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePrintPDF} className="gap-2 cursor-pointer">
+                  <Printer className="h-4 w-4" /> Print PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePaymentHistory} className="gap-2 cursor-pointer">
+                  <Clock className="h-4 w-4" /> Payment History
+                </DropdownMenuItem>
+                {Math.max(0, invoiceData.total_amount - (invoiceData.amount_paid + getTotalCreditNoteAmount())) > 0 && (
+                  <DropdownMenuItem onClick={handleRecordPayment} className="gap-2 cursor-pointer">
+                    <CreditCard className="h-4 w-4" /> Record Payment
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -1143,97 +1171,11 @@ const InvoiceDetailsPage: React.FC = () => {
         </div>
 
         <div className="mb-4">
-          {/* Mobile Card View (Matched to Quotation Style) */}
-          <div className="md:hidden space-y-4 mb-8 no-print">
-            {invoiceData.items?.map((item, index) => (
-              <div key={item.uuid} className="border border-black rounded-lg overflow-hidden border-b-2 bg-white">
-                {/* Card Header */}
-                <div className="grid grid-cols-[1fr,auto] gap-2 p-3 border-b border-black">
-                  <div>
-                    <p className="text-[10px] font-bold text-black uppercase mb-1">ITEM DESCRIPTION</p>
-                    <div className="flex items-start gap-1">
-                      <span className="text-sm font-bold text-black">{index + 1}.</span>
-                      <div>
-                        <p className="text-sm font-bold text-black leading-tight">{item.product_name}</p>
-                        {item.description && (
-                          <p className="text-[10px] text-gray-600 mt-1 leading-relaxed">{item.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="w-16 h-16 border border-black rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {item.image ? (
-                      <img src={resolveImageUrl(item.image)} className="w-full h-full object-cover" alt={item.product_name} />
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
-                  </div>
-                </div>
+        </div>
 
-                {/* Pricing Grid (3 Columns) */}
-                <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-                  <div className="p-2 text-center">
-                    <p className="text-[9px] font-bold text-black uppercase mb-1">PRICE/ITEM</p>
-                    <p className="text-[11px] font-medium text-black">{formatCurrency(item.unit_price)}</p>
-                  </div>
-                  <div className="p-2 text-center">
-                    <p className="text-[9px] font-bold text-black uppercase mb-1">DISC.</p>
-                    <p className="text-[11px] font-medium text-black">-{formatCurrency(item.discount_amount)}</p>
-                    {item.discount_percentage > 0 && (
-                      <span className="text-[8px] block">({item.discount_percentage}%)</span>
-                    )}
-                  </div>
-                  <div className="p-2 text-center">
-                    <p className="text-[9px] font-bold text-black uppercase mb-1">TAX</p>
-                    <p className="text-[11px] font-medium text-black">
-                      {formatCurrency(item.tax_amount)}
-                      <span className="text-[8px] block">({item.tax_percentage}%)</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Card Footer (Totals) */}
-                <div className="grid grid-cols-2 p-3 bg-gray-50/50">
-                  <div>
-                    <p className="text-[11px] font-bold text-black uppercase">
-                      QTY: {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] font-bold text-black uppercase">
-                      TOTAL: {formatCurrency(item.total_price)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Mobile Subtotal Summary Card */}
-            <div className="bg-white border border-black rounded-lg overflow-hidden no-print">
-              <div className="p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
-                  <span className="text-sm font-bold text-black">
-                    {formatCurrency(invoiceData.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0))}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-red-600">
-                  <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
-                  <span className="text-sm font-bold">-{formatCurrency(invoiceData.discount_total)}</span>
-                </div>
-                <div className="flex justify-between items-center text-black">
-                  <span className="text-xs font-bold uppercase">TOTAL TAX</span>
-                  <span className="text-sm font-bold">{formatCurrency(invoiceData.tax_total)}</span>
-                </div>
-                <div className="pt-2 border-t-2 border-black flex justify-between items-center">
-                  <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
-                  <span className="text-lg font-black text-black">{formatCurrency(invoiceData.total_amount)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <table className="hidden md:table print:table w-full border border-black">
+          {/* Desktop/Print Table */}
+          <div className="hidden md:block print:block">
+            <table className="w-full border border-black print:min-w-full">
             <thead>
               <tr className="border-b-2 border-black bg-gray-100">
                 <th className="px-3 py-2 text-left font-semibold text-xs text-black uppercase tracking-wider w-1/2 border-r border-black">
@@ -1355,7 +1297,80 @@ const InvoiceDetailsPage: React.FC = () => {
               </tr>
             </tfoot>
           </table>
+          </div>
+
+        {/* Mobile-only Table View */}
+        <div className="md:hidden print:hidden mb-8">
+          <table className="w-full border border-black">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="px-1 py-1 text-left text-[7px] font-semibold text-black uppercase border-r border-black w-[120px]">ITEM</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[60px]">PRICE</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">QTY</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">DISC</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">TAX</th>
+                <th className="px-1 py-1 text-right text-[7px] font-semibold text-black uppercase w-[60px]">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoiceData.items?.map((item, index) => (
+                <tr key={item.uuid}>
+                  <td className="px-1 py-1 align-top border-r border-black w-[120px]">
+                    <div className="flex items-start gap-1">
+                      <span className="text-[6px] font-bold text-black">{index + 1}.</span>
+                      <div>
+                        <p className="text-[6px] font-bold text-black leading-tight truncate">{item.product_name}</p>
+                        {item.description && (
+                          <p className="text-[5px] text-gray-600 mt-1 truncate">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[60px]">
+                    {formatCurrency(item.unit_price)}
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.quantity}
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.discount_percentage > 0 ? `${item.discount_percentage}%` : "—"}
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.tax_percentage > 0 ? `${item.tax_percentage}%` : "—"}
+                  </td>
+                  <td className="px-1 py-1 text-right text-[6px] font-bold text-black w-[60px]">
+                    {formatCurrency(item.total_price)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {/* Mobile Subtotal Summary Card */}
+        <div className="md:hidden print:hidden bg-white border border-black rounded-lg overflow-hidden no-print mb-8">
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
+              <span className="text-sm font-bold text-black">
+                {formatCurrency(invoiceData.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0))}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-red-600">
+              <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
+              <span className="text-sm font-bold">-{formatCurrency(invoiceData.discount_total)}</span>
+            </div>
+            <div className="flex justify-between items-center text-black">
+              <span className="text-xs font-bold uppercase">TOTAL TAX</span>
+              <span className="text-sm font-bold">{formatCurrency(invoiceData.tax_total)}</span>
+            </div>
+            <div className="pt-2 border-t-2 border-black flex justify-between items-center">
+              <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
+              <span className="text-lg font-black text-black">{formatCurrency(invoiceData.total_amount)}</span>
+            </div>
+          </div>
+        </div>
+
         {/* ===== Bottom Section (Two Column Layout) ===== */}
         <div className="mt-8 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 print:grid-cols-2 print:gap-16 print:mt-16">
 
@@ -1498,6 +1513,7 @@ const InvoiceDetailsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
 
         {/* Payment History Sidebar */}
         <Sheet
@@ -1508,16 +1524,16 @@ const InvoiceDetailsPage: React.FC = () => {
             side="right"
             className="sm:max-w-md p-0 flex flex-col h-full border-l border-gray-200"
           >
-            <SheetHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between">
-              <SheetTitle className="text-xl font-bold text-gray-800">
+            <SheetHeader className="pt-6 pr-2 pb-4 px-4 md:p-6 border-b border-gray-100 flex flex-row items-center justify-between gap-2">
+              <SheetTitle className="text-xs md:text-xl font-bold text-gray-800 flex-1 leading-tight">
                 Payment History - Invoice #{invoiceData.invoice_number}
               </SheetTitle>
             </SheetHeader>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
               {/* Summary Section */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
+              <div className="space-y-2 md:space-y-3">
+                <div className="flex justify-between items-center text-xs md:text-sm">
                   <span className="text-gray-500 font-medium">
                     Invoice Amount
                   </span>
@@ -1525,7 +1541,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     {formatCurrency(invoiceData.total_amount)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                <div className="flex justify-between items-center text-xs md:text-sm pb-3 md:pb-4 border-b border-gray-100">
                   <span className="text-gray-500 font-medium tracking-tight">
                     Initial Amount Received
                   </span>
@@ -1534,7 +1550,7 @@ const InvoiceDetailsPage: React.FC = () => {
                   </span>
                 </div>
                 {(invoiceData.payment_discount ?? 0) > 0 && (
-                  <div className="flex justify-between items-center text-sm pb-4 border-b border-gray-100">
+                  <div className="flex justify-between items-center text-xs md:text-sm pb-3 md:pb-4 border-b border-gray-100">
                     <span className="text-gray-500 font-medium tracking-tight">
                       Payment Discount Applied
                     </span>
@@ -1548,16 +1564,16 @@ const InvoiceDetailsPage: React.FC = () => {
               {/* Payments List */}
               <div className="space-y-4">
                 {invoiceData.amount_paid > 0 ? (
-                  <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="p-3 md:p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className="text-sm font-normal text-blue-600">
+                      <h4 className="text-xs md:text-sm font-normal text-blue-600">
                         Payment in #{invoiceData.invoice_number}
                       </h4>
-                      <span className="text-sm font-bold text-gray-900">
+                      <span className="text-xs md:text-sm font-bold text-gray-900">
                         {formatCurrency(invoiceData.amount_paid)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+                    <div className="flex justify-between items-center text-[10px] md:text-xs text-gray-500 font-medium">
                       <span>
                         {new Date(invoiceData.invoice_date).toLocaleDateString(
                           "en-IN",
@@ -1567,7 +1583,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 text-sm">
+                  <div className="text-center text-gray-500 text-xs md:text-sm">
                     No payments recorded
                   </div>
                 )}
@@ -1576,7 +1592,7 @@ const InvoiceDetailsPage: React.FC = () => {
               {/* Credit Note History */}
               {creditNotes.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="text-sm font-bold text-gray-800 mb-3">
+                  <h4 className="text-xs md:text-sm font-bold text-gray-800 mb-2 md:mb-3">
                     Credit Note History
                   </h4>
                   <div className="space-y-2">
@@ -1711,7 +1727,7 @@ const InvoiceDetailsPage: React.FC = () => {
                           });
                           validateAmountReceived(cappedAmount);
                         }}
-                        className={`h-10 ${amountError ? "border-red-5 00 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
+                        className={`h-10 ${amountError ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]`}
                         placeholder="0.00"
                         step="0.01"
                       />
@@ -1981,7 +1997,6 @@ const InvoiceDetailsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
   );
 };
 

@@ -228,48 +228,64 @@ const MobileView = ({
   if (loading && rows.length === 0) return null;
 
   return (
-    <div className="flex flex-col lg:hidden border-t border-gray-100">
+    <div className="flex flex-col lg:hidden border-t border-gray-100 overflow-x-hidden">
       {rows.map((row) => {
         const item = row.original as InventoryItem;
         return (
           <div key={item.item_id} className="inv-mobile-row">
-            <div className="flex flex-col cursor-pointer grow pr-3" onClick={() => onDetails(item.item_id)}>
-              <span className="font-semibold text-[13px] text-gray-900 mb-0.5">{item.item_name}</span>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="inv-code-chip">{item.item_code}</span>
-                <span className="text-[11px] text-gray-400">Qty: {item.opening_stock}</span>
+            <div className="flex flex-col grow min-w-0 cursor-pointer" onClick={() => onDetails(item.item_id)}>
+              <div className="flex items-center justify-between mb-1 gap-3">
+                <span className="font-semibold text-[13px] text-gray-900 truncate">{item.item_name}</span>
+                {item.sales_price > 0 && (
+                  <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded shrink-0 ml-2">
+                    ₹{item.sales_price.toLocaleString("en-IN")}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inv-code-chip text-[10px]">{item.item_code}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md text-gray-600 bg-gray-100 truncate">
+                  {item.category}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${item.opening_stock <= 5 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                  Qty: {item.opening_stock}
+                </span>
+                {item.purchase_price !== null && (
+                  <span className="text-[10px] text-gray-400 truncate">
+                    Purchase: ₹{item.purchase_price.toLocaleString("en-IN")}
+                  </span>
+                )}
               </div>
             </div>
 
-            {item.image ? (
-              <div className="size-11 rounded-xl overflow-hidden border border-gray-100 mr-2 shrink-0">
-                <img src={resolveImageUrl(item.image)} alt={item.item_name} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="size-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mr-2 shrink-0">
-                <Package className="w-4 h-4 text-gray-300" />
-              </div>
-            )}
-
-            <div className="flex flex-col items-end mr-1 shrink-0">
-              <span className="inv-price-badge">₹{item.sales_price?.toLocaleString("en-IN")}</span>
+            <div className="flex flex-col items-center shrink-0 ml-3">
+              {item.image ? (
+                <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 shadow-sm mb-2">
+                  <img src={resolveImageUrl(item.image)} alt={item.item_name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-2">
+                  <Package className="w-6 h-6 text-gray-300" />
+                </div>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inv-action-trigger shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32 p-1">
+                  <DropdownMenuItem onClick={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onDetails(item.item_id)}><Eye className="mr-2 h-4 w-4" />Details</DropdownMenuItem>
+                  <div className="my-1 border-t border-gray-100" />
+                  <DropdownMenuItem className="text-red-500 focus:bg-red-50" onClick={() => onDelete(item.item_id)}>
+                    <Trash2 className="mr-2 h-4 w-4" />Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="inv-action-trigger shrink-0">
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-32 p-1">
-                <DropdownMenuItem onClick={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDetails(item.item_id)}><Eye className="mr-2 h-4 w-4" />Details</DropdownMenuItem>
-                <div className="my-1 border-t border-gray-100" />
-                <DropdownMenuItem className="text-red-500 focus:bg-red-50" onClick={() => onDelete(item.item_id)}>
-                  <Trash2 className="mr-2 h-4 w-4" />Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         );
       })}
@@ -440,16 +456,16 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       cell: (info) => {
         const image = info.row.original.image;
         return image ? (
-          <div className="size-10 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+          <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
             <img src={resolveImageUrl(image)} alt="Product" className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="size-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-            <Package className="w-4 h-4 text-slate-300" />
+          <div className="w-20 h-20 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+            <Package className="w-8 h-8 text-slate-300" />
           </div>
         );
       },
-      meta: { headerClassName: "w-16", cellClassName: "" },
+      meta: { headerClassName: "w-24", cellClassName: "" },
     },
     {
       accessorFn: (row) => row.item_name,
@@ -754,6 +770,11 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           transition: color 0.15s;
           text-decoration: none;
           display: block;
+          line-height: 1.4;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 200px;
         }
         .inv-item-name:hover { color: #3b82f6; }
 
@@ -766,10 +787,12 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           letter-spacing: 0.04em;
           color: #64748b;
           font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+          white-space: nowrap;
         }
 
         .inv-category-tag {
           display: inline-flex;
+          align-items: center;
           padding: 0.2rem 0.625rem;
           font-size: 0.75rem;
           font-weight: 500;
@@ -777,6 +800,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           background: #eff6ff;
           color: #3b82f6;
           border: 1px solid #dbeafe;
+          white-space: nowrap;
         }
 
         .inv-qty-badge {
@@ -788,12 +812,14 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           font-size: 0.8125rem;
           font-weight: 700;
           border-radius: 0.5rem;
+          line-height: 1;
         }
         .inv-qty-badge--ok { background: #f0fdf4; color: #16a34a; }
         .inv-qty-badge--low { background: #fff7ed; color: #ea580c; }
 
         .inv-price-badge {
           display: inline-flex;
+          align-items: center;
           padding: 0.25rem 0.75rem;
           font-size: 0.8125rem;
           font-weight: 700;
@@ -802,6 +828,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           color: #15803d;
           border: 1px solid #bbf7d0;
           font-variant-numeric: tabular-nums;
+          line-height: 1;
         }
 
         .inv-action-trigger {
@@ -827,16 +854,289 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           text-transform: uppercase;
         }
 
-        /* Mobile row */
-        .inv-mobile-row {
-          display: flex;
-          align-items: center;
-          padding: 0.875rem 1.25rem;
-          border-bottom: 1px solid #f1f5f9;
-          transition: background 0.15s;
+        /* Table alignment fixes */
+        table {
+          border-collapse: collapse;
         }
-        .inv-mobile-row:hover { background: #f8fafc; }
-        .inv-mobile-row:last-child { border-bottom: none; }
+
+/* Mobile row */
+.inv-mobile-row {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+  overflow-x: hidden;
+}
+.inv-mobile-row:hover { background: #f8fafc; }
+.inv-mobile-row:last-child { border-bottom: none; }
+
+/* ── Responsive Styles ── */
+@media (max-width: 996px) {
+  .inv-page {
+    padding: 0;
+  }
+  .inv-hero {
+    padding: 1.25rem 1rem 1rem;
+    margin: 0 0.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .inv-hero-title {
+    font-size: 1.25rem;
+  }
+  .inv-hero-sub {
+    font-size: 0.75rem;
+  }
+  .inv-stats {
+    width: 100%;
+    gap: 0.5rem;
+  }
+  .inv-stat {
+    min-width: calc(33.333% - 0.35rem);
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+  }
+  .inv-stat-label {
+    font-size: 0.65rem;
+  }
+  .inv-stat-value {
+    font-size: 1rem;
+  }
+  .inv-toolbar {
+    padding: 0.75rem 1rem;
+  }
+  .inv-search-wrap {
+    width: 200px;
+  }
+  .inv-filter-btn {
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+  }
+  .inv-create-btn {
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+  }
+  .inv-item-name {
+    font-size: 0.75rem;
+  }
+  .inv-code-chip {
+    font-size: 0.65rem;
+  }
+  .inv-category-tag {
+    font-size: 0.7rem;
+    padding: 0.18rem 0.55rem;
+  }
+  .inv-qty-badge {
+    font-size: 0.75rem;
+    padding: 0.18rem 0.55rem;
+    min-width: 2rem;
+  }
+  .inv-price-badge {
+    font-size: 0.75rem;
+    padding: 0.22rem 0.65rem;
+  }
+  .inv-col-header {
+    font-size: 0.7rem;
+  }
+}
+        @media (max-width: 996px) {
+          .inv-page {
+            padding: 0;
+          }
+          .inv-hero {
+            padding: 1.25rem 1rem 1rem;
+            margin: 0 0.5rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+          .inv-hero-title {
+            font-size: 1.25rem;
+          }
+          .inv-hero-sub {
+            font-size: 0.75rem;
+          }
+          .inv-stats {
+            width: 100%;
+            gap: 0.5rem;
+          }
+          .inv-stat {
+            min-width: calc(33.333% - 0.35rem);
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+          }
+          .inv-stat-label {
+            font-size: 0.65rem;
+          }
+          .inv-stat-value {
+            font-size: 1rem;
+          }
+          .inv-toolbar {
+            padding: 0.75rem 1rem;
+          }
+          .inv-search-wrap {
+            width: 200px;
+          }
+          .inv-filter-btn {
+            padding: 0 0.75rem;
+            font-size: 0.75rem;
+          }
+          .inv-create-btn {
+            padding: 0 0.75rem;
+            font-size: 0.75rem;
+          }
+          .inv-item-name {
+            font-size: 0.75rem;
+          }
+          .inv-code-chip {
+            font-size: 0.65rem;
+          }
+          .inv-category-tag {
+            font-size: 0.7rem;
+            padding: 0.18rem 0.55rem;
+          }
+          .inv-qty-badge {
+            font-size: 0.75rem;
+            padding: 0.18rem 0.55rem;
+            min-width: 2rem;
+          }
+          .inv-price-badge {
+            font-size: 0.75rem;
+            padding: 0.22rem 0.65rem;
+          }
+          .inv-col-header {
+            font-size: 0.7rem;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .inv-hero {
+            padding: 1rem 0.75rem 0.875rem;
+            margin: 0;
+          }
+          .inv-hero-title {
+            font-size: 1.125rem;
+          }
+          .inv-stats {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+          .inv-stat {
+            min-width: 100%;
+            width: 100%;
+          }
+          .inv-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            padding: 0.75rem;
+          }
+          .inv-search-wrap {
+            width: 100%;
+          }
+          .inv-toolbar-actions {
+            flex-direction: column;
+            width: 100%;
+          }
+          .inv-filter-btn,
+          .inv-create-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          .inv-item-name {
+            font-size: 0.72rem;
+          }
+          .inv-code-chip {
+            font-size: 0.62rem;
+          }
+          .inv-category-tag {
+            font-size: 0.68rem;
+            padding: 0.16rem 0.52rem;
+          }
+          .inv-qty-badge {
+            font-size: 0.72rem;
+            padding: 0.16rem 0.52rem;
+            min-width: 1.85rem;
+          }
+          .inv-price-badge {
+            font-size: 0.72rem;
+            padding: 0.21rem 0.6rem;
+          }
+          .inv-col-header {
+            font-size: 0.68rem;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .inv-hero {
+            padding: 0.875rem 0.5rem 0.75rem;
+          }
+          .inv-hero-title {
+            font-size: 1rem;
+          }
+          .inv-hero-sub {
+            font-size: 0.7rem;
+          }
+          .inv-stat {
+            padding: 0.5rem;
+          }
+          .inv-stat-label {
+            font-size: 0.6rem;
+          }
+          .inv-stat-value {
+            font-size: 0.9rem;
+          }
+          .inv-item-name {
+            font-size: 0.7rem;
+            max-width: 100px;
+          }
+          .inv-code-chip {
+            font-size: 0.6rem;
+          }
+          .inv-category-tag {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+          }
+          .inv-qty-badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            min-width: 1.75rem;
+          }
+          .inv-price-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+          }
+          .inv-col-header {
+            font-size: 0.65rem;
+          }
+        }
+
+        /* DataGrid container responsive */
+        @media (max-width: 996px) {
+          .mx-4 {
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+            overflow-x: hidden;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .mx-4 {
+            margin-left: 0.75rem;
+            margin-right: 0.75rem;
+            overflow-x: hidden;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .mx-4 {
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+            overflow-x: hidden;
+          }
+        }
       `}</style>
 
       <div className="inv-page">

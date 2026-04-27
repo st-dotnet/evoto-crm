@@ -1835,18 +1835,18 @@ const CreatePurchaseOrderPage = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">{(currentUser as any)?.isUT ? 'UTGST' : 'SGST'}@{tax / 2}</span>
+                  <span className="text-gray-700">{(currentUser as any)?.isUT ? 'UTGST' : 'SGST'}</span>
                   <span className="font-medium">
-                    ₹ {((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100).toLocaleString("en-IN", {
+                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">CGST@{tax / 2}</span>
+                  <span className="text-gray-700">CGST</span>
                   <span className="font-medium">
-                    ₹ {((calculateSubtotal() - calculateDiscount()) * (tax / 2) / 100).toLocaleString("en-IN", {
+                    ₹ {(calculateTax() / 2).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}

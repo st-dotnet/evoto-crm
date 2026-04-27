@@ -1193,4 +1193,3 @@ export const PaymentInPage = () => {
     </div>
   );
 };
-  

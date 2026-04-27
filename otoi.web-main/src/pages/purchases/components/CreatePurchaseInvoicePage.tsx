@@ -898,18 +898,18 @@ const CreatePurchaseInvoicePage = () => {
                   </div>
 
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">SGST@{(tax / 2)}</span>
+                    <span className="text-gray-500">SGST</span>
                     <span className="text-gray-800 font-medium flex items-center gap-1">
                       <span className="text-gray-400 font-normal">₹</span>
-                      {(((calculateSubtotal() - calculateDiscount()) * (tax / 2)) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">CGST@{(tax / 2)}</span>
+                    <span className="text-gray-500">CGST</span>
                     <span className="text-gray-800 font-medium flex items-center gap-1">
                       <span className="text-gray-400 font-normal">₹</span>
-                      {(((calculateSubtotal() - calculateDiscount()) * (tax / 2)) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 

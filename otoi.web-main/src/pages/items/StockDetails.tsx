@@ -365,20 +365,20 @@ export default function StockDetails({
           </div>
 
           {formik.values.low_stock_warning && (
-            <div className="ml-7 pt-1 space-y-4 max-w-md animate-in fade-in slide-in-from-left-2 duration-300">
+            <div className="pt-1 space-y-4 w-full animate-in fade-in slide-in-from-left-2 duration-300">
               <div className="space-y-1.5">
                 <label className="text-xs sm:text-sm font-semibold text-gray-700">
                   Low Stock Quantity
                 </label>
-                <div className="flex group">
+                <div className="flex group items-stretch">
                   <input
                     type="number"
                     placeholder="Enter Low Stock Quantity"
-                    className="flex-1 px-3 py-2 border border-r-0 border-gray-200 rounded-l-md text-[13px] sm:px-1 sm:py-1 sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                    className="flex-1 min-w-0 px-3 py-2 border border-r-0 border-gray-200 rounded-l-md text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                     {...formik.getFieldProps("low_stock_quantity")}
                   />
                   <select
-                    className="px-3 py-2 sm:px-1 sm:py-1 border border-gray-200 rounded-r-md bg-white text-[10px] sm:text-sm focus:border-primary outline-none"
+                    className="px-3 py-2 border border-gray-200 rounded-r-md bg-white text-sm focus:border-primary outline-none shrink-0"
                     {...formik.getFieldProps("low_stock_measuring_unit")}
                   >
                     <option value="PCS">PCS</option>

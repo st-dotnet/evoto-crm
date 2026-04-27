@@ -635,11 +635,77 @@ export default function CreateItemModal({
 
           <DialogBody className="overflow-y-auto flex-1 p-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
             <div className="flex flex-col md:flex-row h-full">
-              {/* Left Sidebar */}
-              <div className="w-full md:w-64 p-2 md:p-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b md:border-r overflow-x-auto md:overflow-y-auto flex md:flex-col gap-2 md:gap-0 sticky top-0 z-10 no-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+              {/* Mobile Section Tabs */}
+              <div className="w-full px-2 py-1.5 bg-gradient-to-b from-gray-50 to-gray-100 border-b md:hidden">
+                <div className="flex gap-1">
+                  <button
+                    className={clsx(
+                      "px-2 py-1.5 rounded-md text-[10px] font-medium whitespace-nowrap shrink-0 transition-all",
+                      activeSection === "basic"
+                        ? "bg-purple-100 text-purple-800"
+                        : "bg-white text-gray-600 border border-gray-200"
+                    )}
+                    onClick={() => setActiveSection("basic")}
+                  >
+                    Basic Details <span className="text-red-500">*</span>
+                  </button>
+                  {formik.values.item_type_id === 2 ? (
+                    <button
+                      className={clsx(
+                        "px-2 py-1.5 rounded-md text-[10px] font-medium whitespace-nowrap shrink-0 transition-all",
+                        activeSection === "other"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-white text-gray-600 border border-gray-200"
+                      )}
+                      onClick={() => setActiveSection("other")}
+                    >
+                      Other
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className={clsx(
+                          "px-2 py-1.5 rounded-md text-[10px] font-medium whitespace-nowrap shrink-0 transition-all",
+                          activeSection === "stock"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-white text-gray-600 border border-gray-200"
+                        )}
+                        onClick={() => setActiveSection("stock")}
+                      >
+                        Stock Details
+                      </button>
+                      <button
+                        className={clsx(
+                          "px-2 py-1.5 rounded-md text-[10px] font-medium whitespace-nowrap shrink-0 transition-all",
+                          activeSection === "price"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-white text-gray-600 border border-gray-200"
+                        )}
+                        onClick={() => setActiveSection("price")}
+                      >
+                        Price Details
+                      </button>
+                      <button
+                        className={clsx(
+                          "px-2 py-1.5 rounded-md text-[10px] font-medium whitespace-nowrap shrink-0 transition-all",
+                          activeSection === "product"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-white text-gray-600 border border-gray-200"
+                        )}
+                        onClick={() => setActiveSection("product")}
+                      >
+                        Product Images
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Desktop Sidebar */}
+              <div className="hidden md:block w-64 p-4 bg-gradient-to-b from-gray-50 to-gray-100 border-r overflow-y-auto flex flex-col gap-0 sticky top-0 z-10 no-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                 <div
                   className={clsx(
-                    "p-1.5 md:p-2 rounded mb-0 md:mb-4 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
+                    "p-1.5 md:p-2 rounded mb-0 md:mb-4 cursor-pointer text-[11px] sm:text-xs md:text-sm font-medium transition-all col-span-2 md:col-span-1",
                     activeSection === "basic"
                       ? "bg-purple-100 text-purple-800"
                       : "text-gray-500 hover:bg-gray-100",
@@ -652,13 +718,13 @@ export default function CreateItemModal({
                     <span className="text-red-500 text-[10px]">*</span>
                   </button>
                 </div>
-                <h2 className="hidden md:block text-sm font-bold text-black-500 mb-2 ml-2">
+                <h2 className="text-sm font-bold text-black-500 mb-2 ml-2 col-span-2 md:hidden">
                   Advance Details
                 </h2>
                 {formik.values.item_type_id === 2 ? (
                   <div
                     className={clsx(
-                      "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
+                      "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer text-[11px] sm:text-xs md:text-sm font-medium transition-all col-span-2 md:col-span-1",
                       activeSection === "other"
                         ? "bg-purple-100 text-purple-800"
                         : "text-gray-500 hover:bg-gray-100",
@@ -677,7 +743,7 @@ export default function CreateItemModal({
                   <>
                     <div
                       className={clsx(
-                        "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
+                        "p-1.5 md:p-2 rounded mb-0 md:mb-2 cursor-pointer text-[11px] sm:text-xs md:text-sm font-medium transition-all",
                         activeSection === "stock"
                           ? "bg-purple-100 text-purple-800"
                           : "text-gray-500 hover:bg-gray-100",
@@ -691,7 +757,7 @@ export default function CreateItemModal({
                     </div>
                     <div
                       className={clsx(
-                        "p-1.5 md:p-2 mb-0 md:mb-2 rounded cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
+                        "p-1.5 md:p-2 mb-0 md:mb-2 rounded cursor-pointer text-[11px] sm:text-xs md:text-sm font-medium transition-all",
                         activeSection === "price"
                           ? "bg-purple-100 text-purple-800"
                           : "text-gray-500 hover:bg-gray-100",
@@ -708,7 +774,7 @@ export default function CreateItemModal({
                     </div>
                     <div
                       className={clsx(
-                        "p-1.5 md:p-2 mb-0 md:mb-2 rounded cursor-pointer whitespace-nowrap text-[11px] sm:text-xs md:text-sm font-medium transition-all",
+                        "p-1.5 md:p-2 mb-0 md:mb-2 rounded cursor-pointer text-[11px] sm:text-xs md:text-sm font-medium transition-all col-span-2 md:col-span-1",
                         activeSection === "product"
                           ? "bg-purple-100 text-purple-800"
                           : "text-gray-500 hover:bg-gray-100",

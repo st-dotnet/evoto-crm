@@ -1397,9 +1397,46 @@ const CreateInvoicePage = () => {
                               {selectedCustomer.gst}
                             </p>
                           )}
-                          {formatAddressLines(getCustomerAddress(selectedCustomer, "shipping"), "shipping").map((line, index) => (
-                            <p key={index} className="text-gray-600">{line}</p>
-                          ))}
+                          {selectedAddress ? (
+                            <>
+                              <p className="text-gray-600">
+                                <span className="font-medium">Shipping Address:</span> {selectedAddress.address1}
+                              </p>
+                              {selectedAddress.address2 && (
+                                <p className="text-gray-600">
+                                  <span className="font-medium">Shipping Address 2:</span> {selectedAddress.address2}
+                                </p>
+                              )}
+                              <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                <p>
+                                  {selectedAddress.city && (
+                                    <span>
+                                      <span className="font-medium">City:</span> {selectedAddress.city},{" "}
+                                    </span>
+                                  )}
+                                  {selectedAddress.state && (
+                                    <span>
+                                      <span className="font-medium">State:</span> {selectedAddress.state},{" "}
+                                    </span>
+                                  )}
+                                  {selectedAddress.pin && (
+                                    <span>
+                                      <span className="font-medium">PIN:</span> {selectedAddress.pin}
+                                    </span>
+                                  )}
+                                  {selectedAddress.country && (
+                                    <span>
+                                      , <span className="font-medium"> Country:</span> {selectedAddress.country}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            formatAddressLines(getCustomerAddress(selectedCustomer, "shipping"), "shipping").map((line, index) => (
+                              <p key={index} className="text-gray-600">{line}</p>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1466,34 +1503,168 @@ const CreateInvoicePage = () => {
           </div>
         </div>
 
-        {/* Party Dialog & Modals would go here (omitted for brevity, same as Quotation) */}
+        {/* Party Selection Dialog */}
         <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-          <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[500px]">
-            {/* Party List Content */}
-            <div className="p-4">
-              <Input
-                placeholder="Search parties..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="mb-4"
-              />
-              <div className="h-64 overflow-y-auto">
-                {filteredParties.map((party) => (
-                  <div
-                    key={party.id}
-                    onClick={() => handleSelectParty(party)}
-                    className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg w-[95vw] sm:w-full max-h-[90vh]">
+            <DialogHeader className="bg-white px-4 sm:px-6 py-4 border-b">
+              <DialogTitle className="text-lg font-semibold text-gray-800">
+                Search Parties
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </div>
+                <Input
+                  placeholder="Search Parties by name or mobile..."
+                  className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {party.name}
-                  </div>
-                ))}
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              <Button
-                onClick={() => setIsCustomerModalOpen(true)}
-                className="w-full mt-2"
-              >
-                Create New Party
-              </Button>
+
+              {/* Party List */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+                {isCreatingParty ? (
+                  <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Customer Name
+                      </label>
+                      <Input
+                        placeholder="Enter customer name"
+                        value={newPartyName}
+                        onChange={(e) => setNewPartyName(e.target.value)}
+                        autoFocus
+                        className="h-11 rounded-lg border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-3 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsCreatingParty(false)}
+                        className="h-9 px-4 rounded-lg border-gray-300 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleAddParty}
+                        disabled={!newPartyName.trim()}
+                        className="h-9 px-4 rounded-md bg-gray-900 hover:bg-gray-800 text-white"
+                      >
+                        Add Party
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {isPartiesLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                          <SpinnerDotted size={20} />
+                        </div>
+                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                          Loading Parties...
+                        </h3>
+                      </div>
+                    ) : filteredParties.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                          <UserPlus className="h-5 w-5 text-gray-600" />
+                        </div>
+                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                          No Party found
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Get started by creating a new Party.
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-100">
+                        {filteredParties.map((party) => (
+                          <li
+                            key={party.id}
+                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
+                              ? "bg-gray-100"
+                              : ""
+                              }`}
+                            onClick={() => handleSelectParty(party)}
+                          >
+                            <div className="flex items-center">
+                              <div
+                                className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
+                                  ? "bg-green-100"
+                                  : "bg-gray-100"
+                                  }`}
+                              >
+                                <span
+                                  className={`font-medium text-sm ${selectedParty?.id === party.id
+                                    ? "text-green-700"
+                                    : "text-gray-600"
+                                    }`}
+                                >
+                                  {party.name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="ml-4">
+                                <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                                  {party.name}
+                                </div>
+                                {party.mobile && (
+                                  <div className="text-sm text-gray-500 flex items-center mt-1">
+                                    <span className="text-gray-400 mr-1.5">
+                                      <svg
+                                        className="h-3.5 w-3.5"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                      </svg>
+                                    </span>
+                                    {party.mobile}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Create New Button */}
+              {/* {!isCreatingParty && (
+                <Button
+                  variant="outline"
+                  className="w-full h-10 bg-white hover:bg-gray-50 border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-colors flex items-center justify-center"
+                  onClick={() => {
+                    setIsCustomerModalOpen(true);
+                    setIsPartyDialogOpen(false);
+                  }}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create New Party
+                </Button>
+              )} */}
             </div>
           </DialogContent>
         </Dialog>
@@ -2346,14 +2517,10 @@ const CreateInvoicePage = () => {
               </div>
 
               <div className="flex justify-between items-center text-sm py-2">
-                <span className="text-gray-700">SGST@{tax / 2}</span>
+                <span className="text-gray-700">SGST</span>
                 <span className="font-medium">
                   ₹{" "}
-                  {(
-                    ((calculateSubtotal() - calculateDiscount()) *
-                      (tax / 2)) /
-                    100
-                  ).toLocaleString("en-IN", {
+                  {(calculateTax() / 2).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -2361,14 +2528,10 @@ const CreateInvoicePage = () => {
               </div>
 
               <div className="flex justify-between items-center text-sm py-2">
-                <span className="text-gray-700">CGST@{tax / 2}</span>
+                <span className="text-gray-700">CGST</span>
                 <span className="font-medium">
                   ₹{" "}
-                  {(
-                    ((calculateSubtotal() - calculateDiscount()) *
-                      (tax / 2)) /
-                    100
-                  ).toLocaleString("en-IN", {
+                  {(calculateTax() / 2).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -2577,6 +2740,291 @@ const CreateInvoicePage = () => {
         onSuccess={handleItemCreated}
         item={null}
       />
+      {/* Shipping Address Modal */}
+        <Dialog
+          open={isShippingModalOpen}
+          onOpenChange={setIsShippingModalOpen}
+        >
+          <DialogContent className="sm:max-w-[500px] w-[90vw] rounded-xl sm:w-full max-h-[85vh] overflow-hidden p-0">
+            <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-gray-100">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-600" />
+                Select Shipping Address
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="px-4 sm:px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(85vh-130px)]">
+              {/* Existing Addresses */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <h3 className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
+                    Saved Shipping Addresses
+                  </h3>
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                </div>
+
+                <div className="space-y-3">
+                  {shippingAddresses.length > 0 ? (
+                    <div className="grid gap-3">
+                      {shippingAddresses.map((address, index) => {
+                        const isSelected =
+                          selectedAddress?.uuid === address.uuid;
+                        return (
+                          <div
+                            key={address.uuid || index}
+                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                            onClick={() => setSelectedAddress(address)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
+                                  ? "bg-blue-100"
+                                  : "bg-gray-100 group-hover:bg-gray-200"
+                                  }`}
+                              >
+                                {address.address_type === "home" ? (
+                                  <HomeIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                  />
+                                ) : address.address_type === "work" ? (
+                                  <BriefcaseIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                  />
+                                ) : (
+                                  <MapPinIcon
+                                    className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
+                                    {address.address_type}
+                                    {address.is_default && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        Default
+                                      </span>
+                                    )}
+                                  </span>
+
+                                  {/* Action Button */}
+                                  <div
+                                    className="relative"
+                                    ref={
+                                      address.uuid === activeDropdownUuid
+                                        ? dropdownRef
+                                        : null
+                                    }
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const uuid = address.uuid;
+
+                                        if (!uuid) {
+                                          console.error(
+                                            "Address UUID is missing:",
+                                            address,
+                                          );
+                                          return;
+                                        }
+
+                                        if (activeDropdownUuid === uuid) {
+                                          setActiveDropdownUuid(null);
+                                          setButtonPosition(null);
+                                        } else {
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
+                                          setButtonPosition({
+                                            top: rect.top,
+                                            left: rect.right + 8,
+                                          });
+                                          setActiveDropdownUuid(uuid);
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+                                      aria-label="Address actions"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+
+                                    {activeDropdownUuid === address.uuid && (
+                                      <div className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200">
+                                        <div className="py-1" role="menu">
+                                          {!address.is_default && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSetDefaultAddress();
+                                              }}
+                                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                            >
+                                              <MapPin className="w-4 h-4 text-green-500" />
+                                              <span>Set as Default</span>
+                                            </button>
+                                          )}
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEditAddress();
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                            <span>Edit</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteAddress();
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                            <span>Delete</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-gray-700 leading-relaxed">
+                                    <span className="font-medium text-gray-500">
+                                      Address:
+                                    </span>{" "}
+                                    {[address.address1, address.address2]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                    ,
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      State:
+                                    </span>{" "}
+                                    {address.state},
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      Country:
+                                    </span>{" "}
+                                    {address.country}
+                                  </p>
+                                  <p className="text-xs text-gray-700 leading-relaxed">
+                                    <span className="font-medium text-gray-500">
+                                      City:
+                                    </span>{" "}
+                                    {address.city},
+                                    <span className="font-medium text-gray-500">
+                                      {" "}
+                                      Pin:
+                                    </span>{" "}
+                                    {address.pin}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
+                      <p className="text-xs font-medium text-gray-600 mb-1">
+                        No saved addresses found
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        No shipping addresses available for this customer
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50 m-0">
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsShippingModalOpen(false)}
+                  className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (selectedAddress && selectedCustomer) {
+                      setIsAddressLoading(true);
+                      try {
+                        // Call the API to update the customer with the selected shipping address
+                        const payload = {
+                          shipping_addresses: shippingAddresses.map((addr) => ({
+                            uuid: addr.uuid,
+                            address1: addr.address1,
+                            address2: addr.address2 || null,
+                            city: addr.city,
+                            state: addr.state,
+                            country: addr.country,
+                            pin: addr.pin,
+                            address_type: addr.address_type,
+                            is_default: addr.is_default,
+                          })),
+                        };
+
+                        await axios.put(
+                          `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+                          payload,
+                        );
+
+                        // Update the selected customer with the new shipping address
+                        const updatedCustomer: Customer = {
+                          ...selectedCustomer,
+                          shipping_address1: selectedAddress.address1,
+                          shipping_address2: selectedAddress.address2 || "",
+                          shipping_city: selectedAddress.city,
+                          shipping_state: selectedAddress.state,
+                          shipping_country: selectedAddress.country,
+                          shipping_pin: selectedAddress.pin,
+                        };
+                        setSelectedCustomer(updatedCustomer);
+
+                        setIsShippingModalOpen(false);
+                        toast.success("Address changed successfully");
+                      } catch (error: any) {
+                        let errorMessage =
+                          "Failed to save shipping address. Please try again.";
+
+                        if (error.response?.data?.error) {
+                          errorMessage =
+                            error.response.data.error || errorMessage;
+                        }
+
+                        toast.error(errorMessage);
+                      } finally {
+                        setIsAddressLoading(false);
+                      }
+                    } else {
+                      toast.error("Please select a shipping address");
+                    }
+                  }}
+                  disabled={!selectedAddress}
+                  className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  Confirm Selection
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       <ShippingAddressModal
         open={addAddressModalOpen}
         onOpenChange={setAddAddressModalOpen}

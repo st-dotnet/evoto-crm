@@ -3,7 +3,7 @@
   "private": true,
   "version": "9.1.2",
   "type": "module",
-  "proxy": "http://127.0.0.1:5000",
+  "proxy": "http://127.0.0.1:8000",
   "scripts": {
     "dev": "vite",
     "stg_start": "vite --mode stg",

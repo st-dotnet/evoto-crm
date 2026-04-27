@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, FileText, Receipt, Share, Mail } from "lucide-react";
+import { ArrowLeft, Download, Printer, FileText, Receipt, Share, Mail, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -708,6 +708,8 @@ const QuotationPreviewPage: React.FC = () => {
               background-color: white !important;
               margin: 0 !important;
               padding: 0 !important;
+              overflow-x: hidden !important;
+              max-width: 100vw !important;
             }
 
             /* Container adjustments */
@@ -727,6 +729,7 @@ const QuotationPreviewPage: React.FC = () => {
               position: absolute !important;
               left: 0 !important;
               top: 0 !important;
+              overflow-x: hidden !important;
             }
 
             /* Ensure text colors are black */
@@ -734,11 +737,70 @@ const QuotationPreviewPage: React.FC = () => {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
+
+            /* Print-specific overflow handling for small screens */
+            @media (max-width: 480px) {
+              html, body {
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+              }
+
+              #quotation-print-area {
+                padding: 8px !important;
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+                width: 100vw !important;
+              }
+
+              #quotation-print-area * {
+                overflow-x: hidden !important;
+                max-width: 100% !important;
+              }
+            }
+          }
+
+          @media (max-width: 480px) {
+            /* Fix mobile layout - stack instead of justify-between */
+            #quotation-print-area .block.md\\:hidden.print\\:hidden .flex {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 4px !important;
+              width: 100% !important;
+            }
+
+            #quotation-print-area .block.md\\:hidden.print\\:hidden .flex div {
+              width: 100% !important;
+              box-sizing: border-box !important;
+            }
+
+            #quotation-print-area .block.md\\:hidden.print\\:hidden .flex p {
+              width: 100% !important;
+              box-sizing: border-box !important;
+              margin: 0 !important;
+            }
+
+            /* Ensure borders stay within container */
+            #quotation-print-area .block.md\\:hidden.print\\:hidden {
+              width: 100% !important;
+              box-sizing: border-box !important;
+              border: 1px solid #e5e7eb !important;
+            }
+
+            /* Allow text to wrap naturally */
+            #quotation-print-area td,
+            #quotation-print-area th {
+              white-space: normal !important;
+              word-wrap: break-word !important;
+            }
+
+            #quotation-print-area p {
+              word-wrap: break-word !important;
+            }
           }
         `}
       </style>
       <div className="bg-white px-4 md:px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto gap-4">
           <div className="flex items-center gap-4 w-full md:w-auto">
             <Button
               variant="ghost"
@@ -754,7 +816,9 @@ const QuotationPreviewPage: React.FC = () => {
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          
+          {/* Desktop buttons */}
+          <div className="hidden md:flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
             <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
 
@@ -785,6 +849,35 @@ const QuotationPreviewPage: React.FC = () => {
                 {isConverting ? "Converting..." : "Convert to Invoice"}
               </Button>
             )}
+          </div>
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleDownloadPDF} className="gap-2 cursor-pointer">
+                  <Download className="h-4 w-4" /> Download PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePrintPDF} className="gap-2 cursor-pointer">
+                  <Printer className="h-4 w-4" /> Print PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                  <Mail className="h-4 w-4" /> Email
+                </DropdownMenuItem>
+                {(!linkedInvoiceId || quotationData.status === 'open') && (
+                  <DropdownMenuItem onClick={handleConvertToInvoice} className="gap-2 cursor-pointer" disabled={isConverting}>
+                    <Receipt className="h-4 w-4" />
+                    {isConverting ? "Converting..." : "Convert to Invoice"}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -840,7 +933,7 @@ const QuotationPreviewPage: React.FC = () => {
         </div>
 
         {/* Metadata section - Mobile Bordered Box vs Desktop/Print Grid */}
-        <div className="mb-8 md:mb-12 border border-black print:mb-3">
+        <div className="mb-8 md:mb-12 md:border md:border-black print:mb-3 print:border print:border-black">
           {/* Desktop/Print Table */}
           <table className="w-full hidden md:table print:table">
             <thead>
@@ -872,22 +965,41 @@ const QuotationPreviewPage: React.FC = () => {
           </table>
 
           {/* Mobile-only Bordered Box */}
-          <div className="block md:hidden print:hidden">
-            <div className="flex justify-between px-4 py-2 border-b border-black">
-              <p className="text-[12px] font-bold text-black uppercase">Quotation NO.:</p>
-              <p className="text-[12px] font-medium text-black">{quotationData.quotationNo}</p>
-            </div>
-            <div className="flex justify-between px-4 py-2 border-b border-black">
-              <p className="text-[12px] font-bold text-black uppercase">Date:</p>
-              <p className="text-[12px] font-medium text-black">
-                {new Date(quotationData.quotationDate).toLocaleDateString("en-IN")}
-              </p>
-            </div>
-            <div className="flex justify-between px-4 py-2">
-              <p className="text-[12px] font-bold text-black uppercase">Expiry:</p>
-              <p className="text-[12px] font-medium text-black">
-                {new Date(quotationData.validityDate).toLocaleDateString("en-IN")}
-              </p>
+          <div className="block md:hidden print:hidden px-4 py-2 border border-black bg-gray-100">
+            <div className="grid grid-cols-3 text-center">
+
+              {/* Quotation No */}
+              <div className="border-r border-black py-3">
+                <p className="text-[11px] font-semibold border-b border-black uppercase text-gray-600">
+                  QUOTATION NO.
+                </p>
+                <p className="text-[11px] font-medium text-black mt-1">
+                  {quotationData.quotationNo}
+                </p>
+              </div>
+
+              {/* Date */}
+              <div className="border-r border-black py-3">
+                <p className="text-[11px] font-semibold border-b border-black uppercase text-gray-600">
+                  DATE
+                </p>
+                <p className="text-[11px] font-medium text-black mt-1">
+                  {new Date(quotationData.quotationDate)
+                    .toLocaleDateString("en-IN")}
+                </p>
+              </div>
+
+              {/* Expiry */}
+              <div className="py-3">
+                <p className="text-[11px] font-semibold border-b border-black uppercase text-gray-600">
+                  EXPIRY
+                </p>
+                <p className="text-[11px] font-medium text-black mt-1">
+                  {new Date(quotationData.validityDate)
+                    .toLocaleDateString("en-IN")}
+                </p>
+              </div>
+
             </div>
           </div>
         </div>
@@ -1121,80 +1233,72 @@ const QuotationPreviewPage: React.FC = () => {
           </table>
         </div>
 
-        {/* Mobile-only Card View */}
-        <div className="md:hidden print:hidden space-y-4 mb-8">
-          {quotationData.quotationItems?.map((item, index) => (
-            <div key={item.id} className="border border-black rounded-lg overflow-hidden border-b-2">
-              {/* Card Header */}
-              <div className="grid grid-cols-[1fr,auto] gap-2 p-3 border-b border-black">
-                <div>
-                  <p className="text-[10px] font-bold text-black uppercase mb-1">ITEM DESCRIPTION</p>
-                  <div className="flex items-start gap-1">
-                    <span className="text-sm font-bold text-black">{index + 1}.</span>
-                    <p className="text-sm font-bold text-black leading-tight">{item.item_name}</p>
-                  </div>
-                </div>
-                <div className="w-16 h-16 border border-black rounded flex items-center justify-center overflow-hidden">
-                  {item.image ? (
-                    <img src={resolveImageUrl(item.image)} className="w-full h-full object-cover" alt={item.item_name} />
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </div>
-              </div>
+        {/* Mobile-only Table View */}
+        <div className="md:hidden print:hidden mb-8">
+          <table className="w-full border border-black">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="px-1 py-1 text-left text-[7px] font-semibold text-black uppercase border-r border-black w-[120px]">ITEM</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[60px]">PRICE</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">QTY</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">DISC</th>
+                <th className="px-1 py-1 text-center text-[7px] font-semibold text-black uppercase border-r border-black w-[40px]">TAX</th>
+                <th className="px-1 py-1 text-right text-[7px] font-semibold text-black uppercase w-[60px]">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotationData.quotationItems?.map((item, index) => (
+                <tr key={item.id}>
+                  <td className="px-1 py-1 align-top border-r border-black w-[120px]">
+                    <div className="flex items-start gap-1">
+                      <span className="text-[6px] font-bold text-black">{index + 1}.</span>
+                      <div>
+                        <p className="text-[6px] font-bold text-black leading-tight truncate">{item.item_name}</p>
+                        {item.description && (
+                          <p className="text-[5px] text-gray-600 mt-1 truncate">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[60px]">
+                    {formatCurrency(item.price_per_item)}
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.quantity}
+                  </td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.discount > 0 ? `${item.discount}%` : "—"}</td>
+                  <td className="px-1 py-1 text-center text-[6px] font-medium text-black border-r border-black w-[40px]">
+                    {item.tax > 0 ? `${item.tax}%` : "—"}</td>
+                  <td className="px-1 py-1 text-right text-[6px] font-bold text-black w-[60px]">
+                    {formatCurrency(item.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-              {/* Pricing Row */}
-              <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-                <div className="p-2 text-center">
-                  <p className="text-[9px] font-bold text-black uppercase mb-1">PRICE/ITEM</p>
-                  <p className="text-[11px] font-medium text-black">{formatCurrency(item.price_per_item)}</p>
-                </div>
-                <div className="p-2 text-center">
-                  <p className="text-[9px] font-bold text-black uppercase mb-1">DISC.</p>
-                  <p className="text-[11px] font-medium text-black">-{formatCurrency((item.price_per_item * item.quantity * item.discount) / 100)}</p>
-                </div>
-                <div className="p-2 text-center">
-                  <p className="text-[9px] font-bold text-black uppercase mb-1">TAX</p>
-                  <p className="text-[11px] font-medium text-black">
-                    {formatCurrency((item.price_per_item * item.quantity * (1 - item.discount / 100) * item.tax) / 100)}
-                    <span className="text-[8px] block">({item.tax}%)</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Totals Row */}
-              <div className="grid grid-cols-2 p-3 bg-gray-50/50">
-                <div>
-                  <p className="text-[11px] font-bold text-black">QTY: {item.quantity} {getMeasuringUnit(item.measuring_unit_id)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] font-bold text-black">TOTAL: {formatCurrency(item.amount)}</p>
-                </div>
-              </div>
+        {/* Mobile Subtotal Summary Card */}
+        <div className="bg-white border border-black rounded-lg overflow-hidden no-print">
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
+              <span className="text-sm font-bold text-black">
+                {formatCurrency(totals.subtotal)}
+              </span>
             </div>
-          ))}
-
-          {/* Mobile Subtotal Summary Card */}
-          <div className="bg-white border border-black rounded-lg overflow-hidden no-print">
-            <div className="p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-black uppercase">SUBTOTAL</span>
-                <span className="text-sm font-bold text-black">
-                  {formatCurrency(totals.subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-red-600">
-                <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
-                <span className="text-sm font-bold">-{formatCurrency(totals.totalDiscount)}</span>
-              </div>
-              <div className="flex justify-between items-center text-black">
-                <span className="text-xs font-bold uppercase">TOTAL TAX</span>
-                <span className="text-sm font-bold">{formatCurrency(totals.totalTax)}</span>
-              </div>
-              <div className="pt-2 border-t-2 border-black flex justify-between items-center">
-                <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
-                <span className="text-lg font-black text-black">{formatCurrency(totals.totalAmount)}</span>
-              </div>
+            <div className="flex justify-between items-center text-red-600">
+              <span className="text-xs font-bold uppercase">TOTAL DISCOUNT</span>
+              <span className="text-sm font-bold">-{formatCurrency(totals.totalDiscount)}</span>
+            </div>
+            <div className="flex justify-between items-center text-black">
+              <span className="text-xs font-bold uppercase">TOTAL TAX</span>
+              <span className="text-sm font-bold">{formatCurrency(totals.totalTax)}</span>
+            </div>
+            <div className="pt-2 border-t-2 border-black flex justify-between items-center">
+              <span className="text-sm font-black text-black uppercase">GRAND TOTAL</span>
+              <span className="text-lg font-black text-black">{formatCurrency(totals.totalAmount)}</span>
             </div>
           </div>
         </div>

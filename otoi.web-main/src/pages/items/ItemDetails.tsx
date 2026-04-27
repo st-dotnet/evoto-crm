@@ -111,7 +111,7 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
 
   if (!item || error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="border border-red-200 bg-red-50 text-red-700 rounded p-4">
           {error || "Item not found"}
           <Button variant="outline" className="mt-3" onClick={() => navigate(-1)}>
@@ -123,102 +123,177 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-1">
-            <FiArrowLeft className="mr-1" /> Back
+    <>
+      <style>{`
+        html, body {
+          overflow-x: hidden !important;
+          max-width: 100vw !important;
+        }
+      `}</style>
+      <div className="w-full max-w-[100vw] p-0 sm:p-6 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
+      {/* Mobile Header */}
+      <div className="sticky top-0 bg-white/80 backdrop-blur-lg border-b border-gray-200/50 sm:hidden z-10 py-3 overflow-x-hidden">
+        <div className="flex items-center gap-3 px-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
+            <FiArrowLeft />
           </Button>
-          <h2 className="text-2xl font-semibold flex items-center gap-2">
-            <FiTag className="text-purple-600" />
-            {item.item_name || "Unnamed Item"}
-          </h2>
-          <div className="text-sm text-gray-500">
-            {item.item_code || "—"}
-            {item.item_type && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                {item.item_type.item_type_name}
-              </span>
-            )}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold truncate text-gray-900">{item.item_name || "Unnamed Item"}</h2>
+            <div className="text-xs text-gray-500 truncate">{item.item_code || "—"}</div>
           </div>
+          {item.low_stock_warning && item.item_type?.item_type_name !== "Service" && (
+            <span className="px-2 py-0.5 text-[10px] bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shrink-0 shadow-sm">Low Stock</span>
+          )}
         </div>
-
-        {item.low_stock_warning && item.item_type?.item_type_name !== "Service" && (
-          <span className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full">Low Stock</span>
-        )}
       </div>
 
-      <div className={`bg-white border rounded-lg shadow-sm p-6 grid grid-cols-1 ${item.item_type?.item_type_name === "Service" ? "md:grid-cols-3" : "md:grid-cols-4"} gap-6`}>
-        {/* Column 1 - Basic */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FiInfo /> General Details
-          </h4>
-          <Info label="Category" value={item.category?.category_name} />
-          <Info label="Measuring Unit" value={item.measuring_unit} />
-          {item.item_type?.item_type_name !== "Service" && (
-            <Info label="HSN Code" value={item.hsn_code} />
+      {/* Desktop Header */}
+      <div className="hidden sm:block mb-6">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-3 hover:bg-gray-100 rounded-full">
+          <FiArrowLeft className="mr-1" /> Back
+        </Button>
+        <h2 className="text-2xl font-semibold flex items-center gap-2 mb-2 text-gray-900">
+          <FiTag className="text-purple-600" />
+          {item.item_name || "Unnamed Item"}
+        </h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{item.item_code || "—"}</span>
+          {item.item_type && (
+            <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+              {item.item_type.item_type_name}
+            </span>
           )}
-          {/* {item.item_type?.item_type_name !== "Service" && (
-            <Info label="Online Store" value={item.show_in_online_store ? "Yes" : "No"} />
-          )} */}
-        </div>
-
-        {/* Column 2 - Pricing */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FiDollarSign /> Pricing
-          </h4>
-          <Info label="Sales Price" value={`₹ ${item.sales_price ?? "—"}`} />
-          {/* {item.item_type?.item_type_name === "Service" && (
-            <Info label="SAC Code" value={item.hsn_code} />
-          )} */}
-          {item.item_type?.item_type_name !== "Service" && (
-            <Info label="Purchase Price" value={`₹ ${item.purchase_price ?? "—"}`} />
+          {item.low_stock_warning && item.item_type?.item_type_name !== "Service" && (
+            <span className="px-3 py-1 text-xs bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-sm">Low Stock</span>
           )}
-          <Info label="GST Rate" value={item.gst_tax_rate ? `${item.gst_tax_rate}%` : "—"} />
         </div>
+      </div>
 
-        {/* Column 3 - Stock (only for products) */}
-        {item.item_type?.item_type_name !== "Service" && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <FiBox /> Stock
-            </h4>
-            <Info label="Opening Stock" value={`${item.opening_stock ?? "—"} ${item.measuring_unit || ""}`} />
-            <Info label="Low Stock Warning" value={item.low_stock_warning ? "Enabled" : "Disabled"} />
-            {item.low_stock_warning && (
-              <Info label="Low Stock Qty" value={`${item.low_stock_quantity ?? "—"} ${item.measuring_unit || ""}`} />
+      {/* Mobile & Desktop Layout - Modern Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-0 py-4 sm:py-0 w-full max-w-full overflow-x-hidden">
+        {/* Basic Info Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-purple-100/30 hover:shadow-xl transition-all duration-300 min-w-0">
+          <div className="flex items-center gap-3 mb-4 overflow-x-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
+              <FiInfo className="text-white" />
+            </div>
+            <h4 className="text-sm font-bold text-gray-900 truncate">General Details</h4>
+          </div>
+          <div className="space-y-4 overflow-x-hidden">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+              <span className="text-xs text-gray-500 font-medium shrink-0">Category</span>
+              <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.category?.category_name || "—"}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+              <span className="text-xs text-gray-500 font-medium shrink-0">Measuring Unit</span>
+              <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.measuring_unit || "—"}</span>
+            </div>
+            {item.item_type?.item_type_name !== "Service" && (
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">HSN Code</span>
+                <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.hsn_code || "—"}</span>
+              </div>
             )}
-            {/* <Info label="As of Date" value={item.as_of_date} /> */}
+            {item.item_type && (
+              <div className="flex justify-between items-center py-2 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Type</span>
+                <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.item_type.item_type_name}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pricing Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-green-100/30 hover:shadow-xl transition-all duration-300 min-w-0">
+          <div className="flex items-center gap-3 mb-4 overflow-x-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-md shrink-0">
+              <FiDollarSign className="text-white" />
+            </div>
+            <h4 className="text-sm font-bold text-gray-900 truncate">Pricing</h4>
+          </div>
+          <div className="space-y-4 overflow-x-hidden">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+              <span className="text-xs text-gray-500 font-medium shrink-0">Sales Price</span>
+              <span className="text-xs font-bold text-green-600 text-right truncate ml-2">₹ {item.sales_price ?? "—"}</span>
+            </div>
+            {item.item_type?.item_type_name !== "Service" && (
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Purchase Price</span>
+                <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">₹ {item.purchase_price ?? "—"}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center py-2 overflow-x-hidden">
+              <span className="text-xs text-gray-500 font-medium shrink-0">GST Rate</span>
+              <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.gst_tax_rate ? `${item.gst_tax_rate}%` : "—"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Card (only for products) */}
+        {item.item_type?.item_type_name !== "Service" && (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-blue-100/30 hover:shadow-xl transition-all duration-300 min-w-0">
+            <div className="flex items-center gap-3 mb-4 overflow-x-hidden">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md shrink-0">
+                <FiBox className="text-white" />
+              </div>
+              <h4 className="text-sm font-bold text-gray-900 truncate">Stock</h4>
+            </div>
+            <div className="space-y-4 overflow-x-hidden">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Opening Stock</span>
+                <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.opening_stock ?? "—"} {item.measuring_unit || ""}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Low Stock Warning</span>
+                <span className={`text-xs font-semibold ${item.low_stock_warning ? 'text-red-600' : 'text-gray-900'} text-right truncate ml-2`}>
+                  {item.low_stock_warning ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              {item.low_stock_warning && (
+                <div className="flex justify-between items-center py-2 overflow-x-hidden">
+                  <span className="text-xs text-gray-500 font-medium shrink-0">Low Stock Qty</span>
+                  <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.low_stock_quantity ?? "—"} {item.measuring_unit || ""}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Column 4 - Description */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FiInfo /> Notes
-          </h4>
-          <Info label="Description" value={item.description} />
-          {item.item_type?.item_type_name !== "Service" && (
-            <Info label="Alternative Unit" value={item.alternative_unit} />
-          )}
+        {/* Notes Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-orange-100/30 hover:shadow-xl transition-all duration-300 min-w-0">
+          <div className="flex items-center gap-3 mb-4 overflow-x-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shrink-0">
+              <FiInfo className="text-white" />
+            </div>
+            <h4 className="text-sm font-bold text-gray-900 truncate">Notes</h4>
+          </div>
+          <div className="space-y-4 overflow-x-hidden">
+            <div className="py-2 overflow-x-hidden">
+              <span className="text-xs text-gray-500 font-medium block mb-1">Description</span>
+              <span className="text-xs font-semibold text-gray-900 break-words">{item.description || "—"}</span>
+            </div>
+            {item.item_type?.item_type_name !== "Service" && (
+              <div className="flex justify-between items-center py-2 border-t border-gray-100 mt-4 overflow-x-hidden">
+                <span className="text-xs text-gray-500 font-medium shrink-0">Alternative Unit</span>
+                <span className="text-xs font-semibold text-gray-900 text-right truncate ml-2">{item.alternative_unit || "—"}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Image Gallery */}
       {item.images && item.images.length > 0 && (
-        <div className="mt-6 bg-white border rounded-lg shadow-sm p-3">
+        <div className="mt-6 bg-white border rounded-lg shadow-sm p-3 sm:p-4 overflow-x-hidden">
           <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
             <FiBox /> Product Images
           </h4>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 overflow-x-hidden">
             {item.images.map((img) => (
               <div
                 key={img.id}
                 onClick={() => setPreviewImage(img.url)}
-                className="group relative w-24 h-24 rounded-lg overflow-hidden border bg-gray-50 shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
+                className="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border bg-gray-50 shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
               >
                 <img
                   src={resolveImageUrl(img.url)}
@@ -253,5 +328,6 @@ export default function ItemDetails({ item: initialItem }: ItemDetailsProps) {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }
