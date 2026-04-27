@@ -658,8 +658,141 @@ const PurchaseOrderPage = () => {
     [],
   );
 
+  const MobileView = ({
+    onEdit,
+    onDetails,
+    onDuplicate,
+    onDelete,
+  }: {
+    onEdit: (id: string, status: string) => void;
+    onDetails: (id: string) => void;
+    onDuplicate: (id: string) => void;
+    onDelete: (id: string) => void;
+  }) => {
+    return (
+      <div className="flex flex-col md:hidden border-t border-gray-100">
+        {purchaseOrders.map((po) => (
+          <div
+            key={po.id}
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+          >
+            <div
+              className="flex flex-col cursor-pointer grow pr-4"
+              onClick={() => onDetails(po.id)}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-gray-900 text-sm">
+                  PO #{po.po_number}
+                </span>
+                <span
+                  className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${po.status === "open"
+                      ? "bg-green-100 text-green-800"
+                      : po.status === "closed"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-purple-100 text-purple-800"
+                    }`}
+                >
+                  {po.status.charAt(0).toUpperCase() + po.status.slice(1)}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-gray-700 mb-0.5">
+                {po.vendor_name}
+              </span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {new Date(po.date).toLocaleDateString("en-IN")}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  Delivery:{" "}
+                  {new Date(po.delivery_date).toLocaleDateString("en-IN")}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <div className="font-bold text-primary text-sm">
+                  ₹{po.amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 }) || "0.00"}
+                </div>
+              </div>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4.5 w-4.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-40 p-1 shadow-lg border-gray-200"
+              >
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(po.id, po.status);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDetails(po.id);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(po.id);
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4 text-gray-500" />
+                  Duplicate
+                </DropdownMenuItem>
+                <div className="my-1 border-t border-gray-100"></div>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(po.id);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ))}
+        {purchaseOrders.length === 0 && !isLoading && !isDropdownLoading && (
+          <div className="p-16 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2">
+                <FileText className="h-6 w-6 text-gray-200" />
+              </div>
+              <span className="text-gray-400 text-sm font-medium">
+                No purchase orders found.
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   return (
-    <div className="container-fluid p-6 relative">
+    <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
       {(isDeleting || isDropdownLoading) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
           <div className="text-primary">
@@ -674,42 +807,29 @@ const PurchaseOrderPage = () => {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Purchase Orders</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Status Filter */}
-          <div className="w-48">
+          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-48">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-full gap-1"
+                <button
+                  className="flex items-center justify-between h-9 w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-inter"
                 >
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="truncate">
-                    {selectedStatus === "all" && "All Orders"}
-                    {selectedStatus === "open" && "Open Orders"}
-                    {selectedStatus === "closed" && "Closed Orders"}
-                    {selectedStatus === "received" && "Received Orders"}
-                  </span>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                </Button>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Filter className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <span className="truncate">
+                      {selectedStatus === "all" && "All Orders"}
+                      {selectedStatus === "open" && "Open Orders"}
+                      {selectedStatus === "closed" && "Closed Orders"}
+                      {selectedStatus === "received" && "Received Orders"}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("open");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-green-500" />
-                  <span>Open Orders</span>
-                  {selectedStatus === "open" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     setSelectedStatus("all");
@@ -720,6 +840,19 @@ const PurchaseOrderPage = () => {
                   <Circle className="h-4 w-4 text-gray-500" />
                   <span>All Orders</span>
                   {selectedStatus === "all" && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedStatus("open");
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-green-500" />
+                  <span>Open Orders</span>
+                  {selectedStatus === "open" && (
                     <Check className="h-4 w-4 ml-auto" />
                   )}
                 </DropdownMenuItem>
@@ -755,12 +888,12 @@ const PurchaseOrderPage = () => {
 
           <Button
             size="sm"
-            className="h-8 gap-1"
+            className="h-9 gap-1 w-full sm:w-[calc(50%-0.25rem)] md:w-auto"
             onClick={() => navigate("/purchases/purchase-orders/new")}
           >
             <Plus className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Create Purchase Order
+            <span className="whitespace-nowrap">
+              Create Order
             </span>
           </Button>
         </div>
@@ -950,147 +1083,206 @@ const PurchaseOrderPage = () => {
       {/* Table + Search */}
       <div className="bg-white border rounded-lg overflow-hidden">
         <div className="p-4 border-b">
-          <div className="relative w-fit">
-            <div className="flex">
-              {/* Search/filter dropdown */}
-              <div className="relative">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="h-9 w-80 justify-start px-3"
-                      disabled={isDropdownLoading}
-                    >
-                      {isDropdownLoading ? (
-                        <span className="flex items-center">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Loading...
-                        </span>
-                      ) : (
-                        searchTerm ||
-                        (searchType === "vendor_name"
-                          ? "Select by vendor name..."
-                          : "Select by PO number...")
-                      )}
-                      {!isDropdownLoading && (
-                        <ChevronDown className="ml-auto h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSearchTerm("");
-                        setRefreshKey((prev) => prev + 1);
-                      }}
-                      className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
-                    >
-                      <span className="text-gray-500">
-                        Show All{" "}
-                        {searchType === "vendor_name" ? "Vendors" : "Orders"}
-                      </span>
-                    </DropdownMenuItem>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="relative w-full sm:w-80">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full justify-start px-3"
+                    disabled={isDropdownLoading}
+                  >
                     {isDropdownLoading ? (
-                      <DropdownMenuItem disabled>
-                        <div className="flex items-center justify-center w-full py-2">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Loading options...
-                        </div>
-                      </DropdownMenuItem>
+                      <span className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading...
+                      </span>
                     ) : (
-                      (searchType === "vendor_name"
-                        ? allVendorNames
-                        : allPoNumbers
-                      ).map((item, index) => (
-                        <DropdownMenuItem
-                          key={index}
-                          onClick={() => {
-                            setSearchTerm(item);
-                            setRefreshKey((prev) => prev + 1);
-                          }}
-                          className={
-                            searchTerm === item
-                              ? "bg-blue-50 text-blue-600"
-                              : ""
-                          }
-                        >
-                          {item}
-                        </DropdownMenuItem>
-                      ))
+                      <span className="truncate text-left">
+                        {searchTerm ||
+                          (searchType === "vendor_name"
+                            ? "Select by vendor name..."
+                            : "Select by PO number...")}
+                      </span>
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Filter type selector */}
-              <div className="flex bg-gray-50 rounded-md ml-2">
-                <DropdownMenu
-                  open={showFilterDropdown}
-                  onOpenChange={setShowFilterDropdown}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 rounded-md px-3 text-sm text-gray-600"
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                      {searchTerm
-                        ? `${searchType === "vendor_name" ? "Vendor" : "PO"}: ${searchTerm}`
-                        : "Filter by"}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        handleSearchTypeChange("vendor_name");
-                        setShowFilterDropdown(false);
-                      }}
-                      className={
-                        searchType === "vendor_name"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                      }
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-2" />
-                      Vendor Name
+                    {!isDropdownLoading && (
+                      <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSearchTerm("");
+                      setRefreshKey((prev) => prev + 1);
+                    }}
+                    className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <span className="text-gray-500">
+                      Show All{" "}
+                      {searchType === "vendor_name" ? "Vendors" : "Orders"}
+                    </span>
+                  </DropdownMenuItem>
+                  {isDropdownLoading ? (
+                    <DropdownMenuItem disabled>
+                      <div className="flex items-center justify-center w-full py-2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading options...
+                      </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        handleSearchTypeChange("po_number");
-                        setShowFilterDropdown(false);
-                      }}
-                      className={
-                        searchType === "po_number"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                      }
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-2" />
-                      PO Number
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  ) : (
+                    (searchType === "vendor_name"
+                      ? allVendorNames
+                      : allPoNumbers
+                    ).map((item, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        onClick={() => {
+                          setSearchTerm(item);
+                          setRefreshKey((prev) => prev + 1);
+                        }}
+                        className={
+                          searchTerm === item
+                            ? "bg-blue-50 text-blue-600"
+                            : ""
+                        }
+                      >
+                        {item}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+
+            {/* Filter type selector - fixed width */}
+            <DropdownMenu
+              open={showFilterDropdown}
+              onOpenChange={setShowFilterDropdown}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 shrink-0 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto"
+                >
+                  <Filter className="h-3.5 w-3.5 text-blue-500 mr-1 shrink-0" />
+                  <span className="truncate max-w-[150px]">
+                    {searchTerm
+                      ? `${searchType === "vendor_name" ? "Vendor" : "PO"}: ${searchTerm}`
+                      : "Filter by"}
+                  </span>
+                  <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    handleSearchTypeChange("vendor_name");
+                    setShowFilterDropdown(false);
+                  }}
+                  className={
+                    searchType === "vendor_name"
+                      ? "bg-blue-50 text-blue-600"
+                      : ""
+                  }
+                >
+                  <Filter className="h-3.5 w-3.5 mr-2" />
+                  Vendor Name
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    handleSearchTypeChange("po_number");
+                    setShowFilterDropdown(false);
+                  }}
+                  className={
+                    searchType === "po_number"
+                      ? "bg-blue-50 text-blue-600"
+                      : ""
+                  }
+                >
+                  <Filter className="h-3.5 w-3.5 mr-2" />
+                  PO Number
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        <div className="overflow-auto">
-          <DataGrid
-            key={refreshKey}
-            columns={columns}
-            serverSide={true}
-            onFetchData={fetchPurchaseOrders}
-            loading={false}
-            rowSelection={true}
-            getRowId={(row: any) => row.id.toString()}
-            pagination={{ size: 5 }}
-            onRowClick={(row: any) =>
-              navigate(`/purchases/purchase-orders/${row.original.id}`)
-            }
-          />
+        <div className="overflow-auto relative">
+            <DataGrid
+              key={refreshKey}
+              columns={columns}
+              serverSide={true}
+              onFetchData={fetchPurchaseOrders}
+              rowSelection
+              getRowId={(row: any) => row.id}
+              pagination={{ size: 10 }}
+              onRowClick={(row: any) => {
+                if (showDeleteDialog) return;
+                navigate(`/purchases/purchase-orders/${row.original.id}`);
+              }}
+              layout={{
+                card: true,
+                classes: { 
+                  table: "cursor-pointer [&_tr:hover]:bg-gray-50",
+                  container: "hidden md:block"
+                }
+              }}
+            >
+              <MobileView
+                onEdit={(id, status) => {
+                  if (status === "received") {
+                    toast.error("This purchase order cannot be edited because it has been received.");
+                    return;
+                  }
+                  navigate(`/purchases/purchase-orders/${id}/edit`);
+                }}
+                onDetails={(id) => navigate(`/purchases/purchase-orders/${id}`)}
+                onDuplicate={async (id) => {
+                  try {
+                    const response = await getPurchaseOrderById(id);
+                    if (response.success && response.data) {
+                      const original = response.data;
+                      navigate("/purchases/purchase-orders/new", {
+                        state: {
+                          poData: {
+                            poNo: "",
+                            poDate: new Date().toISOString().split("T")[0],
+                            deliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+                            status: "open",
+                            selectedVendor: original.vendor,
+                            poItems: (original.items || []).map((item: any) => ({
+                              id: "",
+                              item_id: item.item_id,
+                              item_name: item.product_name || item.description || "Item",
+                              description: item.description,
+                              quantity: item.quantity,
+                              price_per_item: item.unit_price,
+                              discount: item.discount_percentage || 0,
+                              tax: item.tax_percentage || 0,
+                              amount: item.total_price,
+                              measuring_unit_id: 1,
+                            })),
+                            notes: original.notes,
+                            terms: original.terms_and_conditions,
+                            isDuplicate: true,
+                          },
+                          isDuplicate: true,
+                        },
+                      });
+                      toast.success("Purchase order opened for duplication!");
+                    }
+                  } catch {
+                    toast.error("Failed to duplicate purchase order");
+                  }
+                }}
+                onDelete={(id) => {
+                  setPoToDelete(id);
+                  setShowDeleteDialog(true);
+                }}
+              />
+            </DataGrid>
         </div>
       </div>
     </div>
@@ -1098,3 +1290,4 @@ const PurchaseOrderPage = () => {
 };
 
 export default PurchaseOrderPage;
+

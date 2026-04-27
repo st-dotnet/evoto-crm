@@ -25,6 +25,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { getDebitNoteById, getDebitNotePayments, createDebitNotePayment, getVendorById } from '../service/debitNote.service';
 import { getShareData, sendShareEmail } from "@/services/share.service";
+
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') return parseFloat(val) || 0;
+
+  // Handle nested objects: tax_percentage, discount_percentage, etc.
+  if (typeof val === 'object') {
+    const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+    for (const key of possibleKeys) {
+      if (val[key] !== undefined) {
+        return extractNumericValue(val[key]);
+      }
+    }
+  }
+  return 0;
+};
 import { SpinnerDotted } from "spinners-react";
 import { useAuthContext } from "@/auth";
 import { toAbsoluteUrl } from "@/utils/Assets";
@@ -509,16 +527,16 @@ const DebitNoteDetailsPage: React.FC = () => {
       </style>
 
       {/* Sticky Header */}
-      <div className="bg-white px-6 py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/debit-note")}>
+      <div className="bg-white px-4 sm:px-6 py-3 sm:py-4 border-t border-b border-gray-200 sticky top-0 z-10 no-print">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/debit-note")} className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-black">Debit Note #{debitNoteData?.debit_note_number || 'Loading...'}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded capitalize ${getStatusBadge(debitNoteData?.status)}`}>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-semibold text-black truncate">Debit Note #{debitNoteData?.debit_note_number || 'Loading...'}</h1>
+              <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+                <span className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded capitalize ${getStatusBadge(debitNoteData?.status)}`}>
                   {debitNoteData?.status && typeof debitNoteData.status === 'string'
                     ? debitNoteData.status.charAt(0).toUpperCase() + debitNoteData.status.slice(1)
                     : 'Loading...'
@@ -527,14 +545,21 @@ const DebitNoteDetailsPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 shrink-0">
+              <Download className="h-4 w-4" />
+              <span className="hidden xs:inline">Download</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 shrink-0">
+              <Printer className="h-4 w-4" />
+              <span className="hidden xs:inline">Print</span>
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
-                  <Share className="h-4 w-4" /> Share
+                <Button variant="outline" size="sm" className="gap-2 shrink-0" disabled={isFetchingShareData}>
+                  <Share className="h-4 w-4" />
+                  <span className="hidden xs:inline">Share</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -546,159 +571,130 @@ const DebitNoteDetailsPage: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* <Button variant="primary" size="sm" onClick={() => navigate(`/debit-note/edit/${id}`)} className="gap-2 shrink-0">
+              <Edit className="h-4 w-4" />
+              <span className="hidden xs:inline">Edit</span>
+            </Button> */}
           </div>
         </div>
       </div>
 
       {/* Debit Note Content */}
-      <div id="debit-note-print-area" ref={debitNoteRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm">
-        <div className="mb-8 flex justify-between items-start">
+      <div id="debit-note-print-area" ref={debitNoteRef} className="max-w-4xl mx-auto p-4 sm:p-8 md:p-12 bg-white sm:mt-8 shadow-sm">
+        <div className="mb-6 sm:mb-10">
           {(() => {
             const businessInfo = getAuthBusinessInfo();
             return (
-              <>
-                <div className="mt-12">
-                  <h1 className="text-2xl font-semibold text-black leading-tight">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-6 w-full">
+                <div className="order-2 sm:order-1 flex-1">
+                  <h1 className="text-xl sm:text-2xl font-bold text-black leading-tight">
                     {businessInfo?.name || "Evoto Technologies"}
                   </h1>
-                  {businessInfo?.email && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.email}
-                    </p>
-                  )}
-                  {businessInfo?.phone && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.phone}
-                    </p>
-                  )}
-                  {businessInfo?.address && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
-                      {businessInfo.address}
-                    </p>
-                  )}
-                  {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+                  <div className="mt-2 space-y-1">
+                    {businessInfo?.email && (
+                      <p className="text-xs text-gray-600 font-medium">
+                        {businessInfo.email}
+                      </p>
+                    )}
+                    {businessInfo?.phone && (
+                      <p className="text-xs text-gray-600 font-medium">
+                        {businessInfo.phone}
+                      </p>
+                    )}
+                    {businessInfo?.address && (
+                      <p className="text-xs text-gray-600 font-medium">
+                        {businessInfo.address}
+                      </p>
+                    )}
+                    {businessInfo?.gst && (
+                      <p className="text-xs text-gray-600 font-semibold">
+                        GSTIN: {businessInfo.gst}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end -mt-8">
+                <div className="flex justify-start sm:justify-end order-1 sm:order-2 w-full sm:w-auto">
                   <img
                     src={toAbsoluteUrl("/media/app/Evoto-Logo.png")}
-                    className="h-40 w-auto object-contain"
+                    className="h-16 sm:h-24 md:h-32 w-auto object-contain"
                     alt="Evoto Technologies"
                   />
                 </div>
-              </>
+              </div>
             );
           })()}
         </div>
 
-        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 mb-8 sm:mb-12 border border-black overflow-hidden rounded-sm w-full">
           {/* Labels Row */}
-          <div className="px-4 py-1 border-b border-black bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Debit Note No.
-            </p>
+          <div className="hidden sm:block px-4 py-1 border-b border-black bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Debit Note No.</p>
           </div>
-          <div className="px-4 py-1 border-x border-b border-black text-center bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Debit Note Date
-            </p>
-          </div>
-          <div className="px-4 py-1 border-b border-black text-right bg-gray-100">
-            <p className="text-[11px] font-semibold text-black uppercase">
-              Invoice No.
-            </p>
+          {/* <div className="hidden sm:block px-4 py-1 border-x border-b border-black text-center bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Debit Note Date</p>
+          </div> */}
+          <div className="hidden sm:block px-4 py-1 border-b border-black text-right bg-gray-100">
+            <p className="text-[11px] font-semibold text-black uppercase">Invoice No.</p>
           </div>
 
           {/* Values Row */}
-          <div className="px-4 py-1">
-            <p className="text-[14px] font-normal text-black">
-              {debitNoteData?.debit_note_number || 'N/A'}
-            </p>
+          <div className="px-4 py-2 sm:py-1 border-b sm:border-b-0 border-black sm:border-none min-w-0">
+            <p className="sm:hidden text-[10px] font-bold text-gray-500 uppercase mb-0.5">Debit Note No.</p>
+            <p className="text-[14px] font-normal text-black truncate">{debitNoteData?.debit_note_number || 'N/A'}</p>
           </div>
-          <div className="px-4 py-1 border-x border-black text-center">
+          <div className="px-4 py-2 sm:py-1 border-b sm:border-b-0 border-black sm:border-x sm:text-center min-w-0">
+            <p className="sm:hidden text-[10px] font-bold text-gray-500 uppercase mb-0.5">Debit Note Date</p>
             <p className="text-[14px] font-normal text-black">
               {debitNoteData?.debit_note_date ? new Date(debitNoteData.debit_note_date).toLocaleDateString("en-IN") : 'N/A'}
             </p>
           </div>
-          <div className="px-4 py-1 text-right">
-            <p className="text-[14px] font-normal text-black">
-              {debitNoteData?.linked_invoice_id || debitNoteData?.invoice_number || "N/A"}
-            </p>
+          <div className="px-4 py-2 sm:py-1 sm:text-right min-w-0">
+            <p className="sm:hidden text-[10px] font-bold text-gray-500 uppercase mb-0.5">Invoice No.</p>
+            <p className="text-[14px] font-normal text-black truncate">{debitNoteData?.linked_invoice_id || debitNoteData?.invoice_number || "N/A"}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-12 mb-12">
-          <div>
-            <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-56">
-              BILL TO
-            </h3>
-            <div className="space-y-1 text-black text-sm">
-              <p className="font-semibold text-lg mb-2">
-                {debitNoteData.vendor?.vendor_name || debitNoteData.vendor?.name || debitNoteData.party_name || 'N/A'}
-              </p>
-              <div className="space-y-1">
-                {debitNoteData.vendor?.company_name && (
-                  <p className="text-gray-600">
-                    {debitNoteData.vendor.company_name}
-                  </p>
-                )}
-                {debitNoteData.vendor?.email && (
-                  <p className="text-black">
-                    <span className="font-semibold">Email:</span>{" "}
-                    {debitNoteData.vendor.email}
-                  </p>
-                )}
-                {debitNoteData.vendor?.mobile && (
-                  <p className="text-black">
-                    <span className="font-semibold">Mobile:</span>{" "}
-                    {debitNoteData.vendor.mobile}
-                  </p>
-                )}
-                {debitNoteData.vendor?.gst && (
-                  <p className="text-black">
-                    <span className="font-semibold">GSTIN:</span>{" "}
-                    {debitNoteData.vendor.gst}
-                  </p>
-                )}
-                {debitNoteData.vendor?.address1 && (
-                  <p className="text-black">
-                    <span className="font-semibold">Address:</span>{" "}
-                    {debitNoteData.vendor.address1}
-                  </p>
-                )}
-              </div>
+        <div className="mb-10">
+          <h3 className="text-[14px] sm:text-[15px] font-bold text-black uppercase mb-3 pb-1 border-b border-black inline-block min-w-[120px] sm:w-56">
+            BILL TO
+          </h3>
+          <div className="space-y-1 text-black text-sm break-words overflow-hidden">
+            <p className="font-bold text-lg mb-2 leading-tight">
+              {debitNoteData.vendor?.vendor_name || debitNoteData.vendor?.name || debitNoteData.party_name || 'N/A'}
+            </p>
+            <div className="space-y-1">
+              {debitNoteData.vendor?.company_name && <p className="text-gray-600">{debitNoteData.vendor.company_name}</p>}
+              {debitNoteData.vendor?.email && (
+                <p className="text-black"><span className="font-semibold">Email:</span> {debitNoteData.vendor.email}</p>
+              )}
+              {debitNoteData.vendor?.mobile && (
+                <p className="text-black"><span className="font-semibold">Mobile:</span> {debitNoteData.vendor.mobile}</p>
+              )}
+              {debitNoteData.vendor?.gst && (
+                <p className="text-black"><span className="font-semibold">GSTIN:</span> {debitNoteData.vendor.gst}</p>
+              )}
+              {debitNoteData.vendor?.address1 && (
+                <p className="text-black"><span className="font-semibold">Address:</span> {debitNoteData.vendor.address1}</p>
+              )}
             </div>
           </div>
         </div>
 
-        <table className="w-full border border-black mb-8 text-xs">
-          <thead>
-            <tr className="bg-gray-100 border-b border-black">
-              <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-[32%]">
-                Item Description
-              </th>
-              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[12%]">
-                Image
-              </th>
-              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[10%]">
-                Qty
-              </th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">
-                Price
-              </th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">
-                Disc.
-              </th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">
-                Tax
-              </th>
-              <th className="p-2 text-right font-bold uppercase text-[10px] w-[14%]">
-                Amount
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black">
-            {debitNoteData.items?.map((item: any, idx: number) => {
-              return (
+        <div className="overflow-x-auto mb-8 no-scrollbar border rounded-lg sm:border-none">
+          <table className="w-full border border-black text-xs min-w-[600px]">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-[32%]">Item Description</th>
+                <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[12%]">Image</th>
+                <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px] w-[10%]">Qty</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">Price</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">Disc.</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px] w-[12%]">Tax</th>
+                <th className="p-2 text-right font-bold uppercase text-[10px] w-[14%]">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black">
+              {debitNoteData.items?.map((item: any, idx: number) => (
                 <tr key={idx}>
                   <td className="p-2 border-r border-black align-top">
                     <div className="flex items-start gap-1">
@@ -728,54 +724,40 @@ const DebitNoteDetailsPage: React.FC = () => {
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price || item.price_per_item)}</td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    {item.discount && item.discount.discount_percentage > 0
-                      ? `${item.discount.discount_percentage}% (${formatCurrency(item.discount.discount_amount)})`
-                      : typeof item.discount === 'number' && item.discount > 0
-                        ? `${item.discount}%`
-                        : "-"}
+                    {extractNumericValue(item.discount) > 0 ? `${extractNumericValue(item.discount)}%` : "-"}
                   </td>
                   <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    {item.tax && item.tax.tax_percentage > 0
-                      ? `${item.tax.tax_percentage}% (${formatCurrency(item.tax.tax_amount)})`
-                      : typeof item.tax === 'number' && item.tax > 0
-                        ? `${item.tax}%`
-                        : "-"}
+                    {extractNumericValue(item.tax) > 0 ? `${extractNumericValue(item.tax)}%` : "-"}
                   </td>
                   <td className="p-2 text-right font-medium align-top whitespace-nowrap text-red-600">{formatCurrency(item.total_price || item.amount)}</td>
                 </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="bg-gray-50">
-              <td colSpan={3} className="border border-black px-4 py-2"></td>
-              <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">
-                Subtotal:
-              </td>
-              <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
-                {formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}
-              </td>
-              <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
-                {formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}
-              </td>
-              <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">
-                {formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}
-              </td>
-            </tr>
-            <tr className="bg-gray-100">
-              <td colSpan={5} className="border border-black px-4 py-2"></td>
-              <td colSpan={1} className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">
-                Grand Total:
-              </td>
-              <td className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">
-                {formatCurrency(debitNoteData.total_amount || 0)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50">
+                <td colSpan={3} className="border border-black px-4 py-2"></td>
+                <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">Subtotal:</td>
+                <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
+                  {formatCurrency(debitNoteData.charges?.total_discount || debitNoteData.discount_total || debitNoteData.total_discount || 0)}
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm text-black whitespace-nowrap">
+                  {formatCurrency(debitNoteData.charges?.total_tax || debitNoteData.tax_total || debitNoteData.total_tax || 0)}
+                </td>
+                <td className="border border-black px-4 py-2 text-right text-sm font-semibold text-black whitespace-nowrap">
+                  {formatCurrency(debitNoteData.charges?.subtotal || debitNoteData.subtotal || 0)}
+                </td>
+              </tr>
+              <tr className="bg-gray-100">
+                <td colSpan={5} className="border border-black px-4 py-2"></td>
+                <td colSpan={1} className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">Grand Total:</td>
+                <td className="border border-black px-4 py-2 text-right text-sm font-bold text-black whitespace-nowrap">{formatCurrency(debitNoteData.total_amount || 0)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
 
-        <div className="flex justify-between items-start gap-12">
-          <div className="flex-1">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-8 lg:gap-12">
+          <div className="flex-1 w-full">
             {debitNoteData.notes && (
               <div className="mb-4">
                 <h4 className="text-[10px] font-bold uppercase border-b border-black w-20 mb-1">Return Reason</h4>
@@ -796,7 +778,7 @@ const DebitNoteDetailsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="w-80 space-y-0 text-black">
+          <div className="w-full sm:w-80 space-y-0 text-black ml-auto">
             <div className="flex justify-between items-center py-2">
               <span className="text-xs font-normal uppercase">Taxable Amount</span>
               <span className="text-sm font-bold">{formatCurrency(debitNoteData.charges?.taxable_amount || 0)}</span>
@@ -820,12 +802,12 @@ const DebitNoteDetailsPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-dashed border-gray-300 space-y-2 no-print">
-              <div className="flex justify-between text-xs text-green-700">
-                <span className="font-medium uppercase">Amount Credited</span>
+            <div className="mt-4 pt-4 border-t border-dashed border-gray-300 space-y-2 no-print bg-gray-50/50 p-3 rounded-lg">
+              <div className="flex justify-between items-center text-xs text-green-700">
+                <span className="font-bold uppercase">Amount Credited</span>
                 <span className="font-bold">{formatCurrency(debitNoteData.amount_received || 0)}</span>
               </div>
-              <div className="flex justify-between text-base text-red-700 font-bold">
+              <div className="flex justify-between items-center text-base text-red-700 font-black">
                 <span className="uppercase">Balance Due</span>
                 <span>{formatCurrency(calculateBalanceDue())}</span>
               </div>
@@ -835,9 +817,7 @@ const DebitNoteDetailsPage: React.FC = () => {
 
         <div className="mt-24 flex justify-end">
           <div className="text-center">
-            <p className="text-[10px] font-bold text-black uppercase mb-1">
-              For {businessInfo.name}
-            </p>
+            <p className="text-[10px] font-bold text-black uppercase mb-1">For {getAuthBusinessInfo()?.name || "Business"}</p>
             {brandingAssets?.esign_path && (
               <div className="mb-0 flex justify-center">
                 <img
@@ -933,12 +913,7 @@ const DebitNoteDetailsPage: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowAddPaymentDialog(false)}
-            >
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setShowAddPaymentDialog(false)}>Cancel</Button>
             <Button
               onClick={handleAddPayment}
               disabled={isAddingPayment || !newPayment.payment_amount || parseFloat(newPayment.payment_amount) <= 0}

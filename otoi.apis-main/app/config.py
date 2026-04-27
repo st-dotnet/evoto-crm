@@ -2,13 +2,19 @@ import os
 from datetime import timedelta
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "mysecret")
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://root@localhost:5433/test")
-    #SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://evototec_tech:formless@5.189.145.124:5432/staging_evoto")
-    #SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://evoto_user:KfsL@34Dq$8d@122.160.97.61:5432/evoto_stage_db")
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "myjwtsecret")
+    # Environment
+    FLASK_ENV = os.environ.get("FLASK_ENV", "development")
+    PORT = int(os.environ.get("PORT", 8080))
+
+    # Security keys — no hardcoded fallbacks; must be set in .env
+    SECRET_KEY = os.environ.get("SECRET_KEY")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_DAYS", 1)))
+
+    # Database — no hardcoded credentials in code
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
     # Frontend URL for password reset links
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Settings, Plus, Search, Barcode, ChevronDown, Trash2, X, UserPlus, MapPin, Briefcase, Home, MapPinIcon, HomeIcon, BriefcaseIcon, MoreVertical, Edit } from 'lucide-react';
+import { ArrowLeft, Settings, Plus, Search, Barcode, Calendar, ChevronDown, Trash2, X, UserPlus, MapPin, Briefcase, Home, MapPinIcon, HomeIcon, BriefcaseIcon, MoreVertical, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +24,26 @@ import { toast } from 'sonner';
 import { getCustomerNamesDropdown, getAllCustomersDropdown, getInvoicesForParty, createDebitNote, getDebitNoteById, updateDebitNote, getDebitNotes, getVendorById, getCustomerById, checkDebitNoteExistsForInvoice, updatePurchaseInvoiceStatus } from '../service/debitNote.service';
 import { getPurchaseInvoiceById } from '../../purchases/services/purchaseInvoice.services';
 import { getVendorsDropdown } from '../service/debitNote.service';
+
+// Helper function to safely extract numeric value from potentially nested objects
+const extractNumericValue = (val: any): number => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseFloat(val) || 0;
+    
+    // Handle nested objects: tax_percentage, discount_percentage, etc.
+    if (typeof val === 'object') {
+        // Check for common property names
+        const possibleKeys = ['tax_percentage', 'discount_percentage', 'percentage', 'value', 'amount'];
+        for (const key of possibleKeys) {
+            if (val[key] !== undefined) {
+                // Recursively extract if the value found is also an object (handles double nesting)
+                return extractNumericValue(val[key]);
+            }
+        }
+    }
+    return 0;
+};
 
 interface Party {
     id: string;
@@ -545,7 +565,7 @@ const CreateDebitNotePage = () => {
     const handleRemoveItem = (index: number) => {
         const newItems = items.filter((_, i) => i !== index);
         setItems(newItems);
-        setIsPartyDialogOpen(false);
+        recalculateTotals(newItems);
     };
 
     // Function to fetch vendor invoices
@@ -668,9 +688,9 @@ const CreateDebitNotePage = () => {
                         quantity: item.quantity,
                         originalQty: item.quantity,
                         price_per_item: item.unit_price,
-                        discount: item.discount?.discount_percentage || 0,
-                        tax: item.tax?.tax_percentage || 0,
-                        amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
+                        discount: extractNumericValue(item.discount),
+                        tax: extractNumericValue(item.tax),
+                        amount: item.quantity * item.unit_price * (1 - extractNumericValue(item.discount) / 100) * (1 + extractNumericValue(item.tax) / 100),
                         measuring_unit_id: item.measuring_unit_id,
                         description: item.description || null,
                     };
@@ -1090,9 +1110,9 @@ const CreateDebitNotePage = () => {
                             quantity: item.quantity,
                             originalQty: item.quantity,
                             price_per_item: item.unit_price,
-                            discount: item.discount?.discount_percentage || 0,
-                            tax: item.tax?.tax_percentage || 0,
-                            amount: item.quantity * item.unit_price * (1 - (item.discount?.discount_percentage || 0) / 100) * (1 + (item.tax?.tax_percentage || 0) / 100),
+                            discount: extractNumericValue(item.discount),
+                            tax: extractNumericValue(item.tax),
+                            amount: item.quantity * item.unit_price * (1 - extractNumericValue(item.discount) / 100) * (1 + extractNumericValue(item.tax) / 100),
                             measuring_unit_id: item.measuring_unit_id,
                             description: item.description || null,
                         }));
@@ -1336,8 +1356,8 @@ const CreateDebitNotePage = () => {
                             const transformedItems = debitNoteItems.map((item: any) => {
                                 const quantity = item.quantity || 0;
                                 const pricePerItem = item.unit_price || item.price_per_item || 0;
-                                const discount = item.discount_percentage || item.discount?.discount_percentage || item.discount_amount || item.discount || 0;
-                                const tax = item.tax_percentage || item.tax?.tax_percentage || item.tax_amount || item.tax || 0;
+                                const discount = extractNumericValue(item.discount_percentage || item.discount);
+                                const tax = extractNumericValue(item.tax_percentage || item.tax);
                                 const discountType = item.discount_type || 'percentage';
                                 const taxType = item.tax_type || 'percentage';
 
@@ -1410,213 +1430,146 @@ const CreateDebitNotePage = () => {
             )}
 
             {/* Header */}
-            <div className="bg-white border-b px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+            <div className="bg-white border-b px-3 sm:px-4 py-2.5 sm:py-3 sticky top-0 z-40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate('/debit-note')}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <h1 className="text-xl font-semibold">
-                            {isViewMode ? 'View Debit Note' : isEditMode ? 'Edit Debit Note' : 'Create Debit Note'}
-                        </h1>
-                        {isInvoicePaid && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="text-red-800 font-medium">This invoice is already paid. Debit note editing is disabled.</span>
-                                </div>
-                            </div>
-                        )}
+                        <div>
+                            <h1 className="text-lg sm:text-xl font-semibold truncate max-w-[200px] sm:max-w-none">
+                                {isViewMode ? 'View Debit Note' : isEditMode ? 'Edit Debit Note' : 'Create Debit Note'}
+                            </h1>
+                            {isInvoicePaid && (
+                                <p className="text-[10px] text-red-600 font-medium sm:hidden">Invoice Paid - Read Only</p>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 justify-end">
                         {!isViewMode && (
-                            <>
-                                <Button
-                                    onClick={handleSave}
-                                    disabled={isSaving || isInvoicePaid || debitNoteExistsForCurrentInvoice}
-                                    className="min-w-[80px]"
-                                >
-                                    {isSaving ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            {isEditMode ? 'Updating...' : 'Creating...'}
-                                        </div>
-                                    ) : (
-                                        isEditMode ? 'Update' : 'Create'
-                                    )}
-                                </Button>
-                            </>
+                            <Button
+                                onClick={handleSave}
+                                disabled={isSaving || isInvoicePaid || debitNoteExistsForCurrentInvoice}
+                                className="w-full sm:w-auto min-w-[100px]"
+                            >
+                                {isSaving ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Saving...</span>
+                                    </div>
+                                ) : (
+                                    <span>{isEditMode ? 'Update' : 'Create'}</span>
+                                )}
+                            </Button>
                         )}
                         {isViewMode && (
                             <Button
-                                onClick={() => navigate(`/purchases/debit-note/${id}/edit`)}
-                                className="min-w-[80px]"
+                                onClick={() => navigate(`/debit-note/edit/${id}`)}
+                                className="w-full sm:w-auto min-w-[100px]"
                             >
                                 Edit
                             </Button>
                         )}
                     </div>
                 </div>
+                {isInvoicePaid && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg hidden sm:block">
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs text-red-800 font-medium">This invoice is already paid. Debit note editing is disabled.</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Top Section: Bill To, Ship To, and Debit Note Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:col-span-2">
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-semibold text-gray-700">Bill To</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="flex flex-col md:flex-row gap-4 sm:gap-5 lg:col-span-2">
+                        <div className="flex-1 space-y-3">
+                            <h3 className="text-sm font-semibold text-gray-700">Bill To <span className="text-red-500">*</span></h3>
                             {selectedParty ? (
-                                <div className="border rounded-xl min-h-[180px] p-4 bg-white">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h4 className="font-medium text-gray-900">
+                                <div className="border rounded-xl min-h-[140px] sm:min-h-[160px] p-3 sm:p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
                                                 {selectedParty.name}
                                             </h4>
-                                            <div className="mt-2 text-sm text-gray-700 space-y-1">
-                                                {/* Try multiple possible address field structures */}
-                                                {(selectedParty.vendor?.address1 || selectedParty.address1 || selectedParty.customerData?.address1) && (
-                                                    <p className="font-medium">
-                                                        {selectedParty.vendor?.address1 || selectedParty.address1 || selectedParty.customerData?.address1}
-                                                    </p>
-                                                )}
-                                                {(selectedParty.vendor?.address2 || selectedParty.address2 || selectedParty.customerData?.address2) && (
-                                                    <p>{selectedParty.vendor?.address2 || selectedParty.address2 || selectedParty.customerData?.address2}</p>
-                                                )}
-                                                <div className="mt-2 space-y-1">
+                                            <div className="mt-2 text-xs sm:text-sm text-gray-600 space-y-1">
+                                                <p className="line-clamp-2">
+                                                    {selectedParty.vendor?.address1 || selectedParty.address1 || selectedParty.customerData?.address1}
+                                                    {selectedParty.vendor?.address2 || selectedParty.address2 || selectedParty.customerData?.address2 ? `, ${selectedParty.vendor?.address2 || selectedParty.address2 || selectedParty.customerData?.address2}` : ''}
+                                                </p>
+                                                <p>
+                                                    {[
+                                                        selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city,
+                                                        selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state,
+                                                        selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin
+                                                    ].filter(Boolean).join(", ")}
+                                                </p>
+                                                <div className="pt-1 space-y-0.5">
                                                     {selectedParty.mobile && (
-                                                        <p className="text-gray-600">
-                                                            <span className="font-medium">Phone:</span>{" "}
-                                                            {selectedParty.mobile}
-                                                        </p>
-                                                    )}
-                                                    {(selectedParty.vendor?.email || selectedParty.email || selectedParty.customerData?.email) && (
-                                                        <p className="text-gray-600">
-                                                            <span className="font-medium">Email:</span>{" "}
-                                                            {selectedParty.vendor?.email || selectedParty.email || selectedParty.customerData?.email}
-                                                        </p>
+                                                        <p><span className="font-medium text-gray-500">Phone:</span> {selectedParty.mobile}</p>
                                                     )}
                                                     {(selectedParty.vendor?.gst || selectedParty.customerData?.gst) && (
-                                                        <p className="text-gray-600">
-                                                            <span className="font-medium">GST:</span>{" "}
-                                                            {selectedParty.vendor?.gst || selectedParty.customerData?.gst}
-                                                        </p>
+                                                        <p><span className="font-medium text-gray-500">GST:</span> {selectedParty.vendor?.gst || selectedParty.customerData?.gst}</p>
                                                     )}
-                                                </div>
-                                                <div className="mt-2 space-y-1">
-                                                    <p>
-                                                        {(selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city) ? (
-                                                            <span>
-                                                                <span className="font-medium">City:</span>{" "}
-                                                                {selectedParty.vendor?.city || selectedParty.city || selectedParty.customerData?.city},{" "}
-                                                            </span>
-                                                        ) : null}
-                                                        {(selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state) ? (
-                                                            <span>
-                                                                <span className="font-medium">State:</span>{" "}
-                                                                {selectedParty.vendor?.state || selectedParty.state || selectedParty.customerData?.state},{" "}
-                                                            </span>
-                                                        ) : null}
-                                                        {(selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin) ? (
-                                                            <span>
-                                                                <span className="font-medium">PIN:</span>{" "}
-                                                                {selectedParty.vendor?.pin || selectedParty.pin || selectedParty.customerData?.pin}
-                                                            </span>
-                                                        ) : null}
-                                                        {(selectedParty.vendor?.country || selectedParty.country || selectedParty.customerData?.country) ? (
-                                                            <span>
-                                                                ,{" "}
-                                                                <span className="font-medium">Country:</span>{" "}
-                                                                {selectedParty.vendor?.country || selectedParty.country || selectedParty.customerData?.country}
-                                                            </span>
-                                                        ) : null}
-                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
                                             onClick={() => setIsPartyDialogOpen(true)}
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 shrink-0"
                                         >
                                             Change
                                         </Button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex items-center justify-center">
-                                    <button
-                                        onClick={() => setIsPartyDialogOpen(true)}
-                                        className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                        <span className="font-medium">Add Vendor</span>
-                                    </button>
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100/50 hover:border-gray-300 transition-all cursor-pointer min-h-[160px]"
+                                     onClick={() => setIsPartyDialogOpen(true)}>
+                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                                        <UserPlus className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <span className="font-medium text-blue-600 text-sm">Select Vendor</span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="flex-1 space-y-3">
                             <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
-                            <div className="border rounded-xl h-[180px] p-4 bg-white overflow-hidden">
-                                <div className="flex justify-between items-start">
-                                    <div className="h-[150px] overflow-hidden">
-                                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                                            {businessProfile.name}
-                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                Fixed Address
+                            <div className="border rounded-xl h-auto min-h-[140px] sm:min-h-[160px] p-3 sm:p-4 bg-white shadow-sm">
+                                <div className="flex justify-between items-start gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+                                                {businessProfile.name}
+                                            </h4>
+                                            <span className="shrink-0 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
+                                                Self
                                             </span>
-                                        </h4>
-                                        <div className="mt-2 text-sm text-gray-700 space-y-1">
-                                            {businessProfile.address1 && (
-                                                <p>{businessProfile.address1}</p>
-                                            )}
-                                            <div className="mt-2 space-y-1">
-                                                {businessProfile.city && businessProfile.state && (
-                                                    <p>
-                                                        {businessProfile.city}, {businessProfile.state}
-                                                    </p>
-                                                )}
-                                                {businessProfile.country && businessProfile.pin && (
-                                                    <p>
-                                                        {businessProfile.country} - {businessProfile.pin}
-                                                    </p>
-                                                )}
+                                        </div>
+                                        <div className="mt-2 text-xs sm:text-sm text-gray-600 space-y-1">
+                                            <p className="line-clamp-2">{businessProfile.address1}</p>
+                                            <p>
+                                                {[businessProfile.city, businessProfile.state, businessProfile.pin].filter(Boolean).join(", ")}
+                                            </p>
+                                            <div className="pt-1 space-y-0.5">
                                                 {businessProfile.phone && (
-                                                    <p className="text-gray-600">
-                                                        <span className="font-medium">Phone:</span>{" "}
-                                                        {businessProfile.phone}
-                                                    </p>
-                                                )}
-                                                {businessProfile.email && (
-                                                    <p className="text-gray-600">
-                                                        <span className="font-medium">Email:</span>{" "}
-                                                        {businessProfile.email}
-                                                    </p>
+                                                    <p><span className="font-medium text-gray-500">Phone:</span> {businessProfile.phone}</p>
                                                 )}
                                                 {businessProfile.gst && (
-                                                    <p className="text-gray-600">
-                                                        <span className="font-medium">GST:</span>{" "}
-                                                        {businessProfile.gst}
-                                                    </p>
+                                                    <p><span className="font-medium text-gray-500">GST:</span> {businessProfile.gst}</p>
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={true}
-                                            className="text-xs h-7 opacity-50"
-                                        >
-                                            <MapPin className="h-3.5 w-3.5 mr-1.5 text-red-500" />
-                                            Fixed Address
-                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -1626,45 +1579,48 @@ const CreateDebitNotePage = () => {
                     {/* Debit Note Details */}
                     <div className="space-y-3">
                         <h3 className="text-sm font-semibold text-gray-700">Debit Note Details</h3>
-                        <div className="border rounded-xl min-h-[180px] p-4 bg-white">
-                            <CardContent className="space-y-4 p-0">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="debitNoteNo" className="block text-sm font-medium mb-1">Debit Note No:</label>
+                        <Card className="border-gray-200 shadow-sm overflow-hidden">
+                            <CardContent className="p-3 sm:p-4 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Debit Note No</label>
                                         <Input
-                                            id="debitNoteNo"
                                             value={debitNoteData.debitNoteNo}
                                             onChange={(e) => setDebitNoteData(prev => ({ ...prev, debitNoteNo: e.target.value }))}
-                                            placeholder="auto-generated"
+                                            placeholder="auto"
+                                            className="h-9 text-sm"
                                             disabled={isViewMode}
                                         />
                                     </div>
-                                    <div>
-                                        <label htmlFor="debitNoteDate" className="block text-sm font-medium mb-1">Debit Note Date:</label>
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</label>
                                         <Input
-                                            id="debitNoteDate"
                                             type="date"
                                             value={debitNoteData.debitNoteDate}
                                             onChange={(e) => setDebitNoteData(prev => ({ ...prev, debitNoteDate: e.target.value }))}
+                                            className="h-9 text-sm"
                                             disabled={isViewMode}
                                         />
                                     </div>
                                 </div>
 
-                                {/* Invoice Link Field */}
-                                <div>
-                                    <label htmlFor="linkToInvoice" className="block text-sm font-medium mb-1">Link to Invoice:</label>
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Link to Invoice</label>
                                     <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400">
+                                            {isInvoiceDropdownLoading ? (
+                                                <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <Search className="h-4 w-4" />
+                                            )}
+                                        </div>
                                         <Input
                                             id="linkToInvoice"
-                                            placeholder={selectedCustomer ? "Click to search invoices" : "Select a vendor first"}
+                                            placeholder={selectedCustomer ? "Search invoices..." : "Select vendor first"}
                                             value={debitNoteData.linkToInvoice}
-                                            onChange={(e) => setDebitNoteData(prev => ({ ...prev, linkToInvoice: e.target.value }))}
                                             onFocus={() => selectedCustomer && fetchPartyInvoices()}
-                                            className="pl-10"
+                                            className="pl-9 h-9 text-sm"
                                             disabled={!selectedCustomer || isViewMode || isInvoicePaid || debitNoteData.linkToInvoice !== ''}
-                                            autoComplete="off"
                                             readOnly={debitNoteData.linkToInvoice !== ''}
                                         />
                                         {/* Loader indicator on the input field */}
@@ -1675,381 +1631,377 @@ const CreateDebitNotePage = () => {
                                         )}
                                         {debitNoteData.linkToInvoice && !isViewMode && (
                                             <button
-                                                onClick={() => {
-                                                    setShowUnlinkConfirmDialog(true);
-                                                }}
-                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                                title="Unlink invoice"
+                                                onClick={() => setShowUnlinkConfirmDialog(true)}
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 transition-colors"
                                             >
                                                 <X className="h-4 w-4" />
                                             </button>
                                         )}
 
-                                        {/* Warning if debit note already exists for this invoice */}
-                                        {debitNoteExistsForCurrentInvoice && (
-                                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-red-600">⚠️</span>
-                                                    <span className="text-sm text-red-700">
-                                                        A debit note already exists for this invoice. Please select a different invoice.
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Invoice Dropdown */}
                                         {showInvoiceDropdown && (
-                                            <div className="invoice-dropdown absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                                                {isInvoiceDropdownLoading ? (
-                                                    <div className="p-3 text-center text-gray-500">
-                                                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                                        Loading invoices...
-                                                    </div>
-                                                ) : vendorInvoices.length > 0 ? (
-                                                    <div className="p-2">
-                                                        <div className="grid grid-cols-[1fr,2fr,1fr] text-xs font-semibold text-gray-600 border-b pb-1 mb-1">
-                                                            <div>Date</div>
-                                                            <div>Invoice No.</div>
-                                                            <div className="text-right">Amount(₹)</div>
-                                                        </div>
+                                            <div className="invoice-dropdown absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                                {vendorInvoices.length > 0 ? (
+                                                    <div className="p-1">
                                                         {vendorInvoices.map((invoice) => (
                                                             <div
-                                                                key={invoice.id}
-                                                                className="grid grid-cols-[1fr,2fr,1fr] p-1.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-xs"
+                                                                key={invoice.uuid}
+                                                                className="flex flex-col p-2.5 hover:bg-blue-50 cursor-pointer rounded-md transition-colors border-b border-gray-50 last:border-0"
                                                                 onClick={() => handleInvoiceSelect(invoice)}
                                                             >
-                                                                <div>{invoice.invoice_date}</div>
-                                                                <div>{invoice.invoice_number}</div>
-                                                                <div className="text-right">₹{invoice.total_amount?.toFixed(2) || '0.00'}</div>
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <span className="font-semibold text-gray-900 text-sm">{invoice.invoice_number}</span>
+                                                                    <span className="font-bold text-blue-600 text-sm">₹{invoice.total_amount?.toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="text-[10px] text-gray-500 flex items-center gap-2">
+                                                                    <Calendar className="h-3 w-3" />
+                                                                    <span>{invoice.invoice_date}</span>
+                                                                    <span className="ml-auto px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">{invoice.payment_status}</span>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="p-3 text-center text-gray-500">
-                                                        No invoice linked with that party
+                                                    <div className="p-4 text-center text-xs text-gray-500">
+                                                        No active invoices found
                                                     </div>
                                                 )}
                                             </div>
                                         )}
                                     </div>
+                                    {debitNoteExistsForCurrentInvoice && (
+                                        <p className="text-[10px] text-red-500 mt-1 px-1">⚠️ Debit note already exists for this invoice</p>
+                                    )}
                                 </div>
                             </CardContent>
-                        </div>
+                        </Card>
                     </div>
                 </div>
 
                 {/* Middle Section: Items/Services Table */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <Card className="overflow-hidden border-gray-200 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50/50 border-b">
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg">Items/Services</CardTitle>
+                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Items/Services</CardTitle>
                             {items.length > 0 && debitNoteData.linkToInvoice !== '' && (
-                                <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                    </svg>
-                                    <span>From Invoice</span>
+                                <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md font-bold border border-amber-200 uppercase">
+                                    Linked
                                 </div>
                             )}
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                onClick={handleAddItem}
-                                disabled={debitNoteData.linkToInvoice !== ''}
-                                title={items.length > 0 && debitNoteData.linkToInvoice !== '' ? "Items are loaded from invoice. Unlink invoice to add custom items." : "Add new item"}
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span>Add Item</span>
-                            </Button>
-                        </div>
+                        <Button
+                            size="sm"
+                            onClick={handleAddItem}
+                            disabled={debitNoteData.linkToInvoice !== ''}
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Add Item</span>
+                        </Button>
                     </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
+                    <CardContent className="p-0">
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 border-b">
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
-                                            NO.
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
-                                            Item/Service Details
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-[250px]">
-                                            HSN/SAC
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
-                                            Quantity
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
-                                            PRICE/ITEM (₹)
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-32">
-                                            Discount
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-28">
-                                            Tax
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-36">
-                                            AMOUNT (₹)
-                                        </th>
-                                        <th className="text-center p-3.5 font-medium text-xs uppercase tracking-wider border-r border-gray-200 w-16">
-                                            Action
-                                        </th>
+                                    <tr className="bg-gray-50/50 border-b border-gray-200">
+                                        <th className="text-left p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-12">#</th>
+                                        <th className="text-left p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 min-w-[200px]">Item Details</th>
+                                        <th className="text-left p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-32 text-center">HSN/SAC</th>
+                                        <th className="text-center p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-32">Quantity</th>
+                                        <th className="text-right p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-36">Price (₹)</th>
+                                        <th className="text-center p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-32">Discount (%)</th>
+                                        <th className="text-center p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-24">Tax (%)</th>
+                                        <th className="text-right p-4 font-bold text-[10px] uppercase tracking-widest text-gray-500 w-36">Total (₹)</th>
+                                        <th className="p-4 w-12"></th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-100">
                                     {items.map((item, index) => (
-                                        <tr key={item.uuid || index} className="border-b hover:bg-gray-50">
-                                            <td className="px-4 py-4 align-middle">{index + 1}</td>
-                                            <td className="px-4 py-4 border-r border-gray-200">
-                                                <div className="space-y-2">
-                                                    <div
-                                                        className="text-sm text-gray-900 truncate max-w-[250px]"
-                                                        title={item.item_name || item.item}
-                                                        style={{ marginTop: "0.7rem" }}
-                                                    >
-                                                        {item.item_name || item.item}
-                                                    </div>
-                                                    <div className="relative gap-1">
-                                                        <textarea
-                                                            value={item.description || ""}
-                                                            disabled={debitNoteData.linkToInvoice !== ''}
-                                                            className={`w-full resize-none border-none focus:ring-0 text-xs ${debitNoteData.linkToInvoice !== '' ? 'text-gray-500 bg-gray-100' : 'text-gray-900 bg-white'}`}
-                                                            rows={2}
-                                                            placeholder="Enter Description (optional)"
-                                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                        />
-                                                    </div>
+                                        <tr key={item.uuid || index} className="group hover:bg-gray-50/80 transition-colors">
+                                            <td className="p-4 text-sm text-gray-400 font-medium">{index + 1}</td>
+                                            <td className="p-4">
+                                                <div className="space-y-1.5">
+                                                    <div className="text-sm font-semibold text-gray-900 line-clamp-1" title={item.item_name}>{item.item_name}</div>
+                                                    <textarea
+                                                        value={item.description || ""}
+                                                        disabled={debitNoteData.linkToInvoice !== ''}
+                                                        rows={1}
+                                                        placeholder="Add description..."
+                                                        className="w-full text-xs text-gray-500 bg-transparent border-none p-0 focus:ring-0 resize-none"
+                                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                    />
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200 align-middle">
+                                            <td className="p-4">
                                                 <Input
-                                                    placeholder="HSN/SAC"
                                                     value={item.hsn_sac || ''}
-                                                    disabled={false}
-                                                    className="w-full"
                                                     onChange={(e) => handleItemChange(index, 'hsn_sac', e.target.value)}
+                                                    className="h-8 text-xs text-center font-medium bg-transparent border-gray-200"
                                                 />
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
-                                                <Input
-                                                    type="number"
-                                                    value={item.quantity}
-                                                    min="0"
-                                                    step="1"
-                                                    max={debitNoteData.linkToInvoice !== '' ? item.originalQty : undefined}
-                                                    className={`w-full min-w-[50px] pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}
-                                                    onChange={(e) => {
-                                                        const newQty = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-
-                                                        if (newQty === 0) {
-                                                            handleItemChange(index, 'quantity', 0);
-                                                            return;
-                                                        }
-                                                        if (isNaN(newQty) || newQty < 0) {
-                                                            handleItemChange(index, 'quantity', 0);
-                                                            return;
-                                                        }
-                                                        // Allow quantity changes even when linked to invoice
-                                                        if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && newQty > item.originalQty) {
-                                                            handleItemChange(index, 'quantity', item.originalQty);
-                                                            return;
-                                                        }
-                                                        handleItemChange(index, 'quantity', newQty);
-                                                    }}
-                                                    {...(debitNoteData.linkToInvoice !== '' && { max: item.originalQty })}
-                                                    {...(debitNoteData.linkToInvoice !== '' && { disabled: false })}
-                                                />
-                                                {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
-                                                    <div className="absolute bottom-1 left-0 right-0 text-center">
-                                                        <span className="text-xs text-amber-600 whitespace-nowrap">
-                                                            Max: {item.originalQty} (from invoice)
-                                                        </span>
-                                                    </div>
-                                                )}
+                                            <td className="p-4">
+                                                <div className="space-y-1">
+                                                    <Input
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                            if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && val > item.originalQty) {
+                                                                handleItemChange(index, 'quantity', item.originalQty);
+                                                            } else {
+                                                                handleItemChange(index, 'quantity', Math.max(0, val));
+                                                            }
+                                                        }}
+                                                        className={`h-8 text-xs text-center font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-transparent'}`}
+                                                    />
+                                                    {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
+                                                        <p className="text-[9px] text-amber-600 font-bold text-center">MAX: {item.originalQty}</p>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
-                                                <Input
-                                                    type="number"
-                                                    value={item.price_per_item}
-                                                    disabled={debitNoteData.linkToInvoice !== ''}
-                                                    className={`w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
-                                                    onChange={(e) => handleItemChange(index, 'price_per_item', parseFloat(e.target.value) || 0)}
-                                                />
-                                                <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">₹</span>
+                                            <td className="p-4">
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        value={item.price_per_item}
+                                                        disabled={debitNoteData.linkToInvoice !== ''}
+                                                        onChange={(e) => handleItemChange(index, 'price_per_item', parseFloat(e.target.value) || 0)}
+                                                        className="h-8 text-xs text-right pl-5 font-medium bg-transparent"
+                                                    />
+                                                </div>
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                            <td className="p-4">
                                                 <Input
                                                     type="number"
                                                     value={item.discount}
                                                     disabled={debitNoteData.linkToInvoice !== ''}
-                                                    className={`w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${debitNoteData.linkToInvoice !== '' ? 'text-gray-900 bg-gray-100' : 'text-gray-900 bg-white'}`}
                                                     onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
+                                                    className="h-8 text-xs text-center font-medium bg-transparent"
                                                 />
-                                                {item.discount > 0 && (
-                                                    <div className="absolute bottom-1 left-0 right-5 text-right">
-                                                        <span className="text-[10px] font-medium text-red-600 leading-tight whitespace-nowrap">
-                                                            -₹{((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}
-                                                        </span>
-                                                    </  div>
-                                                )}
-                                                <span className="absolute left-7 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">%</span>
                                             </td>
-                                            <td className="px-4 py-4 border-r border-gray-200 align-middle relative">
+                                            <td className="p-4">
                                                 <select
                                                     value={item.tax}
                                                     disabled={debitNoteData.linkToInvoice !== ''}
-                                                    className={`w-full pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 appearance-none bg-white ${debitNoteData.linkToInvoice !== '' ? 'bg-gray-100 text-gray-900' : 'bg-white text-gray-900'}`}
+                                                    className="w-full h-8 text-xs text-center font-medium bg-transparent border border-gray-200 rounded-md focus:ring-0"
                                                     onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value) || 0)}
                                                 >
-                                                    <option value="0">0%</option>
-                                                    <option value="5">5%</option>
-                                                    <option value="12">12%</option>
-                                                    <option value="18">18%</option>
-                                                    <option value="28">28%</option>
+                                                    {[0, 5, 12, 18, 28].map(t => <option key={t} value={t}>{t}%</option>)}
                                                 </select>
-                                                {item.tax > 0 && (
-                                                    <div className="absolute bottom-1 right-4 text-right">
-                                                        <span className="text-[10px] font-medium text-green-600 leading-tight whitespace-nowrap">
-                                                            +₹{((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}
-                                                        </span>
-                                                    </div>
-                                                )}
                                             </td>
-                                            <td className="px-4 py-4 text-center border-r border-gray-200 align-middle">
-                                                <div className="text-sm text-gray-900">
-                                                    ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </div>
+                                            <td className="p-4 text-right">
+                                                <span className="text-sm font-bold text-gray-900">₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                             </td>
-                                            <td className="px-4 py-4 text-center align-middle">
-                                                <button
-                                                    onClick={() => handleRemoveItem(index)}
-                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                                >
+                                            <td className="p-4">
+                                                <button onClick={() => handleRemoveItem(index)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
                                             </td>
                                         </tr>
                                     ))}
-                                    {items.length === 0 && (
-                                        <tr>
-                                            <td colSpan={9} className="p-20 text-center">
-                                                <div className="flex flex-col items-center justify-center gap-4">
-                                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                                                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 font-medium">No items added yet</p>
-                                                        <p className="text-gray-400 text-sm">Add items to create your debit note</p>
-                                                        <button
-                                                            onClick={handleAddItem}
-                                                            className={`mt-4 px-4 py-2 rounded-lg transition-colors ${items.length > 0 && debitNoteData.linkToInvoice !== ''
-                                                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                                                : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                                                            disabled={debitNoteData.linkToInvoice !== ''}
-                                                            title={items.length > 0 && debitNoteData.linkToInvoice !== '' ? "Items are loaded from invoice. Unlink invoice to add custom items." : "Add your first item"}
-                                                        >
-                                                            Add Your First Item
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
                                 </tbody>
-                                <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                                    <tr>
-                                        <td colSpan={4} className="p-4 border-r border-gray-200"></td>
-                                        <td className="p-4 text-sm text-center font-semibold text-gray-900 text-center border-r border-gray-200">
-                                            Subtotal
-                                        </td>
-                                        <td className="p-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
-                                            {debitNoteData.total_discount > 0 &&
-                                                `-₹${debitNoteData.total_discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
-                                        </td>
-                                        <td className="p-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
-                                            {debitNoteData.total_tax > 0 &&
-                                                `+₹${debitNoteData.total_tax.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
-                                        </td>
-                                        <td className="p-4 text-sm text-gray-900 text-center border-r border-gray-200">
-                                            ₹{debitNoteData.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="p-4"></td>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden divide-y divide-gray-100">
+                            {items.map((item, index) => (
+                                <div key={item.uuid || index} className="p-4 space-y-4 bg-white">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Item {index + 1}</p>
+                                            <h4 className="text-sm font-bold text-gray-900 truncate">{item.item_name}</h4>
+                                        </div>
+                                        <button onClick={() => handleRemoveItem(index)} className="p-1.5 text-red-500 bg-red-50 rounded-md">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Qty</label>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                        if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && val > item.originalQty) {
+                                                            handleItemChange(index, 'quantity', item.originalQty);
+                                                        } else {
+                                                            handleItemChange(index, 'quantity', Math.max(0, val));
+                                                        }
+                                                    }}
+                                                    className={`h-9 text-sm font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : ''}`}
+                                                />
+                                                {debitNoteData.linkToInvoice !== '' && (
+                                                    <span className="absolute -top-4 right-0 text-[8px] font-bold text-amber-600 uppercase">Max: {item.originalQty}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price (₹)</label>
+                                            <Input
+                                                type="number"
+                                                value={item.price_per_item}
+                                                disabled={debitNoteData.linkToInvoice !== ''}
+                                                className="h-9 text-sm font-medium"
+                                                onChange={(e) => handleItemChange(index, 'price_per_item', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Disc (%)</label>
+                                            <Input
+                                                type="number"
+                                                value={item.discount}
+                                                disabled={debitNoteData.linkToInvoice !== ''}
+                                                className="h-9 text-sm font-medium"
+                                                onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tax (%)</label>
+                                            <select
+                                                value={item.tax}
+                                                disabled={debitNoteData.linkToInvoice !== ''}
+                                                className="w-full h-9 text-sm font-medium border border-gray-200 rounded-md bg-white"
+                                                onChange={(e) => handleItemChange(index, 'tax', parseFloat(e.target.value) || 0)}
+                                            >
+                                                {[0, 5, 12, 18, 28].map(t => <option key={t} value={t}>{t}%</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase">Subtotal</span>
+                                        <span className="text-base font-black text-gray-900">₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {items.length === 0 && (
+                            <div className="py-12 flex flex-col items-center justify-center bg-gray-50/50">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                    <Barcode className="h-6 w-6 text-gray-400" />
+                                </div>
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">No Items Added</p>
+                                <Button
+                                    variant="link"
+                                    onClick={handleAddItem}
+                                    disabled={debitNoteData.linkToInvoice !== ''}
+                                    className="mt-1 text-blue-600 font-bold"
+                                >
+                                    Add Your First Item
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
                 {/* Bottom Section: Notes, Summary, and Status */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     {/* Notes & Terms */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Notes & Terms and Conditions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <label htmlFor="notes" className="block text-sm font-medium mb-2">Notes</label>
-                                <textarea
-                                    id="notes"
-                                    value={debitNoteData.notes || ''}
-                                    onChange={(e) => setDebitNoteData(prev => ({ ...prev, notes: e.target.value }))}
-                                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    rows={3}
-                                    placeholder="Enter notes for this debit note..."
-                                    disabled={isViewMode}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="terms" className="block text-sm font-medium mb-2">Terms and Conditions</label>
-                                <textarea
-                                    id="terms"
-                                    value={debitNoteData.terms_and_conditions || ''}
-                                    onChange={(e) => setDebitNoteData(prev => ({ ...prev, terms_and_conditions: e.target.value }))}
-                                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    rows={3}
-                                    placeholder="Enter terms and conditions..."
-                                    disabled={isViewMode}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+                        <Card className="border-gray-200 shadow-sm">
+                            <CardHeader className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50/50 border-b">
+                                <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Notes & Terms</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-3 sm:p-4 space-y-4">
+                                <div className="space-y-1.5">
+                                    <label htmlFor="notes" className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Notes</label>
+                                    <textarea
+                                        id="notes"
+                                        value={debitNoteData.notes || ''}
+                                        onChange={(e) => setDebitNoteData(prev => ({ ...prev, notes: e.target.value }))}
+                                        className="w-full p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all min-h-[80px]"
+                                        placeholder="Add any internal notes..."
+                                        disabled={isViewMode}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="terms" className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Terms & Conditions</label>
+                                    <textarea
+                                        id="terms"
+                                        value={debitNoteData.terms_and_conditions || ''}
+                                        onChange={(e) => setDebitNoteData(prev => ({ ...prev, terms_and_conditions: e.target.value }))}
+                                        className="w-full p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all min-h-[80px]"
+                                        placeholder="Standard terms apply..."
+                                        disabled={isViewMode}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {!isViewMode && (
+                            <Card className="border-gray-200 shadow-sm overflow-hidden">
+                                <CardHeader className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50/50 border-b">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Document Status</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 sm:p-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
+                                            <button
+                                                key={status}
+                                                onClick={() => setDebitNoteData(prev => ({ ...prev, status }))}
+                                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                                                    debitNoteData.status === status
+                                                        ? 'bg-blue-600 text-white shadow-md scale-105'
+                                                        : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {status}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
 
                     {/* Summary */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Summary</CardTitle>
+                    <Card className="border-gray-200 shadow-lg bg-white overflow-hidden h-fit">
+                        <CardHeader className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-900 text-white">
+                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em]">Financial Summary</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm">Subtotal</span>
-                                <span className="font-medium">₹ {debitNoteData.subtotal.toFixed(2)}</span>
-                            </div>
-                            <div className="border-t pt-4 space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm">Discount</span>
-                                    <span className="font-medium text-red-600">-₹ {debitNoteData.total_discount.toFixed(2)}</span>
+                        <CardContent className="p-4 sm:p-6 space-y-4">
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500 font-medium">Subtotal</span>
+                                    <span className="font-bold text-gray-900">₹{debitNoteData.subtotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm">Tax</span>
-                                    <span className="font-medium text-green-600">+₹ {debitNoteData.total_tax.toFixed(2)}</span>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500 font-medium">Total Discount</span>
+                                    <span className="font-bold text-red-600">-₹{debitNoteData.total_discount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500 font-medium">Total Tax</span>
+                                    <span className="font-bold text-green-600">+₹{debitNoteData.total_tax?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                
+                                {debitNoteData.auto_round_off && (
+                                    <div className="flex justify-between items-center text-xs border-t border-dashed pt-3">
+                                        <span className="text-gray-400 font-bold uppercase tracking-tighter">Round Off</span>
+                                        <span className={`font-bold ${debitNoteData.round_off_amount >= 0 ? 'text-gray-900' : 'text-red-500'}`}>
+                                            {debitNoteData.round_off_amount >= 0 ? '+' : ''}₹{debitNoteData.round_off_amount?.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
+
+                            <div className="bg-gray-50 rounded-xl p-3 sm:p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="autoRoundOff" className="text-xs font-bold text-gray-600 uppercase cursor-pointer">Auto Round Off</label>
                                     <Checkbox
                                         id="autoRoundOff"
                                         checked={debitNoteData.auto_round_off}
-                                        onCheckedChange={(checked: boolean) => {
-                                            setDebitNoteData(prev => ({ ...prev, auto_round_off: checked }));
-                                        }}
+                                        onCheckedChange={(checked: boolean) => setDebitNoteData(prev => ({ ...prev, auto_round_off: checked }))}
+                                        className="h-5 w-5 border-gray-300"
                                     />
-                                    <label htmlFor="autoRoundOff" className="text-sm font-medium">Auto Round Off</label>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -2071,12 +2023,7 @@ const CreateDebitNotePage = () => {
                                     <span className={debitNoteData.round_off_amount > 0 ? 'text-green-600' : 'text-red-600'}>
                                         {debitNoteData.round_off_amount > 0 ? '+' : ''}₹ {debitNoteData.round_off_amount.toFixed(2)}
                                     </span>
-                                </div>
-                            )}
-                            <div className="border-t pt-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-lg">Total Amount</span>
-                                    <span className="font-semibold text-lg">₹ {debitNoteData.totalAmount.toFixed(2)}</span>
+                                    <p className="text-[8px] sm:text-[10px] text-blue-600 font-bold mt-1 uppercase tracking-tighter">Amount in INR</p>
                                 </div>
                             </div>
                         </CardContent>

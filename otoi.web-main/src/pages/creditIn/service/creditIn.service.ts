@@ -42,6 +42,7 @@ interface CreditNoteData {
   round_off_amount?: number;
   additional_charges?: number;
   round_off?: number;
+  mark_as_fully_paid?: boolean;
 }
 
 const getAuthToken = (): string | null => {
@@ -159,6 +160,9 @@ export const createCreditNote = async (
 
     // Status
     status: creditNoteData.status || "draft",
+
+    // Mark as fully paid
+    mark_as_fully_paid: creditNoteData.mark_as_fully_paid || false,
   };
 
   try {
@@ -465,61 +469,61 @@ export const getCreditNotes = async (params?: {
 
     // Transform backend response to frontend format - same as getCreditNoteById
     const data = response.data;
-    
+
     // Handle the nested structure for credit notes array
     let creditNotesArray = data.data?.credit_notes || data.credit_notes || data.data || [];
-    
+
     // Transform each credit note to match frontend field names
     const transformedCreditNotes = creditNotesArray.map((note: any) => {
-      
+
       // Check if this credit note has items
       const hasItems = note.items && Array.isArray(note.items) && note.items.length > 0;
       const hasCharges = note.charges || note.data?.charges || note.additional_charges;
-      
+
       // Calculate total_amount from items if backend returns 0
       let calculatedTotal = 0;
       if (hasItems) {
         calculatedTotal = note.items.reduce((sum: number, item: any) => {
-          const itemTotal = item.quantity * item.unit_price * 
-            (1 - (item.discount?.discount_percentage || 0) / 100) * 
+          const itemTotal = item.quantity * item.unit_price *
+            (1 - (item.discount?.discount_percentage || 0) / 100) *
             (1 + (item.tax?.tax_percentage || 0) / 100);
           return sum + itemTotal;
         }, 0);
       }
-      
+
       // Also calculate from charges as backup - check multiple possible field locations
-      const chargesTotal = (note.charges?.taxable_amount || 
-                       note.data?.charges?.taxable_amount || 
-                       note.additional_charges?.taxable_amount || 0) + 
-                       (note.charges?.total_tax || 
-                       note.data?.charges?.total_tax || 
-                       note.additional_charges?.total_tax || 0) - 
-                       (note.charges?.total_discount || 
-                       note.data?.charges?.total_discount || 
-                       note.additional_charges?.total_discount || 0);
-      
+      const chargesTotal = (note.charges?.taxable_amount ||
+        note.data?.charges?.taxable_amount ||
+        note.additional_charges?.taxable_amount || 0) +
+        (note.charges?.total_tax ||
+          note.data?.charges?.total_tax ||
+          note.additional_charges?.total_tax || 0) -
+        (note.charges?.total_discount ||
+          note.data?.charges?.total_discount ||
+          note.additional_charges?.total_discount || 0);
+
       // Use backend total_amount directly - no more fallback logic needed
       const finalTotal = note.total_amount || 0;
-      
+
       const transformed = {
         ...note,
         total_amount: finalTotal,
-        subtotal: note.charges?.subtotal || 
-                  note.data?.charges?.subtotal || 
-                  note.subtotal || 
-                  chargesTotal, // Use chargesTotal as subtotal fallback
-        tax_total: note.charges?.total_tax || 
-                   note.data?.charges?.total_tax || 
-                   note.additional_charges?.total_tax || 
-                   note.total_tax || 0,
-        discount_total: note.charges?.discount_total || 
-                       note.data?.charges?.discount_total || 
-                       note.additional_charges?.discount_total || 
-                       note.total_discount || 0,
-        round_off: note.charges?.round_off || 
-                   note.data?.charges?.round_off || 
-                   note.additional_charges?.round_off || 
-                   note.round_off_amount || note.round_off || 0,
+        subtotal: note.charges?.subtotal ||
+          note.data?.charges?.subtotal ||
+          note.subtotal ||
+          chargesTotal, // Use chargesTotal as subtotal fallback
+        tax_total: note.charges?.total_tax ||
+          note.data?.charges?.total_tax ||
+          note.additional_charges?.total_tax ||
+          note.total_tax || 0,
+        discount_total: note.charges?.discount_total ||
+          note.data?.charges?.discount_total ||
+          note.additional_charges?.discount_total ||
+          note.total_discount || 0,
+        round_off: note.charges?.round_off ||
+          note.data?.charges?.round_off ||
+          note.additional_charges?.round_off ||
+          note.round_off_amount || note.round_off || 0,
       };
       return transformed;
     });

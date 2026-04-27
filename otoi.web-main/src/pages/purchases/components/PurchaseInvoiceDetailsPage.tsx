@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit, Share, Mail } from "lucide-react";
+import { ArrowLeft, Download, Printer, CreditCard, FileText, Clock, Info, Edit, Share, Mail, Calendar, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -596,12 +596,26 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
     <div key={forceRenderKey} className="min-h-screen bg-gray-50 pb-20 relative">
       <style>
         {`
+          @page {
+            size: A4;
+            margin: 0;
+          }
           @media print {
-            .sidebar, .header, .footer, .topbar, .no-print, [data-kt-app-sidebar-enabled="true"] .app-sidebar, [data-kt-app-header-enabled="true"] .app-header {
+            .sidebar, .header, .footer, .topbar, .no-print,
+            [data-kt-app-sidebar-enabled="true"] .app-sidebar,
+            [data-kt-app-header-enabled="true"] .app-header {
               display: none !important;
             }
-            body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
-            .min-h-screen { min-height: auto !important; background: none !important; padding: 0 !important; }
+            body {
+              background-color: white !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .min-h-screen {
+              min-height: auto !important;
+              background: none !important;
+              padding: 0 !important;
+            }
             #invoice-print-area {
               margin: 0 !important;
               padding: 0 !important;
@@ -612,72 +626,102 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
               left: 0 !important;
               top: 0 !important;
             }
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
           }
         `}
       </style>
 
       {/* Sticky Header */}
-      <div className="bg-white px-6 py-4 border-b border-gray-200 sticky top-0 z-10 no-print">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/purchases/purchase-invoices")}>
+      {/* Sticky Header */}
+      <div className="bg-white px-4 sm:px-6 py-3 border-b border-gray-200 sticky top-0 z-30 no-print shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between max-w-7xl mx-auto gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/purchases/purchase-invoices")} className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-black">Purchase Invoice #{invoiceData.invoice_number}</h1>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate tracking-tight">Invoice #{invoiceData.invoice_number}</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`px-1.5 py-0.5 text-[9px] font-black rounded uppercase tracking-wider ${getPaymentStatusBadge(invoiceData.payment_status)}`}>
                   {invoiceData.payment_status}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" />Print PDF</Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2" disabled={isFetchingShareData}>
-                  <Share className="h-4 w-4" /> Share
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
-                  <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
-                  <Mail className="h-4 w-4" /> Email
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2">
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 h-9 border-gray-200 hover:bg-gray-50"><Download className="h-4 w-4" />PDF</Button>
+              <Button variant="outline" size="sm" onClick={handlePrintPDF} className="gap-2 h-9 border-gray-200 hover:bg-gray-50"><Printer className="h-4 w-4" />Print</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 h-9 border-gray-200" disabled={isFetchingShareData}>
+                    <Share className="h-4 w-4" /> Share
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2 cursor-pointer">
+                    <KeenIcon icon="whatsapp" className="text-black-800" /> WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShareEmail} className="gap-2 cursor-pointer">
+                    <Mail className="h-4 w-4" /> Email
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <Button variant="outline" size="sm" onClick={handlePaymentHistory} className="gap-2 h-9 border-gray-200">
               <Clock className="h-4 w-4" />
-              Payment History
+              <span className="hidden sm:inline">Payments</span>
             </Button>
+
             {invoiceData.balance_due > 0 && (
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleRecordPayment}>
-                <CreditCard className="h-4 w-4" />Record Payment
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2 h-9 px-4 sm:px-6 shadow-sm" onClick={handleRecordPayment}>
+                <CreditCard className="h-4 w-4" />Record <span className="hidden xs:inline">Payment</span>
               </Button>
             )}
+
+            {/* Mobile Actions Menu */}
+            <div className="lg:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleDownloadPDF} className="gap-2"><Download className="h-4 w-4" /> Download PDF</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintPDF} className="gap-2"><Printer className="h-4 w-4" /> Print PDF</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShareWhatsApp} className="gap-2"><KeenIcon icon="whatsapp" /> WhatsApp</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShareEmail} className="gap-2"><Mail className="h-4 w-4" /> Email</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/purchases/purchase-invoices/edit/${id}`)} className="gap-2"><Edit className="h-4 w-4" /> Edit Invoice</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Invoice Content */}
-      <div id="invoice-print-area" ref={invoiceRef} className="max-w-4xl mx-auto p-12 bg-white mt-8 shadow-sm border border-gray-100">
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+      <div id="invoice-print-area" ref={invoiceRef} className="max-w-4xl mx-auto p-4 sm:p-8 md:p-12 bg-white mt-4 sm:mt-8 shadow-sm border border-gray-100">
+        <div className="mb-8 flex justify-between items-start">
           {(() => {
             return (
               <>
-                <div className="mt-4 md:mt-12 order-2 md:order-1 text-center md:text-left">
-                  <h1 className="text-2xl font-semibold text-black leading-tight">{businessInfo?.name || "Evoto Technologies"}</h1>
-                  {businessInfo?.email && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.email}</p>}
-                  {businessInfo?.phone && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.phone}</p>}
-                  {businessInfo?.address && <p className="text-xs text-gray-600 mt-1 font-medium">{businessInfo.address}</p>}
-                  {businessInfo?.gst && <p className="text-xs text-gray-600 font-semibold mt-1">GSTIN: {businessInfo.gst}</p>}
+                <div className="mt-12 w-2/3">
+                  <h1 className="text-2xl font-semibold text-black leading-tight mb-4">{businessInfo?.name || "Evoto Technologies"}</h1>
+                  <div className="mt-1 md:mt-1 space-y-1">
+                    {businessInfo?.email && <p className="text-xs text-gray-600 font-medium">{businessInfo.email}</p>}
+                    {businessInfo?.phone && <p className="text-xs text-gray-600 font-medium">{businessInfo.phone}</p>}
+                    {businessInfo?.gst && <p className="text-xs text-gray-600 font-medium">GST: {businessInfo.gst}</p>}
+                    {businessInfo?.address && <p className="text-xs text-gray-600 font-medium">{businessInfo.address}</p>}
+                  </div>
                 </div>
-                <div className="flex flex-col items-center md:items-end -mt-0 md:-mt-8 order-1 md:order-2">
+                <div className="flex flex-col items-end w-1/3 -mt-8">
                   {brandingAssets?.logo_path ? (
                     <img
                       src={resolveImageUrl(`/static/uploads/business/${brandingAssets.logo_path}`)}
@@ -697,28 +741,28 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           })()}
         </div>
 
-        <div className="grid grid-cols-3 gap-0 mb-12 border border-black overflow-hidden">
-          <div className="border-r border-black">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 mb-8 sm:mb-12 border border-black overflow-hidden rounded-md sm:rounded-none">
+          <div className="border-b sm:border-b-0 sm:border-r border-black">
             <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px]">Invoice Number</div>
             <div className="px-4 py-2 font-normal text-sm">{invoiceData.invoice_number}</div>
           </div>
-          <div className="border-r border-black">
-            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] text-center">Invoice Date</div>
-            <div className="px-4 py-2 text-center font-normal text-sm">{new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}</div>
+          <div className="border-b sm:border-b-0 sm:border-r border-black">
+            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] sm:text-center">Invoice Date</div>
+            <div className="px-4 py-2 sm:text-center font-normal text-sm">{new Date(invoiceData.invoice_date).toLocaleDateString("en-IN")}</div>
           </div>
           <div>
-            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] text-right">Due Date</div>
-            <div className="px-4 py-2 text-right font-normal text-sm">
+            <div className="px-4 py-1 border-b border-black bg-gray-100 font-bold uppercase text-[11px] sm:text-right">Due Date</div>
+            <div className="px-4 py-2 sm:text-right font-normal text-sm">
               {invoiceData.due_date ? new Date(invoiceData.due_date).toLocaleDateString("en-IN") : "N/A"}
             </div>
           </div>
         </div>
 
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2 border-b border-black pb-1 w-32">
-            <h3 className="text-[10px] font-bold uppercase">Vendor Details</h3>
-          </div>
-          <p className="font-bold text-base text-black uppercase">{invoiceData.vendor?.vendor_name}</p>
+          <h3 className="text-[15px] font-semibold text-black uppercase mb-3 pb-1 border-b border-black w-full md:w-56 tracking-wider">
+            VENDOR DETAILS
+          </h3>
+          <p className="font-semibold text-lg mb-2 text-black">{invoiceData.vendor?.vendor_name}</p>
           <div className="text-xs text-gray-700 mt-1 space-y-0.5">
             {invoiceData.vendor?.company_name && <p className="font-medium">{invoiceData.vendor.company_name}</p>}
             {invoiceData.vendor?.gst && <p><span className="font-bold text-black uppercase text-[9px]">GSTIN:</span> {invoiceData.vendor.gst}</p>}
@@ -732,83 +776,155 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        <table className="w-full border border-black mb-8 text-xs">
-          <thead>
-            <tr className="bg-gray-100 border-b border-black">
-              <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-1/2">Item Description</th>
-              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">IMAGE</th>
-              <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">QTY</th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Price/Item</th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Disc.</th>
-              <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Tax</th>
-              <th className="p-2 text-right font-bold uppercase text-[10px]">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black">
-            {invoiceData.items.map((item, idx) => {
-              const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
-              const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
-              const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
-              const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
+        <div className="hidden md:block print:block overflow-x-auto">
+          <table className="w-full border border-black mb-8 text-xs min-w-[700px]">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black">
+                <th className="p-2 text-left font-bold border-r border-black uppercase text-[10px] w-1/2">Item Description</th>
+                <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">IMAGE</th>
+                <th className="p-2 text-center font-bold border-r border-black uppercase text-[10px]">QTY</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Price/Item</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Disc.</th>
+                <th className="p-2 text-right font-bold border-r border-black uppercase text-[10px]">Tax</th>
+                <th className="p-2 text-right font-bold uppercase text-[10px]">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black">
+              {invoiceData.items.map((item, idx) => {
+                const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
+                const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
+                const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
+                const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
 
-              return (
-                <tr key={idx}>
-                  <td className="p-2 border-r border-black align-top">
-                    <div className="flex items-start gap-1">
-                      <span className="font-medium text-sm text-black min-w-[20px]">{idx + 1}.</span>
-                      <div className="flex-1">
-                        <p className="font-semibold text-black leading-snug">{item.product_name}</p>
-                        {item.description && <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>}
-                        {item.hsn_sac_code && <p className="text-[9px] text-gray-400 mt-1">HSN/SAC: {item.hsn_sac_code}</p>}
+                return (
+                  <tr key={idx}>
+                    <td className="p-2 border-r border-black align-top">
+                      <div className="flex items-start gap-1">
+                        <span className="font-medium text-sm text-black min-w-[20px]">{idx + 1}.</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-black leading-snug">{item.product_name}</p>
+                          {item.description && <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>}
+                          {item.hsn_sac_code && <p className="text-[9px] text-gray-400 mt-1">HSN/SAC: {item.hsn_sac_code}</p>}
+                        </div>
                       </div>
+                    </td>
+                    <td className="p-2 text-center border-r border-black align-top">
+                      {item.product_image ? (
+                        <div className="w-10 h-10 mx-auto rounded border border-gray-200 overflow-hidden flex-shrink-0">
+                          <img
+                            src={resolveImageUrl(item.product_image)}
+                            alt={item.product_name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-gray-500">—</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
+                      {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item)}</span>
+                    </td>
+                    <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
+                    <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
+                      <div className="flex flex-col items-end">
+                        <span>-{formatCurrency(discAmt)}</span>
+                        {discPerc > 0 && <span className="text-[9px]">({discPerc}%)</span>}
+                      </div>
+                    </td>
+                    <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
+                      <div className="flex flex-col items-end">
+                        <span>{formatCurrency(taxAmt)}</span>
+                        <span className="text-[9px] block text-gray-500">({taxPerc}%)</span>
+                      </div>
+                    </td>
+                    <td className="p-2 text-right font-medium align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-black bg-gray-50 font-bold">
+                <td colSpan={3} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
+                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
+                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
+                <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
+                <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* Mobile View for Items */}
+        <div className="md:hidden print:hidden space-y-4 mb-10">
+          <div className="flex items-center justify-between px-1 mb-2">
+            <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Items List</h3>
+            <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">{invoiceData.items.length} Items</span>
+          </div>
+          {invoiceData.items.map((item, idx) => {
+            const discPerc = typeof item.discount === 'object' ? item.discount?.discount_percentage || 0 : (item as any).discount_percentage || 0;
+            const discAmt = (item.unit_price * item.quantity * discPerc) / 100;
+            const taxPerc = typeof item.tax === 'object' ? item.tax?.tax_percentage || 0 : (item as any).tax_percentage || 0;
+            const taxAmt = ((item.unit_price * item.quantity) - discAmt) * taxPerc / 100;
+
+            return (
+              <div key={idx} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm shadow-gray-200/50">
+                <div className="p-4">
+                  <div className="flex justify-between items-start gap-3 mb-3">
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black shrink-0">{idx + 1}</span>
+                        <h4 className="font-bold text-gray-900 text-[13px] truncate uppercase tracking-tight">{item.product_name}</h4>
+                      </div>
+                      {item.hsn_sac_code && (
+                        <p className="text-[10px] text-gray-400 font-mono tracking-wider ml-7 uppercase">HSN: {item.hsn_sac_code}</p>
+                      )}
                     </div>
-                  </td>
-                  <td className="p-2 text-center border-r border-black align-top">
-                    {item.product_image ? (
-                      <div className="w-10 h-10 mx-auto rounded border border-gray-200 overflow-hidden flex-shrink-0">
-                        <img
-                          src={resolveImageUrl(item.product_image)}
-                          alt={item.product_name}
-                          className="w-full h-full object-cover"
-                        />
+                    {item.product_image && (
+                      <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0">
+                        <img src={resolveImageUrl(item.product_image)} className="w-full h-full object-cover" alt="" />
                       </div>
-                    ) : (
-                      <span className="text-[10px] text-gray-500">—</span>
                     )}
-                  </td>
-                  <td className="p-2 text-center border-r border-black align-top whitespace-nowrap">
-                    {item.quantity} <span className="text-[10px] ml-0.5">{getMeasuringUnit(item)}</span>
-                  </td>
-                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">{formatCurrency(item.unit_price)}</td>
-                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>-{formatCurrency(discAmt)}</span>
-                      {discPerc > 0 && <span className="text-[9px]">({discPerc}%)</span>}
-                    </div>
-                  </td>
-                  <td className="p-2 text-right border-r border-black align-top whitespace-nowrap">
-                    <div className="flex flex-col items-end">
-                      <span>{formatCurrency(taxAmt)}</span>
-                      <span className="text-[9px] block text-gray-500">({taxPerc}%)</span>
-                    </div>
-                  </td>
-                  <td className="p-2 text-right font-medium align-top whitespace-nowrap">{formatCurrency(item.total_price)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-black bg-gray-50 font-bold">
-              <td colSpan={3} className="p-2 text-right text-[10px] uppercase tracking-widest text-black border-r border-black">Subtotal</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.subtotal)}</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">-{formatCurrency(totals.totalDiscount)}</td>
-              <td className="p-2 text-right text-sm text-black border-r border-black whitespace-nowrap">{formatCurrency(totals.totalTax)}</td>
-              <td className="p-2 text-right text-sm text-black whitespace-nowrap">{formatCurrency(invoiceData.total_amount)}</td>
-            </tr>
-          </tfoot>
-        </table>
+                  </div>
 
-        <div className="flex justify-between items-start gap-12">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-gray-50/50 rounded-xl p-3">
+                    <div>
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5 text-center">Qty / Rate</p>
+                      <p className="text-[12px] font-bold text-gray-900 text-center">
+                        {item.quantity} {getMeasuringUnit(item)} × ₹{item.unit_price.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5 text-center">Item Total</p>
+                      <p className="text-[12px] font-black text-blue-600 text-center">
+                        {formatCurrency(item.total_price)}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-gray-100/50">
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Discount</p>
+                      <p className="text-[11px] font-bold text-red-500">
+                        -{formatCurrency(discAmt)} <span className="text-[9px] font-medium opacity-70">({discPerc}%)</span>
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-gray-100/50">
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Tax</p>
+                      <p className="text-[11px] font-bold text-blue-500">
+                        +{formatCurrency(taxAmt)} <span className="text-[9px] font-medium opacity-70">({taxPerc}%)</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {item.description && (
+                    <div className="mt-3 px-1">
+                      <p className="text-[10px] text-gray-500 italic leading-relaxed line-clamp-2">“{item.description}”</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-start gap-8 md:gap-12">
           <div className="flex-1">
             {invoiceData.additional_notes?.notes && (
               <div className="mb-4">
@@ -824,7 +940,7 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="w-72 space-y-0 text-black">
+          <div className="w-full md:w-72 space-y-0 text-black">
             <div className="flex justify-between items-center py-2">
               <span className="text-xs font-normal uppercase">Taxable Amount</span>
               <span className="text-sm font-bold">{formatCurrency(totals.taxableAmount)}</span>
@@ -1137,10 +1253,10 @@ const PurchaseInvoiceDetailsPage: React.FC = () => {
                             {formatCurrency(debitNote.total_amount)}
                           </span>
                           <span className={`capitalize px-2 py-1 rounded-full text-xs mt-1 inline-block ${debitNote.status === 'credited'
-                              ? 'bg-purple-100 text-purple-700'
-                              : debitNote.status === 'active'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-700'
+                            ? 'bg-purple-100 text-purple-700'
+                            : debitNote.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-700'
                             }`}>
                             {debitNote.status || 'active'}
                           </span>

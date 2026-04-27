@@ -544,23 +544,121 @@ const PurchaseInvoicePage = () => {
         },
     ], [navigate]);
 
+    const MobileView = ({
+        onRecordPayment,
+        onDetails,
+        onEdit,
+        onCreateDebitNote,
+        onDelete,
+    }: {
+        onRecordPayment: (invoice: PurchaseInvoice) => void;
+        onDetails: (id: string) => void;
+        onEdit: (id: string) => void;
+        onCreateDebitNote: (invoice: PurchaseInvoice) => void;
+        onDelete: (id: string) => void;
+    }) => {
+        return (
+            <div className="flex flex-col md:hidden border-t border-gray-100">
+                {invoices.map((invoice) => (
+                    <div
+                        key={invoice.id}
+                        className="flex justify-between items-center py-4 px-5 border-b border-gray-100 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+                    >
+                        <div
+                            className="flex flex-col cursor-pointer grow pr-4"
+                            onClick={() => onDetails(invoice.id)}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-gray-900 text-sm">
+                                    {invoice.invoice_number}
+                                </span>
+                                <span
+                                    className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${getPaymentStatusBadge(invoice.payment_status)}`}
+                                >
+                                    {invoice.payment_status.charAt(0).toUpperCase() + invoice.payment_status.slice(1)}
+                                </span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 mb-0.5">
+                                {invoice.vendor_name}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(invoice.date).toLocaleDateString("en-IN")}
+                                </span>
+                            </div>
+                            <div className="mt-2 text-sm">
+                                <span className="font-medium text-gray-900">
+                                    ₹{invoice.amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                </span>
+                                {invoice.balance_due > 0 && (
+                                    <span className="ml-2 font-medium text-red-600">
+                                        Due: ₹{invoice.balance_due?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <MoreVertical className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => onDetails(invoice.id)}>
+                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => onEdit(invoice.id)}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => onCreateDebitNote(invoice)}>
+                                        <FileMinus className="mr-2 h-4 w-4" /> Create Debit Note
+                                    </DropdownMenuItem>
+                                    {invoice.payment_status !== 'paid' && (
+                                        <DropdownMenuItem onSelect={() => onRecordPayment(invoice)}>
+                                            <CreditCard className="mr-2 h-4 w-4" /> Record Payment
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                        className="text-red-600"
+                                        onSelect={() => onDelete(invoice.id)}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     return (
-        <div className="container-fluid p-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <h1 className="text-2xl font-bold">Purchase Invoices</h1>
-                <div className="flex items-center gap-2">
-                    <div className="w-44">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    {/* Status Filter */}
+                    <div className="w-full sm:w-[calc(33%-0.25rem)] md:w-36">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                                    <Filter className="h-3.5 w-3.5 text-gray-500" />
+                                <Button variant="outline" size="sm" className="h-9 w-full gap-1">
+                                    <Filter className="h-3.5 w-3.5 text-gray-500 shrink-0" />
                                     <span className="truncate">
                                         {selectedStatus === 'all' && 'All Status'}
                                         {selectedStatus === 'paid' && 'Paid'}
                                         {selectedStatus === 'unpaid' && 'Unpaid'}
                                         {selectedStatus === 'partial' && 'Partial'}
                                     </span>
-                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0 opacity-50" />
+                                    <ChevronDown className="h-4 w-4 ml-auto flex-shrink-0 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-[180px]">
@@ -584,11 +682,12 @@ const PurchaseInvoicePage = () => {
                         </DropdownMenu>
                     </div>
 
-                    <div className="w-44">
+                    {/* Date Filter */}
+                    <div className="w-full sm:w-[calc(33%-0.25rem)] md:w-36">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-8 w-full gap-1 text-gray-600">
-                                    <Calendar className="h-3.5 w-3.5" />
+                                <Button variant="outline" size="sm" className="h-9 w-full gap-1 text-gray-600">
+                                    <Calendar className="h-3.5 w-3.5 shrink-0" />
                                     <span className="truncate">
                                         {selectedDateFilter === 'today' && 'Today'}
                                         {selectedDateFilter === 'this_week' && 'This Week'}
@@ -598,7 +697,7 @@ const PurchaseInvoicePage = () => {
                                         {selectedDateFilter === 'last_365' && 'Last 365 Days'}
                                         {selectedDateFilter === 'all' && 'All Time'}
                                     </span>
-                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0 opacity-50" />
+                                    <ChevronDown className="h-4 w-4 ml-auto flex-shrink-0 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-[180px]">
@@ -612,33 +711,36 @@ const PurchaseInvoicePage = () => {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
+
                     <Button
                         size="sm"
-                        className="h-8 gap-1"
+                        className="h-9 gap-1 w-full sm:w-[calc(33%-0.25rem)] md:w-auto"
                         onClick={() => navigate('/purchases/purchase-invoices/new')}
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only">Create Purchase Invoice</span>
+                        <span className="whitespace-nowrap">Create Invoice</span>
                     </Button>
                 </div>
             </div>
 
             <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
                 <div className="p-4 border-b">
-                    <div className="relative w-fit">
-                        <div className="flex">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div className="relative w-full sm:w-80">
                             <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-9 w-80 justify-start px-3" disabled={isDropdownLoading}>
+                                    <Button variant="outline" className="h-10 w-full justify-start px-3" disabled={isDropdownLoading}>
                                         {isDropdownLoading ? (
                                             <span className="flex items-center"><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div> Loading...</span>
                                         ) : (
-                                            searchTerm || (searchType === 'vendor_name' ? 'Search by vendor...' : 'Search by invoice #...')
+                                            <span className="truncate text-left">
+                                                {searchTerm || (searchType === 'vendor_name' ? 'Search by vendor...' : 'Search by invoice #...')}
+                                            </span>
                                         )}
-                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
+                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0" />}
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
+                                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
                                     <DropdownMenuItem onClick={() => { setSearchTerm(''); setRefreshKey(prev => prev + 1); }} className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}>
                                         <span className="text-gray-500 italic">Show All {searchType === 'vendor_name' ? 'Vendors' : 'Invoices'}</span>
                                     </DropdownMenuItem>
@@ -649,25 +751,28 @@ const PurchaseInvoicePage = () => {
                                     ))}
                                 </DropdownMenuContent>
                             </DropdownMenu>
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2">
-                                        <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                                        {searchTerm ? `${searchType === 'vendor_name' ? 'Vendor' : 'Invoice'}: ${searchTerm.substring(0, 10)}...` : 'Filter by'}
-                                        <ChevronDown className="h-3 w-3 ml-1" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-48">
-                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('vendor_name')} className={searchType === 'vendor_name' ? "bg-blue-50 text-blue-600" : ""}>
-                                        <Filter className="h-3.5 w-3.5 mr-2" /> Vendor Name
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('invoice_number')} className={searchType === 'invoice_number' ? "bg-blue-50 text-blue-600" : ""}>
-                                        <Filter className="h-3.5 w-3.5 mr-2" /> Invoice Number
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                         </div>
+
+                        {/* Filter type selector - fixed width */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-10 shrink-0 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto">
+                                    <Filter className="h-3.5 w-3.5 text-blue-500 mr-1 shrink-0" />
+                                    <span className="truncate max-w-[150px]">
+                                        {searchTerm ? `${searchType === 'vendor_name' ? 'Vendor' : 'Invoice'}: ${searchTerm.substring(0, 10)}${searchTerm.length > 10 ? '...' : ''}` : 'Filter by'}
+                                    </span>
+                                    <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-48">
+                                <DropdownMenuItem onClick={() => handleSearchTypeChange('vendor_name')} className={searchType === 'vendor_name' ? "bg-blue-50 text-blue-600" : ""}>
+                                    <Filter className="h-3.5 w-3.5 mr-2" /> Vendor Name
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSearchTypeChange('invoice_number')} className={searchType === 'invoice_number' ? "bg-blue-50 text-blue-600" : ""}>
+                                    <Filter className="h-3.5 w-3.5 mr-2" /> Invoice Number
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -689,8 +794,19 @@ const PurchaseInvoicePage = () => {
                             if (showDeleteDialog || isDropdownOpen) return;
                             navigate(`/purchases/purchase-invoices/${row.original.id}`);
                         }}
-                        layout={{ classes: { table: "cursor-pointer [&_tr:hover]:bg-gray-50" } }}
-                    />
+                        layout={{ card: true, classes: { table: "cursor-pointer [&_tr:hover]:bg-gray-50", container: "hidden md:block" } }}
+                    >
+                        <MobileView
+                            onDetails={(id) => {
+                                if (showDeleteDialog || isDropdownOpen) return;
+                                navigate(`/purchases/purchase-invoices/${id}`);
+                            }}
+                            onEdit={(id) => navigate(`/purchases/purchase-invoices/${id}/edit`)}
+                            onCreateDebitNote={(invoice) => handleCreateDebitNote(invoice)}
+                            onRecordPayment={(invoice) => handleRecordPayment(invoice)}
+                            onDelete={(id) => handleDelete(id)}
+                        />
+                    </DataGrid>
                 </div>
             </div>
 
