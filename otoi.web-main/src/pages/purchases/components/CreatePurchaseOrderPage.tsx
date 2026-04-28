@@ -1500,9 +1500,6 @@ const CreatePurchaseOrderPage = () => {
                           {getMeasuringUnit(item.measuring_unit_id)}
                         </span>
                       </div>
-                      <div className="mt-2">
-                        <PurchaseHistoryTooltip itemId={item.id} vendorId={selectedVendor?.id} />
-                      </div>
                     </td>
                     <td className="px-3 py-2 border-r border-gray-200 align-top">
                       <div className="flex items-center" style={{ marginTop: "0.7rem" }}>

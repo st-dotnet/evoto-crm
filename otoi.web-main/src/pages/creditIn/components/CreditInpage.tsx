@@ -101,7 +101,61 @@ const CreditInpage = () => {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365_days');
   const navigate = useNavigate();
+
+  // Helper function to convert date filter to date range
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = today.getDate();
+
+    switch (selectedDateFilter) {
+      case 'today':
+        return {
+          date_from: today.toISOString().split('T')[0],
+          date_to: today.toISOString().split('T')[0]
+        };
+      case 'this_week':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(date - today.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        return {
+          date_from: startOfWeek.toISOString().split('T')[0],
+          date_to: endOfWeek.toISOString().split('T')[0]
+        };
+      case 'last_week':
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setDate(date - today.getDay() - 7);
+        const endOfLastWeek = new Date(startOfLastWeek);
+        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+        return {
+          date_from: startOfLastWeek.toISOString().split('T')[0],
+          date_to: endOfLastWeek.toISOString().split('T')[0]
+        };
+      case 'this_month':
+        return {
+          date_from: new Date(year, month, 1).toISOString().split('T')[0],
+          date_to: new Date(year, month + 1, 0).toISOString().split('T')[0]
+        };
+      case 'last_month':
+        return {
+          date_from: new Date(year, month - 1, 1).toISOString().split('T')[0],
+          date_to: new Date(year, month, 0).toISOString().split('T')[0]
+        };
+      case 'last_365_days':
+        const lastYear = new Date(today);
+        lastYear.setDate(date - 365);
+        return {
+          date_from: lastYear.toISOString().split('T')[0],
+          date_to: today.toISOString().split('T')[0]
+        };
+      default:
+        return {};
+    }
+  }, [selectedDateFilter]);
 
   // Fetch autocomplete data for search suggestions
   const fetchAutocompleteData = useCallback(async () => {
@@ -120,14 +174,14 @@ const CreditInpage = () => {
 
         const customerNames = Array.isArray(customerData)
           ? [
-              ...new Set(
-                customerData
-                  .filter(
-                    (item: any) => item.party_name && item.party_name.trim(),
-                  )
-                  .map((item: any) => item.party_name.trim()),
-              ),
-            ].sort()
+            ...new Set(
+              customerData
+                .filter(
+                  (item: any) => item.party_name && item.party_name.trim(),
+                )
+                .map((item: any) => item.party_name.trim()),
+            ),
+          ].sort()
           : [];
         setAllCustomerNames(customerNames);
       } else {
@@ -144,8 +198,8 @@ const CreditInpage = () => {
         }
         const creditNoteNumbers = Array.isArray(creditNoteData)
           ? creditNoteData
-              .map((item: any) => item.credit_note_number || item)
-              .filter(Boolean)
+            .map((item: any) => item.credit_note_number || item)
+            .filter(Boolean)
           : [];
         setAllCreditNoteNumbers(creditNoteNumbers);
       } else {
@@ -179,15 +233,15 @@ const CreditInpage = () => {
       const suggestions =
         searchType === "party_name"
           ? allCustomerNames.filter((name) =>
-              name.toLowerCase().includes(searchTerm.toLowerCase()),
-            )
+            name.toLowerCase().includes(searchTerm.toLowerCase()),
+          )
           : (allCreditNoteNumbers.filter((item) => {
-              const displayValue =
-                typeof item === "string" ? item : item.credit_note_number || "";
-              return displayValue
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase());
-            }) as string[] | CreditNoteNumberItem[]);
+            const displayValue =
+              typeof item === "string" ? item : item.credit_note_number || "";
+            return displayValue
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase());
+          }) as string[] | CreditNoteNumberItem[]);
       setFilteredSuggestions(suggestions);
     } else {
       const suggestions =
@@ -233,6 +287,7 @@ const CreditInpage = () => {
     async (params: TDataGridRequestParams) => {
       setIsLoading(true);
       try {
+        const dateRange = getDateRange();
         const apiParams = {
           page: params.pageIndex + 1, // DataGrid uses 0-based indexing
           per_page: params.pageSize,
@@ -243,6 +298,12 @@ const CreditInpage = () => {
               searchTerm,
           }),
           status: selectedStatus === "all" ? "" : selectedStatus,
+          ...(dateRange.date_from && {
+            date_from: dateRange.date_from
+          }),
+          ...(dateRange.date_to && {
+            date_to: dateRange.date_to
+          }),
         };
 
         const response = await getCreditNotes(apiParams);
@@ -256,7 +317,7 @@ const CreditInpage = () => {
 
           const formattedData = Array.isArray(notesArray)
             ? notesArray.map((note: any) => {
-                return {
+              return {
                 id: note.uuid?.toString() || note.id?.toString() || "",
                 date: note.credit_note_date || note.date || "",
                 credit_note_number: note.credit_note_number || "",
@@ -337,7 +398,7 @@ const CreditInpage = () => {
         setIsLoading(false);
       }
     },
-    [debouncedSearchTerm, searchType, selectedStatus, refreshKey],
+    [debouncedSearchTerm, searchType, selectedStatus, refreshKey, getDateRange],
   );
 
   const handleDelete = async (id: string) => {
@@ -786,12 +847,102 @@ const CreditInpage = () => {
             </DropdownMenu>
           </div>
           <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-36">
-            <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Last 365 Days
-              </span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="truncate">
+                    {selectedDateFilter === 'today' && 'Today'}
+                    {selectedDateFilter === 'this_week' && 'This Week'}
+                    {selectedDateFilter === 'last_week' && 'Last Week'}
+                    {selectedDateFilter === 'this_month' && 'This Month'}
+                    {selectedDateFilter === 'last_month' && 'Last Month'}
+                    {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('today');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-blue-500" />
+                  <span>Today</span>
+                  {selectedDateFilter === 'today' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('this_week');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-green-500" />
+                  <span>This Week</span>
+                  {selectedDateFilter === 'this_week' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('last_week');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-yellow-500" />
+                  <span>Last Week</span>
+                  {selectedDateFilter === 'last_week' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('this_month');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-purple-500" />
+                  <span>This Month</span>
+                  {selectedDateFilter === 'this_month' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('last_month');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-orange-500" />
+                  <span>Last Month</span>
+                  {selectedDateFilter === 'last_month' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedDateFilter('last_365_days');
+                    setRefreshKey((prev) => prev + 1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Circle className="h-4 w-4 text-indigo-500" />
+                  <span>Last 365 Days</span>
+                  {selectedDateFilter === 'last_365_days' && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Button
@@ -918,11 +1069,10 @@ const CreditInpage = () => {
                         handleSearchTypeChange("party_name");
                         setShowFilterDropdown(false);
                       }}
-                      className={`flex items-center gap-2 ${
-                        searchType === "party_name"
+                      className={`flex items-center gap-2 ${searchType === "party_name"
                           ? "bg-blue-50 text-blue-600"
                           : ""
-                      }`}
+                        }`}
                     >
                       <Filter className="h-3.5 w-3.5 mr-2" />
                       <span>Party Name</span>
@@ -933,18 +1083,17 @@ const CreditInpage = () => {
                         handleSearchTypeChange("credit_note_number");
                         setShowFilterDropdown(false);
                       }}
-                      className={`flex items-center gap-2 ${
-                        searchType === "credit_note_number"
+                      className={`flex items-center gap-2 ${searchType === "credit_note_number"
                           ? "bg-blue-50 text-blue-600"
                           : ""
-                      }`}
+                        }`}
                     >
                       <Filter className="h-3.5 w-3.5 mr-2" />
                       <span>Credit Note Number</span>
                       {searchType === "credit_note_number" && <Check className="h-4 w-4 ml-auto" />}
                     </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>

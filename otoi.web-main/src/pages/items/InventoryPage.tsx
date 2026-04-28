@@ -233,27 +233,27 @@ const MobileView = ({
         const item = row.original as InventoryItem;
         return (
           <div key={item.item_id} className="inv-mobile-row">
-            <div className="flex flex-col grow min-w-0 cursor-pointer" onClick={() => onDetails(item.item_id)}>
-              <div className="flex items-center justify-between mb-1 gap-3">
-                <span className="font-semibold text-[13px] text-gray-900 truncate">{item.item_name}</span>
+            <div className="flex flex-col grow min-w-0 cursor-pointer gap-0.5" onClick={() => onDetails(item.item_id)}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-[11px] text-gray-900 truncate leading-tight">{item.item_name}</span>
                 {item.sales_price > 0 && (
-                  <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded shrink-0 ml-2">
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1 py-0 rounded shrink-0 ml-2">
                     ₹{item.sales_price.toLocaleString("en-IN")}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="inv-code-chip text-[10px]">{item.item_code}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md text-gray-600 bg-gray-100 truncate">
+              <div className="flex items-center gap-1">
+                <span className="inv-code-chip text-[9px] leading-none">{item.item_code}</span>
+                <span className="text-[9px] px-1 py-0 rounded-md text-gray-600 bg-gray-100 truncate leading-none">
                   {item.category}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${item.opening_stock <= 5 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+              <div className="flex items-center gap-1">
+                <span className={`text-[10px] px-1.5 py-0 rounded font-bold leading-none ${item.opening_stock <= 5 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
                   Qty: {item.opening_stock}
                 </span>
                 {item.purchase_price !== null && (
-                  <span className="text-[10px] text-gray-400 truncate">
+                  <span className="text-[9px] text-gray-400 truncate leading-none"> 
                     Purchase: ₹{item.purchase_price.toLocaleString("en-IN")}
                   </span>
                 )}
@@ -262,12 +262,12 @@ const MobileView = ({
 
             <div className="flex flex-col items-center shrink-0 ml-3">
               {item.image ? (
-                <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 shadow-sm mb-2">
+                <div className="w-6 h-6 rounded overflow-hidden border border-gray-100 shadow-sm mb-0">
                   <img src={resolveImageUrl(item.image)} alt={item.item_name} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-2">
-                  <Package className="w-6 h-6 text-gray-300" />
+                <div className="w-6 h-6 rounded bg-gray-50 border border-gray-100 flex items-center justify-center mb-0">
+                  <Package className="w-3 h-3 text-gray-300" />
                 </div>
               )}
               <DropdownMenu>
@@ -863,7 +863,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
 .inv-mobile-row {
   display: flex;
   align-items: center;
-  padding: 0.875rem 1.25rem;
+  padding: 0.125rem 0.5rem;
   border-bottom: 1px solid #f1f5f9;
   transition: background 0.15s;
   overflow-x: hidden;

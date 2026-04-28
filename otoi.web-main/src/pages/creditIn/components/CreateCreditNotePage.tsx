@@ -547,7 +547,7 @@ const CreateCreditNotePage = () => {
               id: item.uuid || item.id,
               item_id: item.item_id,
               item_name: item.item_name, // Backend returns item_name
-              hsnSac: item.hsn_sac_code, // Unify field name to hsnSac
+              hsnSac: item.hsn_code || item.hsn_sac_code || '', // Unify field name to hsnSac
               quantity: item.quantity,
               originalQty: originalQtyValue, // Set for all linked credit notes
               price_per_item: item.unit_price,
@@ -694,7 +694,7 @@ const CreateCreditNotePage = () => {
           id: item.uuid || Date.now().toString() + Math.random(), // Use existing UUID or generate temporary ID
           item_id: item.item_id,
           item_name: item.product_name, // Use item_name consistently
-          hsnSac: item.hsn_sac_code, // Use hsnSac consistently
+          hsnSac: item.hsn_code || item.hsn_sac_code || '', // Use hsnSac consistently
           quantity: item.quantity, //  quantity
           originalQty: item.quantity, // Store original quantity for validation for all linked invoices
           price_per_item: item.unit_price, // UI expects price_per_item
@@ -1593,7 +1593,7 @@ const CreateCreditNotePage = () => {
                       placeholder={
                         selectedCustomer
                           ? "Click to search invoices"
-                          : "Select a Invoice first"
+                          : "Add Party first"
                       }
                       value={creditNoteData.linkToInvoice}
                       onChange={(e) =>

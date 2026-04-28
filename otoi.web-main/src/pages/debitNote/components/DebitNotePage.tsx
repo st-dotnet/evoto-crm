@@ -78,13 +78,63 @@ const DebitNotePage = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [debitNoteToDelete, setDebitNoteToDelete] = useState<string | null>(null);
-    const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
-    const [customDateFrom, setCustomDateFrom] = useState<string>('');
-    const [customDateTo, setCustomDateTo] = useState<string>('');
-    const [showCustomDateRange, setShowCustomDateRange] = useState(false);
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365_days');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
+
+    // Helper function to convert date filter to date range
+    const getDateRange = useCallback(() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const date = today.getDate();
+
+        switch (selectedDateFilter) {
+            case 'today':
+                return {
+                    date_from: today.toISOString().split('T')[0],
+                    date_to: today.toISOString().split('T')[0]
+                };
+            case 'this_week':
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(date - today.getDay());
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                return {
+                    date_from: startOfWeek.toISOString().split('T')[0],
+                    date_to: endOfWeek.toISOString().split('T')[0]
+                };
+            case 'last_week':
+                const startOfLastWeek = new Date(today);
+                startOfLastWeek.setDate(date - today.getDay() - 7);
+                const endOfLastWeek = new Date(startOfLastWeek);
+                endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+                return {
+                    date_from: startOfLastWeek.toISOString().split('T')[0],
+                    date_to: endOfLastWeek.toISOString().split('T')[0]
+                };
+            case 'this_month':
+                return {
+                    date_from: new Date(year, month, 1).toISOString().split('T')[0],
+                    date_to: new Date(year, month + 1, 0).toISOString().split('T')[0]
+                };
+            case 'last_month':
+                return {
+                    date_from: new Date(year, month - 1, 1).toISOString().split('T')[0],
+                    date_to: new Date(year, month, 0).toISOString().split('T')[0]
+                };
+            case 'last_365_days':
+                const lastYear = new Date(today);
+                lastYear.setDate(date - 365);
+                return {
+                    date_from: lastYear.toISOString().split('T')[0],
+                    date_to: today.toISOString().split('T')[0]
+                };
+            default:
+                return {};
+        }
+    }, [selectedDateFilter]);
 
     // Fetch autocomplete data for search suggestions
     const fetchAutocompleteData = useCallback(async () => {
@@ -162,6 +212,7 @@ const DebitNotePage = () => {
     const fetchDebitNotes = useCallback(async (params: TDataGridRequestParams) => {
         setIsLoading(true);
         try {
+            const dateRange = getDateRange();
             const apiParams = {
                 page: params.pageIndex + 1, // DataGrid uses 0-based indexing
                 per_page: params.pageSize,
@@ -171,15 +222,12 @@ const DebitNotePage = () => {
                     search: searchTerm
                 }),
                 status: selectedStatus === 'all' ? '' : selectedStatus,
-                ...(selectedDateFilter !== 'all' && {
-                    date_filter: selectedDateFilter
+                ...(dateRange.date_from && {
+                    date_from: dateRange.date_from
                 }),
-                ...(showCustomDateRange && customDateFrom && {
-                    date_from: customDateFrom
+                ...(dateRange.date_to && {
+                    date_to: dateRange.date_to
                 }),
-                ...(showCustomDateRange && customDateTo && {
-                    date_to: customDateTo
-                })
             };
 
             const response = await getDebitNotes(apiParams);
@@ -255,7 +303,7 @@ const DebitNotePage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchTerm, searchType, selectedStatus, refreshKey, selectedDateFilter, customDateFrom, customDateTo, showCustomDateRange]);
+    }, [debouncedSearchTerm, searchType, selectedStatus, refreshKey, getDateRange]);
 
     useEffect(() => {
         fetchDebitNotes({
@@ -603,15 +651,13 @@ const DebitNotePage = () => {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className="h-8 w-full gap-1">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                        {selectedDateFilter === 'all' && 'All Dates'}
+                                    <span className="truncate">
                                         {selectedDateFilter === 'today' && 'Today'}
                                         {selectedDateFilter === 'this_week' && 'This Week'}
                                         {selectedDateFilter === 'last_week' && 'Last Week'}
                                         {selectedDateFilter === 'this_month' && 'This Month'}
                                         {selectedDateFilter === 'last_month' && 'Last Month'}
                                         {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
-                                        {showCustomDateRange && 'Custom Range'}
                                     </span>
                                     <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                                 </Button>
@@ -619,20 +665,7 @@ const DebitNotePage = () => {
                             <DropdownMenuContent align="end" className="w-[200px]">
                                 <DropdownMenuItem
                                     onClick={() => {
-                                        setSelectedDateFilter('all');
-                                        setShowCustomDateRange(false);
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-gray-500" />
-                                    <span>All Dates</span>
-                                    {selectedDateFilter === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
                                         setSelectedDateFilter('today');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -644,7 +677,6 @@ const DebitNotePage = () => {
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedDateFilter('this_week');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -656,7 +688,6 @@ const DebitNotePage = () => {
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedDateFilter('last_week');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -668,7 +699,6 @@ const DebitNotePage = () => {
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedDateFilter('this_month');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -680,7 +710,6 @@ const DebitNotePage = () => {
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedDateFilter('last_month');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -692,7 +721,6 @@ const DebitNotePage = () => {
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedDateFilter('last_365_days');
-                                        setShowCustomDateRange(false);
                                         setRefreshKey(prev => prev + 1);
                                     }}
                                     className="flex items-center gap-2"
@@ -700,17 +728,6 @@ const DebitNotePage = () => {
                                     <Circle className="h-4 w-4 text-indigo-500" />
                                     <span>Last 365 Days</span>
                                     {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setShowCustomDateRange(true);
-                                        setSelectedDateFilter('custom');
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-pink-500" />
-                                    <span>Custom Range</span>
-                                    {showCustomDateRange && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -730,13 +747,13 @@ const DebitNotePage = () => {
             </div>
 
             <div className="bg-white border rounded-lg overflow-hidden">
-                <div className="p-4 border-b">
+                <div className="py-5 px-4 bg-white border-b flex items-center justify-start">
                     <div className="relative w-fit">
-                        <div className="flex">
-                            <div className="relative">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex items-center gap-2">
                                 <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="h-9 w-80 justify-start px-3" disabled={isDropdownLoading}>
+                                        <Button variant="outline" className="h-10 w-80 justify-start px-3" disabled={isDropdownLoading}>
                                             {isDropdownLoading ? (
                                                 <span className="flex items-center">
                                                     <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -817,7 +834,7 @@ const DebitNotePage = () => {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-9 rounded-md px-3 text-sm text-gray-600 ml-2"
+                                            className="h-10 rounded-md px-3 text-sm text-gray-600"
                                         >
                                             <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
                                             {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Debit Note'}: ${searchTerm}` : 'Filter by'}
@@ -850,65 +867,18 @@ const DebitNotePage = () => {
                             </div>
                         </div>
                     </div>
-
-                    {/* Custom Date Range Inputs */}
-                    {showCustomDateRange && (
-                        <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm font-medium text-gray-700">From:</label>
-                                <Input
-                                    type="date"
-                                    value={customDateFrom}
-                                    onChange={(e) => setCustomDateFrom(e.target.value)}
-                                    className="h-8 w-32 text-sm"
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm font-medium text-gray-700">To:</label>
-                                <Input
-                                    type="date"
-                                    value={customDateTo}
-                                    onChange={(e) => setCustomDateTo(e.target.value)}
-                                    className="h-8 w-32 text-sm"
-                                />
-                            </div>
-                            <Button
-                                size="sm"
-                                onClick={() => {
-                                    if (customDateFrom && customDateTo) {
-                                        setRefreshKey(prev => prev + 1);
-                                    }
-                                }}
-                                className="h-8 px-3"
-                            >
-                                Apply
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setShowCustomDateRange(false);
-                                    setCustomDateFrom('');
-                                    setCustomDateTo('');
-                                    setSelectedDateFilter('all');
-                                    setRefreshKey(prev => prev + 1);
-                                }}
-                                className="h-8 px-3"
-                            >
-                                Clear
-                            </Button>
-                        </div>
-                    )}
                 </div>
 
-                <DataGrid
-                    data={debitNotes}
-                    columns={columns}
-                    loading={isLoading}
-                    getRowId={(row) => row.id}
-                    onFetchData={fetchDebitNotes}
-                    onRowClick={(row) => navigate(`/debit-note/view/${row.original.id}`)}
-                />
+                <div className="overflow-auto relative w-full">
+                    <DataGrid
+                        data={debitNotes}
+                        columns={columns}
+                        loading={isLoading}
+                        getRowId={(row) => row.id}
+                        onFetchData={fetchDebitNotes}
+                        onRowClick={(row) => navigate(`/debit-note/view/${row.original.id}`)}
+                    />
+                </div>
             </div>
 
             {/* Delete Confirmation Dialog */}

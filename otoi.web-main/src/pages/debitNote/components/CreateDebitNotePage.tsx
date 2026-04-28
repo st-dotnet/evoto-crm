@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Settings, Plus, Search, Barcode, Calendar, ChevronDown, Trash2, X, UserPlus, MapPin, Briefcase, Home, MapPinIcon, HomeIcon, BriefcaseIcon, MoreVertical, Edit } from 'lucide-react';
+import { ArrowLeft, Settings, Plus, Search, Barcode, Calendar, ChevronDown, Trash2, X, UserPlus, MapPin, Briefcase, Home, MapPinIcon, HomeIcon, BriefcaseIcon, MoreVertical, Edit, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,7 +30,7 @@ const extractNumericValue = (val: any): number => {
     if (val === null || val === undefined) return 0;
     if (typeof val === 'number') return val;
     if (typeof val === 'string') return parseFloat(val) || 0;
-    
+
     // Handle nested objects: tax_percentage, discount_percentage, etc.
     if (typeof val === 'object') {
         // Check for common property names
@@ -156,7 +156,10 @@ const CreateDebitNotePage = () => {
     const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false);
     const [vendorInvoices, setVendorInvoices] = useState<any[]>([]);
     const [isInvoiceDropdownLoading, setIsInvoiceDropdownLoading] = useState(false);
+    const [isInvoiceItemsLoading, setIsInvoiceItemsLoading] = useState(false);
     const [showUnlinkConfirmDialog, setShowUnlinkConfirmDialog] = useState(false);
+    const [pendingAddressChange, setPendingAddressChange] = useState<ShippingAddress | null>(null);
+    const [originalAddressBeforeSelection, setOriginalAddressBeforeSelection] = useState<ShippingAddress | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [debitNoteExistsForCurrentInvoice, setDebitNoteExistsForCurrentInvoice] = useState(false);
     const [debitNotePayments, setDebitNotePayments] = useState<DebitNotePayment[]>([]);
@@ -425,7 +428,7 @@ const CreateDebitNotePage = () => {
                                     uuid: backendItem.uuid || crypto.randomUUID(),
                                     item_id: backendItem.item_id,
                                     item_name: backendItem.product_name || backendItem.item_name,
-                                    hsn_sac: backendItem.hsn_sac_code,
+                                    hsn_sac: backendItem.hsn_code || backendItem.hsn_sac_code || '',
                                     quantity: backendItem.quantity,
                                     originalQty: backendItem.quantity, // Update original quantity to match new quantity
                                     price_per_item: backendItem.unit_price,
@@ -636,10 +639,10 @@ const CreateDebitNotePage = () => {
 
 
                 setVendorInvoices(availableInvoices);
-                if (!isEditMode) { setShowInvoiceDropdown(true); }
+                setShowInvoiceDropdown(true);
             } else {
                 setVendorInvoices([]);
-                if (!isEditMode) { setShowInvoiceDropdown(true); }
+                setShowInvoiceDropdown(true);
             }
         } catch (error) {
             setVendorInvoices([]);
@@ -651,18 +654,24 @@ const CreateDebitNotePage = () => {
 
     // Function to handle invoice selection
     const handleInvoiceSelect = async (invoice: any) => {
+        // Clear existing items first
+        setItems([]);
+        recalculateTotals([]);
+
         setDebitNoteData(prev => ({
             ...prev,
             linkToInvoice: invoice.invoice_number,
-            linkToInvoiceId: invoice.uuid, // Store the UUID for proper linking
+            linkToInvoiceId: invoice.uuid, // Store UUID for proper linking
             vendorId: invoice.vendor_id || '', // Store vendor ID from invoice
             status: prev.status // Keep existing status, don't auto-set to credited
         }));
         setShowInvoiceDropdown(false);
+        setIsInvoiceItemsLoading(true); // Start loading
 
         const invoiceId = invoice.uuid;
         if (!invoiceId) {
             toast.error('Invalid invoice data - missing ID');
+            setIsInvoiceItemsLoading(false);
             return;
         }
 
@@ -672,6 +681,7 @@ const CreateDebitNotePage = () => {
             if (debitNoteCheckResponse.success && debitNoteCheckResponse.data?.hasDebitNote === true) {
                 setDebitNoteExistsForCurrentInvoice(false);
                 toast.error('A debit note already exists for this invoice. Please select a different invoice.');
+                setIsInvoiceItemsLoading(false);
                 return;
             } else {
                 setDebitNoteExistsForCurrentInvoice(false);
@@ -684,7 +694,7 @@ const CreateDebitNotePage = () => {
                         uuid: item.uuid || Date.now().toString() + Math.random(),
                         item_id: item.item_id,
                         item_name: item.product_name || item.item_name,
-                        hsn_sac: item.hsn_sac_code,
+                        hsn_sac: item.hsn_code || item.hsn_sac_code || '',
                         quantity: item.quantity,
                         originalQty: item.quantity,
                         price_per_item: item.unit_price,
@@ -705,6 +715,8 @@ const CreateDebitNotePage = () => {
         } catch (error) {
             console.error('Error fetching invoice details:', error);
             toast.error('Failed to load invoice items');
+        } finally {
+            setIsInvoiceItemsLoading(false); // Stop loading
         }
     };
 
@@ -727,20 +739,6 @@ const CreateDebitNotePage = () => {
         setIsVendorModalOpen(false);
         // Refresh the vendors list
         fetchParties();
-    };
-
-    // Function to handle customer/vendor selection
-    const handleCustomerSelect = (vendor: any) => {
-        setSelectedParty(vendor);
-        setSelectedCustomer(vendor);
-        setIsPartyDialogOpen(false);
-
-        // Update debit note data with selected party information
-        setDebitNoteData(prev => ({
-            ...prev,
-            customer_uuid: vendor.uuid,
-            customer_name: vendor.name,
-        }));
     };
 
     // Function to fetch vendors
@@ -771,73 +769,71 @@ const CreateDebitNotePage = () => {
                 setVendors([]);
                 setParties([]);
             }
+            setIsPartiesLoading(false);
         } catch (error) {
             console.error('Error fetching vendors:', error);
             toast.error("Failed to fetch vendors");
-        } finally {
             setIsPartiesLoading(false);
         }
     };
 
-    // Function to fetch customer data
-    const fetchCustomerData = async (customerUUID: string) => {
-        if (!customerUUID) return;
-        setIsLoading(true);
-        try {
-            const response = await axios.get(
-                `${import.meta.env.VITE_APP_API_URL}/customers/${customerUUID}`,
-            );
+    // Function to handle address change and unlink invoice if needed
+    const handleAddressChange = (address: ShippingAddress | null) => {
+        console.log('handleAddressChange called', { selectedAddress, address, linkToInvoice: debitNoteData.linkToInvoice });
 
-            let addresses: ShippingAddress[] = [];
-            if (response.data.shipping_addresses && Array.isArray(response.data.shipping_addresses)) {
-                addresses = response.data.shipping_addresses.map((addr: any, index: number) => ({
-                    ...addr,
-                    uuid: addr.uuid || addr.id || `api-${index}-${Date.now()}`,
-                    is_default: addr.is_default || false,
-                }));
-            }
-            setShippingAddresses(addresses);
-            if (addresses.length > 0) {
-                const defaultAddress = addresses.find((addr) => addr.is_default) || addresses[0];
-                setSelectedAddress(defaultAddress);
+        // Check if the address is actually changing
+        if (selectedAddress?.uuid !== address?.uuid) {
+            console.log('Address is changing');
+
+            // If there's a linked invoice, show confirmation dialog
+            if (debitNoteData.linkToInvoice) {
+                console.log('Showing unlink confirmation dialog');
+                // Store the pending address change
+                setPendingAddressChange(address);
+                setShowUnlinkConfirmDialog(true);
             } else {
-                setSelectedAddress(null);
+                // No invoice linked, just clear items and change address
+                console.log('No invoice to unlink, just clearing items');
+                setItems([]);
+                recalculateTotals([]);
+                setSelectedAddress(address);
+                toast.info('Items cleared due to address change');
             }
+        } else {
+            console.log('Address not changing or conditions not met');
+            setSelectedAddress(address);
+        }
+    };
 
-            setSelectedCustomer(response.data);
-            const party: Party = {
-                id: response.data.uuid,
-                uuid: response.data.uuid,
-                name: response.data.company_name || `${response.data.first_name} ${response.data.last_name}`,
-                balance: 0,
-                mobile: response.data.mobile,
-                customerData: response.data
-            };
-            setSelectedParty(party);
-        } catch (error) {
-            console.error('Error fetching customer data:', error);
-            // Try fetching as vendor if customer fetch fails
-            try {
-                const vendorResponse = await axios.get(
-                    `${import.meta.env.VITE_APP_API_URL}/vendors/${customerUUID}`,
-                );
-                const vendor = vendorResponse.data;
-                setSelectedCustomer(vendor);
-                const party: Party = {
-                    id: vendor.uuid,
-                    uuid: vendor.uuid,
-                    name: vendor.company_name || vendor.vendor_name || 'Unknown Vendor',
-                    balance: 0,
-                    mobile: vendor.mobile,
-                    customerData: vendor
-                };
-                setSelectedParty(party);
-            } catch (vendorError) {
-                console.error('Error fetching vendor data:', vendorError);
-                toast.error("Failed to fetch customer or vendor details");
+    // Function to handle customer/vendor selection
+    const handleCustomerSelect = async (vendor: any) => {
+        setSelectedParty(vendor);
+        setSelectedCustomer(vendor);
+        setIsPartyDialogOpen(false);
+
+        // Load vendor shipping addresses
+        try {
+            const response = await getVendorById(vendor.uuid);
+            if (response.success && response.data) {
+                let addresses: ShippingAddress[] = [];
+                if (response.data.shipping_addresses && Array.isArray(response.data.shipping_addresses)) {
+                    addresses = response.data.shipping_addresses.map((addr: any, index: number) => ({
+                        ...addr,
+                        uuid: addr.uuid || addr.id || `vendor-${index}-${Date.now()}`,
+                        created_at: addr.created_at || new Date().toISOString(),
+                        updated_at: addr.updated_at || new Date().toISOString(),
+                    }));
+                }
+                setShippingAddresses(addresses);
+                if (addresses.length > 0) {
+                    const defaultAddress = addresses.find((addr) => addr.is_default) || addresses[0];
+                    setSelectedAddress(defaultAddress);
+                } else {
+                    setSelectedAddress(null);
+                }
             }
-        } finally {
-            setIsLoading(false);
+        } catch (error) {
+            console.error('Error loading vendor shipping addresses:', error);
         }
     };
 
@@ -1057,6 +1053,8 @@ const CreateDebitNotePage = () => {
         setVendorInvoices([]);
         if (!isEditMode && !invoiceId) { // Only clear if not loading from URL
             setDebitNoteData(prev => ({ ...prev, linkToInvoice: '', status: 'unpaid' }));
+            setItems([]);
+            recalculateTotals([]);
         }
     }, [selectedCustomer]);
 
@@ -1106,7 +1104,7 @@ const CreateDebitNotePage = () => {
                             uuid: item.uuid || Date.now().toString() + Math.random(),
                             item_id: item.item_id,
                             item_name: item.product_name || item.item_name,
-                            hsn_sac: item.hsn_sac_code,
+                            hsn_sac: item.hsn_code || item.hsn_sac_code || '',
                             quantity: item.quantity,
                             originalQty: item.quantity,
                             price_per_item: item.unit_price,
@@ -1419,72 +1417,61 @@ const CreateDebitNotePage = () => {
         <div className="min-h-screen bg-gray-50 relative">
             {/* Loading Overlay */}
             {isLoading && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white/80">
                     <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
                 </div>
             )}
             {isAddressLoading && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white/80">
                     <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
                 </div>
             )}
 
             {/* Header */}
-            <div className="bg-white border-b px-3 sm:px-4 py-2.5 sm:py-3 sticky top-0 z-40">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-                    <div className="flex items-center gap-3">
+            <div className="bg-white border-b px-4 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate('/debit-note')}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <div>
-                            <h1 className="text-lg sm:text-xl font-semibold truncate max-w-[200px] sm:max-w-none">
-                                {isViewMode ? 'View Debit Note' : isEditMode ? 'Edit Debit Note' : 'Create Debit Note'}
-                            </h1>
-                            {isInvoicePaid && (
-                                <p className="text-[10px] text-red-600 font-medium sm:hidden">Invoice Paid - Read Only</p>
-                            )}
-                        </div>
+                        <h1 className="text-xl font-semibold">
+                            {isViewMode ? 'View Debit Note' : isEditMode ? 'Edit Debit Note' : 'Create Debit Note'}
+                        </h1>
                     </div>
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="w-full sm:w-auto">
                         {!isViewMode && (
                             <Button
                                 onClick={handleSave}
                                 disabled={isSaving || isInvoicePaid || debitNoteExistsForCurrentInvoice}
-                                className="w-full sm:w-auto min-w-[100px]"
+                                className="w-full sm:min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                             >
                                 {isSaving ? (
                                     <div className="flex items-center gap-2">
                                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        <span>Saving...</span>
+                                        <span>{isEditMode ? "Updating..." : "Creating..."}</span>
                                     </div>
                                 ) : (
-                                    <span>{isEditMode ? 'Update' : 'Create'}</span>
+                                    <div className="flex items-center gap-2 justify-center">
+                                        <FileText className="h-4 w-4" />
+                                        <span>{isEditMode ? "Update" : "Create"} Debit Note</span>
+                                    </div>
                                 )}
                             </Button>
                         )}
                         {isViewMode && (
                             <Button
                                 onClick={() => navigate(`/debit-note/edit/${id}`)}
-                                className="w-full sm:w-auto min-w-[100px]"
+                                className="w-full sm:min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                             >
-                                Edit
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Debit Note
                             </Button>
                         )}
                     </div>
                 </div>
-                {isInvoicePaid && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg hidden sm:block">
-                        <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-xs text-red-800 font-medium">This invoice is already paid. Debit note editing is disabled.</span>
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -1526,7 +1513,7 @@ const CreateDebitNotePage = () => {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setIsPartyDialogOpen(true)}
-                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 shrink-0"
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 shrink-0 border border-blue-300 hover:border-blue-400"
                                         >
                                             Change
                                         </Button>
@@ -1534,7 +1521,7 @@ const CreateDebitNotePage = () => {
                                 </div>
                             ) : (
                                 <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100/50 hover:border-gray-300 transition-all cursor-pointer min-h-[160px]"
-                                     onClick={() => setIsPartyDialogOpen(true)}>
+                                    onClick={() => setIsPartyDialogOpen(true)}>
                                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
                                         <UserPlus className="h-5 w-5 text-blue-600" />
                                     </div>
@@ -1546,30 +1533,39 @@ const CreateDebitNotePage = () => {
                         <div className="flex-1 space-y-3">
                             <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
                             <div className="border rounded-xl h-auto min-h-[140px] sm:min-h-[160px] p-3 sm:p-4 bg-white shadow-sm">
-                                <div className="flex justify-between items-start gap-2">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
-                                                {businessProfile.name}
-                                            </h4>
-                                            <span className="shrink-0 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
-                                                Self
-                                            </span>
-                                        </div>
-                                        <div className="mt-2 text-xs sm:text-sm text-gray-600 space-y-1">
-                                            <p className="line-clamp-2">{businessProfile.address1}</p>
-                                            <p>
-                                                {[businessProfile.city, businessProfile.state, businessProfile.pin].filter(Boolean).join(", ")}
-                                            </p>
-                                            <div className="pt-1 space-y-0.5">
-                                                {businessProfile.phone && (
-                                                    <p><span className="font-medium text-gray-500">Phone:</span> {businessProfile.phone}</p>
-                                                )}
-                                                {businessProfile.gst && (
-                                                    <p><span className="font-medium text-gray-500">GST:</span> {businessProfile.gst}</p>
-                                                )}
-                                            </div>
-                                        </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+                                            {selectedAddress ? selectedAddress.address_type : businessProfile.name}
+                                        </h4>
+                                        <span className="shrink-0 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
+                                            {selectedAddress ? 'Customer' : 'Self'}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 text-xs sm:text-sm text-gray-600 space-y-1">
+                                        {selectedAddress ? (
+                                            <>
+                                                <p className="line-clamp-2">{selectedAddress.address1} {selectedAddress.address2}</p>
+                                                <p>
+                                                    {[selectedAddress.city, selectedAddress.state, selectedAddress.pin].filter(Boolean).join(", ")}
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="line-clamp-2">{businessProfile.address1}</p>
+                                                <p>
+                                                    {[businessProfile.city, businessProfile.state, businessProfile.pin].filter(Boolean).join(", ")}
+                                                </p>
+                                                <div className="pt-1 space-y-0.5">
+                                                    {businessProfile.phone && (
+                                                        <p><span className="font-medium text-gray-500">Phone:</span> {businessProfile.phone}</p>
+                                                    )}
+                                                    {businessProfile.gst && (
+                                                        <p><span className="font-medium text-gray-500">GST:</span> {businessProfile.gst}</p>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1622,6 +1618,10 @@ const CreateDebitNotePage = () => {
                                             className="pl-9 h-9 text-sm"
                                             disabled={!selectedCustomer || isViewMode || isInvoicePaid || debitNoteData.linkToInvoice !== ''}
                                             readOnly={debitNoteData.linkToInvoice !== ''}
+                                            autoComplete="off"
+                                            autoCorrect="off"
+                                            autoCapitalize="off"
+                                            spellCheck="false"
                                         />
                                         {/* Loader indicator on the input field */}
                                         {isInvoiceDropdownLoading && (
@@ -1639,7 +1639,20 @@ const CreateDebitNotePage = () => {
                                         )}
 
                                         {showInvoiceDropdown && (
-                                            <div className="invoice-dropdown absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                            <div className="invoice-dropdown fixed bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] max-h-60 overflow-y-auto" style={{
+                                                position: 'fixed',
+                                                minWidth: '300px'
+                                            }} ref={(el) => {
+                                                if (el && showInvoiceDropdown) {
+                                                    const input = document.getElementById('linkToInvoice');
+                                                    if (input) {
+                                                        const rect = input.getBoundingClientRect();
+                                                        el.style.top = `${rect.bottom + window.scrollY + 4}px`;
+                                                        el.style.left = `${rect.left + window.scrollX}px`;
+                                                        el.style.width = `${rect.width}px`;
+                                                    }
+                                                }
+                                            }}>
                                                 {vendorInvoices.length > 0 ? (
                                                     <div className="p-1">
                                                         {vendorInvoices.map((invoice) => (
@@ -1648,9 +1661,8 @@ const CreateDebitNotePage = () => {
                                                                 className="flex flex-col p-2.5 hover:bg-blue-50 cursor-pointer rounded-md transition-colors border-b border-gray-50 last:border-0"
                                                                 onClick={() => handleInvoiceSelect(invoice)}
                                                             >
-                                                                <div className="flex justify-between items-center mb-1">
+                                                                <div className="flex items-center mb-1">
                                                                     <span className="font-semibold text-gray-900 text-sm">{invoice.invoice_number}</span>
-                                                                    <span className="font-bold text-blue-600 text-sm">₹{invoice.total_amount?.toLocaleString()}</span>
                                                                 </div>
                                                                 <div className="text-[10px] text-gray-500 flex items-center gap-2">
                                                                     <Calendar className="h-3 w-3" />
@@ -1684,7 +1696,7 @@ const CreateDebitNotePage = () => {
                             <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Items/Services</CardTitle>
                             {items.length > 0 && debitNoteData.linkToInvoice !== '' && (
                                 <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md font-bold border border-amber-200 uppercase">
-                                    Linked
+                                    Invoice Linked
                                 </div>
                             )}
                         </div>
@@ -1698,7 +1710,17 @@ const CreateDebitNotePage = () => {
                             <span>Add Item</span>
                         </Button>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 relative">
+                        {/* Loading overlay for invoice items */}
+                        {isInvoiceItemsLoading && (
+                            <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center">
+                                <div className="flex flex-col items-center space-y-3">
+                                    <SpinnerDotted size={40} thickness={100} speed={100} color="#3b82f6" />
+                                    <p className="text-sm font-medium text-gray-600">Loading invoice items...</p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Desktop Table View */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -1737,10 +1759,11 @@ const CreateDebitNotePage = () => {
                                                     value={item.hsn_sac || ''}
                                                     onChange={(e) => handleItemChange(index, 'hsn_sac', e.target.value)}
                                                     className="h-8 text-xs text-center font-medium bg-transparent border-gray-200"
+                                                    readOnly
                                                 />
                                             </td>
                                             <td className="p-4">
-                                                <div className="space-y-1">
+                                                <div className="relative">
                                                     <Input
                                                         type="number"
                                                         value={item.quantity}
@@ -1749,13 +1772,13 @@ const CreateDebitNotePage = () => {
                                                             if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && val > item.originalQty) {
                                                                 handleItemChange(index, 'quantity', item.originalQty);
                                                             } else {
-                                                                handleItemChange(index, 'quantity', Math.max(0, val));
+                                                                handleItemChange(index, 'quantity', Math.max(1, val));
                                                             }
                                                         }}
-                                                        className={`h-8 text-xs text-center font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-transparent'}`}
+                                                        className={`h-8 text-xs text-center font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-transparent'} [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`}
                                                     />
                                                     {debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && (
-                                                        <p className="text-[9px] text-amber-600 font-bold text-center">MAX: {item.originalQty}</p>
+                                                        <p className="absolute left-0 right-0 top-full mt-0.5 text-[9px] text-amber-600 font-bold text-center whitespace-nowrap">Max from invoice: {item.originalQty}</p>
                                                     )}
                                                 </div>
                                             </td>
@@ -1812,6 +1835,11 @@ const CreateDebitNotePage = () => {
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Item {index + 1}</p>
                                             <h4 className="text-sm font-bold text-gray-900 truncate">{item.item_name}</h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                                                    HSN: {item.hsn_sac || "N/A"}
+                                                </span>
+                                            </div>
                                         </div>
                                         <button onClick={() => handleRemoveItem(index)} className="p-1.5 text-red-500 bg-red-50 rounded-md">
                                             <Trash2 className="h-4 w-4" />
@@ -1830,12 +1858,12 @@ const CreateDebitNotePage = () => {
                                                         if (debitNoteData.linkToInvoice !== '' && item.originalQty !== undefined && val > item.originalQty) {
                                                             handleItemChange(index, 'quantity', item.originalQty);
                                                         } else {
-                                                            handleItemChange(index, 'quantity', Math.max(0, val));
+                                                            handleItemChange(index, 'quantity', Math.max(1, val));
                                                         }
                                                     }}
-                                                    className={`h-9 text-sm font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : ''}`}
+                                                    className={`h-9 text-sm font-bold ${debitNoteData.linkToInvoice !== '' ? 'bg-amber-50 border-amber-200 text-amber-700' : ''} [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`}
                                                 />
-                                                {debitNoteData.linkToInvoice !== '' && (
+                                                {debitNoteData.linkToInvoice !== '' && item.originalQty !== null && (
                                                     <span className="absolute -top-4 right-0 text-[8px] font-bold text-amber-600 uppercase">Max: {item.originalQty}</span>
                                                 )}
                                             </div>
@@ -1903,15 +1931,15 @@ const CreateDebitNotePage = () => {
                     </CardContent>
                 </Card>
 
-                {/* Bottom Section: Notes, Summary, and Status */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                {/* Bottom Section: Notes & Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     {/* Notes & Terms */}
-                    <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                        <Card className="border-gray-200 shadow-sm">
+                    <div className="space-y-4 sm:space-y-6">
+                        <Card className="border-gray-200 shadow-sm h-full flex flex-col">
                             <CardHeader className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50/50 border-b">
                                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Notes & Terms</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-3 sm:p-4 space-y-4">
+                            <CardContent className="p-3 sm:p-4 space-y-4 flex-1">
                                 <div className="space-y-1.5">
                                     <label htmlFor="notes" className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Notes</label>
                                     <textarea
@@ -1937,52 +1965,29 @@ const CreateDebitNotePage = () => {
                             </CardContent>
                         </Card>
 
-                        {!isViewMode && (
-                            <Card className="border-gray-200 shadow-sm overflow-hidden">
-                                <CardHeader className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50/50 border-b">
-                                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-600">Document Status</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-3 sm:p-4">
-                                    <div className="flex flex-wrap gap-2">
-                                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
-                                            <button
-                                                key={status}
-                                                onClick={() => setDebitNoteData(prev => ({ ...prev, status }))}
-                                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                                                    debitNoteData.status === status
-                                                        ? 'bg-blue-600 text-white shadow-md scale-105'
-                                                        : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
-                                                }`}
-                                            >
-                                                {status}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
                     </div>
 
                     {/* Summary */}
-                    <Card className="border-gray-200 shadow-lg bg-white overflow-hidden h-fit">
-                        <CardHeader className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-900 text-white">
-                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em]">Financial Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 sm:p-6 space-y-4">
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500 font-medium">Subtotal</span>
-                                    <span className="font-bold text-gray-900">₹{debitNoteData.subtotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <div className="space-y-4 sm:space-y-6">
+                        <Card className="border-gray-200 shadow-lg bg-white overflow-hidden h-full flex flex-col">
+                            <CardHeader className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-900 text-white">
+                                <CardTitle className="text-sm font-black uppercase tracking-[0.2em]">Financial Summary</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 sm:p-6 space-y-4 flex-1">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500 font-medium">Subtotal</span>
+                                        <span className="font-bold text-gray-900">₹{debitNoteData.subtotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500 font-medium">Total Discount</span>
+                                        <span className="font-bold text-red-600">-₹{debitNoteData.total_discount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500 font-medium">Total Tax</span>
+                                        <span className="font-bold text-green-600">+₹{debitNoteData.total_tax?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500 font-medium">Total Discount</span>
-                                    <span className="font-bold text-red-600">-₹{debitNoteData.total_discount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500 font-medium">Total Tax</span>
-                                    <span className="font-bold text-green-600">+₹{debitNoteData.total_tax?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                
                                 {debitNoteData.auto_round_off && (
                                     <div className="flex justify-between items-center text-xs border-t border-dashed pt-3">
                                         <span className="text-gray-400 font-bold uppercase tracking-tighter">Round Off</span>
@@ -1991,44 +1996,42 @@ const CreateDebitNotePage = () => {
                                         </span>
                                     </div>
                                 )}
-                            </div>
-
-                            <div className="bg-gray-50 rounded-xl p-3 sm:p-4 space-y-4">
+                                <div className="bg-gray-50 rounded-xl p-3 sm:p-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label htmlFor="autoRoundOff" className="text-xs font-bold text-gray-600 uppercase cursor-pointer">Auto Round Off</label>
+                                        <Checkbox
+                                            id="autoRoundOff"
+                                            checked={debitNoteData.auto_round_off}
+                                            onCheckedChange={(checked: boolean) => setDebitNoteData(prev => ({ ...prev, auto_round_off: checked }))}
+                                            className="h-5 w-5 border-gray-300"
+                                        />
+                                    </div>
+                                </div>
                                 <div className="flex items-center justify-between">
-                                    <label htmlFor="autoRoundOff" className="text-xs font-bold text-gray-600 uppercase cursor-pointer">Auto Round Off</label>
-                                    <Checkbox
-                                        id="autoRoundOff"
-                                        checked={debitNoteData.auto_round_off}
-                                        onCheckedChange={(checked: boolean) => setDebitNoteData(prev => ({ ...prev, auto_round_off: checked }))}
-                                        className="h-5 w-5 border-gray-300"
-                                    />
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="markAsFullyPaid"
+                                            checked={debitNoteData.mark_as_fully_paid}
+                                            onCheckedChange={(checked: boolean) => {
+                                                setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: checked }));
+                                            }}
+                                            disabled={isSaving}
+                                        />
+                                        <label htmlFor="markAsFullyPaid" className="text-sm font-medium">Mark as Fully Paid</label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="markAsFullyPaid"
-                                        checked={debitNoteData.mark_as_fully_paid}
-                                        onCheckedChange={(checked: boolean) => {
-                                            setDebitNoteData(prev => ({ ...prev, mark_as_fully_paid: checked }));
-                                        }}
-                                        disabled={isSaving}
-                                    />
-                                    <label htmlFor="markAsFullyPaid" className="text-sm font-medium">Mark as Fully Paid</label>
-                                </div>
-                            </div>
-                            {debitNoteData.auto_round_off && debitNoteData.round_off_amount !== 0 && (
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-600">Round Off</span>
-                                    <span className={debitNoteData.round_off_amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                                        {debitNoteData.round_off_amount > 0 ? '+' : ''}₹ {debitNoteData.round_off_amount.toFixed(2)}
-                                    </span>
-                                    <p className="text-[8px] sm:text-[10px] text-blue-600 font-bold mt-1 uppercase tracking-tighter">Amount in INR</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
+                                {debitNoteData.auto_round_off && debitNoteData.round_off_amount !== 0 && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-600">Round Off</span>
+                                        <span className={debitNoteData.round_off_amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                                            {debitNoteData.round_off_amount > 0 ? '+' : ''}₹ {debitNoteData.round_off_amount.toFixed(2)}
+                                        </span>
+                                        <p className="text-[8px] sm:text-[10px] text-blue-600 font-bold mt-1 uppercase tracking-tighter">Amount in INR</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
 
                 {/* Add Item Modal */}
@@ -2204,7 +2207,7 @@ const CreateDebitNotePage = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 2.502-2.502V7.817c0-1.326-.896-2.502-2.502H4.817c-1.326 0-2.502.896-2.502 2.502v4.681c0 1.326.896 2.502 2.502 2.502z" />
                                     </svg>
                                 </div>
-                                Unlink Invoice
+                                {pendingAddressChange ? 'Change Address & Unlink Invoice' : 'Unlink Invoice'}
                             </DialogTitle>
                         </DialogHeader>
                         <div className="p-6">
@@ -2218,7 +2221,10 @@ const CreateDebitNotePage = () => {
                                             <strong>Warning:</strong> This action cannot be undone
                                         </p>
                                         <p className="text-sm text-gray-600">
-                                            Are you sure you want to unlink the invoice? This will remove all items loaded from the invoice and you'll need to add items manually.
+                                            {pendingAddressChange
+                                                ? 'Changing the shipping address will unlink the current invoice and clear all items. This action cannot be undone.'
+                                                : 'Are you sure you want to unlink the invoice? This will remove all items loaded from the invoice and you\'ll need to add items manually.'
+                                            }
                                         </p>
                                     </div>
                                 </div>
@@ -2229,22 +2235,42 @@ const CreateDebitNotePage = () => {
                                 </Button>
                                 <Button
                                     onClick={() => {
-                                        setItems([]);
-                                        recalculateTotals([]);
-                                        setDebitNoteExistsForCurrentInvoice(false);
-                                        setDebitNoteData(prev => ({
-                                            ...prev,
-                                            linkToInvoice: '',
-                                            linkToInvoiceId: '',
-                                            vendorId: '',
-                                            status: 'unpaid'
-                                        }));
-                                        setShowUnlinkConfirmDialog(false);
-                                        toast.success('Invoice unlinked successfully');
+                                        // Check if this is an address change or regular unlink
+                                        if (pendingAddressChange) {
+                                            // Handle address change
+                                            setItems([]);
+                                            recalculateTotals([]);
+                                            setSelectedAddress(pendingAddressChange);
+                                            setDebitNoteData(prev => ({
+                                                ...prev,
+                                                linkToInvoice: '',
+                                                linkToInvoiceId: '',
+                                                vendorId: '',
+                                                status: 'unpaid'
+                                            }));
+                                            setPendingAddressChange(null);
+                                            setShowUnlinkConfirmDialog(false);
+                                            toast.success('Address changed and invoice unlinked successfully');
+                                        } else {
+                                            // Handle regular unlink
+                                            console.log('Regular unlink: clearing items');
+                                            setItems([]);
+                                            recalculateTotals([]);
+                                            setDebitNoteExistsForCurrentInvoice(false);
+                                            setDebitNoteData(prev => ({
+                                                ...prev,
+                                                linkToInvoice: '',
+                                                linkToInvoiceId: '',
+                                                vendorId: '',
+                                                status: 'unpaid'
+                                            }));
+                                            setShowUnlinkConfirmDialog(false);
+                                            toast.success('Invoice unlinked and items cleared');
+                                        }
                                     }}
                                     className="bg-red-600 hover:bg-red-700"
                                 >
-                                    Unlink Invoice
+                                    {pendingAddressChange ? 'Change Address & Unlink' : 'Unlink Invoice'}
                                 </Button>
                             </div>
                         </div>
@@ -2252,7 +2278,19 @@ const CreateDebitNotePage = () => {
                 </Dialog>
 
                 {/* Shipping Address Modal */}
-                <Dialog open={isShippingModalOpen} onOpenChange={setIsShippingModalOpen}>
+                <Dialog open={isShippingModalOpen} onOpenChange={(open) => {
+                    if (open) {
+                        // Save original address when modal opens
+                        setOriginalAddressBeforeSelection(selectedAddress);
+                        setIsShippingModalOpen(open);
+                    } else {
+                        // Revert address if closed without confirming
+                        setIsShippingModalOpen(false);
+                        if (originalAddressBeforeSelection) {
+                            setSelectedAddress(originalAddressBeforeSelection);
+                        }
+                    }
+                }}>
                     <DialogContent className="sm:max-w-[500px] max-h-[70vh] overflow-hidden">
                         <DialogHeader className="px-6 pt-6 pb-3 border-b border-gray-100">
                             <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -2282,7 +2320,9 @@ const CreateDebitNotePage = () => {
                                                         className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
                                                             ? "border-blue-500 bg-blue-50"
                                                             : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
-                                                        onClick={() => setSelectedAddress(address)}
+                                                        onClick={() => {
+                                                            setSelectedAddress(address);
+                                                        }}
                                                     >
                                                         <div className="flex items-start gap-3">
                                                             <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected ? "bg-blue-100" : "bg-gray-100 group-hover:bg-gray-200"}`}>
@@ -2334,7 +2374,11 @@ const CreateDebitNotePage = () => {
                                                                                         <button
                                                                                             type="button"
                                                                                             onClick={(e) => { e.stopPropagation(); handleSetDefaultAddress(); }}
-                                                                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                                                                            disabled={!!debitNoteData.linkToInvoice}
+                                                                                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${debitNoteData.linkToInvoice
+                                                                                                ? 'text-gray-400 cursor-not-allowed'
+                                                                                                : 'text-gray-700 hover:bg-gray-100'
+                                                                                                }`}
                                                                                         >
                                                                                             <MapPin className="w-4 h-4 text-green-500" />
                                                                                             <span>Set as Default</span>
@@ -2343,7 +2387,11 @@ const CreateDebitNotePage = () => {
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={(e) => { e.stopPropagation(); handleEditAddress(); }}
-                                                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2"
+                                                                                        disabled={Boolean(debitNoteData.linkToInvoice)}
+                                                                                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${Boolean(debitNoteData.linkToInvoice)
+                                                                                            ? 'text-gray-400 cursor-not-allowed'
+                                                                                            : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
+                                                                                            }`}
                                                                                     >
                                                                                         <Edit className="w-4 h-4" />
                                                                                         <span>Edit</span>
@@ -2351,7 +2399,11 @@ const CreateDebitNotePage = () => {
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteAddress(); }}
-                                                                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2"
+                                                                                        disabled={!!debitNoteData.linkToInvoice}
+                                                                                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${debitNoteData.linkToInvoice
+                                                                                            ? 'text-gray-400 cursor-not-allowed'
+                                                                                            : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                                                                                            }`}
                                                                                     >
                                                                                         <Trash2 className="w-4 h-4" />
                                                                                         <span>Delete</span>
@@ -2398,7 +2450,12 @@ const CreateDebitNotePage = () => {
                             <div className="flex gap-2 ml-auto">
                                 <Button
                                     variant="outline"
-                                    onClick={() => setIsShippingModalOpen(false)}
+                                    onClick={() => {
+                                        setIsShippingModalOpen(false);
+                                        if (originalAddressBeforeSelection) {
+                                            setSelectedAddress(originalAddressBeforeSelection);
+                                        }
+                                    }}
                                     className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
                                 >
                                     Cancel
@@ -2406,44 +2463,71 @@ const CreateDebitNotePage = () => {
                                 <Button
                                     onClick={async () => {
                                         if (selectedAddress && selectedCustomer) {
-                                            setIsAddressLoading(true);
-                                            try {
-                                                const payload = {
-                                                    shipping_addresses: shippingAddresses.map((addr) => ({
-                                                        uuid: addr.uuid,
-                                                        address1: addr.address1,
-                                                        address2: addr.address2 || null,
-                                                        city: addr.city,
-                                                        state: addr.state,
-                                                        country: addr.country,
-                                                        pin: addr.pin,
-                                                        address_type: addr.address_type,
-                                                        is_default: addr.is_default,
-                                                    })),
-                                                };
+                                            console.log('Confirm Selection clicked', {
+                                                original: originalAddressBeforeSelection?.uuid,
+                                                selected: selectedAddress?.uuid,
+                                                linkToInvoice: debitNoteData.linkToInvoice
+                                            });
 
-                                                await axios.put(
-                                                    `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-                                                    payload,
-                                                );
+                                            // Use original address for comparison to detect actual change
+                                            if (originalAddressBeforeSelection?.uuid !== selectedAddress?.uuid) {
+                                                console.log('Address changed, showing confirmation dialog');
+                                                // Address actually changed, show confirmation dialog
+                                                if (debitNoteData.linkToInvoice) {
+                                                    setPendingAddressChange(selectedAddress);
+                                                    setShowUnlinkConfirmDialog(true);
+                                                    setIsShippingModalOpen(false);
+                                                } else {
+                                                    // No invoice linked, just clear items and change address
+                                                    setItems([]);
+                                                    recalculateTotals([]);
+                                                    setSelectedAddress(selectedAddress);
+                                                    toast.info('Items cleared due to address change');
+                                                    setIsShippingModalOpen(false);
+                                                }
+                                            } else {
+                                                // No change or first selection, save directly
+                                                setIsAddressLoading(true);
+                                                try {
+                                                    const payload = {
+                                                        shipping_addresses: shippingAddresses.map((addr) => ({
+                                                            uuid: addr.uuid,
+                                                            address1: addr.address1,
+                                                            address2: addr.address2 || null,
+                                                            city: addr.city,
+                                                            state: addr.state,
+                                                            country: addr.country,
+                                                            pin: addr.pin,
+                                                            address_type: addr.address_type,
+                                                            is_default: addr.is_default,
+                                                        })),
+                                                    };
 
-                                                const updatedCustomer = {
-                                                    ...selectedCustomer,
-                                                    shipping_address1: selectedAddress.address1,
-                                                    shipping_address2: selectedAddress.address2 || "",
-                                                    shipping_city: selectedAddress.city,
-                                                    shipping_state: selectedAddress.state,
-                                                    shipping_country: selectedAddress.country,
-                                                    shipping_pin: selectedAddress.pin,
-                                                };
-                                                setSelectedCustomer(updatedCustomer);
-                                                setIsShippingModalOpen(false);
-                                                toast.success("Address changed successfully");
-                                            } catch (error: any) {
-                                                toast.error(error.response?.data?.error || "Failed to save shipping address. Please try again.");
-                                            } finally {
-                                                setIsAddressLoading(false);
+                                                    await axios.put(
+                                                        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+                                                        payload,
+                                                    );
+
+                                                    const updatedCustomer = {
+                                                        ...selectedCustomer,
+                                                        shipping_address1: selectedAddress.address1,
+                                                        shipping_address2: selectedAddress.address2 || "",
+                                                        shipping_city: selectedAddress.city,
+                                                        shipping_state: selectedAddress.state,
+                                                        shipping_country: selectedAddress.country,
+                                                        shipping_pin: selectedAddress.pin,
+                                                    };
+                                                    setSelectedCustomer(updatedCustomer);
+                                                    setIsShippingModalOpen(false);
+                                                    toast.success("Address changed successfully");
+                                                } catch (error: any) {
+                                                    toast.error(error.response?.data?.error || "Failed to save shipping address. Please try again.");
+                                                } finally {
+                                                    setIsAddressLoading(false);
+                                                }
                                             }
+
+                                            setIsShippingModalOpen(false);
                                         } else {
                                             toast.error("Please select a shipping address");
                                         }

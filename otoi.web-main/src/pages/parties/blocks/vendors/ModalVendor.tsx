@@ -60,7 +60,7 @@ const saveVendorSchema = Yup.object().shape({
   vendor_name: Yup.string()
     .trim()
     .min(2, "Minimum 2 symbols")
-    .max(100, "Maximum 100 symbols"),
+    .max(100, "Maximum 100 symbols")
     .required("Vendor Name is required"),
   company_name: Yup.string()
     .trim()
