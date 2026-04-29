@@ -159,7 +159,6 @@ const Signup = () => {
           font-family: 'DM Sans', sans-serif;
           padding: 2rem;
           overflow: hidden;
-          background: #F7F6F3;
         }
 
         .su-wrapper {
