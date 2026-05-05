@@ -431,6 +431,9 @@ export const getCreditNotes = async (params?: {
   sort?: string;
   order?: string;
   invoice_id?: string;
+  date_from?: string;
+  date_to?: string;
+  date_filter?: string;
 }): Promise<ApiResponse> => {
   const token = getAuthToken();
   if (!token) {
@@ -446,6 +449,10 @@ export const getCreditNotes = async (params?: {
     if (params?.credit_note_number)
       queryParams.append("credit_note_number", params.credit_note_number);
     if (params?.invoice_id) queryParams.append("invoice_id", params.invoice_id);
+    if (params?.date_from) queryParams.append("date_from", params.date_from);
+    if (params?.date_to) queryParams.append("date_to", params.date_to);
+    if (params?.date_filter) queryParams.append("date_filter", params.date_filter);
+
     // Always include status parameter, even if empty
     queryParams.append("status", params?.status || "");
 

@@ -1,95 +1,120 @@
-from io import BytesIO
-from barcode import Code128
+import barcode
 from barcode.writer import ImageWriter
+from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import os
 
 def generate_barcode(item_code: str, item_name: str, barcode_value: str | None = None) -> BytesIO:
     """
     Generate a high-quality barcode image with item code and item name.
-    The entire image background is white.
     """
-
-    # Use item_code if no custom barcode_value is provided
-    if not barcode_value:
-        barcode_value = item_code
-
-    # Generate barcode with higher resolution and size
-    barcode_buffer = BytesIO()
-    barcode = Code128(barcode_value, writer=ImageWriter())
-    barcode.write(
-        barcode_buffer,
-        {
-            "write_text": False,
-            "module_width": 0.6,  # Increased for better clarity
-            "module_height": 20,   # Increased for better clarity
-            "quiet_zone": 15,      # Increased for better spacing
-            "font_size": 14,       # Increased font size if text is included
-            "text_distance": 2,    # Distance between barcode and text
-            "background": "white",
-            "foreground": "black"
-        },
-    )
-
-    barcode_buffer.seek(0)
-    barcode_img = Image.open(barcode_buffer).convert("RGB")
-
-    # Prepare final image with white background and more space for text
-    text_height = 90  # Increased for better spacing
-    img_width = max(barcode_img.width + 60, 400)  # Increased for better spacing
-    img_height = barcode_img.height + text_height + 30  # Increased for better spacing
-
-    final_img = Image.new("RGB", (img_width, img_height), "white")
-
-    # Paste barcode in the center
-    x_offset = (img_width - barcode_img.width) // 2
-    final_img.paste(barcode_img, (x_offset, 20))  # Adjusted position for better spacing
-
-    draw = ImageDraw.Draw(final_img)
-
-    # Load font (fallback to default if missing)
     try:
-        font_path = os.path.join(os.path.dirname(__file__), "..", "static", "fonts", "DejaVuSans.ttf")
-        font_small = ImageFont.truetype(font_path, 18)  # Increased font size
-        font_large = ImageFont.truetype(font_path, 22)  # Increased font size
-    except Exception:
-        font_small = ImageFont.load_default()
-        font_large = ImageFont.load_default()
+        # Use item_code if no custom barcode_value is provided
+        if not barcode_value:
+            barcode_value = item_code
 
-    # Clean and prepare text
-    item_code = item_code.strip()
-    item_name = (item_name or "").strip()
+        # 1. Generate barcode
+        barcode_buffer = BytesIO()
+        try:
+            # Use the 'code128' type specifically
+            EAN = barcode.get_barcode_class('code128')
+            code = EAN(barcode_value, writer=ImageWriter())
+            code.write(barcode_buffer, {
+                "write_text": False,
+                "module_width": 0.6,
+                "module_height": 20,
+                "quiet_zone": 10,
+                "background": "white",
+                "foreground": "black"
+            })
+        except Exception as e:
+            # Fallback if specific barcode class fails
+            barcode_buffer = BytesIO()
+            code = barcode.get('code128', barcode_value, writer=ImageWriter())
+            code.write(barcode_buffer, {"write_text": False})
 
-    # Draw item code
-    code_text = f"Code: {item_code}"
-    code_bbox = draw.textbbox((0, 0), code_text, font=font_small)
-    code_width = code_bbox[2] - code_bbox[0]
-    draw.text(
-        ((img_width - code_width) // 2, barcode_img.height + 30),  # Adjusted position for better spacing
-        code_text,
-        fill="black",
-        font=font_small,
-    )
+        barcode_buffer.seek(0)
+        barcode_img = Image.open(barcode_buffer).convert("RGB")
 
-    # Draw item name (truncate if too long)
-    name_text = f"Name: {item_name}" if item_name else ""
-    max_width = img_width - 60  # Adjusted max width for better spacing
-    while True:
-        name_bbox = draw.textbbox((0, 0), name_text, font=font_large)
-        if (name_bbox[2] - name_bbox[0]) <= max_width or len(name_text) <= 10:
-            break
-        name_text = name_text[:-4] + "..."
-    name_width = name_bbox[2] - name_bbox[0]
-    draw.text(
-        ((img_width - name_width) // 2, barcode_img.height + 60),  # Adjusted position for better spacing
-        name_text,
-        fill="black",
-        font=font_large,
-    )
+        # 2. Prepare layout
+        text_height = 80
+        img_width = max(barcode_img.width + 40, 350)
+        img_height = barcode_img.height + text_height + 20
+        final_img = Image.new("RGB", (img_width, img_height), "white")
 
-    # Save final image to BytesIO with higher quality
-    output = BytesIO()
-    final_img.save(output, format="PNG", dpi=(300, 300))  # Increased DPI for better quality
-    output.seek(0)
+        # Paste barcode
+        x_offset = (img_width - barcode_img.width) // 2
+        final_img.paste(barcode_img, (x_offset, 10))
 
-    return output
+        draw = ImageDraw.Draw(final_img)
+
+        # 3. Handle Fonts Safely
+        font_small = None
+        font_large = None
+        try:
+            # Try multiple possible paths for the font
+            font_paths = [
+                os.path.join(os.path.dirname(__file__), "..", "..", "static", "fonts", "DejaVuSans.ttf"),
+                os.path.join(os.path.dirname(__file__), "..", "static", "fonts", "DejaVuSans.ttf"),
+                "C:\\Windows\\Fonts\\arial.ttf", # Windows fallback
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" # Linux fallback
+            ]
+            
+            for path in font_paths:
+                if os.path.exists(path):
+                    font_small = ImageFont.truetype(path, 16)
+                    font_large = ImageFont.truetype(path, 20)
+                    break
+        except:
+            pass
+
+        if font_small is None:
+            font_small = ImageFont.load_default()
+            font_large = ImageFont.load_default()
+
+        # 4. Draw Text
+        def draw_centered_text(text, y_pos, font, color="black"):
+            try:
+                # Use textlength for better compatibility than textbbox
+                if hasattr(draw, 'textlength'):
+                    tw = draw.textlength(text, font=font)
+                else:
+                    # Older Pillow fallback
+                    tw, _ = draw.textsize(text, font=font) if hasattr(draw, 'textsize') else (len(text)*10, 20)
+                
+                draw.text(((img_width - tw) // 2, y_pos), text, fill=color, font=font)
+            except:
+                # Absolute fallback
+                draw.text((20, y_pos), text, fill=color, font=font)
+
+        # Draw code and name
+        item_code_display = f"Code: {item_code.strip()}"
+        item_name_display = (item_name or "").strip()
+        if len(item_name_display) > 30:
+            item_name_display = item_name_display[:27] + "..."
+
+        draw_centered_text(item_code_display, barcode_img.height + 20, font_small)
+        if item_name_display:
+            draw_centered_text(item_name_display, barcode_img.height + 45, font_large)
+
+        # 5. Export
+        output = BytesIO()
+        final_img.save(output, format="PNG")
+        output.seek(0)
+        return output
+
+    except Exception as e:
+        # Final emergency fallback: if everything fails, return the raw barcode without text
+        import traceback
+        print(f"Barcode service critical failure: {str(e)}")
+        print(traceback.format_exc())
+        
+        # Try to at least return the raw barcode image
+        try:
+            emergency_buffer = BytesIO()
+            code = barcode.get('code128', item_code, writer=ImageWriter())
+            code.write(emergency_buffer, {"write_text": True})
+            emergency_buffer.seek(0)
+            return emergency_buffer
+        except:
+            raise e # Re-raise if even emergency fallback fails

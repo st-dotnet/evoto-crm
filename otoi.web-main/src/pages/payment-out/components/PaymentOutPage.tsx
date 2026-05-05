@@ -629,47 +629,82 @@ export const PaymentOutPage = () => {
         {/* Title and Filters row - same line for desktop */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <ArrowUpFromLine className="h-4 w-4 text-blue-600" />
+            <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 shadow-sm border border-blue-200/50">
+              <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base font-semibold text-gray-900 leading-tight">Payment Out</h1>
-              <p className="text-xs text-gray-400 hidden sm:block">Outgoing payments to vendors</p>
+              <h1 className="text-xl font-bold text-gray-900 leading-tight">Payment Out</h1>
+              <p className="text-[11px] text-gray-500 hidden sm:block font-medium">Outgoing payments to vendors</p>
             </div>
           </div>
           
           {/* Filters and Create button - same line for desktop */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status Filter */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-2 w-[140px] sm:w-[160px] justify-between">
-                  <div className="flex items-center gap-1 overflow-hidden">
-                    <Filter className="h-3 w-3 shrink-0" />
-                    <span className="truncate">
-                      {selectedStatus === "all" ? "All Payments" : selectedStatus === "paid" ? "Done" : "Partial"}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-3 w-3 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
-                {(["all", "paid", "partial"] as const).map((s) => (
-                  <DropdownMenuItem key={s} onClick={() => setSelectedStatus(s)} className="flex items-center gap-2 text-sm">
-                    <Circle className={`h-3.5 w-3.5 ${s === "all" ? "text-gray-400" : s === "paid" ? "text-emerald-500" : "text-amber-500"}`} />
-                    <span className="capitalize">{s === "all" ? "All Payments" : s === "paid" ? "Done Payments" : "Partial"}</span>
-                    {selectedStatus === s && <Check className="h-3.5 w-3.5 ml-auto" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Floating Glass Status Filter */}
+            <div className="relative bg-gray-50/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 shadow-sm flex items-center min-w-fit">
+              {/* Integrated Label */}
+              <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 mr-1">
+                <Filter className="h-3.5 w-3.5 text-gray-900" />
+                <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Filters</span>
+              </div>
 
-            {/* Date Filter */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-2 w-[140px] sm:w-[160px] justify-between">
-                  <div className="flex items-center gap-1 overflow-hidden">
-                    <Calendar className="h-3 w-3 shrink-0" />
+              <div className="relative flex items-center">
+                {/* Animated Slider Background with Glow */}
+                <div
+                  className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
+                    selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                    selectedStatus === 'paid' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
+                    'bg-yellow-50 border-yellow-200 shadow-yellow-200/50'
+                  }`}
+                  style={{
+                    width: '90px',
+                    transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                      selectedStatus === 'paid' ? '90px' : '180px'
+                      })`
+                  }}
+                />
+
+                {/* Status Buttons */}
+                <button
+                  onClick={() => {
+                    setSelectedStatus('all');
+                    setRefreshKey(prev => prev + 1);
+                  }}
+                  className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedStatus('paid');
+                    setRefreshKey(prev => prev + 1);
+                  }}
+                  className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'paid' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Done
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedStatus('partial');
+                    setRefreshKey(prev => prev + 1);
+                  }}
+                  className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'partial' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Partial
+                </button>
+              </div>
+            </div>
+
+            {/* Date Filter Dropdown */}
+            <div className="w-full sm:w-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
+                  >
+                    <Calendar className="h-4 w-4 text-gray-900" />
                     <span className="truncate">
                       {selectedDateFilter === "all" ? "All Dates"
                         : selectedDateFilter === "today" ? "Today"
@@ -679,57 +714,50 @@ export const PaymentOutPage = () => {
                         : selectedDateFilter === "last_month" ? "Last Month"
                         : "Last 365 Days"}
                     </span>
-                  </div>
-                  <ChevronDown className="h-3 w-3 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
-                {[
-                  { val: "all", label: "All Dates" },
-                  { val: "today", label: "Today" },
-                  { val: "this_week", label: "This Week" },
-                  { val: "last_week", label: "Last Week" },
-                  { val: "this_month", label: "This Month" },
-                  { val: "last_month", label: "Last Month" },
-                  { val: "last_365_days", label: "Last 365 Days" },
-                ].map(({ val, label }) => (
-                  <DropdownMenuItem key={val} onClick={() => setSelectedDateFilter(val)} className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                    <span>{label}</span>
-                    {selectedDateFilter === val && <Check className="h-3.5 w-3.5 ml-auto" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[180px]">
+                  {[
+                    { val: "all", label: "All Dates" },
+                    { val: "today", label: "Today" },
+                    { val: "this_week", label: "This Week" },
+                    { val: "last_week", label: "Last Week" },
+                    { val: "this_month", label: "This Month" },
+                    { val: "last_month", label: "Last Month" },
+                    { val: "last_365_days", label: "Last 365 Days" },
+                  ].map(({ val, label }) => (
+                    <DropdownMenuItem key={val} onClick={() => setSelectedDateFilter(val)} className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{label}</span>
+                      {selectedDateFilter === val && <Check className="h-3.5 w-3.5 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-            {/* Create button */}
-            <Button
-              size="sm"
-              className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs shrink-0"
-              onClick={() => navigate("/payment-out/create")}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Create</span>
-              <span className="hidden lg:inline"> Payment Out</span>
-            </Button>
+            <div className="flex-grow md:block hidden" />
+
           </div>
         </div>
       </div>
 
       {/* ── Main Card ── */}
-      <div className="bg-white rounded-lg border overflow-hidden min-w-0">
+      <div className="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm">
         {/* Search Bar */}
-        <div className="p-3 border-b">
-          <div className="flex items-center gap-2">
+        <div className="p-4 border-b border-gray-100/50 bg-gray-50/30">
+          <div className="flex items-center gap-3">
             {/* Vendor / Payment selector */}
             <div className="relative flex-1 max-w-xs">
               <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-8 w-full justify-start px-2 text-xs"
+                    className="h-10 w-full justify-start px-3 bg-white/50 backdrop-blur-sm rounded-xl border-gray-200 shadow-sm text-gray-900 font-medium hover:bg-white transition-all"
                     disabled={isDropdownLoading}
                   >
+                    <Search className="h-4 w-4 mr-2 text-gray-400" />
                     {isDropdownLoading ? (
                       <span className="flex items-center gap-2">
                         <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -740,15 +768,15 @@ export const PaymentOutPage = () => {
                         {searchTerm || (searchType === "party_name" ? "Select Vendor..." : "Select Payment #...")}
                       </span>
                     )}
-                    {!isDropdownLoading && <ChevronDown className="ml-auto h-3 w-3 shrink-0" />}
+                    {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-48 overflow-y-auto">
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-48 overflow-y-auto rounded-xl shadow-xl">
                   <DropdownMenuItem
                     onClick={() => { setSearchTerm(""); setRefreshKey((k) => k + 1); }}
-                    className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                    className="text-gray-500 italic"
                   >
-                    <span className="text-[11px] text-gray-500">All {searchType === "party_name" ? "Vendors" : "Payments"}</span>
+                    Clear search
                   </DropdownMenuItem>
                   {(searchType === "party_name" ? allPartyNames : allPaymentNumbers).length === 0 ? (
                     <DropdownMenuItem disabled>
@@ -759,7 +787,7 @@ export const PaymentOutPage = () => {
                       <DropdownMenuItem
                         key={idx}
                         onClick={() => { setSearchTerm(item); setRefreshKey((k) => k + 1); }}
-                        className={`text-[11px] ${searchTerm === item ? "bg-blue-50 text-blue-600" : ""}`}
+                        className={`text-[11px] py-2 ${searchTerm === item ? "bg-blue-50 text-blue-600 font-medium" : ""}`}
                       >
                         {item}
                       </DropdownMenuItem>
@@ -769,36 +797,69 @@ export const PaymentOutPage = () => {
               </DropdownMenu>
             </div>
 
-            {/* Filter by type */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-2 text-xs gap-1 shrink-0">
-                  <Filter className="h-3 w-3 text-blue-500 shrink-0" />
-                  <span className="hidden sm:inline truncate max-w-[60px]">
-                    {searchTerm
-                      ? `${searchType === "party_name" ? "Vendor" : "Payment"}`
-                      : "Filter"}
-                  </span>
-                  <ChevronDown className="h-3 w-3 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-40">
-                <DropdownMenuItem
-                  onClick={() => handleSearchTypeChange("party_name")}
-                  className={`text-xs ${searchType === "party_name" ? "bg-blue-50 text-blue-600" : ""}`}
-                >
-                  <Filter className="h-3 w-3 mr-2" />
-                  Vendor Name
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSearchTypeChange("payment_number")}
-                  className={`text-xs ${searchType === "payment_number" ? "bg-blue-50 text-blue-600" : ""}`}
-                >
-                  <Filter className="h-3 w-3 mr-2" />
-                  Payment Number
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Desktop Segmented Filter Type */}
+            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+              <div
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === "party_name" ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                  }`}
+                style={{
+                  width: '120px',
+                  transform: `translateX(${searchType === "party_name" ? '0px' : '120px'})`
+                }}
+              />
+              <button
+                onClick={() => handleSearchTypeChange("party_name")}
+                className={`relative w-[120px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "party_name" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Vendor Name
+              </button>
+              <button
+                onClick={() => handleSearchTypeChange("payment_number")}
+                className={`relative w-[120px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "payment_number" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Payment No.
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Fallback */}
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 bg-white shadow-sm border-gray-200 hover:bg-gray-50 gap-2"
+                  >
+                    <Filter className="h-4 w-4 text-blue-500" />
+                    {searchType === "party_name" ? "Vendor Name" : "Payment Number"}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48 rounded-xl shadow-xl">
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange("party_name")}
+                  >
+                    <User className="h-4 w-4 mr-2 text-gray-400" /> Vendor Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange("payment_number")}
+                  >
+                    <FileText className="h-4 w-4 mr-2 text-gray-400" /> Payment Number
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Create button */}
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Button
+                size="sm"
+                className="h-10 gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200/50 transition-all active:scale-95 w-full sm:w-auto"
+                onClick={() => navigate("/payment-out/create")}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="font-bold">Create Payment Out</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -818,12 +879,12 @@ export const PaymentOutPage = () => {
           {/* Desktop table: visible ≥992px */}
           <div className="hidden lg:block overflow-hidden">
             <DataGrid
-              key={refreshKey}
+              key={`${refreshKey}-${selectedStatus}-${searchTerm}-${searchType}-${selectedDateFilter}`}
               columns={columns}
               onFetchData={fetchPayments}
               serverSide={true}
               getRowId={(row: any) => row?.original?.id?.toString() ?? row?.original?.payment_number ?? Math.random().toString()}
-              pagination={{ 
+              pagination={{
                 size: 10
               }}
               rowSelection={true}

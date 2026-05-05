@@ -278,6 +278,26 @@ export const getInvoiceById = async (id: string): Promise<ApiResponse> => {
             return Number(val) || 0;
           };
 
+          const taxPercentage = resolveValue(
+            item.tax?.tax_percentage?.tax_percentage ?? item.tax_percentage,
+            "tax_percentage"
+          );
+          const taxAmountFromBackend = resolveValue(
+            item.tax?.tax_percentage?.tax_amount ?? item.tax?.tax_amount ?? item.tax_amount,
+            "tax_amount"
+          );
+          
+          // Calculate tax amount if not provided by backend
+          const calculatedTaxAmount = taxAmountFromBackend > 0 
+            ? taxAmountFromBackend 
+            : (taxPercentage > 0 
+                ? (resolveValue(item.price_per_item, "price_per_item") * resolveValue(item.quantity, "quantity") - resolveValue(
+                    item.discount?.discount_amount ?? item.discount_amount,
+                    "discount_amount"
+                  )) * (taxPercentage / 100)
+                : 0
+              );
+
           return {
             ...item,
             discount_percentage: resolveValue(
@@ -288,14 +308,8 @@ export const getInvoiceById = async (id: string): Promise<ApiResponse> => {
               item.discount?.discount_amount ?? item.discount_amount,
               "discount_amount"
             ),
-            tax_percentage: resolveValue(
-              item.tax?.tax_percentage ?? item.tax_percentage,
-              "tax_percentage"
-            ),
-            tax_amount: resolveValue(
-              item.tax?.tax_amount ?? item.tax_amount,
-              "tax_amount"
-            ),
+            tax_percentage: taxPercentage,
+            tax_amount: calculatedTaxAmount,
           };
         }) || [],
     };

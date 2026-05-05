@@ -36,7 +36,7 @@ def preview_barcode():
 # --------------------------------------------------
 # REAL BARCODE (FROM EXISTING ITEM ONLY)
 # --------------------------------------------------
-@barcode_blueprint.route("/<int:item_id>", methods=["GET"])
+@barcode_blueprint.route("/<uuid:item_id>", methods=["GET"])
 def get_item_barcode(item_id):
     """
     Generate barcode for an EXISTING item.
@@ -64,12 +64,12 @@ def get_item_barcode(item_id):
             as_attachment=False,
         )
     except Exception as e:
+        import traceback
+        current_app.logger.error(f"Barcode generation error: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         return jsonify({
             "error": "Failed to generate barcode",
             "details": str(e)
         }), 500
 
 
-@barcode_blueprint.route("/test", methods=["GET"])
-def test_route():
-    return "Barcode service is working!"

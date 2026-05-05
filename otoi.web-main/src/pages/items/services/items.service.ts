@@ -262,10 +262,23 @@ export const getBarcodePreview = async (
       status: response.status,
     };
   } catch (error: any) {
-    const errorMessage =
-      error?.response?.data?.message ||
-      error.message ||
-      "Failed to generate barcode preview";
+    let errorMessage = "Failed to generate barcode preview";
+
+    if (error.response?.data instanceof Blob && error.response.data.type === "application/json") {
+      const reader = new FileReader();
+      const errorText = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsText(error.response.data);
+      });
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorData.error || errorData.details || errorMessage;
+      } catch (e) {
+        errorMessage = error.message || errorMessage;
+      }
+    } else {
+      errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || errorMessage;
+    }
 
     return {
       success: false,
@@ -286,7 +299,7 @@ export const getItemBarcode = async (itemId: string) => {
   }
 
   try {
-    const response = await axios.get(`${API_URL}/items/${itemId}/barcode`, {
+    const response = await axios.get(`${API_URL}/barcode/${itemId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -299,10 +312,24 @@ export const getItemBarcode = async (itemId: string) => {
       status: response.status,
     };
   } catch (error: any) {
-    const errorMessage =
-      error?.response?.data?.message ||
-      error.message ||
-      "Failed to get item barcode";
+    let errorMessage = "Failed to get item barcode";
+
+    if (error.response?.data instanceof Blob && error.response.data.type === "application/json") {
+      // If we got a JSON error instead of a blob, we need to read it
+      const reader = new FileReader();
+      const errorText = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsText(error.response.data);
+      });
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorData.error || errorData.details || errorMessage;
+      } catch (e) {
+        errorMessage = error.message || errorMessage;
+      }
+    } else {
+      errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || errorMessage;
+    }
 
     return {
       success: false,
@@ -313,9 +340,7 @@ export const getItemBarcode = async (itemId: string) => {
 };
 
 export const downloadBarcode = async (
-  itemCode: string,
-  itemName?: string,
-  itemId?: string,
+  itemId: string,
 ) => {
   const token = getAuthToken();
   if (!token) {
@@ -326,23 +351,16 @@ export const downloadBarcode = async (
     };
   }
 
+  if (!itemId) {
+    return {
+      success: false,
+      error: "Item ID is required to download barcode. Please save the item first.",
+      status: 400,
+    };
+  }
+
   try {
-    let url: string;
-
-    if (itemId) {
-      url = `${API_URL}/items/${itemId}/barcode?download=true`;
-    } else {
-      const params = new URLSearchParams({
-        item_code: itemCode,
-        download: "true",
-      });
-
-      if (itemName) {
-        params.append("item_name", itemName);
-      }
-
-      url = `${API_URL}/barcode/preview?${params.toString()}`;
-    }
+    const url = `${API_URL}/barcode/${itemId}?download=true`;
 
     const response = await axios.get(url, {
       headers: {
@@ -357,10 +375,23 @@ export const downloadBarcode = async (
       status: response.status,
     };
   } catch (error: any) {
-    const errorMessage =
-      error?.response?.data?.message ||
-      error.message ||
-      "Failed to download barcode";
+    let errorMessage = "Failed to download barcode";
+
+    if (error.response?.data instanceof Blob && error.response.data.type === "application/json") {
+      const reader = new FileReader();
+      const errorText = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsText(error.response.data);
+      });
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorData.error || errorData.details || errorMessage;
+      } catch (e) {
+        errorMessage = error.message || errorMessage;
+      }
+    } else {
+      errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || errorMessage;
+    }
 
     return {
       success: false,
@@ -434,7 +465,7 @@ export const updateItemImageMetadata = async (id: number, data: { is_main?: bool
 
   try {
     const response = await axios.patch(`${API_URL}/item-images/${id}`, data, {
-      headers: { 
+      headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json"
       },

@@ -232,31 +232,31 @@ def get_quotations():
         in: query
         required: false
         type: string
-        description: Filter by status (open, closed, etc.)
+        description: Filter by status
       - name: page
         in: query
         required: false
         schema:
           type: integer
-        description: Page number (default: 1)
+        description: Page number
       - name: items_per_page
         in: query
         required: false
         schema:
           type: integer
-        description: Items per page (default: 5)
+        description: Items per page
       - name: sort
         in: query
         required: false
         schema:
           type: string
-        description: Sort field (default: created_at)
+        description: Sort field
       - name: order
         in: query
         required: false
         schema:
           type: string
-        description: Sort order: asc or desc (default: desc)
+        description: Sort order asc or desc
       - name: dropdown
         in: query
         required: false
@@ -268,7 +268,7 @@ def get_quotations():
         required: false
         schema:
           type: boolean
-        description: Return all unique customers (party names) for dropdown
+        description: Return all unique customers for dropdown
     responses:
       200:
         description: A paginated list of quotations.

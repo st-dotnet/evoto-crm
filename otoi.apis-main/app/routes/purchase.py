@@ -22,14 +22,14 @@ def get_purchase_entries():
           type: string
       - name: page
         in: query
-        description: "Page number (default: 1)"
+        description: Page number
         required: false
         schema:
           type: integer
           default: 1
       - name: items_per_page
         in: query
-        description: "Number of records per page (default: 10)"
+        description: Number of records per page
         required: false
         schema:
           type: integer
@@ -116,11 +116,11 @@ def create_purchase_entry():
           properties:
             invoice_number:
               type: string
-              example: "INV-001"
+              example: INV-001
             date:
               type: string
               format: date
-              example: "2023-10-27"
+              example: 2023-10-27
             amount:
               type: number
               example: 1500.50

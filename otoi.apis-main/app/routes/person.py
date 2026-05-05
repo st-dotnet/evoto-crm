@@ -33,15 +33,15 @@ def get_leads():
     Fetch a list of leads with filtering, sorting, and pagination.
     ---
     parameters:
-      - name: filter[name]
+      - name: filter_name
         in: query
-        description: Filter by name (first_name, last_name)
+        description: Filter by name
         required: false
         schema:
           type: string
-      - name: filter[email]
+      - name: filter_email
         in: query
-        description: Filter by email (email)
+        description: Filter by email
         required: true
         schema:
           type: string
@@ -54,39 +54,39 @@ def get_leads():
 
       - name: mobile
         in: query
-        description: Filter by mobile number (partial match)
+        description: Filter by mobile number
         required: false
         schema:
           type: string
       - name: exact_mobile
         in: query
-        description: Exact match for mobile number
+        description: Exact match for mobile
         required: false
         schema:
           type: string
       - name: exact_gst
         in: query
-        description: Exact match for GST number
+        description: Exact match for GST
         required: false
         schema:
           type: string
       - name: exclude_uuid
         in: query
-        description: UUID to exclude from results (for duplicate checks)
+        description: UUID to exclude from results
         required: false
         schema:
           type: string
 
       - name: sort
         in: query
-        description: Comma-separated field names for sorting (e.g., 'first_name,-email')
+        description: Comma-separated field names for sorting (e.g., first_name,-email)
         required: false
         schema:
           type: string
 
       - name: page
         in: query
-        description: "Page number (default: 1)"
+        description: Page number
         required: false
         schema:
           type: integer
@@ -94,7 +94,7 @@ def get_leads():
 
       - name: items_per_page
         in: query
-        description: "Number of records per page (default: 10)"
+        description: Number of records per page
         required: false
         schema:
           type: integer
@@ -386,10 +386,10 @@ def create_lead():
               example: Win
             reason:
               type: string
-              description: "Required if status is Lose"
+              description: Required if status is Lose
             address:
               type: object
-              description: "Required if status is Win"
+              description: Required if status is Win
               properties:
                 address1:
                   type: string
@@ -863,7 +863,7 @@ def delete_lead(lead_uuid):
 #     tags:
 #       - Actives
 #     parameters:
-#       - name: filter[name]
+#       - name: filter_name
 #         in: query
 #         description: Filter by name (first_name or last_name)
 #         required: false
@@ -883,20 +883,20 @@ def delete_lead(lead_uuid):
 #           type: integer    
 #       - name: sort
 #         in: query
-#         description: Comma-separated field names for sorting (e.g., 'first_name,-email')
+#         description: Comma-separated field names for sorting (e.g., first_name,-email)
 #         required: false
 #         schema:
 #           type: string
 #       - name: page
 #         in: query
-#         description: "Page number (default: 1)"
+#         description: Page number
 #         required: false
 #         schema:
 #           type: integer
 #           default: 1
 #       - name: items_per_page
 #         in: query
-#         description: "Number of records per page (default: 10)"
+#         description: Number of records per page
 #         required: false
 #         schema:
 #           type: integer

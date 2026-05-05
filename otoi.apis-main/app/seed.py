@@ -18,7 +18,7 @@ from app.models.inventory import MeasuringUnit, ItemType
 # --------------------------------------------------
 # DATABASE CREATION
 # --------------------------------------------------
-def create_database():
+def create_database(app=None):
     """
     Create the database if it does not exist.
     Uses SQLALCHEMY_DATABASE_URI from Flask config.
@@ -44,7 +44,7 @@ def create_database():
 # --------------------------------------------------
 # FULL (DESTRUCTIVE) SEED
 # --------------------------------------------------
-def seed_data():
+def seed_data(app=None):
     """
     DESTRUCTIVE seed.
     Drops all tables and recreates them.

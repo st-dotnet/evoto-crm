@@ -140,6 +140,7 @@ def update_invoice_payment_status(invoice_id):
             else:
                 invoice.status = "refunded"  # Still marked as refunded if any credit exists
         
+        from app.utils.stamping import set_updated_fields
         set_updated_fields(invoice)
         db.session.commit()
         return True
@@ -147,6 +148,59 @@ def update_invoice_payment_status(invoice_id):
     except Exception as e:
         db.session.rollback()
         return False
+
+
+def _date_filter_query(query, model_class, date_filter):
+    """
+    Helper to apply date-based filtering to a SQLAlchemy query.
+    Assumes model_class has a 'created_at' or 'credit_note_date' field.
+    """
+    if not date_filter or date_filter == "all":
+        return query
+
+    now = datetime.now()
+    
+    # Try to use 'credit_note_date' if available, otherwise 'created_at'
+    date_col = getattr(model_class, 'credit_note_date', None)
+    if date_col is None:
+        date_col = getattr(model_class, 'created_at', None)
+    
+    if date_col is None:
+        return query
+
+    if date_filter == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "this_week":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "last_week":
+        start_date = now - timedelta(days=now.weekday() + 7)
+        end_date = start_date + timedelta(days=6)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return query.filter(date_col.between(start_date, end_date))
+    
+    elif date_filter == "this_month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+    
+    elif date_filter == "last_month":
+        first_of_this_month = now.replace(day=1)
+        last_of_last_month = first_of_this_month - timedelta(days=1)
+        first_of_last_month = last_of_last_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_of_last_month = last_of_last_month.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return query.filter(date_col.between(first_of_last_month, last_of_last_month))
+    
+    elif date_filter == "last_365":
+        start_date = now - timedelta(days=365)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        return query.filter(date_col >= start_date)
+
+    return query
 
 
 def _build_credit_note_item(item_data):
@@ -663,12 +717,12 @@ def list_credit_notes():
         description: Credit notes retrieved successfully
     """
     try:
-        # Get query parameters
         business_id = request.args.get("business_id")
         customer_id = request.args.get("customer_id")
         status = request.args.get("status")
         party_name = request.args.get("party_name", "").strip()
         credit_note_number = request.args.get("credit_note_number", "").strip()
+        date_filter = request.args.get("date_filter", "last_365").strip()
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 20))
         order = request.args.get("order", "desc")
@@ -676,6 +730,9 @@ def list_credit_notes():
         
         # Build query
         query = CreditNote.query.filter_by(is_deleted=False)
+
+        # Apply date filter
+        query = _date_filter_query(query, CreditNote, date_filter)
         
         # Apply credit_note_number filter if provided
         if credit_note_number:

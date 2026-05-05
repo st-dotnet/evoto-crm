@@ -1255,7 +1255,7 @@ const InvoiceDetailsPage: React.FC = () => {
                   </td>
                   <td className="px-3 py-2 text-right text-sm font-normal text-black align-top border-r border-black whitespace-nowrap">
                     <div className="flex flex-col items-end">
-                      <span>{formatCurrency(item.tax_amount)}</span>
+                      <span>{formatCurrency(item.tax_amount || 0)}</span>
                       {item.tax_percentage > 0 && (
                         <span className="text-[10px]">
                           ({item.tax_percentage}%)

@@ -538,7 +538,7 @@ const ReportsPage = () => {
                 size="sm"
                 onClick={handleExportExcel}
                 disabled={loading}
-                className="h-8 px-3 text-xs gap-1.5 bg-white border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+                className="h-8 px-3 text-xs gap-1.5 bg-white border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 group"
               >
                 <Download className="w-3.5 h-3.5" />
                 Download Excel
@@ -549,7 +549,7 @@ const ReportsPage = () => {
                 size="sm"
                 onClick={handlePrintForPrint}
                 disabled={loading}
-                className="h-8 px-3 text-xs gap-1.5 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+                className="h-8 px-3 text-xs gap-1.5 bg-white border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 group"
               >
                 <PrinterIcon className="w-3.5 h-3.5" />
                 Print Rate List
@@ -560,7 +560,7 @@ const ReportsPage = () => {
                 size="sm"
                 onClick={handlePrintPDF}
                 disabled={loading}
-                className="h-8 px-3 text-xs gap-1.5 bg-white border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+                className="h-8 px-3 text-xs gap-1.5 bg-white border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 group"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Download PDF

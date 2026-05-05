@@ -598,7 +598,7 @@ def get_customer(customer_id):
     Get customer by id.
     ---
     tags:
-      - get customer by id
+      - get_customer_by_id
     responses:
       200:
         description: Returns customer details including shipping address if available.
@@ -1068,14 +1068,14 @@ def download_customer_template():
             "country",        # K
             "pin",            # L
         ]
-        ws.append(columns)
+        ws.append(columns   )
 
         ws_hidden = wb.create_sheet("DropdownData")
         for i, value in enumerate(statuses, start=1):
             ws_hidden[f"A{i}"] = value
         ws_hidden.sheet_state = "hidden"
 
-        dv_status = DataValidation(
+        dv_status = DataValidation( 
             type="list",
             formula1="=DropdownData!$A$1:$A$5",
             allow_blank=False,
@@ -1091,7 +1091,7 @@ def download_customer_template():
             showErrorMessage=True,
             error="Mobile must be exactly 10 digits"
         )
-        ws.add_data_validation(dv_mobile)
+        ws.add_data_validation(dv_mobile)   
         dv_mobile.add("C2:C1000")
 
         dv_email = DataValidation(

@@ -690,7 +690,7 @@ def get_top_parties():
         in: query
         type: string
         default: receivable
-        description: "receivable or payable"
+        description: receivable or payable
       - name: limit
         in: query
         type: integer

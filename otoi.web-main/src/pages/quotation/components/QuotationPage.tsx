@@ -185,7 +185,7 @@ const QuotationPage = () => {
 
       const response = await getQuotations({
         search: searchTerm,
-        party_name: searchType === 'party_name'  ? searchTerm : '',
+        party_name: searchType === 'party_name' ? searchTerm : '',
         quotation_number: searchType === 'quotation_number' ? searchTerm : '',
         status: selectedStatus === 'all' ? '' : selectedStatus, // Empty string fetches all statuses without API exact match issue
         page: params.pageIndex + 1,
@@ -708,7 +708,7 @@ const QuotationPage = () => {
 
   return (
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
-      {(isLoading || isDeleting || isDropdownLoading) && (
+      {(isDeleting) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
           <div className="text-primary">
             <SpinnerDotted size={50} thickness={100} speed={100} color="#3b82f6" />
@@ -718,17 +718,69 @@ const QuotationPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Quotation</h1>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="w-full sm:w-44">
+          {/* Desktop Segmented Control */}
+          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
+            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Filters</span>
+            </div>
+            <div className="relative flex items-center">
+              {/* Animated Slider Background with Glow */}
+              <div
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
+                  selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                  selectedStatus === 'open' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
+                  selectedStatus === 'closed' ? 'bg-red-50 border-red-200 shadow-red-200/50' :
+                  'bg-purple-50 border-purple-200 shadow-purple-200/50'
+                }`}
+                style={{
+                  width: '86px',
+                  transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                    selectedStatus === 'open' ? '86px' :
+                      selectedStatus === 'closed' ? '172px' : '258px'
+                    })`
+                }}
+              />
+
+              <button
+                onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }}
+                className={`relative w-[86px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('open'); setRefreshKey(prev => prev + 1); }}
+                className={`relative w-[86px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'open' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Open
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('closed'); setRefreshKey(prev => prev + 1); }}
+                className={`relative w-[86px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'closed' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Closed
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('converted'); setRefreshKey(prev => prev + 1); }}
+                className={`relative w-[86px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'converted' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Converted
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Dropdown Fallback */}
+          <div className="w-full sm:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                <Button variant="outline" size="sm" className="h-10 w-full justify-between bg-white hover:bg-gray-50 border-gray-200 shadow-sm transition-all">
                   <div className="flex items-center overflow-hidden">
-                    <Filter className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate ml-1">
-                      {selectedStatus === 'all' && 'All Quotation'}
-                      {selectedStatus === 'open' && 'Open Quotation'}
-                      {selectedStatus === 'closed' && 'Closed Quotation'}
-                      {selectedStatus === 'converted' && 'Converted Quotation'}
+                    <Filter className="h-4 w-4 shrink-0 text-gray-400" />
+                    <span className="truncate ml-2 font-medium text-gray-700">
+                      {selectedStatus === 'all' && 'All Quotations'}
+                      {selectedStatus === 'open' && 'Open'}
+                      {selectedStatus === 'closed' && 'Closed'}
+                      {selectedStatus === 'converted' && 'Converted'}
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
@@ -743,35 +795,28 @@ const QuotationPage = () => {
                   className="flex items-center gap-2"
                 >
                   <Circle className="h-4 w-4 text-gray-500" />
-                  <span>All Quotation</span>
+                  <span>All Quotations</span>
                   {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setSelectedStatus('open'); setRefreshKey(prev => prev + 1); }} className="flex items-center gap-2">
                   <Circle className="h-4 w-4 text-green-500" />
-                  <span>Open Quotation</span>
+                  <span>Open</span>
                   {selectedStatus === 'open' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setSelectedStatus('closed'); setRefreshKey(prev => prev + 1); }} className="flex items-center gap-2">
                   <Circle className="h-4 w-4 text-red-500" />
-                  <span>Closed Quotation</span>
+                  <span>Closed</span>
                   {selectedStatus === 'closed' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setSelectedStatus('converted'); setRefreshKey(prev => prev + 1); }} className="flex items-center gap-2">
                   <CircleCheck className="h-4 w-4 text-purple-500" />
-                  <span>Converted Quotation</span>
+                  <span>Converted</span>
                   {selectedStatus === 'converted' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Button
-            size="sm"
-            className="h-9 gap-1 w-full sm:w-auto"
-            onClick={() => navigate('/quotes/new-quotation')}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="whitespace-nowrap">Create Quotation</span>
-          </Button>
+          {/* Create Button moved to table header */}
         </div>
       </div>
 
@@ -829,8 +874,8 @@ const QuotationPage = () => {
 
 
       <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="p-4 border-b">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="p-4 border-b w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
             <div className="relative w-full sm:w-80">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -868,36 +913,74 @@ const QuotationPage = () => {
               </DropdownMenu>
             </div>
 
-            <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto">
-                  <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
-                  <span className="truncate max-w-[150px]">
-                    {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Quote'}: ${searchTerm}` : 'Filter by'}
-                  </span>
-                  <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
-                <DropdownMenuItem onClick={() => { handleSearchTypeChange('party_name'); setShowFilterDropdown(false); }} className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}>
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Party Name
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { handleSearchTypeChange('quotation_number'); setShowFilterDropdown(false); }} className={searchType === 'quotation_number' ? "bg-blue-50 text-blue-600" : ""}>
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Quotation Number
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Desktop Segmented Filter Type */}
+            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+              <div
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                  }`}
+                style={{
+                  width: '100px',
+                  transform: `translateX(${searchType === 'party_name' ? '0px' : '100px'})`
+                }}
+              />
+              <button
+                onClick={() => handleSearchTypeChange('party_name')}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Party Name
+              </button>
+              <button
+                onClick={() => handleSearchTypeChange('quotation_number')}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'quotation_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Quote No.
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Fallback */}
+            <div className="sm:hidden">
+              <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto">
+                    <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
+                    <span className="truncate max-w-[150px]">
+                      {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Quote'}: ${searchTerm}` : 'Filter by'}
+                    </span>
+                    <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48">
+                  <DropdownMenuItem onClick={() => { handleSearchTypeChange('party_name'); setShowFilterDropdown(false); }} className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}>
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Party Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { handleSearchTypeChange('quotation_number'); setShowFilterDropdown(false); }} className={searchType === 'quotation_number' ? "bg-blue-50 text-blue-600" : ""}>
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Quote No.
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Button
+                size="sm"
+                className="h-10 gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg shadow-md shadow-blue-100 transition-all active:scale-95"
+                onClick={() => navigate('/quotes/new-quotation')}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="whitespace-nowrap">Create Quotation</span>
+              </Button>
+            </div>
           </div>
         </div>
         <div className="overflow-auto">
           <DataGrid
-            key={refreshKey}
+            refreshKey={refreshKey}
             columns={columns}
             serverSide={true}
             onFetchData={fetchQuotations}
-            loading={false}
+            loading={isLoading}
             rowSelection={true}
             getRowId={(row: any) => row.id.toString()}
             pagination={{ size: 5 }}

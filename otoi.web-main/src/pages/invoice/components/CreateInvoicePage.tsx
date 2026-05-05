@@ -260,7 +260,7 @@ const CreateInvoicePage = () => {
   const [showDiscountField, setShowDiscountField] = useState(false);
   const [autoRoundOff, setAutoRoundOff] = useState(false);
   const [roundOffAmount, setRoundOffAmount] = useState(0);
-  const [tax, setTax] = useState(18);
+  const [tax, setTax] = useState(0);
 
   // Add these calculation helper functions before the return statement:
 
@@ -551,7 +551,7 @@ const CreateInvoicePage = () => {
           const mappedItems = data.items.map((item: any) => {
             // Logic to map item details same as quotation
             let discountValue = item.discount_percentage || 0;
-            let taxValue = item.tax_percentage || 18;
+            let taxValue = item.tax?.tax_percentage?.tax_percentage !== undefined && item.tax?.tax_percentage?.tax_percentage !== null ? item.tax?.tax_percentage?.tax_percentage : 0;
 
             return {
               id: item.uuid || item.id,
@@ -566,7 +566,7 @@ const CreateInvoicePage = () => {
               quantity: Number(item.quantity) || 1,
               price_per_item: Number(item.unit_price) || 0,
               discount: Number(discountValue) || 0,
-              tax: Number(taxValue) || 18,
+              tax: taxValue === 0 ? "" : Number(taxValue),
               amount: Number(item.total_price) || 0,
               measuring_unit_id: Number(item.measuring_unit_id) || 1,
             };
@@ -575,8 +575,8 @@ const CreateInvoicePage = () => {
           setInvoiceItems(mappedItems);
 
           if (mappedItems.length > 0) {
-            const firstTax = mappedItems[0].tax || 18;
-            setTax(Number(firstTax) || 18);
+            const firstTax = mappedItems[0].tax !== undefined ? mappedItems[0].tax : 0;
+            setTax(Number(firstTax) || 0);
           }
         }
 
@@ -762,6 +762,7 @@ const CreateInvoicePage = () => {
       );
       if (addressToEdit) {
         setEditingAddress(addressToEdit);
+        setIsShippingModalOpen(false); // Close shipping modal first
         setAddAddressModalOpen(true);
       }
     }
@@ -911,7 +912,7 @@ const CreateInvoicePage = () => {
     const newItems: InvoiceItem[] = items.map((item, index) => {
       const quantity = item.quantity || 1;
       const discount = 0;
-      const tax = item.gst_tax_rate || 18;
+      const tax = item.gst_tax_rate !== undefined ? item.gst_tax_rate : 18;
       const amount = Math.round(
         (quantity * item.sales_price * (1 - discount / 100) * (1 + tax / 100)) * 100
       ) / 100;

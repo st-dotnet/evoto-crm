@@ -42,9 +42,19 @@ export const updateGlobalAssets = async (payload: FormData): Promise<ApiResponse
       status: response.status,
     };
   } catch (error: any) {
+    let errorMessage = "Failed to update assets";
+
+    if (error?.response?.status === 502) {
+      errorMessage = "Server (502 Bad Gateway). This usually means the backend service is down or misconfigured on the server.";
+    } else if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return {
       success: false,
-      error: error?.response?.data?.message || error.message || "Failed to update assets",
+      error: errorMessage,
       status: error?.response?.status || 500,
     };
   }

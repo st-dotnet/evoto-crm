@@ -101,61 +101,8 @@ const CreditInpage = () => {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365_days');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365');
   const navigate = useNavigate();
-
-  // Helper function to convert date filter to date range
-  const getDateRange = useCallback(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = today.getDate();
-
-    switch (selectedDateFilter) {
-      case 'today':
-        return {
-          date_from: today.toISOString().split('T')[0],
-          date_to: today.toISOString().split('T')[0]
-        };
-      case 'this_week':
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(date - today.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return {
-          date_from: startOfWeek.toISOString().split('T')[0],
-          date_to: endOfWeek.toISOString().split('T')[0]
-        };
-      case 'last_week':
-        const startOfLastWeek = new Date(today);
-        startOfLastWeek.setDate(date - today.getDay() - 7);
-        const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-        return {
-          date_from: startOfLastWeek.toISOString().split('T')[0],
-          date_to: endOfLastWeek.toISOString().split('T')[0]
-        };
-      case 'this_month':
-        return {
-          date_from: new Date(year, month, 1).toISOString().split('T')[0],
-          date_to: new Date(year, month + 1, 0).toISOString().split('T')[0]
-        };
-      case 'last_month':
-        return {
-          date_from: new Date(year, month - 1, 1).toISOString().split('T')[0],
-          date_to: new Date(year, month, 0).toISOString().split('T')[0]
-        };
-      case 'last_365_days':
-        const lastYear = new Date(today);
-        lastYear.setDate(date - 365);
-        return {
-          date_from: lastYear.toISOString().split('T')[0],
-          date_to: today.toISOString().split('T')[0]
-        };
-      default:
-        return {};
-    }
-  }, [selectedDateFilter]);
 
   // Fetch autocomplete data for search suggestions
   const fetchAutocompleteData = useCallback(async () => {
@@ -167,21 +114,10 @@ const CreditInpage = () => {
       ]);
 
       if (customerResponse.success && customerResponse.data) {
-        let customerData = customerResponse.data;
-        if (customerData.data && Array.isArray(customerData.data)) {
-          customerData = customerData.data;
-        }
-
-        const customerNames = Array.isArray(customerData)
-          ? [
-            ...new Set(
-              customerData
-                .filter(
-                  (item: any) => item.party_name && item.party_name.trim(),
-                )
-                .map((item: any) => item.party_name.trim()),
-            ),
-          ].sort()
+        const customerNames = Array.isArray(customerResponse.data)
+          ? customerResponse.data
+            .filter((item: any) => item && item.name && typeof item.name === 'string')
+            .sort((a: any, b: any) => a.name.localeCompare(b.name))
           : [];
         setAllCustomerNames(customerNames);
       } else {
@@ -189,17 +125,8 @@ const CreditInpage = () => {
       }
 
       if (creditNoteNumberResponse.success && creditNoteNumberResponse.data) {
-        // Handle nested structure - data is nested under data.credit_notes
-        let creditNoteData = creditNoteNumberResponse.data;
-        if (creditNoteData.data && creditNoteData.data.credit_notes) {
-          creditNoteData = creditNoteData.data.credit_notes;
-        } else if (creditNoteData.credit_notes) {
-          creditNoteData = creditNoteData.credit_notes;
-        }
-        const creditNoteNumbers = Array.isArray(creditNoteData)
-          ? creditNoteData
-            .map((item: any) => item.credit_note_number || item)
-            .filter(Boolean)
+        const creditNoteNumbers = Array.isArray(creditNoteNumberResponse.data)
+          ? creditNoteNumberResponse.data.filter((item: any) => item).map((item: any) => typeof item === 'string' ? item : (item.credit_note_number || item.uuid))
           : [];
         setAllCreditNoteNumbers(creditNoteNumbers);
       } else {
@@ -224,7 +151,7 @@ const CreditInpage = () => {
     setShowSuggestions(false);
     setSearchTerm("");
     setFilteredSuggestions(
-      type === "party_name" ? allCustomerNames : allCreditNoteNumbers,
+      type === "party_name" ? allCustomerNames.map((item: any) => item.name) : allCreditNoteNumbers,
     );
   };
 
@@ -232,21 +159,17 @@ const CreditInpage = () => {
     if (searchTerm) {
       const suggestions =
         searchType === "party_name"
-          ? allCustomerNames.filter((name) =>
-            name.toLowerCase().includes(searchTerm.toLowerCase()),
-          )
-          : (allCreditNoteNumbers.filter((item) => {
-            const displayValue =
-              typeof item === "string" ? item : item.credit_note_number || "";
-            return displayValue
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase());
-          }) as string[] | CreditNoteNumberItem[]);
-      setFilteredSuggestions(suggestions);
+          ? allCustomerNames.filter((item: any) =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+          ).map((item: any) => item.name)
+          : (allCreditNoteNumbers.filter((item: any) =>
+            item.toLowerCase().includes(searchTerm.toLowerCase()),
+          ));
+      setFilteredSuggestions(suggestions as string[]);
     } else {
       const suggestions =
-        searchType === "party_name" ? allCustomerNames : allCreditNoteNumbers;
-      setFilteredSuggestions(suggestions);
+        searchType === "party_name" ? allCustomerNames.map((item: any) => item.name) : allCreditNoteNumbers;
+      setFilteredSuggestions(suggestions as string[]);
     }
   }, [searchTerm, searchType, allCustomerNames, allCreditNoteNumbers]);
 
@@ -257,12 +180,13 @@ const CreditInpage = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Removed the problematic refresh effect
-
   const handleCreditNoteUpdate = (event: CustomEvent) => {
-    // Refresh credit note data to show updated status
     setRefreshKey((prev) => prev + 1);
   };
+
+  useEffect(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, [selectedStatus, selectedDateFilter]);
 
   useEffect(() => {
     window.addEventListener(
@@ -278,7 +202,6 @@ const CreditInpage = () => {
     };
   }, [creditNotes]);
 
-  // Filter credit notes by status (kept for compatibility but not used with server-side filtering)
   const filteredCreditNotes = useMemo(() => {
     return creditNotes;
   }, [creditNotes]);
@@ -287,23 +210,16 @@ const CreditInpage = () => {
     async (params: TDataGridRequestParams) => {
       setIsLoading(true);
       try {
-        const dateRange = getDateRange();
         const apiParams = {
-          page: params.pageIndex + 1, // DataGrid uses 0-based indexing
+          page: params.pageIndex + 1,
           per_page: params.pageSize,
           sort: params.sorting?.[0]?.id,
           order: params.sorting?.[0]?.desc ? "desc" : "asc",
           ...(searchTerm && {
-            [searchType === "party_name" ? "party_name" : "credit_note_number"]:
-              searchTerm,
+            search: searchTerm,
           }),
           status: selectedStatus === "all" ? "" : selectedStatus,
-          ...(dateRange.date_from && {
-            date_from: dateRange.date_from
-          }),
-          ...(dateRange.date_to && {
-            date_to: dateRange.date_to
-          }),
+          date_filter: selectedDateFilter,
         };
 
         const response = await getCreditNotes(apiParams);
@@ -312,7 +228,6 @@ const CreditInpage = () => {
           const creditNotesData =
             response.data.credit_notes || response.data.data || response.data;
 
-          // Handle nested structure - credit_notes might be nested under data
           const notesArray = creditNotesData.credit_notes || creditNotesData;
 
           const formattedData = Array.isArray(notesArray)
@@ -341,17 +256,15 @@ const CreditInpage = () => {
 
           setCreditNotes(formattedData);
 
-          // Check if backend returned pagination info
           let totalCount =
             response.data.data?.pagination?.total ||
             response.data.pagination?.total ||
             response.data.total;
 
           if (!totalCount) {
-            // Backend didn't return pagination info, fetch all items to get total count
             try {
               const allItemsResponse = await getCreditNotes({
-                per_page: 1000, // Fetch all items
+                per_page: 1000,
                 sort: apiParams.sort,
                 order: apiParams.order,
                 ...(searchTerm && {
@@ -398,7 +311,7 @@ const CreditInpage = () => {
         setIsLoading(false);
       }
     },
-    [debouncedSearchTerm, searchType, selectedStatus, refreshKey, getDateRange],
+    [debouncedSearchTerm, searchType, selectedStatus, refreshKey, selectedDateFilter],
   );
 
   const handleDelete = async (id: string) => {
@@ -412,7 +325,6 @@ const CreditInpage = () => {
     if (!creditNoteToDelete || isDeleting) return;
     setIsDeleting(true);
     try {
-      // Get credit note details to find linked invoice before deleting
       const creditNoteResponse = await getCreditNoteById(creditNoteToDelete);
       let linkedInvoiceId = null;
 
@@ -422,20 +334,14 @@ const CreditInpage = () => {
           creditNoteData.linked_invoice_id || creditNoteData.linkToInvoice;
       }
 
-      // Delete the credit note
-      // Delete the credit note
       const response = await deleteCreditNote(creditNoteToDelete);
       if (response.success) {
         toast.success("Credit note deleted successfully");
-        setRefreshKey((prev) => prev + 1); // Refresh autocomplete data
+        setRefreshKey((prev) => prev + 1);
 
-        // Skip invoice status update due to API CORS issues
-        // TODO: Re-enable when API endpoints are fixed
         if (linkedInvoiceId) {
-          // Invoice status update skipped
         }
 
-        // Trigger a custom event to notify CreateCreditNotePage to refresh invoice dropdown
         window.dispatchEvent(
           new CustomEvent("creditNoteDeleted", {
             detail: { creditNoteId: creditNoteToDelete },
@@ -786,315 +692,330 @@ const CreditInpage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Credit Notes</h1>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-44">
+          {/* Desktop Status Segmented Filter */}
+          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
+            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Filters</span>
+            </div>
+            <div className="relative flex items-center">
+              {/* Animated Slider Background with Glow */}
+              <div
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                    selectedStatus === 'unpaid' ? 'bg-orange-50 border-orange-200 shadow-orange-200/50' :
+                      'bg-blue-50 border-blue-200 shadow-blue-200/50'
+                  }`}
+                style={{
+                  width: '90px',
+                  transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                    selectedStatus === 'unpaid' ? '90px' : '180px'
+                    })`
+                }}
+              />
+              <button
+                onClick={() => setSelectedStatus('all')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setSelectedStatus('unpaid')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'unpaid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Unpaid
+              </button>
+              <button
+                onClick={() => setSelectedStatus('refunded')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'refunded' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Refunded
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Fallback Status Filter */}
+          <div className="w-full sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                  <div className="flex items-center overflow-hidden">
+                    <Filter className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate ml-1">
+                      {selectedStatus === 'all' && 'All Credit Notes'}
+                      {selectedStatus === 'unpaid' && 'Unpaid'}
+                      {selectedStatus === 'refunded' && 'Refunded'}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setSelectedStatus('all')} className="flex items-center gap-2">
+                  <Circle className="h-4 w-4 text-gray-500" />
+                  <span>All Credit Notes</span>
+                  {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedStatus('unpaid')} className="flex items-center gap-2">
+                  <Circle className="h-4 w-4 text-orange-500" />
+                  <span>Unpaid</span>
+                  {selectedStatus === 'unpaid' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedStatus('refunded')} className="flex items-center gap-2">
+                  <Circle className="h-4 w-4 text-blue-500" />
+                  <span>Refunded</span>
+                  {selectedStatus === 'refunded' && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full gap-1"
+                  className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
                 >
-                  <Filter className="h-3.5 w-3.5" />
+                  <Calendar className="h-4 w-4 text-gray-900" />
                   <span className="truncate">
-                    {selectedStatus === "all" && "All Credit Notes"}
-                    {selectedStatus === "unpaid" && "Unpaid"}
-                    {selectedStatus === "refunded" && "Refunded"}
+                    {selectedDateFilter === "today" && "Today"}
+                    {selectedDateFilter === "this_week" && "This Week"}
+                    {selectedDateFilter === "last_week" && "Last Week"}
+                    {selectedDateFilter === "this_month" && "This Month"}
+                    {selectedDateFilter === "last_month" && "Last Month"}
+                    {selectedDateFilter === "last_365" && "Last 365 Days"}
+                    {selectedDateFilter === "all" && "All Time"}
                   </span>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                  <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("all");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-gray-500" />
-                  <span>All Credit Notes</span>
-                  {selectedStatus === "all" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+              <DropdownMenuContent align="end" className="w-[180px]">
+                <DropdownMenuItem onClick={() => setSelectedDateFilter("today")}>
+                  Today
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("unpaid");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
+                  onClick={() => setSelectedDateFilter("this_week")}
                 >
-                  <Circle className="h-4 w-4 text-orange-500" />
-                  <span>Unpaid</span>
-                  {selectedStatus === "unpaid" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                  This Week
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("refunded");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
+                  onClick={() => setSelectedDateFilter("last_week")}
                 >
-                  <Circle className="h-4 w-4 text-blue-500" />
-                  <span>Refunded</span>
-                  {selectedStatus === "refunded" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-36">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span className="truncate">
-                    {selectedDateFilter === 'today' && 'Today'}
-                    {selectedDateFilter === 'this_week' && 'This Week'}
-                    {selectedDateFilter === 'last_week' && 'Last Week'}
-                    {selectedDateFilter === 'this_month' && 'This Month'}
-                    {selectedDateFilter === 'last_month' && 'Last Month'}
-                    {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
-                  </span>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('today');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-blue-500" />
-                  <span>Today</span>
-                  {selectedDateFilter === 'today' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                  Last Week
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('this_week');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
+                  onClick={() => setSelectedDateFilter("this_month")}
                 >
-                  <Circle className="h-4 w-4 text-green-500" />
-                  <span>This Week</span>
-                  {selectedDateFilter === 'this_week' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                  This Month
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('last_week');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
+                  onClick={() => setSelectedDateFilter("last_month")}
                 >
-                  <Circle className="h-4 w-4 text-yellow-500" />
-                  <span>Last Week</span>
-                  {selectedDateFilter === 'last_week' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                  Last Month
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('this_month');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
+                  onClick={() => setSelectedDateFilter("last_365")}
                 >
-                  <Circle className="h-4 w-4 text-purple-500" />
-                  <span>This Month</span>
-                  {selectedDateFilter === 'this_month' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                  Last 365 Days
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('last_month');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-orange-500" />
-                  <span>Last Month</span>
-                  {selectedDateFilter === 'last_month' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedDateFilter('last_365_days');
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-indigo-500" />
-                  <span>Last 365 Days</span>
-                  {selectedDateFilter === 'last_365_days' && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
+                <DropdownMenuItem onClick={() => setSelectedDateFilter("all")}>
+                  All Time
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          <Button
-            size="sm"
-            className="h-8 gap-1 w-full sm:w-auto mt-2 sm:mt-0"
-            onClick={() => navigate("/sales/credit-note/create")}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Create Credit Note
-            </span>
-          </Button>
+          {/* Create Button moved to table header */}
         </div>
       </div>
 
       <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="p-4 bg-white border-b justify-center ">
-          <div className="relative w-fit">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <DropdownMenu
-                  open={showSuggestions}
-                  onOpenChange={setShowSuggestions}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 w-80 justify-start px-3"
-                      disabled={isDropdownLoading}
-                    >
-                      {isDropdownLoading ? (
-                        <span className="flex items-center">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Loading...
-                        </span>
-                      ) : (
-                        searchTerm ||
-                        (searchType === "party_name"
-                          ? "Select by party name..."
-                          : "Select by credit note number...")
-                      )}
-                      {!isDropdownLoading && (
-                        <ChevronDown className="ml-auto h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSearchTerm("");
-                        setRefreshKey((prev) => prev + 1);
-                      }}
-                      className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
-                    >
-                      <span className="text-gray-500">
-                        Show All{" "}
-                        {searchType === "party_name"
-                          ? "Parties"
-                          : "Credit Notes"}
-                      </span>
-                    </DropdownMenuItem>
+        <div className="p-4 border-b w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+            <div className="relative w-full sm:w-80">
+              <DropdownMenu
+                open={showSuggestions}
+                onOpenChange={setShowSuggestions}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-80 justify-start px-3"
+                    disabled={isDropdownLoading}
+                  >
                     {isDropdownLoading ? (
-                      <DropdownMenuItem disabled>
-                        <div className="flex items-center justify-center w-full py-2">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Loading options...
-                        </div>
-                      </DropdownMenuItem>
+                      <span className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading...
+                      </span>
                     ) : (
+                      searchTerm ||
                       (searchType === "party_name"
-                        ? allCustomerNames
-                        : allCreditNoteNumbers
-                      ).map((item, index) => {
-                        const displayValue =
-                          typeof item === "string"
-                            ? item
-                            : item.credit_note_number;
-                        const keyValue =
-                          typeof item === "string" ? index : item.uuid || index;
-
-                        return (
-                          <DropdownMenuItem
-                            key={keyValue}
-                            onClick={() => {
-                              setSearchTerm(displayValue);
-                              setRefreshKey((prev) => prev + 1);
-                            }}
-                            className={
-                              searchTerm === displayValue
-                                ? "bg-blue-50 text-blue-600"
-                                : ""
-                            }
-                          >
-                            {displayValue}
-                          </DropdownMenuItem>
-                        );
-                      })
+                        ? "Select by party name..."
+                        : "Select by credit note number...")
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="relative w-full sm:w-auto">
-                <DropdownMenu
-                  open={showFilterDropdown}
-                  onOpenChange={setShowFilterDropdown}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto"
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                      {searchTerm
-                        ? `${searchType === "party_name" ? "Party" : "Credit Note"}: ${searchTerm}`
-                        : "Filter by"}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        handleSearchTypeChange("party_name");
-                        setShowFilterDropdown(false);
-                      }}
-                      className={`flex items-center gap-2 ${searchType === "party_name"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                        }`}
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-2" />
-                      <span>Party Name</span>
-                      {searchType === "party_name" && <Check className="h-4 w-4 ml-auto" />}
+                    {!isDropdownLoading && (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSearchTerm("");
+                      setRefreshKey((prev) => prev + 1);
+                    }}
+                    className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <span className="text-gray-500">
+                      Show All{" "}
+                      {searchType === "party_name"
+                        ? "Parties"
+                        : "Credit Notes"}
+                    </span>
+                  </DropdownMenuItem>
+                  {isDropdownLoading ? (
+                    <DropdownMenuItem disabled>
+                      <div className="flex items-center justify-center w-full py-2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading options...
+                      </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        handleSearchTypeChange("credit_note_number");
-                        setShowFilterDropdown(false);
-                      }}
-                      className={`flex items-center gap-2 ${searchType === "credit_note_number"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                        }`}
-                    >
-                      <Filter className="h-3.5 w-3.5 mr-2" />
-                      <span>Credit Note Number</span>
-                      {searchType === "credit_note_number" && <Check className="h-4 w-4 ml-auto" />}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  ) : (
+                    <>
+                      {searchType === "party_name" ? (
+                        allCustomerNames.map((item: any) => {
+                          const displayValue = item.name;
+                          const keyValue = item.uuid;
+                          return (
+                            <DropdownMenuItem
+                              key={keyValue}
+                              onClick={() => {
+                                setSearchTerm(displayValue);
+                                setRefreshKey((prev) => prev + 1);
+                              }}
+                              className={
+                                searchTerm === displayValue
+                                  ? "bg-blue-50 text-blue-600"
+                                  : ""
+                              }
+                            >
+                              {displayValue}
+                            </DropdownMenuItem>
+                          );
+                        })
+                      ) : (
+                        allCreditNoteNumbers.map((item: any, index: number) => {
+                          const displayValue = item;
+                          const keyValue = index;
+                          return (
+                            <DropdownMenuItem
+                              key={keyValue}
+                              onClick={() => {
+                                setSearchTerm(displayValue);
+                                setRefreshKey((prev) => prev + 1);
+                              }}
+                              className={
+                                searchTerm === displayValue
+                                  ? "bg-blue-50 text-blue-600"
+                                  : ""
+                              }
+                            >
+                              {displayValue}
+                            </DropdownMenuItem>
+                          );
+                        })
+                      )}
+                      {(searchType === "party_name" ? allCustomerNames : allCreditNoteNumbers).length === 0 && (
+                        <DropdownMenuItem disabled>
+                          <span className="text-gray-500">No {searchType === "party_name" ? "parties" : "credit notes"} found</span>
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {/* Desktop Segmented Filter Type */}
+            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+              <div
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                  }`}
+                style={{
+                  width: '120px',
+                  transform: `translateX(${searchType === 'party_name' ? '0px' : '120px'})`
+                }}
+              />
+              <button
+                onClick={() => handleSearchTypeChange('party_name')}
+                className={`relative w-[120px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Party Name
+              </button>
+              <button
+                onClick={() => handleSearchTypeChange('credit_note_number')}
+                className={`relative w-[120px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'credit_note_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Credit Note No.
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Fallback */}
+            <div className="sm:hidden w-full sm:w-auto">
+              <DropdownMenu
+                open={showFilterDropdown}
+                onOpenChange={setShowFilterDropdown}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 rounded-md px-3 text-sm text-gray-600 w-full flex items-center justify-between"
+                  >
+                    <div className="flex items-center truncate min-w-0">
+                      <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
+                      <span className="truncate">
+                        {searchTerm ? (searchType === 'party_name' ? 'Party' : 'No.') : 'Search by'}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      handleSearchTypeChange('party_name');
+                      setShowFilterDropdown(false);
+                    }}
+                    className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Party Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      handleSearchTypeChange('credit_note_number');
+                      setShowFilterDropdown(false);
+                    }}
+                    className={searchType === 'credit_note_number' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Credit Note No.
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Button
+                size="sm"
+                className="h-10 gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg shadow-md shadow-blue-100 transition-all active:scale-95"
+                onClick={() => navigate("/sales/credit-note/create")}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="whitespace-nowrap">Create Credit Note</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -1110,7 +1031,7 @@ const CreditInpage = () => {
             </div>
           )}
           <DataGrid
-            key={refreshKey}
+            refreshKey={refreshKey}
             columns={columns}
             serverSide={true}
             onFetchData={fetchCreditNotes}

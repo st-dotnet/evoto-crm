@@ -12,6 +12,7 @@ import {
   getPaymentInList,
   getPartyInvoices,
   getPaymentById,
+  getPartyNamesDropdown,
 } from "../services/payment-in.service";
 import { recordPayment } from "../../invoice/services/invoice.service";
 import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn.service";
@@ -77,13 +78,13 @@ export const CreatePaymentIn = () => {
     const selectedInvoice = partyInvoices.find((inv) => inv.id === invoiceId);
     if (selectedInvoice) {
       setPaymentNumber(selectedInvoice.invoice_number);
-      
+
       // Fetch credit notes for this invoice
       await fetchCreditNotesForInvoice(invoiceId);
-      
+
       // Use the corrected pending amount calculation
       const pendingAmount = getPendingAmount(selectedInvoice);
-      
+
       // Only set payment received if invoice has pending balance
       if (
         pendingAmount > 0 ||
@@ -124,7 +125,7 @@ export const CreatePaymentIn = () => {
       (inv) => inv.id === selectedInvoiceId,
     );
     const pendingAmount = getPendingAmount(selectedInvoice);
-    
+
     if (totalAppliedAmount > pendingAmount + 0.01) {
       toast.error("Total payment cannot exceed pending amount (after credit notes)");
       return;
@@ -204,27 +205,20 @@ export const CreatePaymentIn = () => {
   const fetchParties = async () => {
     setIsPartiesLoading(true);
     try {
-      // Fetch all payment records to get all party names (use page=1, per_page=1000)
-      const response = await getPaymentInList(1, 1000, '', '', '');
+      // Use the dedicated dropdown service instead of fetching the full list
+      const response = await getPartyNamesDropdown();
 
       if (response.success && response.data) {
-        const paymentData = response.data.data || response.data;
+        const partyNames = response.data;
 
-        // Extract unique customer names from payment records
-        const uniqueCustomers = new Map();
-        paymentData.forEach((payment: any) => {
-          const customerName = payment.party_name;
-          if (customerName && !uniqueCustomers.has(customerName)) {
-            uniqueCustomers.set(customerName, {
-              id: payment.id,
-              name: customerName,
-              mobile: "",
-              hasInvoices: true,
-            });
-          }
-        });
+        // Transform names into the object format expected by the component
+        const transformedParties = partyNames.map((name: string, index: number) => ({
+          id: `party-${index}`, // Temporary ID for selection
+          name: name,
+          mobile: "",
+          hasInvoices: true,
+        }));
 
-        const transformedParties = Array.from(uniqueCustomers.values());
         setParties(transformedParties);
       } else {
         toast.error(response.error || "Failed to fetch parties");
@@ -300,7 +294,7 @@ export const CreatePaymentIn = () => {
   };
 
   // Fetch invoices for selected party
-  const fetchPartyInvoices = async (partyName: string) => {
+  const fetchPartyInvoices = async (partyName: string, targetInvoiceId?: string) => {
     setIsInvoicesLoading(true);
     try {
       const response = await getPartyInvoices(partyName);
@@ -315,33 +309,49 @@ export const CreatePaymentIn = () => {
         );
         setIsFullyPaid(allInvoicesPaid);
 
-        // Auto-select single partial invoice
-        const partialInvoices = response.data.filter(
-          (invoice: any) =>
-            invoice.balance_amount > 0 &&
-            (invoice.status === "partially paid" ||
-              invoice.status === "partial"),
-        );
+        // Selection logic
+        let selectedInvoice = null;
 
-        if (partialInvoices.length === 1) {
-          // Auto-select the single partial invoice
-          const singlePartialInvoice = partialInvoices[0];
-          setSelectedInvoiceId(singlePartialInvoice.id);
-          setPaymentNumber(singlePartialInvoice.invoice_number);
-          
+        if (targetInvoiceId) {
+          // Priority 1: Use the target invoice ID (for edit mode)
+          selectedInvoice = response.data.find((inv: any) => inv.id === targetInvoiceId);
+        }
+
+        if (!selectedInvoice) {
+          // Priority 2: Auto-select single partial invoice
+          const partialInvoices = response.data.filter(
+            (invoice: any) =>
+              invoice.balance_amount > 0 &&
+              (invoice.status === "partially paid" ||
+                invoice.status === "partial"),
+          );
+          if (partialInvoices.length === 1) {
+            selectedInvoice = partialInvoices[0];
+          }
+        }
+
+        if (selectedInvoice) {
+          setSelectedInvoiceId(selectedInvoice.id);
+          setPaymentNumber(selectedInvoice.invoice_number);
+
           // Fetch credit notes for this invoice
-          await fetchCreditNotesForInvoice(singlePartialInvoice.id);
-          
-          // Use the corrected pending amount calculation
-          const pendingAmount = getPendingAmount(singlePartialInvoice);
-          setPaymentReceived(pendingAmount.toString());
-          setPaymentDiscount("0");
+          await fetchCreditNotesForInvoice(selectedInvoice.id);
+
+          // Use the corrected pending amount calculation if not in edit mode
+          // (In edit mode, we want to keep the original payment amount)
+          if (!targetInvoiceId) {
+            const pendingAmount = getPendingAmount(selectedInvoice);
+            setPaymentReceived(pendingAmount.toString());
+            setPaymentDiscount("0");
+          }
         } else {
           // Reset selection if multiple partial invoices or none
           setSelectedInvoiceId(null);
           setPaymentNumber("");
-          setPaymentReceived("");
-          setPaymentDiscount("0");
+          if (!targetInvoiceId) {
+            setPaymentReceived("");
+            setPaymentDiscount("0");
+          }
           setCreditNotes([]);
         }
       } else {
@@ -378,12 +388,12 @@ export const CreatePaymentIn = () => {
 
     // Pre-fill form with latest payment data for this party
     try {
-      const response = await getPaymentInList(1, 1000, '', '', '');
+      // Use getPaymentInList but handle the 404 fallback correctly
+      const response = await getPaymentInList(1, 10, '', party.name, ''); // Just get latest for this party
+
       if (response.success && response.data) {
         const paymentData = response.data.data || response.data;
-        const partyPayments = paymentData.filter(
-          (payment: any) => payment.party_name === party.name,
-        );
+        const partyPayments = Array.isArray(paymentData) ? paymentData : [];
 
         if (partyPayments.length > 0) {
           // Get the most recent payment for this party
@@ -402,20 +412,6 @@ export const CreatePaymentIn = () => {
           if (latestPayment.payment_number) {
             setPaymentNumber(latestPayment.payment_number);
           }
-          // Don't pre-fill payment amount - let it be set by invoice selection
-          // if (latestPayment.amount_received) {
-          //   setPaymentReceived(latestPayment.amount_received.toString());
-          // }
-          // Don't pre-fill payment discount - let user enter from scratch
-          // if (latestPayment.payment_discount || latestPayment.discount_total) {
-          //   setPaymentDiscount(
-          //     (
-          //       latestPayment.payment_discount ||
-          //       latestPayment.discount_total ||
-          //       0
-          //     ).toString(),
-          //   );
-          // }
         }
       }
     } catch (error) {
@@ -437,25 +433,35 @@ export const CreatePaymentIn = () => {
           paymentData.invoice_date || new Date().toISOString().split("T")[0],
         );
         setPaymentReceived(
+          paymentData.balance_due?.toString() ||
           paymentData.amount_paid?.toString() ||
           paymentData.total_amount?.toString() ||
           "",
         );
-        setPaymentDiscount(paymentData.payment_discount?.toString() || "");
+        setPaymentDiscount("");
         setPaymentNumber(paymentData.invoice_number || "");
         setPaymentMode("cash"); // Default to cash since payment_mode not available
         setNotes(paymentData.additional_notes?.notes || "");
 
         // Set party information
-        if (paymentData.customer) {
+        const customer = paymentData.customer;
+        if (customer || paymentData.customer_name) {
+          const customerName = customer
+            ? (customer.name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim())
+            : paymentData.customer_name;
+
           const partyData = {
-            name: `${paymentData.customer.first_name} ${paymentData.customer.last_name}`,
-            id: paymentData.customer.uuid,
-            mobile: paymentData.customer.mobile || "",
+            name: customerName || "Unknown Party",
+            id: customer?.uuid || customer?.id || paymentData.customer_id,
+            mobile: customer?.mobile || "",
             hasInvoices: true,
           };
           setSelectedParty(partyData);
-          fetchPartyInvoices(partyData.name);
+
+          // Get the invoice ID for auto-selection
+          // In the fallback system, the payment ID itself is the invoice ID
+          const invoiceId = paymentData.invoice_id || paymentData.uuid || paymentData.id;
+          fetchPartyInvoices(partyData.name, invoiceId);
         }
       } else {
         toast.error(response.error || "Failed to load payment data");
@@ -648,28 +654,28 @@ export const CreatePaymentIn = () => {
       },
       {
         accessorKey: "discount",
-        header: ({ column }) => (                                       
-          <DataGridColumnHeader                                                          
-            title="Discount"                                                                              
-            column={column}                                                                                                                   
-            className="justify-center"                                                                
-          />                                               
-        ),                                        
-        cell: (info) => (                        
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title="Discount"
+            column={column}
+            className="justify-center"
+          />
+        ),
+        cell: (info) => (
           <TooltipCell row={info.row}>
             <div className="text-sm font-medium text-center">
-              ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
-            </div>                
+              {""}
+            </div>
           </TooltipCell>
         ),
-        meta: {                 
+        meta: {
           headerClassName: "w-[130px]",
-          cellClassName: "text-center",                   
+          cellClassName: "text-center",
         },
       },
       {
         accessorKey: "amount_received",
-        header: ({ column }) => (             
+        header: ({ column }) => (
           <DataGridColumnHeader
             title="Amount Received"
             column={column}
@@ -835,7 +841,7 @@ export const CreatePaymentIn = () => {
 
                 // Calculate the gross amount (actual payment + discount)
                 const grossAmount = actualPaymentAmount + currentDiscount;
-                
+
                 // Only allow if gross amount doesn't exceed pending amount
                 if (grossAmount <= pendingAmount + 0.01) {
                   setPaymentReceived(actualPaymentAmount.toString());
@@ -881,7 +887,7 @@ export const CreatePaymentIn = () => {
 
                 // Calculate max allowed actual payment amount
                 const maxActualPayment = Math.max(0, pendingAmount - newDiscount);
-                
+
                 // Adjust actual payment if it exceeds new maximum allowed
                 const adjustedActualPayment = Math.min(currentActualPayment, maxActualPayment);
 
@@ -1132,27 +1138,24 @@ export const CreatePaymentIn = () => {
                   {filteredParties.map((party) => (
                     <li
                       key={party.id}
-                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        selectedParty?.id === party.id
-                          ? "bg-gray-100"
-                          : ""
-                      }`}
+                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
+                        ? "bg-gray-100"
+                        : ""
+                        }`}
                       onClick={() => handlePartySelect(party)}
                     >
                       <div className="flex items-center">
                         <div
-                          className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${
-                            selectedParty?.id === party.id
-                              ? "bg-green-100"
-                              : "bg-gray-100"
-                          }`}
+                          className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
+                            ? "bg-green-100"
+                            : "bg-gray-100"
+                            }`}
                         >
                           <span
-                            className={`font-medium text-sm ${
-                              selectedParty?.id === party.id
-                                ? "text-green-700"
-                                : "text-gray-600"
-                            }`}
+                            className={`font-medium text-sm ${selectedParty?.id === party.id
+                              ? "text-green-700"
+                              : "text-gray-600"
+                              }`}
                           >
                             {(party.name || "Unknown")
                               .split(" ")

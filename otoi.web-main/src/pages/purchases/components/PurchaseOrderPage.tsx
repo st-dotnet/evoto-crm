@@ -23,6 +23,8 @@ import {
   CreditCard,
   Calendar,
   Info,
+  User,
+  Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -53,7 +55,6 @@ import {
 } from "../services/purchaseInvoice.services";
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
-import { SpinnerDotted } from "spinners-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -108,6 +109,8 @@ const PurchaseOrderPage = () => {
   const [allVendorNames, setAllVendorNames] = useState<string[]>([]);
   const [allPoNumbers, setAllPoNumbers] = useState<string[]>([]);
   const [isDropdownLoading, setIsDropdownLoading] = useState(false);
+  // Initialize showSuggestions state to ensure it's available
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -141,7 +144,7 @@ const PurchaseOrderPage = () => {
   // Map poId -> { invoiceId, invoiceNumber, payment_status, balance_due }
   const [invoiceStatusMap, setInvoiceStatusMap] = useState<
     Record<string, { invoiceId: string; invoiceNumber: string; payment_status: string; balance_due: number }>
-  >();
+  >({});
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365');
 
   const navigate = useNavigate();
@@ -189,6 +192,8 @@ const PurchaseOrderPage = () => {
   const handleSearchTypeChange = (type: "vendor_name" | "po_number") => {
     setSearchType(type);
     setSearchTerm("");
+    // Don't immediately refresh when changing search type
+    // Only refresh when user actually searches
   };
 
   // Debounce search term
@@ -199,10 +204,10 @@ const PurchaseOrderPage = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Refresh data when search changes
+  // Refresh data when search term or date filter changes (not search type)
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-  }, [debouncedSearchTerm, searchType, selectedDateFilter]);
+  }, [debouncedSearchTerm, selectedDateFilter]);
 
   // Fetch purchase orders
   const fetchPurchaseOrders = useCallback(
@@ -231,28 +236,7 @@ const PurchaseOrderPage = () => {
             date: item.po_date || item.created_at,
             po_number: item.po_number,
             vendor_name: item.vendor_name || "N/A",
-            delivery_date: item.delivery_date
-              ? (() => {
-                const daysRemaining = Math.ceil(
-                  (new Date(item.delivery_date).getTime() -
-                    new Date().getTime()) /
-                  (1000 * 60 * 60 * 24),
-                );
-                if (daysRemaining < 0) {
-                  return (
-                    <span className="text-red-600 font-medium">
-                      Overdue by {Math.abs(daysRemaining)} days
-                    </span>
-                  );
-                } else if (daysRemaining === 0) {
-                  return (
-                    <span className="text-red-600 font-medium">0 days</span>
-                  );
-                } else {
-                  return `${daysRemaining} days`;
-                }
-              })()
-              : "N/A",
+            delivery_date: item.delivery_date || "N/A",
             amount: item.total_amount || 0,
             status: item.status || "open",
             invoice: item.invoice,
@@ -429,7 +413,7 @@ const PurchaseOrderPage = () => {
         meta: { headerClassName: "min-w-[200px]" },
       },
       {
-        accessorKey: "due_date",
+        accessorKey: "delivery_date",
         header: ({ column }) => (
           <DataGridColumnHeader
             title="Due In"
@@ -437,20 +421,38 @@ const PurchaseOrderPage = () => {
             className="justify-center"
           />
         ),
-        cell: (info) => (
-          <div className="text-sm text-gray-900 text-center">
-            {info.getValue() as string}
-          </div>
-        ),
+        cell: (info) => {
+          const value = info.getValue() as string;
+          if (!value || value === "N/A") return <div className="text-sm text-gray-400 text-center">N/A</div>;
+
+          const deliveryDate = new Date(value);
+          const daysRemaining = Math.ceil(
+            (deliveryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          return (
+            <div className="text-sm text-gray-900 text-center">
+              {daysRemaining < 0 ? (
+                <span className="text-red-600 font-medium">
+                  Overdue by {Math.abs(daysRemaining)} days
+                </span>
+              ) : daysRemaining === 0 ? (
+                <span className="text-red-600 font-medium">Due Today</span>
+              ) : (
+                `${daysRemaining} days`
+              )}
+            </div>
+          );
+        },
         enableSorting: true,
         sortingFn: (rowA, rowB) => {
           const getDaysValue = (value: string): number => {
-            if (value === "N/A") return 999999;
-            const match = value.match(/(\d+)/);
-            return match ? parseInt(match[1]) : 999999;
+            if (!value || value === "N/A") return 999999;
+            const deliveryDate = new Date(value);
+            return deliveryDate.getTime();
           };
-          const aVal = getDaysValue(rowA.getValue("due_date") as string);
-          const bVal = getDaysValue(rowB.getValue("due_date") as string);
+          const aVal = getDaysValue(rowA.getValue("delivery_date") as string);
+          const bVal = getDaysValue(rowB.getValue("delivery_date") as string);
           return aVal - bVal;
         },
         meta: { headerClassName: "min-w-[100px]" },
@@ -686,10 +688,10 @@ const PurchaseOrderPage = () => {
                 </span>
                 <span
                   className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${po.status === "open"
-                      ? "bg-green-100 text-green-800"
-                      : po.status === "closed"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-purple-100 text-purple-800"
+                    ? "bg-green-100 text-green-800"
+                    : po.status === "closed"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-purple-100 text-purple-800"
                     }`}
                 >
                   {po.status.charAt(0).toUpperCase() + po.status.slice(1)}
@@ -706,7 +708,10 @@ const PurchaseOrderPage = () => {
                 <span className="flex items-center gap-1">
                   <Info className="h-3 w-3" />
                   Delivery:{" "}
-                  {new Date(po.delivery_date).toLocaleDateString("en-IN")}
+                  {po.delivery_date === "N/A" ? "N/A" : (() => {
+                    const days = Math.ceil((new Date(po.delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    return days < 0 ? `Overdue (${Math.abs(days)}d)` : days === 0 ? "Today" : `${days} days`;
+                  })()}
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between">
@@ -793,109 +798,66 @@ const PurchaseOrderPage = () => {
 
   return (
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
-      {(isDeleting || isDropdownLoading) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80">
-          <div className="text-primary">
-            <SpinnerDotted
-              size={50}
-              thickness={100}
-              speed={100}
-              color="#3b82f6"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold">Purchase Orders</h1>
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Status Filter */}
-          <div className="w-full sm:w-[calc(50%-0.25rem)] md:w-48">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="flex items-center justify-between h-9 w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-inter"
-                >
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <Filter className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                    <span className="truncate">
-                      {selectedStatus === "all" && "All Orders"}
-                      {selectedStatus === "open" && "Open Orders"}
-                      {selectedStatus === "closed" && "Closed Orders"}
-                      {selectedStatus === "received" && "Received Orders"}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("all");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-gray-500" />
-                  <span>All Orders</span>
-                  {selectedStatus === "all" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("open");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-green-500" />
-                  <span>Open Orders</span>
-                  {selectedStatus === "open" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("closed");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Circle className="h-4 w-4 text-red-500" />
-                  <span>Closed Orders</span>
-                  {selectedStatus === "closed" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedStatus("received");
-                    setRefreshKey((prev) => prev + 1);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <CircleCheck className="h-4 w-4 text-purple-500" />
-                  <span>Received Orders</span>
-                  {selectedStatus === "received" && (
-                    <Check className="h-4 w-4 ml-auto" />
-                  )}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <h1 className="text-2xl font-bold font-inter">Purchase Orders</h1>
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Floating Glass Status Filter */}
+          <div className="relative bg-gray-50/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 shadow-sm flex items-center min-w-fit">
+            {/* Integrated Label */}
+            <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900" />
+              <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Filters</span>
+            </div>
+
+            <div className="relative flex items-center">
+              {/* Animated Slider Background with Glow */}
+              <div
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                  selectedStatus === 'open' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
+                    selectedStatus === 'closed' ? 'bg-red-50 border-red-200 shadow-red-200/50' :
+                      'bg-purple-50 border-purple-200 shadow-purple-200/50'
+                  }`}
+                style={{
+                  width: '90px',
+                  transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                    selectedStatus === 'open' ? '90px' :
+                      selectedStatus === 'closed' ? '180px' : '270px'
+                    })`
+                }}
+              />
+
+              {/* Status Buttons */}
+              <button
+                onClick={() => { setSelectedStatus('all'); setRefreshKey((prev) => prev + 1); }}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('open'); setRefreshKey((prev) => prev + 1); }}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'open' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Open
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('closed'); setRefreshKey((prev) => prev + 1); }}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'closed' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Closed
+              </button>
+              <button
+                onClick={() => { setSelectedStatus('received'); setRefreshKey((prev) => prev + 1); }}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'received' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Received
+              </button>
+            </div>
           </div>
 
-          <Button
-            size="sm"
-            className="h-9 gap-1 w-full sm:w-[calc(50%-0.25rem)] md:w-auto"
-            onClick={() => navigate("/purchases/purchase-orders/new")}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="whitespace-nowrap">
-              Create Order
-            </span>
-          </Button>
+          <div className="flex-grow md:block hidden" />
         </div>
       </div>
 
@@ -946,7 +908,7 @@ const PurchaseOrderPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ── Record Payment Modal ───────────────────────────────────────────── */}
+      {/* ── Record Payment Modal ─────────────────────────────── */}
       <Dialog
         open={!!paymentModal?.open}
         onOpenChange={(open) => {
@@ -1081,55 +1043,53 @@ const PurchaseOrderPage = () => {
 
 
       {/* Table + Search */}
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="p-4 border-b">
+      <div className="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-gray-100/50 bg-gray-50/30">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="relative w-full sm:w-80">
-              <DropdownMenu>
+              <DropdownMenu
+                open={showSuggestions}
+                onOpenChange={setShowSuggestions}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-10 w-full justify-start px-3"
+                    className="h-10 w-full justify-start px-3 bg-white/50 backdrop-blur-sm rounded-xl border-gray-200 shadow-sm text-gray-900 font-medium hover:bg-white transition-all"
                     disabled={isDropdownLoading}
                   >
+                    <Search className="h-4 w-4 mr-2 text-gray-400" />
                     {isDropdownLoading ? (
                       <span className="flex items-center">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>{" "}
                         Loading...
                       </span>
                     ) : (
                       <span className="truncate text-left">
                         {searchTerm ||
                           (searchType === "vendor_name"
-                            ? "Select by vendor name..."
-                            : "Select by PO number...")}
+                            ? "Search by vendor..."
+                            : "Search by PO #...")}
                       </span>
                     )}
                     {!isDropdownLoading && (
-                      <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+                      <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto rounded-xl shadow-xl">
                   <DropdownMenuItem
                     onClick={() => {
                       setSearchTerm("");
                       setRefreshKey((prev) => prev + 1);
                     }}
-                    className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
+                    className="text-gray-500 italic"
                   >
-                    <span className="text-gray-500">
-                      Show All{" "}
-                      {searchType === "vendor_name" ? "Vendors" : "Orders"}
-                    </span>
+                    Clear search
                   </DropdownMenuItem>
                   {isDropdownLoading ? (
-                    <DropdownMenuItem disabled>
-                      <div className="flex items-center justify-center w-full py-2">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Loading options...
-                      </div>
-                    </DropdownMenuItem>
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      Loading suggestions...
+                    </div>
                   ) : (
                     (searchType === "vendor_name"
                       ? allVendorNames
@@ -1141,11 +1101,10 @@ const PurchaseOrderPage = () => {
                           setSearchTerm(item);
                           setRefreshKey((prev) => prev + 1);
                         }}
-                        className={
-                          searchTerm === item
-                            ? "bg-blue-50 text-blue-600"
-                            : ""
-                        }
+                        className={`py-2 ${searchTerm === item
+                          ? "bg-blue-50 text-blue-600 font-medium"
+                          : ""
+                          }`}
                       >
                         {item}
                       </DropdownMenuItem>
@@ -1155,134 +1114,158 @@ const PurchaseOrderPage = () => {
               </DropdownMenu>
             </div>
 
-            {/* Filter type selector - fixed width */}
-            <DropdownMenu
-              open={showFilterDropdown}
-              onOpenChange={setShowFilterDropdown}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 shrink-0 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto"
-                >
-                  <Filter className="h-3.5 w-3.5 text-blue-500 mr-1 shrink-0" />
-                  <span className="truncate max-w-[150px]">
-                    {searchTerm
-                      ? `${searchType === "vendor_name" ? "Vendor" : "PO"}: ${searchTerm}`
-                      : "Filter by"}
-                  </span>
-                  <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
-                <DropdownMenuItem
-                  onClick={() => {
-                    handleSearchTypeChange("vendor_name");
-                    setShowFilterDropdown(false);
-                  }}
-                  className={
-                    searchType === "vendor_name"
-                      ? "bg-blue-50 text-blue-600"
-                      : ""
-                  }
-                >
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Vendor Name
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    handleSearchTypeChange("po_number");
-                    setShowFilterDropdown(false);
-                  }}
-                  className={
-                    searchType === "po_number"
-                      ? "bg-blue-50 text-blue-600"
-                      : ""
-                  }
-                >
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  PO Number
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Desktop Segmented Filter Type */}
+            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+              <div
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === "vendor_name" ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                  }`}
+                style={{
+                  width: '100px',
+                  transform: `translateX(${searchType === "vendor_name" ? '0px' : '100px'})`
+                }}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSearchTypeChange("vendor_name");
+                }}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "vendor_name" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Vendor Name
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSearchTypeChange("po_number");
+                }}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "po_number" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                PO No.
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Fallback */}
+            <div className="sm:hidden">
+              <DropdownMenu
+                open={showFilterDropdown}
+                onOpenChange={setShowFilterDropdown}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 bg-white shadow-sm border-gray-200 hover:bg-gray-50 gap-2"
+                  >
+                    <Filter className="h-4 w-4 text-blue-500" />
+                    {searchType === "vendor_name" ? "Vendor Name" : "PO Number"}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48 rounded-xl shadow-xl">
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange("vendor_name")}
+                  >
+                    <User className="h-4 w-4 mr-2 text-gray-400" /> Vendor Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange("po_number")}
+                  >
+                    <FileText className="h-4 w-4 mr-2 text-gray-400" /> PO Number
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Button
+                size="sm"
+                className="h-10 gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200/50 transition-all active:scale-95 w-full sm:w-auto"
+                onClick={() => navigate("/purchases/purchase-orders/new")}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="font-bold">Create Order</span>
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="overflow-auto relative">
-            <DataGrid
-              key={refreshKey}
-              columns={columns}
-              serverSide={true}
-              onFetchData={fetchPurchaseOrders}
-              rowSelection
-              getRowId={(row: any) => row.id}
-              pagination={{ size: 10 }}
-              onRowClick={(row: any) => {
-                if (showDeleteDialog) return;
-                navigate(`/purchases/purchase-orders/${row.original.id}`);
-              }}
-              layout={{
-                card: true,
-                classes: { 
-                  table: "cursor-pointer [&_tr:hover]:bg-gray-50",
-                  container: "hidden md:block"
+          <DataGrid
+            key={refreshKey}
+            columns={columns}
+            serverSide={true}
+            onFetchData={fetchPurchaseOrders}
+            rowSelection
+            getRowId={(row: any) => row.id}
+            pagination={{ size: 10 }}
+            onRowClick={(row: any) => {
+              if (showDeleteDialog) return;
+              navigate(`/purchases/purchase-orders/${row.original.id}`);
+            }}
+            layout={{
+              card: true,
+              classes: {
+                table: "cursor-pointer [&_tr:hover]:bg-gray-50",
+                container: "hidden md:block"
+              }
+            }}
+          >
+            <MobileView
+              onEdit={(id, status) => {
+                if (status === "received") {
+                  toast.error("This purchase order cannot be edited because it has been received.");
+                  return;
                 }
+                navigate(`/purchases/purchase-orders/${id}/edit`);
               }}
-            >
-              <MobileView
-                onEdit={(id, status) => {
-                  if (status === "received") {
-                    toast.error("This purchase order cannot be edited because it has been received.");
-                    return;
-                  }
-                  navigate(`/purchases/purchase-orders/${id}/edit`);
-                }}
-                onDetails={(id) => navigate(`/purchases/purchase-orders/${id}`)}
-                onDuplicate={async (id) => {
-                  try {
-                    const response = await getPurchaseOrderById(id);
-                    if (response.success && response.data) {
-                      const original = response.data;
-                      navigate("/purchases/purchase-orders/new", {
-                        state: {
-                          poData: {
-                            poNo: "",
-                            poDate: new Date().toISOString().split("T")[0],
-                            deliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-                            status: "open",
-                            selectedVendor: original.vendor,
-                            poItems: (original.items || []).map((item: any) => ({
-                              id: "",
-                              item_id: item.item_id,
-                              item_name: item.product_name || item.description || "Item",
-                              description: item.description,
-                              quantity: item.quantity,
-                              price_per_item: item.unit_price,
-                              discount: item.discount_percentage || 0,
-                              tax: item.tax_percentage || 0,
-                              amount: item.total_price,
-                              measuring_unit_id: 1,
-                            })),
-                            notes: original.notes,
-                            terms: original.terms_and_conditions,
-                            isDuplicate: true,
-                          },
+              onDetails={(id) => navigate(`/purchases/purchase-orders/${id}`)}
+              onDuplicate={async (id) => {
+                try {
+                  const response = await getPurchaseOrderById(id);
+                  if (response.success && response.data) {
+                    const original = response.data;
+                    navigate("/purchases/purchase-orders/new", {
+                      state: {
+                        poData: {
+                          poNo: "",
+                          poDate: new Date().toISOString().split("T")[0],
+                          deliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+                          status: "open",
+                          selectedVendor: original.vendor,
+                          poItems: (original.items || []).map((item: any) => ({
+                            id: "",
+                            item_id: item.item_id,
+                            item_name: item.product_name || item.description || "Item",
+                            description: item.description,
+                            quantity: item.quantity,
+                            price_per_item: item.unit_price,
+                            discount: item.discount_percentage || 0,
+                            tax: item.tax_percentage || 0,
+                            amount: item.total_price,
+                            measuring_unit_id: 1,
+                          })),
+                          notes: original.notes,
+                          terms: original.terms_and_conditions,
                           isDuplicate: true,
                         },
-                      });
-                      toast.success("Purchase order opened for duplication!");
-                    }
-                  } catch {
-                    toast.error("Failed to duplicate purchase order");
+                        isDuplicate: true,
+                      },
+                    });
+                    toast.success("Purchase order opened for duplication!");
                   }
-                }}
-                onDelete={(id) => {
-                  setPoToDelete(id);
-                  setShowDeleteDialog(true);
-                }}
-              />
-            </DataGrid>
+                } catch {
+                  toast.error("Failed to duplicate purchase order");
+                }
+              }}
+              onDelete={(id) => {
+                setPoToDelete(id);
+                setShowDeleteDialog(true);
+              }}
+            />
+          </DataGrid>
         </div>
       </div>
     </div>

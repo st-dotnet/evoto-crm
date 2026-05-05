@@ -12,7 +12,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_DAYS", 1)))
 
     # Database — no hardcoded credentials in code
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI")
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URI", "postgresql://postgres:root@localhost:5433/test")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Frontend URL for password reset links

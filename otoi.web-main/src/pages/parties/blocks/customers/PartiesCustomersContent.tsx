@@ -727,6 +727,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             setRefreshKey((prev) => prev + 1); // Increment key to trigger grid refresh
           }
         }}
+        zIndex="z-[10001]"
         onSuccess={() => {
           setPersonModalOpen(false);
           setRefreshKey((prev) => prev + 1);

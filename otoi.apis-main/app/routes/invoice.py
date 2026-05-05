@@ -269,25 +269,25 @@ def get_invoices():
         required: false
         schema:
           type: integer
-        description: Page number (default: 1)
+        description: Page number
       - name: items_per_page
         in: query
         required: false
         schema:
           type: integer
-        description: Items per page (default: 5)
+        description: Items per page
       - name: sort
         in: query
         required: false
         schema:
           type: string
-        description: Sort field (default: created_at)
+        description: Sort field
       - name: order
         in: query
         required: false
         schema:
           type: string
-        description: Sort order: asc or desc (default: desc)
+        description: Sort order asc or desc
       - name: dropdown
         in: query
         required: false
@@ -299,7 +299,7 @@ def get_invoices():
         required: false
         schema:
           type: boolean
-        description: Return all unique customers (party names) for dropdown
+        description: Return all unique customers for dropdown
       - name: exclude_linked_to_credit_notes
         in: query
         required: false
@@ -932,7 +932,7 @@ def delete_invoice(invoice_id):
         format: uuid
     responses:
       200:
-        description: Invoice deleted successfully (hard or soft delete depending on related records)
+        description: Invoice deleted successfully
       404:
         description: Invoice not found
     """
@@ -1077,10 +1077,10 @@ def record_payment(invoice_id):
                 type: number
               payment_discount:
                 type: number
-                description: Payment discount amount (alternative parameter name: discount)
+                description: Payment discount amount
               discount:
                 type: number
-                description: Payment discount amount (alternative parameter name: payment_discount)
+                description: Payment discount amount
               payment_method:
                 type: string
               reference:
@@ -1340,7 +1340,7 @@ def update_invoice_status(invoice_id):
         in: path
         required: true
         type: string
-        description: Invoice UUID or invoice number (e.g., INV-1010)
+        description: Invoice UUID or invoice number
       - name: status
         in: body
         required: true

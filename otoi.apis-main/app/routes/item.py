@@ -334,8 +334,8 @@ def create_item():
         if not item_code:
             return jsonify({"message": "Item Code is required"}), 400
      
-        # Check for duplicate item_code (only among active items)
-        if Item.query.filter_by(item_code=item_code, is_deleted=False).first():
+        # Check for duplicate item_code (only among active items, exclude NULL values)
+        if Item.query.filter(Item.item_code == item_code, Item.is_deleted == False).first():
             return jsonify({
                 "message": "An Item code already exists",
                 "suggestion": "Please choose a different item code"

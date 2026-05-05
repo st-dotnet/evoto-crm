@@ -125,7 +125,14 @@ export const DataGridProvider = <TData extends object>(props: TDataGridProps<TDa
   // Trigger debounced fetch for server-side data; load local data if serverSide is false
   useEffect(() => {
     loadData();
-  }, [pagination, sorting, columnFilters, mergedProps.data, mergedProps.serverSide]);
+  }, [pagination, sorting, columnFilters, mergedProps.data, mergedProps.serverSide, mergedProps.refreshKey]);
+
+  // Reset pagination when refreshKey changes
+  useEffect(() => {
+    if (mergedProps.refreshKey !== undefined) {
+      setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [mergedProps.refreshKey]);
 
   const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (updaterOrValue) => {
     setRowSelection((prev: RowSelectionState) =>

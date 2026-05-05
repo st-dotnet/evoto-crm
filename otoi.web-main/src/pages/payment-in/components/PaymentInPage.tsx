@@ -578,8 +578,51 @@ export const PaymentInPage = () => {
           <h1 className="text-2xl font-semibold">Payment In</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Status Filter Dropdown */}
-          <div className="w-full sm:w-44">  
+          {/* Desktop Status Segmented Filter */}
+          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
+            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Filters</span>
+            </div>
+            <div className="relative flex items-center">
+              {/* Animated Slider Background with Glow */}
+              <div
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
+                  selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                  selectedStatus === 'paid' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
+                  'bg-yellow-50 border-yellow-200 shadow-yellow-200/50'
+                }`}
+                style={{
+                  width: '90px',
+                  transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                    selectedStatus === 'paid' ? '90px' : '180px'
+                    })`
+                }}
+              />
+
+              <button
+                onClick={() => setSelectedStatus('all')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setSelectedStatus('paid')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'paid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Done
+              </button>
+              <button
+                onClick={() => setSelectedStatus('partially paid')}
+                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'partially paid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Pending
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Fallback Status Filter */}
+          <div className="w-full sm:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 w-full justify-between">
@@ -587,61 +630,54 @@ export const PaymentInPage = () => {
                     <Filter className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate ml-1">
                       {selectedStatus === 'all' && 'All Payments'}
-                      {selectedStatus === 'paid' && 'Paid Payments'}
-                      {selectedStatus === 'partially paid' && 'Pending Payments'}
+                      {selectedStatus === 'paid' && 'Done'}
+                      {selectedStatus === 'partially paid' && 'Pending'}
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('all')}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={() => setSelectedStatus('all')} className="flex items-center gap-2">
                   <Circle className="h-4 w-4 text-gray-500" />
                   <span>All Payments</span>
                   {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('paid')}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={() => setSelectedStatus('paid')} className="flex items-center gap-2">
                   <Circle className="h-4 w-4 text-green-500" />
-                  <span>Done Payments</span>
+                  <span>Done</span>
                   {selectedStatus === 'paid' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSelectedStatus('partially paid')}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={() => setSelectedStatus('partially paid')} className="flex items-center gap-2">
                   <Circle className="h-4 w-4 text-yellow-500" />
-                  <span>Pending Payments</span>
+                  <span>Pending</span>
                   {selectedStatus === 'partially paid' && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           {/* Date Filter Dropdown */}
-          <div className="w-full sm:w-44">
+          <div className="w-full sm:w-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
-                  <div className="flex items-center overflow-hidden">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate ml-1">
-                      {selectedDateFilter === 'all' && 'All Dates'}
-                      {selectedDateFilter === 'today' && 'Today'}
-                      {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
-                      {selectedDateFilter === 'day_after_tomorrow' && 'Day After Tomorrow'}
-                      {selectedDateFilter === 'this_week' && 'This Week'}
-                      {selectedDateFilter === 'last_week' && 'Last Week'}
-                      {selectedDateFilter === 'this_month' && 'This Month'}
-                      {selectedDateFilter === 'last_month' && 'Last Month'}
-                      {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
+                >
+                  <Calendar className="h-4 w-4 text-gray-900" />
+                  <span className="truncate">
+                    {selectedDateFilter === 'all' && 'All Dates'}
+                    {selectedDateFilter === 'today' && 'Today'}
+                    {selectedDateFilter === 'tomorrow' && 'Tomorrow'}
+                    {selectedDateFilter === 'day_after_tomorrow' && 'Day After Tomorrow'}
+                    {selectedDateFilter === 'this_week' && 'This Week'}
+                    {selectedDateFilter === 'last_week' && 'Last Week'}
+                    {selectedDateFilter === 'this_month' && 'This Month'}
+                    {selectedDateFilter === 'last_month' && 'Last Month'}
+                    {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
@@ -693,23 +729,14 @@ export const PaymentInPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Button
-            size="sm"
-            className="h-9 gap-1 w-full bg-blue-600 hover:bg-blue-700 text-white mt-1 sm:mt-0 sm:w-auto"
-            onClick={() => navigate("/payment-in/create")}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="whitespace-nowrap">
-              Create Payment In
-            </span>
-          </Button>
+          {/* Create Payment In Button moved to table header */}
         </div>
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
         {/* Search Bar */}
-        <div className="p-4 border-b">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="p-4 border-b w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
             <div className="relative w-full sm:w-80">
               <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                 <DropdownMenuTrigger asChild>
@@ -762,43 +789,77 @@ export const PaymentInPage = () => {
               </DropdownMenu>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto flex items-center justify-between sm:justify-center"
-                >
-                  <div className="flex items-center truncate min-w-0">
-                    <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
-                    <span className="truncate">
-                      {searchTerm ? (searchType === 'party_name' ? 'Party' : 'No.') : 'Search by'}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48" align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    handleSearchTypeChange('party_name');
-                  }}
-                  className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
-                >
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Party Name
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    handleSearchTypeChange('payment_number');
-                  }}
-                  className={searchType === 'payment_number' ? "bg-blue-50 text-blue-600" : ""}
-                >
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Payment Number
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Desktop Segmented Filter Type */}
+            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+              <div
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                  }`}
+                style={{
+                  width: '100px',
+                  transform: `translateX(${searchType === 'party_name' ? '0px' : '100px'})`
+                }}
+              />
+              <button
+                onClick={() => handleSearchTypeChange('party_name')}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Party Name
+              </button>
+              <button
+                onClick={() => handleSearchTypeChange('payment_number')}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'payment_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Payment No.
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Fallback */}
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto flex items-center justify-between sm:justify-center"
+                  >
+                    <div className="flex items-center truncate min-w-0">
+                      <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
+                      <span className="truncate">
+                        {searchTerm ? (searchType === 'party_name' ? 'Party' : 'No.') : 'Search by'}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange('party_name')}
+                    className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Party Name
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSearchTypeChange('payment_number')}
+                    className={searchType === 'payment_number' ? "bg-blue-50 text-blue-600" : ""}
+                  >
+                    <Filter className="h-3.5 w-3.5 mr-2" />
+                    Payment Number
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Button
+                size="sm"
+                className="h-10 gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg shadow-md shadow-blue-100 transition-all active:scale-95"
+                onClick={() => navigate("/payment-in/create")}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="whitespace-nowrap">Create Payment In</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -814,6 +875,7 @@ export const PaymentInPage = () => {
             </div>
           )}
           <DataGrid
+            refreshKey={refreshKey}
             columns={columns}
             data={payments}
             serverSide={false}

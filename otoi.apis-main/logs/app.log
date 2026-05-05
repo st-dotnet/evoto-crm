@@ -119,3 +119,474 @@
 2026-04-21 20:42:18,840 [INFO] in run: Application startup complete
 2026-04-21 20:47:07,783 [INFO] in run: Application startup complete
 2026-04-21 20:47:11,254 [INFO] in run: Application startup complete
+2026-04-29 16:51:57,550 [INFO] in run: Application startup complete
+2026-04-29 16:51:57,551 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:52:01,510 [INFO] in run: Application startup complete
+2026-04-29 16:52:01,511 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:52:42,246 [INFO] in run: Application startup complete
+2026-04-29 16:52:42,246 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:52:48,952 [INFO] in run: Application startup complete
+2026-04-29 16:52:48,952 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:52:55,497 [INFO] in run: Application startup complete
+2026-04-29 16:52:55,498 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:02,116 [INFO] in run: Application startup complete
+2026-04-29 16:53:02,117 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:10,763 [INFO] in run: Application startup complete
+2026-04-29 16:53:10,764 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:18,595 [INFO] in run: Application startup complete
+2026-04-29 16:53:18,595 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:27,948 [INFO] in run: Application startup complete
+2026-04-29 16:53:27,949 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:36,156 [INFO] in run: Application startup complete
+2026-04-29 16:53:36,156 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:53:44,668 [INFO] in run: Application startup complete
+2026-04-29 16:53:44,669 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:54:02,969 [INFO] in run: Application startup complete
+2026-04-29 16:54:02,969 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:54:10,754 [INFO] in run: Application startup complete
+2026-04-29 16:54:10,755 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:54:17,912 [INFO] in run: Application startup complete
+2026-04-29 16:54:17,912 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:54:54,509 [INFO] in run: Application startup complete
+2026-04-29 16:54:54,509 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:55:07,046 [INFO] in run: Application startup complete
+2026-04-29 16:55:07,046 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:55:22,706 [INFO] in run: Application startup complete
+2026-04-29 16:55:22,707 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:55:36,412 [INFO] in run: Application startup complete
+2026-04-29 16:55:36,413 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:56:23,130 [INFO] in run: Application startup complete
+2026-04-29 16:56:23,131 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:56:40,130 [INFO] in run: Application startup complete
+2026-04-29 16:56:40,130 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:56:49,606 [INFO] in run: Application startup complete
+2026-04-29 16:56:49,606 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:57:01,316 [INFO] in run: Application startup complete
+2026-04-29 16:57:01,317 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:57:16,271 [INFO] in run: Application startup complete
+2026-04-29 16:57:16,272 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:57:21,942 [INFO] in run: Application startup complete
+2026-04-29 16:57:21,943 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:57:56,390 [INFO] in run: Application startup complete
+2026-04-29 16:57:56,390 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:58:43,096 [INFO] in run: Application startup complete
+2026-04-29 16:58:43,097 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:58:52,033 [INFO] in run: Application startup complete
+2026-04-29 16:58:52,033 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:59:13,618 [INFO] in run: Application startup complete
+2026-04-29 16:59:13,621 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 16:59:45,302 [INFO] in run: Application startup complete
+2026-04-29 16:59:45,303 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:00:12,743 [INFO] in run: Application startup complete
+2026-04-29 17:00:12,743 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:00:36,659 [INFO] in run: Application startup complete
+2026-04-29 17:00:36,660 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:00:49,078 [INFO] in run: Application startup complete
+2026-04-29 17:00:49,079 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:01:26,750 [INFO] in run: Application startup complete
+2026-04-29 17:01:26,751 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:01:37,060 [INFO] in run: Application startup complete
+2026-04-29 17:01:37,061 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:01:46,332 [INFO] in run: Application startup complete
+2026-04-29 17:01:46,332 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:03:23,992 [INFO] in run: Application startup complete
+2026-04-29 17:03:23,992 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:03:28,305 [INFO] in run: Application startup complete
+2026-04-29 17:03:28,305 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:03:55,945 [INFO] in run: Application startup complete
+2026-04-29 17:03:55,946 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:04:13,311 [INFO] in run: Application startup complete
+2026-04-29 17:04:13,311 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:15:51,725 [INFO] in run: Application startup complete
+2026-04-29 17:15:51,731 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:15:56,440 [INFO] in run: Application startup complete
+2026-04-29 17:15:56,440 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:16:33,932 [INFO] in run: Application startup complete
+2026-04-29 17:16:33,934 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:17:03,669 [INFO] in run: Application startup complete
+2026-04-29 17:17:03,670 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:17:15,560 [INFO] in run: Application startup complete
+2026-04-29 17:17:15,561 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:17:34,259 [INFO] in run: Application startup complete
+2026-04-29 17:17:34,260 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:17:47,323 [INFO] in run: Application startup complete
+2026-04-29 17:17:47,328 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:17:59,156 [INFO] in run: Application startup complete
+2026-04-29 17:17:59,157 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:18:16,685 [INFO] in run: Application startup complete
+2026-04-29 17:18:16,686 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:18:30,461 [INFO] in run: Application startup complete
+2026-04-29 17:18:30,462 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:18:43,533 [INFO] in run: Application startup complete
+2026-04-29 17:18:43,538 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:18:59,797 [INFO] in run: Application startup complete
+2026-04-29 17:18:59,798 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:20:44,411 [INFO] in run: Application startup complete
+2026-04-29 17:20:44,412 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:21:04,146 [INFO] in run: Application startup complete
+2026-04-29 17:21:04,148 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:21:18,689 [INFO] in run: Application startup complete
+2026-04-29 17:21:18,752 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:21:28,804 [INFO] in run: Application startup complete
+2026-04-29 17:21:28,806 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:21:43,433 [INFO] in run: Application startup complete
+2026-04-29 17:21:43,434 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:22:23,758 [INFO] in run: Application startup complete
+2026-04-29 17:22:23,759 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:22:28,261 [INFO] in run: Application startup complete
+2026-04-29 17:22:28,262 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:22:46,023 [INFO] in run: Application startup complete
+2026-04-29 17:22:46,024 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:22:54,307 [INFO] in run: Application startup complete
+2026-04-29 17:22:54,307 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:23:36,074 [INFO] in run: Application startup complete
+2026-04-29 17:23:36,074 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:23:56,158 [INFO] in run: Application startup complete
+2026-04-29 17:23:56,159 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:24:16,080 [INFO] in run: Application startup complete
+2026-04-29 17:24:16,081 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:24:57,370 [INFO] in run: Application startup complete
+2026-04-29 17:24:57,372 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:25:23,971 [INFO] in run: Application startup complete
+2026-04-29 17:25:23,972 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:25:55,862 [INFO] in run: Application startup complete
+2026-04-29 17:25:55,864 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 17:28:27,389 [INFO] in run: Application startup complete
+2026-04-29 17:28:27,390 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:00:08,811 [INFO] in run: Application startup complete
+2026-04-29 18:00:08,811 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:01:01,896 [INFO] in run: Application startup complete
+2026-04-29 18:01:01,896 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:01:20,512 [INFO] in run: Application startup complete
+2026-04-29 18:01:20,513 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:27:28,177 [INFO] in run: Application startup complete
+2026-04-29 18:27:28,178 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:27:32,785 [INFO] in run: Application startup complete
+2026-04-29 18:27:32,785 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:28:01,893 [INFO] in run: Application startup complete
+2026-04-29 18:28:01,899 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:28:33,606 [INFO] in run: Application startup complete
+2026-04-29 18:28:33,607 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-04-29 18:28:50,689 [INFO] in run: Application startup complete
+2026-04-29 18:28:50,690 [ERROR] in run: Error while initializing database
+Traceback (most recent call last):
+  File "E:\evoto-crm 3\evoto-crm\otoi.apis-main\run.py", line 72, in <module>
+    create_database(app)
+TypeError: create_database() takes 0 positional arguments but 1 was given
+2026-05-01 17:09:56,736 [INFO] in run: Application startup complete
+2026-05-01 17:10:01,554 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:10:09,397 [INFO] in run: Application startup complete
+2026-05-01 17:10:13,034 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:11:01,053 [INFO] in run: Application startup complete
+2026-05-01 17:11:04,087 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:12:56,005 [INFO] in run: Application startup complete
+2026-05-01 17:12:59,214 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:13:03,056 [INFO] in run: Application startup complete
+2026-05-01 17:13:05,082 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:15:55,603 [INFO] in run: Application startup complete
+2026-05-01 17:15:58,385 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:25:29,741 [INFO] in person: Syncing lead b11dd132-4ad3-4314-9512-85fe634567a7 with status 4
+2026-05-01 17:25:29,770 [INFO] in person: Created/Updated customer c7388259-7673-4682-af13-07e321a88db5 for lead b11dd132-4ad3-4314-9512-85fe634567a7
+2026-05-01 17:26:31,055 [INFO] in customer: Updating customer c7388259-7673-4682-af13-07e321a88db5 with data: {'shipping_addresses': [{'uuid': '1777636591454', 'address1': 'Building Number: 4004', 'address2': None, 'city': 'Chongqing', 'state': 'CQ', 'country': 'CN', 'pin': '88990', 'address_type': 'home', 'is_default': True}]}
+2026-05-01 17:32:34,877 [INFO] in run: Application startup complete
+2026-05-01 17:32:36,942 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:32:53,065 [INFO] in run: Application startup complete
+2026-05-01 17:32:55,253 [INFO] in run: Database initialized and seeded successfully
+2026-05-01 17:34:17,434 [INFO] in person: Syncing lead 6c7f8716-a8fb-425e-b05f-16485f80630c with status 4
+2026-05-01 17:34:17,454 [INFO] in person: Created/Updated customer 1cf4a886-a4cd-480b-8be8-2c88796a0933 for lead 6c7f8716-a8fb-425e-b05f-16485f80630c

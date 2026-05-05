@@ -27,6 +27,7 @@ interface IModalCustomerProps {
   title?: string; // Optional custom title for the dialog
   hideStatusField?: boolean;
   hideSameAsBilling?: boolean; // New prop to hide same as billing checkbox
+  zIndex?: string; // New prop to control z-index
 }
 
 interface PersonType {
@@ -426,6 +427,7 @@ const ModalCustomer = ({
   defaultStatus,
   hideStatusField = false,
   hideSameAsBilling = false,
+  zIndex,
 }: IModalCustomerProps) => {
   const [loading, setLoading] = useState(false);
   const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
@@ -922,7 +924,7 @@ const ModalCustomer = ({
   return (
     <Fragment>
       <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg z-50 max-h-[95vh] flex flex-col">
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg max-h-[95vh] flex flex-col" zIndex={zIndex}>
           <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b rounded-t-lg">
             <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
               {title || (customer ? "Edit Customer" : "Add Customer")}

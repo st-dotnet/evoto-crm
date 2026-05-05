@@ -1,5 +1,4 @@
 import axios from "axios";
-import { toast } from "sonner";
 
 const API_URL = import.meta.env.VITE_APP_API_URL;
 
@@ -36,6 +35,25 @@ interface PaymentInData {
   invoice_id?: string;
   invoice_number?: string;
 }
+
+// Helper to extract data array and pagination from various API response formats
+const extractData = (response: any) => {
+  const data = response.data;
+  if (!data) return { items: [], pagination: {} };
+
+  if (Array.isArray(data)) {
+    return { items: data, pagination: {} };
+  }
+
+  // Handle nested structures: { data: [...] }, { invoices: [...] }, { payments: [...] }
+  const items = data.data || data.invoices || data.payments || [];
+  const pagination = data.pagination || {};
+
+  return {
+    items: Array.isArray(items) ? items : [],
+    pagination
+  };
+};
 
 export const createPaymentIn = async (
   paymentData: PaymentInData,
@@ -79,6 +97,9 @@ export const createPaymentIn = async (
   }
 };
 
+// Cache for endpoint availability to avoid repeated 404s in the console
+let isPaymentInAvailable = true;
+
 export const getPaymentInList = async (
   page = 1,
   per_page = 5,
@@ -98,213 +119,172 @@ export const getPaymentInList = async (
 
   try {
     let response;
-    let isPaymentInEndpoint = true;
-    
-    // Try /payment-in endpoint first (staging), fallback to /invoices (local)
-    try {
-      // Build API URL with filters using the new payment-in endpoint
-      let apiUrl = `${API_URL}/payment-in?page=${page}&per_page=${per_page}`;
+    let isPaymentInEndpoint = isPaymentInAvailable;
 
-      if (payment_status && payment_status !== 'all') {
-        const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
-        apiUrl += `&payment_status=${backendStatus}`;
-      }
-
-      if (party_name) {
-        apiUrl += `&party_name=${encodeURIComponent(party_name)}`;
-      }
-
-      if (payment_number) {
-        apiUrl += `&payment_number=${encodeURIComponent(payment_number)}`;
-      }
-
-      if (date_filter) {
-        apiUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
-      }
-
-      response = await axios.get(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: false,
-      });
-    } catch (paymentInError: any) {
-      // If /payment-in fails with 404 or network error, fall back to /invoices
-      const errorStatus = paymentInError.response?.status;
-      const isNetworkError = !errorStatus && paymentInError.code === 'ERR_NETWORK';
-      // Fallback on 404 OR network error (backend not running)
-      if (errorStatus === 404 || isNetworkError) {
-        isPaymentInEndpoint = false;
-        let fallbackUrl = `${API_URL}/invoices?page=${page}&per_page=${per_page}`;
+    // Try /payment-in endpoint if it's believed to be available
+    if (isPaymentInAvailable) {
+      try {
+        let apiUrl = `${API_URL}/payment-in?page=${page}&per_page=${per_page}`;
 
         if (payment_status && payment_status !== 'all') {
           const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
-          fallbackUrl += `&payment_status=${backendStatus}`;
+          apiUrl += `&payment_status=${backendStatus}`;
         }
 
         if (party_name) {
-          fallbackUrl += `&party_name=${encodeURIComponent(party_name)}`;
+          apiUrl += `&party_name=${encodeURIComponent(party_name)}`;
+        }
+
+        if (payment_number) {
+          apiUrl += `&payment_number=${encodeURIComponent(payment_number)}`;
         }
 
         if (date_filter) {
-          fallbackUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
+          apiUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
         }
 
-        response = await axios.get(fallbackUrl, {
+        response = await axios.get(apiUrl, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           withCredentials: false,
         });
-      } else {
-        throw paymentInError;
+      } catch (paymentInError: any) {
+        const errorStatus = paymentInError.response?.status;
+        const isNetworkError = !errorStatus && paymentInError.code === 'ERR_NETWORK';
+
+        if (errorStatus === 404 || isNetworkError) {
+          isPaymentInAvailable = false;
+          isPaymentInEndpoint = false;
+        } else {
+          throw paymentInError;
+        }
       }
     }
 
-    // Check if response.data is an array, if not try to extract the array
-    let invoicesData = response.data;
-    let paginationData: any = {};
-    
-    if (!Array.isArray(response.data)) {
-      // The actual array is nested under response.data.data
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        invoicesData = response.data.data;
-        paginationData = response.data.pagination || {};
-      } else if (
-        response.data?.invoices &&
-        Array.isArray(response.data.invoices)
-      ) {
-        invoicesData = response.data.invoices;
-        paginationData = response.data.pagination || {};
-      } else if (response.data?.payments && Array.isArray(response.data.payments)) {
-        // Handle /payment-in response format
-        invoicesData = response.data.payments;
-        paginationData = response.data.pagination || {};
-      } else {
-        return {
-          success: false,
-          error: "Invalid API response format",
-          status: response.status,
-        };
+    // Fallback to /invoices if needed
+    if (!isPaymentInEndpoint) {
+      let fallbackUrl = `${API_URL}/invoices?page=${page}&per_page=${per_page}`;
+
+      if (payment_status && payment_status !== 'all') {
+        const backendStatus = payment_status === 'partially paid' ? 'partial' : payment_status;
+        fallbackUrl += `&payment_status=${backendStatus}`;
       }
+
+      if (party_name) {
+        fallbackUrl += `&party_name=${encodeURIComponent(party_name)}`;
+      }
+
+      if (date_filter) {
+        fallbackUrl += `&date_filter=${encodeURIComponent(date_filter)}`;
+      }
+
+      response = await axios.get(fallbackUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      });
     }
+
+    if (!response) {
+      throw new Error("No response received from API");
+    }
+
+    const { items, pagination } = extractData(response);
+    let invoicesData = items;
 
     let finalData;
-    
     if (isPaymentInEndpoint) {
-      // Using /payment-in endpoint - data is already in payment format
       finalData = {
         data: invoicesData,
-        pagination: paginationData,
+        pagination: pagination,
       };
     } else {
-      // Using fallback /invoices endpoint - need to transform invoice data to payment format
-      
-      // For 'all' status, filter out unpaid invoices client-side
+      // Filter for paid/partial when using fallback invoices endpoint
       if (!payment_status || payment_status === 'all') {
         invoicesData = invoicesData.filter((invoice: any) => {
-          const paymentStatus = invoice.payment_status;
-          return paymentStatus === 'paid' || paymentStatus === 'partial';
+          const status = invoice.payment_status?.toLowerCase();
+          return status === 'paid' || status === 'partial';
         });
       }
 
-      // Transform invoice data to payment format
-      const paymentData = invoicesData.map((invoice: any) => {
-        // Use invoice UUID for payment deletion as backend expects invoice-based endpoint
+      const transformedData = invoicesData.map((invoice: any) => {
         const invoiceId = invoice.uuid || invoice.id;
-        
         return {
           id: invoiceId,
-          payment_number: `PAY-${invoice.invoice_number || "INV"}`,
-        date:
-          invoice.updated_at ||
-          invoice.invoice_date ||
-          new Date().toISOString().split("T")[0],
-        party_name:
-          invoice.customer?.name || invoice.customer_name || "Unknown Customer",
-        total_amount_settled: invoice.total_amount || 0,
-        amount_received: invoice.amount_paid || 0,
-        payment_discount: invoice.payment_discount || invoice.discount_total || 0,
-        payment_mode: "cash",
-        invoice_id: invoice.uuid || invoice.id,
-        invoice_number: invoice.invoice_number || invoice.invoiceNo,
-        balance_due: invoice.balance_due || 0,
-        payment_status:
-          ((invoice.balance_due || 0) === 0
-            ? "paid"
-            : (invoice.amount_paid || 0) > 0
-              ? "partially paid"
-              : "unpaid"),
+          payment_number: `PAY-${invoice.invoice_number || invoice.invoiceNo || "INV"}`,
+          date: invoice.updated_at || invoice.invoice_date || new Date().toISOString().split("T")[0],
+          party_name: invoice.customer?.name || invoice.customer_name || "Unknown Customer",
+          total_amount_settled: parseFloat(invoice.total_amount) || 0,
+          amount_received: parseFloat(invoice.amount_paid) || 0,
+          payment_discount: parseFloat(invoice.payment_discount || invoice.discount_total) || 0,
+          payment_mode: "cash",
+          invoice_id: invoiceId,
+          invoice_number: invoice.invoice_number || invoice.invoiceNo,
+          balance_due: parseFloat(invoice.balance_due) || 0,
+          payment_status: (parseFloat(invoice.balance_due) || 0) === 0 ? "paid" : (parseFloat(invoice.amount_paid) || 0) > 0 ? "partially paid" : "unpaid",
+          status: (parseFloat(invoice.balance_due) || 0) === 0 ? "paid" : (parseFloat(invoice.amount_paid) || 0) > 0 ? "partially paid" : "unpaid",
         };
       });
 
-      // Update pagination data for 'all' status to reflect filtered count
-      if (!payment_status || payment_status === 'all') {
-        if (paginationData.total) {
-          paginationData.total = invoicesData.length;
-          paginationData.last_page = Math.ceil(invoicesData.length / per_page);
-        }
-      }
-
       finalData = {
-        data: paymentData,
-        pagination: paginationData,
+        data: transformedData,
+        pagination: {
+          ...pagination,
+          total: (!payment_status || payment_status === 'all') ? transformedData.length : (pagination.total || transformedData.length)
+        },
       };
     }
 
     return {
       success: true,
       data: finalData,
-      status: response?.status || 200,
+      status: response.status,
     };
   } catch (error: any) {
-    let errorMessage = "Failed to fetch payment records";
-    if (error.response?.status === 401) {
-      errorMessage = "Session expired. Please log in again.";
-    }
-
     return {
       success: false,
-      error: errorMessage,
-      status: error?.response?.status || 500,
+      error: error.response?.status === 401 ? "Session expired. Please log in again." : "Failed to fetch payment records",
+      status: error.response?.status || 500,
     };
   }
 };
 
 export const getPaymentById = async (id: string): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
-  }
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    // Use payment-in/invoice endpoint to get payment details (matches delete endpoint pattern)
-    const response = await axios.get(`${API_URL}/payment-in/invoice/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      withCredentials: false,
-    });
+    let response;
+    let isPaymentInEndpoint = isPaymentInAvailable;
 
-    if (response.data) {
-      return {
-        success: true,
-        data: response.data,
-      };
-    } else {
-      return {
-        success: false,
-        error: "Payment not found",
-        status: 404,
-      };
+    if (isPaymentInAvailable) {
+      try {
+        response = await axios.get(`${API_URL}/payment-in/invoice/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err: any) {
+        if (err.response?.status === 404 || !err.response) {
+          isPaymentInAvailable = false;
+          isPaymentInEndpoint = false;
+        } else throw err;
+      }
     }
+
+    if (!isPaymentInEndpoint) {
+      response = await axios.get(`${API_URL}/invoices/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+
+    if (response?.data) {
+      const data = response.data.data || response.data;
+      return { success: true, data };
+    }
+    return { success: false, error: "Payment not found", status: 404 };
   } catch (error: any) {
     return {
       success: false,
@@ -316,54 +296,37 @@ export const getPaymentById = async (id: string): Promise<ApiResponse> => {
 
 export const deletePaymentIn = async (id: string): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
-  }
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    // Use invoice-based endpoint as specified by backend
-    const response = await axios.delete(
-      `${API_URL}/payment-in/invoice/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: false,
+    let response;
+    let isPaymentInEndpoint = isPaymentInAvailable;
+
+    if (isPaymentInAvailable) {
+      try {
+        response = await axios.delete(`${API_URL}/payment-in/invoice/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err: any) {
+        if (err.response?.status === 404 || !err.response) {
+          isPaymentInAvailable = false;
+          isPaymentInEndpoint = false;
+        } else throw err;
       }
-    );
-
-    if (response.data) {
-      return {
-        success: true,
-        data: response.data,
-        status: response.status,
-      };
-    } else {
-      return {
-        success: false,
-        error: "Failed to delete payment",
-        status: response.status,
-      };
     }
+
+    if (!isPaymentInEndpoint) {
+      response = await axios.delete(`${API_URL}/invoices/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+
+    return { success: true, data: response?.data, status: response?.status };
   } catch (error: any) {
-    let errorMessage = "Failed to delete payment";
-    if (error.response?.status === 401) {
-      errorMessage = "Session expired. Please log in again.";
-    } else if (error.response?.status === 404) {
-      errorMessage = "Payment not found";
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    }
-
     return {
       success: false,
-      error: errorMessage,
-      status: error?.response?.status || 500,
+      error: error.response?.data?.error || "Failed to delete payment",
+      status: error.response?.status || 500,
     };
   }
 };
@@ -372,305 +335,113 @@ export const generatePaymentNumber = (): string => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const random = Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, "0");
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
   return `PAY-${year}${month}-${random}`;
 };
 
-// Function to get payment numbers for autocomplete
 export const getPaymentNumbersDropdown = async (): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
-  }
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    // Fetch all invoices with payments to get payment numbers
-    const response = await axios.get(
-      `${API_URL}/invoices?per_page=1000`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: false,
-      },
-    );
+    const response = await axios.get(`${API_URL}/invoices?per_page=1000`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    let invoicesData = response.data;
-    if (!Array.isArray(response.data)) {
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        invoicesData = response.data.data;
-      } else if (response.data?.invoices && Array.isArray(response.data.invoices)) {
-        invoicesData = response.data.invoices;
-      }
-    }
+    const { items } = extractData(response);
+    const paymentNumbers = items
+      .filter((inv: any) => (inv.payment_status === 'paid' || inv.payment_status === 'partial') && (inv.invoice_number || inv.invoiceNo))
+      .map((inv: any) => `PAY-${inv.invoice_number || inv.invoiceNo}`);
 
-    // Filter invoices that have payments and extract payment numbers
-    const paymentNumbers = invoicesData
-      .filter((invoice: any) =>
-        (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
-        invoice.invoice_number
-      )
-      .map((invoice: any) => `PAY-${invoice.invoice_number}`);
-
-    return {
-      success: true,
-      data: paymentNumbers,
-      status: response.status,
-    };
+    return { success: true, data: paymentNumbers, status: response.status };
   } catch (error: any) {
-    return {
-      success: false,
-      error: "Failed to fetch payment numbers",
-      status: error?.response?.status || 500,
-    };
+    return { success: false, error: "Failed to fetch payment numbers", status: error.response?.status || 500 };
   }
 };
 
-// Function to get party names for autocomplete
 export const getPartyNamesDropdown = async (): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
-  }
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    // Fetch all invoices with payments to get party names
-    const response = await axios.get(
-      `${API_URL}/invoices?per_page=1000`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: false,
-      },
-    );
+    const response = await axios.get(`${API_URL}/invoices?per_page=1000`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    let invoicesData = response.data;
-    if (!Array.isArray(response.data)) {
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        invoicesData = response.data.data;
-      } else if (response.data?.invoices && Array.isArray(response.data.invoices)) {
-        invoicesData = response.data.invoices;
-      }
-    }
-
-    // Filter invoices that have payments and extract unique party names
+    const { items } = extractData(response);
     const partyNames = [...new Set(
-      invoicesData
-        .filter((invoice: any) =>
-          (invoice.payment_status === 'paid' || invoice.payment_status === 'partial') &&
-          invoice.customer_name
-        )
-        .map((invoice: any) => invoice.customer_name)
+      items
+        .filter((inv: any) => (inv.payment_status === 'paid' || inv.payment_status === 'partial') && (inv.customer_name || inv.customer?.name))
+        .map((inv: any) => inv.customer_name || inv.customer?.name)
     )];
 
-    return {
-      success: true,
-      data: partyNames,
-      status: response.status,
-    };
+    return { success: true, data: partyNames, status: response.status };
   } catch (error: any) {
-    return {
-      success: false,
-      error: "Failed to fetch party names",
-      status: error?.response?.status || 500,
-    };
+    return { success: false, error: "Failed to fetch party names", status: error.response?.status || 500 };
   }
 };
 
-// Function to create payment entry when invoice status is changed to paid
-export const getPartyInvoices = async (
-  partyName: string,
-): Promise<ApiResponse> => {
+export const getPartyInvoices = async (partyName: string): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
-  }
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
 
   try {
-    // Fetch invoices for the specific party using server-side filtering
-    const response = await axios.get(
-      `${API_URL}/invoices?party_name=${encodeURIComponent(partyName)}&per_page=1000`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: false,
-      },
-    );
+    const response = await axios.get(`${API_URL}/invoices?party_name=${encodeURIComponent(partyName)}&per_page=1000`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    // Check if response.data is an array, if not try to extract the array
-    let invoicesData = response.data;
-    if (!Array.isArray(response.data)) {
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        invoicesData = response.data.data;
-      } else if (
-        response.data?.invoices &&
-        Array.isArray(response.data.invoices)
-      ) {
-        invoicesData = response.data.invoices;
-      } else {
-        return {
-          success: false,
-          error: "Invalid API response format",
-          status: response.status,
-        };
-      }
-    }
+    const { items } = extractData(response);
+    const transformed = items
+      .filter((inv: any) => {
+        const bal = parseFloat(inv.balance_due) || 0;
+        const paid = parseFloat(inv.amount_paid) || 0;
+        return (bal === 0 && paid > 0) || (bal > 0 && paid > 0);
+      })
+      .map((inv: any) => ({
+        id: inv.uuid || inv.id,
+        date: inv.invoice_date || inv.created_at || new Date().toISOString().split("T")[0],
+        invoice_number: inv.invoice_number || inv.invoiceNo || "N/A",
+        invoice_amount: parseFloat(inv.total_amount) || 0,
+        tds: parseFloat(inv.tds) || 0,
+        discount: parseFloat(inv.payment_discount || inv.discount_total || inv.discount) || 0,
+        amount_received: parseFloat(inv.amount_paid) || 0,
+        balance_amount: parseFloat(inv.balance_due) || 0,
+        balance_due: parseFloat(inv.balance_due) || 0,
+        payment_status: (parseFloat(inv.balance_due) || 0) === 0 ? "paid" : (parseFloat(inv.amount_paid) || 0) > 0 ? "partially paid" : "unpaid",
+        status: (parseFloat(inv.balance_due) || 0) === 0 ? "paid" : (parseFloat(inv.amount_paid) || 0) > 0 ? "partially paid" : "unpaid",
+      }));
 
-    // The server already filtered by party name, now filter by payment status (paid/partially paid)
-    const partyInvoices =
-      invoicesData?.filter((invoice: any) => {
-        // Consider invoice paid if balance_due is 0 and amount_paid > 0
-        const isPaid =
-          (invoice.balance_due === 0 || invoice.balance_due === "0") &&
-          invoice.amount_paid &&
-          invoice.amount_paid > 0;
-
-        // Invoice which are partially paid if balance_due > 0 and amount_paid > 0
-        const isPartiallyPaid =
-          (invoice.balance_due > 0 && invoice.balance_due !== "0") &&
-          invoice.amount_paid &&
-          invoice.amount_paid > 0;
-
-        // Include both paid and partially paid invoices, exclude unpaid
-        return isPaid || isPartiallyPaid;
-      }) || [];
-
-    // Transform invoice data to table format
-    const invoiceTableData = partyInvoices.map((invoice: any) => ({
-      id: invoice.uuid || invoice.id,
-      date:
-        invoice.invoice_date ||
-        invoice.created_at ||
-        new Date().toISOString().split("T")[0],
-      invoice_number: invoice.invoice_number || invoice.invoiceNo || "N/A",
-      invoice_amount: invoice.total_amount || 0,
-      tds: invoice.tds || 0,
-      discount:
-        invoice.payment_discount ||
-        invoice.discount_total ||
-        invoice.discount ||
-        0,
-      amount_received: invoice.amount_paid || 0,
-      balance_amount: invoice.balance_due || 0,
-      balance_due: invoice.balance_due || 0,
-      payment_status:
-        ((invoice.balance_due || 0) === 0
-          ? "paid"
-          : (invoice.amount_paid || 0) > 0
-            ? "partially paid"
-            : "unpaid"),
-      status:
-        (invoice.balance_due || 0) === 0
-          ? "paid"
-          : (invoice.amount_paid || 0) > 0
-            ? "partially paid"
-            : "unpaid",
-    }));
-
-    return {
-      success: true,
-      data: invoiceTableData,
-      status: response.status,
-    };
+    return { success: true, data: transformed, status: response.status };
   } catch (error: any) {
-    let errorMessage = "Failed to fetch party invoices";
-    if (error.response?.status === 401) {
-      errorMessage = "Session expired. Please log in again.";
-    }
-
-    return {
-      success: false,
-      error: errorMessage,
-      status: error?.response?.status || 500,
-    };
+    return { success: false, error: "Failed to fetch party invoices", status: error.response?.status || 500 };
   }
 };
 
-export const createPaymentFromInvoice = async (
-  invoiceData: any,
-): Promise<ApiResponse> => {
+export const createPaymentFromInvoice = async (invoiceData: any): Promise<ApiResponse> => {
   const token = getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error: "Authentication required. Please log in again.",
-      status: 401,
-    };
+  if (!token) return { success: false, error: "Authentication required.", status: 401 };
+
+  if (invoiceData.status !== "paid" || !invoiceData.amount_paid || invoiceData.amount_paid <= 0) {
+    return { success: false, error: "Invalid invoice status for payment", status: 400 };
   }
 
-  // Only create payment if invoice status is 'paid' and there's an amount paid
-  if (
-    invoiceData.status !== "paid" ||
-    !invoiceData.amount_paid ||
-    invoiceData.amount_paid <= 0
-  ) {
-    return {
-      success: false,
-      error:
-        "Invoice must be paid status with valid amount to create payment entry",
-      status: 400,
-    };
-  }
-
-  const paymentData: PaymentInData = {
+  const payload: PaymentInData = {
     payment_number: generatePaymentNumber(),
-    date: new Date().toISOString().split("T")[0], // Current date
-    party_name:
-      invoiceData.selectedCustomer?.name ||
-      invoiceData.customer_name ||
-      "Unknown Customer",
-    total_amount_settled: invoiceData.total_amount || 0,
-    amount_received: invoiceData.amount_paid,
-    payment_mode: "cash", // Default payment mode, can be made configurable
+    date: new Date().toISOString().split("T")[0],
+    party_name: invoiceData.selectedCustomer?.name || invoiceData.customer_name || invoiceData.customer?.name || "Unknown Customer",
+    total_amount_settled: parseFloat(invoiceData.total_amount) || 0,
+    amount_received: parseFloat(invoiceData.amount_paid),
+    payment_mode: "cash",
     invoice_id: invoiceData.uuid || invoiceData.id,
     invoice_number: invoiceData.invoiceNo || invoiceData.invoice_number,
   };
 
   try {
-    const response = await axios.post(`${API_URL}/payment-in`, paymentData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      withCredentials: false,
+    const response = await axios.post(`${API_URL}/payment-in`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
-    return {
-      success: true,
-      data: response.data,
-      status: response.status,
-    };
+    return { success: true, data: response.data, status: response.status };
   } catch (error: any) {
-    let errorMessage = "Failed to create payment entry from invoice";
-    if (error.response?.status === 400) {
-      errorMessage = error.response.data?.error || "Invalid payment data";
-    } else if (error.response?.status === 401) {
-      errorMessage = "Session expired. Please log in again.";
-    }
-
-    return {
-      success: false,
-      error: errorMessage,
-      status: error?.response?.status || 500,
-    };
+    return { success: false, error: error.response?.data?.error || "Failed to create payment entry", status: error.response?.status || 500 };
   }
 };

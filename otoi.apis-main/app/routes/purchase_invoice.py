@@ -208,7 +208,7 @@ def create_from_purchase_order(po_id):
                 type: string
     responses:
       201:
-        description: Purchase Invoice created (payment_status = unpaid)
+        description: Purchase Invoice created
       404:
         description: PO not found
       409:
@@ -620,15 +620,15 @@ def list_purchase_invoices():
       - name: vendor_names_dropdown
         in: query
         type: boolean
-        description: Set to "true" to get unique vendor names for dropdown
+        description: Set to true to get unique vendor names for dropdown
       - name: invoice_numbers_dropdown
         in: query
         type: boolean
-        description: Set to "true" to get unique invoice numbers for dropdown
+        description: Set to true to get unique invoice numbers for dropdown
       - name: payment_statuses_dropdown
         in: query
         type: boolean
-        description: Set to "true" to get unique payment statuses for dropdown
+        description: Set to true to get unique payment statuses for dropdown
       - name: page
         in: query
         type: integer

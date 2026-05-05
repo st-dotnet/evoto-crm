@@ -20,7 +20,8 @@ import {
     Eye,
     Trash2,
     CreditCard,
-    FileText
+    FileText,
+    User
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -80,57 +81,72 @@ const DebitNotePage = () => {
     const [debitNoteToDelete, setDebitNoteToDelete] = useState<string | null>(null);
     const [selectedDateFilter, setSelectedDateFilter] = useState<string>('last_365_days');
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
 
     // Helper function to convert date filter to date range
     const getDateRange = useCallback(() => {
         const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth();
-        const date = today.getDate();
+
+        // Helper to format date as YYYY-MM-DD in local time
+        const formatDate = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const todayStr = formatDate(today);
 
         switch (selectedDateFilter) {
             case 'today':
                 return {
-                    date_from: today.toISOString().split('T')[0],
-                    date_to: today.toISOString().split('T')[0]
+                    date_from: todayStr,
+                    date_to: todayStr
                 };
-            case 'this_week':
+            case 'this_week': {
                 const startOfWeek = new Date(today);
-                startOfWeek.setDate(date - today.getDay());
+                startOfWeek.setDate(today.getDate() - today.getDay());
                 const endOfWeek = new Date(startOfWeek);
                 endOfWeek.setDate(startOfWeek.getDate() + 6);
                 return {
-                    date_from: startOfWeek.toISOString().split('T')[0],
-                    date_to: endOfWeek.toISOString().split('T')[0]
+                    date_from: formatDate(startOfWeek),
+                    date_to: formatDate(endOfWeek)
                 };
-            case 'last_week':
+            }
+            case 'last_week': {
                 const startOfLastWeek = new Date(today);
-                startOfLastWeek.setDate(date - today.getDay() - 7);
+                startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
                 const endOfLastWeek = new Date(startOfLastWeek);
                 endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
                 return {
-                    date_from: startOfLastWeek.toISOString().split('T')[0],
-                    date_to: endOfLastWeek.toISOString().split('T')[0]
+                    date_from: formatDate(startOfLastWeek),
+                    date_to: formatDate(endOfLastWeek)
                 };
-            case 'this_month':
+            }
+            case 'this_month': {
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                 return {
-                    date_from: new Date(year, month, 1).toISOString().split('T')[0],
-                    date_to: new Date(year, month + 1, 0).toISOString().split('T')[0]
+                    date_from: formatDate(startOfMonth),
+                    date_to: formatDate(endOfMonth)
                 };
-            case 'last_month':
+            }
+            case 'last_month': {
+                const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
                 return {
-                    date_from: new Date(year, month - 1, 1).toISOString().split('T')[0],
-                    date_to: new Date(year, month, 0).toISOString().split('T')[0]
+                    date_from: formatDate(startOfLastMonth),
+                    date_to: formatDate(endOfLastMonth)
                 };
-            case 'last_365_days':
+            }
+            case 'last_365_days': {
                 const lastYear = new Date(today);
-                lastYear.setDate(date - 365);
+                lastYear.setDate(today.getDate() - 365);
                 return {
-                    date_from: lastYear.toISOString().split('T')[0],
-                    date_to: today.toISOString().split('T')[0]
+                    date_from: formatDate(lastYear),
+                    date_to: todayStr
                 };
+            }
             default:
                 return {};
         }
@@ -514,15 +530,9 @@ const DebitNotePage = () => {
                 disableRowClick: true,
             },
             cell: ({ row }) => {
-                const [isOpen, setIsOpen] = useState(false);
-
-                useEffect(() => {
-                    setIsDropdownOpen(isOpen);
-                }, [isOpen]);
-
                 return (
                     <div className="flex justify-center">
-                        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+                        <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
@@ -546,7 +556,6 @@ const DebitNotePage = () => {
                                         navigate(`/debit-note/view/${row.original.id}`, {
                                             state: { debitNoteData: rawDebitNote }
                                         });
-                                        setIsOpen(false);
                                     }}
                                 >
                                     <Eye className="mr-2 h-4 w-4" />
@@ -564,7 +573,6 @@ const DebitNotePage = () => {
                                         navigate(`/debit-note/edit/${row.original.id}`, {
                                             state: { debitNoteData: rawDebitNote }
                                         });
-                                        setIsOpen(false);
                                     }}
                                 >
                                     <Edit className="mr-2 h-4 w-4" />
@@ -577,7 +585,6 @@ const DebitNotePage = () => {
                                         e.stopPropagation();
                                         e.nativeEvent.stopImmediatePropagation();
                                         handleDelete(row.original.id);
-                                        setIsOpen(false);
                                     }}
                                 >
                                     <Trash2 className="mr-2 h-4 w-4 text-red-500" />
@@ -592,65 +599,68 @@ const DebitNotePage = () => {
     ], []);
 
     return (
-        <div className="container-fluid p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Debit Notes</h1>
+        <div className="container-fluid p-6">            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex items-center gap-2">
-                    <div className="w-44">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                                    <Filter className="h-3.5 w-3.5" />
-                                    <span className="truncate">
-                                        {selectedStatus === 'all' && 'All Debit Notes'}
-                                        {selectedStatus === 'unpaid' && 'Unpaid'}
-                                        {selectedStatus === 'credited' && 'Credited'}
-                                    </span>
-                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[200px]">
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedStatus('all');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-gray-500" />
-                                    <span>All Debit Notes</span>
-                                    {selectedStatus === 'all' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedStatus('unpaid');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-red-500" />
-                                    <span>Unpaid</span>
-                                    {selectedStatus === 'unpaid' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedStatus('credited');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-green-500" />
-                                    <span>Credited</span>
-                                    {selectedStatus === 'credited' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                    <h1 className="text-2xl font-bold">Debit Notes</h1>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    {/* Floating Glass Status Filter */}
+                    <div className="relative bg-gray-50/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 shadow-sm flex items-center min-w-fit">
+                        {/* Integrated Label */}
+                        <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 mr-1">
+                            <Filter className="h-3.5 w-3.5 text-gray-900" />
+                            <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Filters</span>
+                        </div>
+
+                        <div className="relative flex items-center">
+                            {/* Animated Slider Background with Glow */}
+                            <div
+                                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
+                                    selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
+                                    selectedStatus === 'unpaid' ? 'bg-orange-50 border-orange-200 shadow-orange-200/50' :
+                                    'bg-blue-50 border-blue-200 shadow-blue-200/50'
+                                }`}
+                                style={{
+                                    width: '90px',
+                                    transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                                        selectedStatus === 'unpaid' ? '90px' : '180px'
+                                        })`
+                                }}
+                            />
+
+                            {/* Status Buttons */}
+                            <button
+                                onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }}
+                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => { setSelectedStatus('unpaid'); setRefreshKey(prev => prev + 1); }}
+                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'unpaid' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Unpaid
+                            </button>
+                            <button
+                                onClick={() => { setSelectedStatus('credited'); setRefreshKey(prev => prev + 1); }}
+                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'credited' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Credited
+                            </button>
+                        </div>
                     </div>
-                    <div className="w-36">
+
+                    {/* Date Filter Dropdown */}
+                    <div className="w-full sm:w-auto">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-8 w-full gap-1">
-                                    <Calendar className="h-3.5 w-3.5" />
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
+                                >
+                                    <Calendar className="h-4 w-4 text-gray-900" />
                                     <span className="truncate">
                                         {selectedDateFilter === 'today' && 'Today'}
                                         {selectedDateFilter === 'this_week' && 'This Week'}
@@ -658,215 +668,164 @@ const DebitNotePage = () => {
                                         {selectedDateFilter === 'this_month' && 'This Month'}
                                         {selectedDateFilter === 'last_month' && 'Last Month'}
                                         {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                                        {!selectedDateFilter && 'All Time'}
                                     </span>
-                                    <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[200px]">
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('today');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-blue-500" />
-                                    <span>Today</span>
-                                    {selectedDateFilter === 'today' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('this_week');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-green-500" />
-                                    <span>This Week</span>
-                                    {selectedDateFilter === 'this_week' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('last_week');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-yellow-500" />
-                                    <span>Last Week</span>
-                                    {selectedDateFilter === 'last_week' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('this_month');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-purple-500" />
-                                    <span>This Month</span>
-                                    {selectedDateFilter === 'this_month' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('last_month');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-orange-500" />
-                                    <span>Last Month</span>
-                                    {selectedDateFilter === 'last_month' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDateFilter('last_365_days');
-                                        setRefreshKey(prev => prev + 1);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Circle className="h-4 w-4 text-indigo-500" />
-                                    <span>Last 365 Days</span>
-                                    {selectedDateFilter === 'last_365_days' && <Check className="h-4 w-4 ml-auto" />}
-                                </DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-[180px]">
+                                {[
+                                    { val: 'today', label: 'Today' },
+                                    { val: 'this_week', label: 'This Week' },
+                                    { val: 'last_week', label: 'Last Week' },
+                                    { val: 'this_month', label: 'This Month' },
+                                    { val: 'last_month', label: 'Last Month' },
+                                    { val: 'last_365_days', label: 'Last 365 Days' },
+                                ].map(({ val, label }) => (
+                                    <DropdownMenuItem key={val} onClick={() => { setSelectedDateFilter(val); setRefreshKey(prev => prev + 1); }}>
+                                        {label}
+                                    </DropdownMenuItem>
+                                ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
 
-                    <Button
-                        size="sm"
-                        className="h-8 gap-1"
-                        onClick={() => navigate('/debit-note/create')}
-                    >
-                        <Plus className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                            Create Debit Note
-                        </span>
-                    </Button>
+                    <div className="flex-grow md:block hidden" />
                 </div>
             </div>
-
-            <div className="bg-white border rounded-lg overflow-hidden">
-                <div className="py-5 px-4 bg-white border-b flex items-center justify-start">
-                    <div className="relative w-fit">
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex items-center gap-2">
-                                <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="h-10 w-80 justify-start px-3" disabled={isDropdownLoading}>
-                                            {isDropdownLoading ? (
-                                                <span className="flex items-center">
-                                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                                                    Loading...
-                                                </span>
-                                            ) : (
-                                                searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by debit note number...')
-                                            )}
-                                            {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4" />}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto">
-                                        <DropdownMenuItem
-                                            onClick={() => {
-                                                setSearchTerm('');
-                                                setRefreshKey(prev => prev + 1);
-                                            }}
-                                            className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}
-                                        >
-                                            <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Debit Notes'}</span>
-                                        </DropdownMenuItem>
+            <div className="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-gray-100/50 bg-gray-50/30">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div className="relative w-full sm:w-80">
+                            <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-10 w-full justify-start px-3 bg-white/50 backdrop-blur-sm rounded-xl border-gray-200 shadow-sm text-gray-900 font-medium hover:bg-white transition-all" 
+                                        disabled={isDropdownLoading}
+                                    >
+                                        <Search className="h-4 w-4 mr-2 text-gray-400" />
                                         {isDropdownLoading ? (
-                                            <DropdownMenuItem disabled>
-                                                <div className="flex items-center justify-center w-full py-2">
-                                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                                                    Loading options...
-                                                </div>
-                                            </DropdownMenuItem>
+                                            <span className="flex items-center">
+                                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>
+                                                Loading...
+                                            </span>
                                         ) : (
-                                            <>
-                                                {searchType === 'party_name' ?
-                                                    allCustomerNames.map((item: PartyNameItem) => {
-                                                        const displayValue = item.name;
-                                                        const keyValue = item.uuid;
-
-                                                        return (
-                                                            <DropdownMenuItem
-                                                                key={keyValue}
-                                                                onClick={() => {
-                                                                    setSearchTerm(displayValue);
-                                                                    setRefreshKey(prev => prev + 1);
-                                                                }}
-                                                                className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
-                                                            >
-                                                                {displayValue}
-                                                            </DropdownMenuItem>
-                                                        );
-                                                    }) :
-                                                    allDebitNoteNumbers.map((item: string, index: number) => {
-                                                        const displayValue = item;
-                                                        const keyValue = index;
-
-                                                        return (
-                                                            <DropdownMenuItem
-                                                                key={keyValue}
-                                                                onClick={() => {
-                                                                    setSearchTerm(displayValue);
-                                                                    setRefreshKey(prev => prev + 1);
-                                                                }}
-                                                                className={searchTerm === displayValue ? "bg-blue-50 text-blue-600" : ""}
-                                                            >
-                                                                {displayValue}
-                                                            </DropdownMenuItem>
-                                                        );
-                                                    })
-                                                }
-                                                {((searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers).length === 0) && (
-                                                    <DropdownMenuItem disabled>
-                                                        <span className="text-gray-500">No {searchType === 'party_name' ? 'parties' : 'debit notes'} found</span>
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </>
+                                            <span className="truncate text-left">
+                                                {searchTerm || (searchType === 'party_name' ? 'Search by party name...' : 'Search by debit note #...')}
+                                            </span>
                                         )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-10 rounded-md px-3 text-sm text-gray-600"
-                                        >
-                                            <Filter className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                                            {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Debit Note'}: ${searchTerm}` : 'Filter by'}
-                                            <ChevronDown className="h-3 w-3 ml-1" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-48">
-                                        <DropdownMenuItem
-                                            onClick={() => {
-                                                handleSearchTypeChange('party_name');
-                                                setShowFilterDropdown(false);
-                                            }}
-                                            className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}
-                                        >
-                                            <Filter className="h-3.5 w-3.5 mr-2" />
-                                            Party Name
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => {
-                                                handleSearchTypeChange('debit_note_number');
-                                                setShowFilterDropdown(false);
-                                            }}
-                                            className={searchType === 'debit_note_number' ? "bg-blue-50 text-blue-600" : ""}
-                                        >
-                                            <Filter className="h-3.5 w-3.5 mr-2" />
-                                            Debit Note Number
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
+                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto rounded-xl shadow-xl">
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setRefreshKey(prev => prev + 1);
+                                        }}
+                                        className="text-gray-500 italic"
+                                    >
+                                        Clear search
+                                    </DropdownMenuItem>
+                                    {isDropdownLoading ? (
+                                        <div className="p-4 text-center text-sm text-gray-500">Loading suggestions...</div>
+                                    ) : (
+                                        <>
+                                            {searchType === 'party_name' ?
+                                                allCustomerNames.map((item: PartyNameItem) => (
+                                                    <DropdownMenuItem
+                                                        key={item.uuid}
+                                                        onClick={() => {
+                                                            setSearchTerm(item.name);
+                                                            setRefreshKey(prev => prev + 1);
+                                                        }}
+                                                        className={`py-2 ${searchTerm === item.name ? "bg-blue-50 text-blue-600 font-medium" : ""}`}
+                                                    >
+                                                        {item.name}
+                                                    </DropdownMenuItem>
+                                                )) :
+                                                allDebitNoteNumbers.map((item: string, index: number) => (
+                                                    <DropdownMenuItem
+                                                        key={index}
+                                                        onClick={() => {
+                                                            setSearchTerm(item);
+                                                            setRefreshKey(prev => prev + 1);
+                                                        }}
+                                                        className={`py-2 ${searchTerm === item ? "bg-blue-50 text-blue-600 font-medium" : ""}`}
+                                                    >
+                                                        {item}
+                                                    </DropdownMenuItem>
+                                                ))
+                                            }
+                                            {((searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers).length === 0) && (
+                                                <div className="p-4 text-center text-sm text-gray-500">No suggestions found</div>
+                                            )}
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
+
+                        {/* Desktop Segmented Filter Type */}
+                        <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center gap-1">
+                            <div
+                                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                                    }`}
+                                style={{
+                                    width: '100px',
+                                    transform: `translateX(${searchType === 'party_name' ? '0px' : '102px'})`
+                                }}
+                            />
+                            <button
+                                onClick={() => handleSearchTypeChange('party_name')}
+                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Party Name
+                            </button>
+                            <button
+                                onClick={() => handleSearchTypeChange('debit_note_number')}
+                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'debit_note_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Debit Note No.
+                            </button>
+                        </div>
+
+                        {/* Mobile Dropdown Fallback */}
+                        <div className="sm:hidden">
+                            <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 bg-white shadow-sm border-gray-200 hover:bg-gray-50 gap-2"
+                                    >
+                                        <Filter className="h-4 w-4 text-blue-500" />
+                                        {searchType === 'party_name' ? 'Party Name' : 'Debit Note Number'}
+                                        <ChevronDown className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-48 rounded-xl shadow-xl">
+                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('party_name')}>
+                                        <User className="h-4 w-4 mr-2 text-gray-400" /> Party Name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('debit_note_number')}>
+                                        <FileText className="h-4 w-4 mr-2 text-gray-400" /> Debit Note Number
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+
+                    <div className="w-full sm:w-auto sm:ml-auto">
+                        <Button
+                            size="sm"
+                            className="h-10 gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200/50 transition-all active:scale-95 w-full sm:w-auto"
+                            onClick={() => navigate('/debit-note/create')}
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span className="font-bold">Create Debit Note</span>
+                        </Button>
                     </div>
+                </div>
                 </div>
 
                 <div className="overflow-auto relative w-full">

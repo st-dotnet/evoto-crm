@@ -58,7 +58,7 @@ def get_all_users():
         required: false
         schema:
           type: string
-          example: "john"
+          example: john
       - name: sort
         in: query
         description: Field to sort by
@@ -67,16 +67,16 @@ def get_all_users():
           type: string
           default: id
           enum: [id, username, email, mobileNo, firstName, lastName, created_at, updated_at]
-          example: "email"
+          example: email
       - name: order
         in: query
-        description: Sort order (asc or desc)
+        description: Sort order asc or desc
         required: false
         schema:
           type: string
           default: asc
           enum: [asc, desc]
-          example: "asc"
+          example: asc
       - name: page
         in: query
         description: Page number for pagination
@@ -118,22 +118,22 @@ def get_all_users():
                         example: 1
                       first_name:
                         type: string
-                        example: "John"
+                        example: John
                       last_name:
                         type: string
-                        example: "Doe"
+                        example: Doe
                       username:
                         type: string
-                        example: "johndoe"
+                        example: johndoe
                       email:
                         type: string
-                        example: "john.doe@example.com"
+                        example: john.doe@example.com
                       mobile:
                         type: string
-                        example: "1234567890"
+                        example: 1234567890
                       role:
                         type: string
-                        example: "Admin"
+                        example: Admin
                       isActive:
                         type: boolean
                         example: true
@@ -291,22 +291,22 @@ def get_user_by_id(user_uuid):
                   example: 1
                 first_name:
                   type: string
-                  example: "John"
+                  example: John
                 last_name:
                   type: string
-                  example: "Doe"
+                  example: Doe
                 username:
                   type: string
-                  example: "johndoe"
+                  example: johndoe
                 email:
                   type: string
-                  example: "john.doe@example.com"
+                  example: john.doe@example.com
                 mobile:
                   type: string
-                  example: "1234567890"
+                  example: 1234567890
                 role:
                   type: string
-                  example: "Admin"
+                  example: Admin
                 isActive:
                   type: boolean
                   example: true
@@ -382,33 +382,33 @@ def create_user():
               first_name:
                 type: string
                 description: User's first name
-                example: "John"
+                example: John
               last_name:
                 type: string
                 description: User's last name
-                example: "Doe"
+                example: Doe
               username:
                 type: string
-                description: Username (auto-generated from email if not provided)
-                example: "johndoe"
+                description: Username auto-generated from email if not provided
+                example: johndoe
               email:
                 type: string
                 format: email
                 description: User's email address
-                example: "john.doe@example.com"
+                example: john.doe@example.com
               mobile:
                 type: string
                 description: Mobile number
-                example: "1234567890"
+                example: 1234567890
               password:
                 type: string
                 format: password
                 description: User's password
-                example: "SecureP@ssw0rd"
+                example: SecureP@ssw0rd
               role:
                 type: string
                 description: User's role
-                example: "User"
+                example: User
                 enum: [Admin, User, Manager]
               isActive:
                 type: boolean
@@ -425,7 +425,7 @@ def create_user():
               properties:
                 message:
                   type: string
-                  example: "User created successfully"
+                  example: User created successfully
                 id:
                   type: integer
                   example: 1
@@ -566,28 +566,28 @@ def update_user(user_uuid):
               first_name:
                 type: string
                 description: User's first name
-                example: "John"
+                example: John
               last_name:
                 type: string
                 description: User's last name
-                example: "Doe"
+                example: Doe
               username:
                 type: string
                 description: Username
-                example: "johndoe"
+                example: johndoe
               email:
                 type: string
                 format: email
                 description: User's email address
-                example: "john.doe@example.com"
+                example: john.doe@example.com
               mobile:
                 type: string
                 description: Mobile number
-                example: "1234567890"
+                example: 1234567890
               role:
                 type: string
                 description: User's role
-                example: "User"
+                example: User
                 enum: [Admin, User, Manager]
               isActive:
                 type: boolean
@@ -603,7 +603,7 @@ def update_user(user_uuid):
               properties:
                 message:
                   type: string
-                  example: "User updated successfully"
+                  example: User updated successfully
                 user:
                   type: object
                   properties:
@@ -788,7 +788,7 @@ def delete_user(user_uuid):
               properties:
                 message:
                   type: string
-                  example: "User deleted successfully"
+                  example: User deleted successfully
       401:
         description: Unauthorized - Invalid or missing token
       403:
@@ -804,7 +804,7 @@ def delete_user(user_uuid):
               properties:
                 error:
                   type: string
-                  example: "Cannot delete user. It is referenced in other records."
+                  example: Cannot delete user. It is referenced in other records.
       500:
         description: Internal server error
     """

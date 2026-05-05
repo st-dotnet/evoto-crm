@@ -32,7 +32,11 @@ const SidebarToggle = () => {
         className={clsx(buttonBaseClass, 'border-gray-200 dark:border-gray-300')}
         aria-label="Toggle sidebar"
       >
-        <KeenIcon icon="black-left-line" className={iconClass} />
+        {layout.options.sidebar.collapse ? (
+          <KeenIcon icon="black-left-line" className={iconClass} />
+        ) : (
+          <KeenIcon icon="black-left-line" className={iconClass} />
+        )}
       </button>
     );
   };
@@ -42,7 +46,11 @@ const SidebarToggle = () => {
       <div onClick={handleClick}>
         <div className="hidden [html.dark_&]:block">
           <button className={clsx(buttonBaseClass, 'border-gray-300')}>
-            <KeenIcon icon="black-left-line" className={iconClass} />
+            {layout.options.sidebar.collapse ? (
+              <KeenIcon icon="black-left-line" className={iconClass} />
+            ) : (
+              <KeenIcon icon="black-left-line" className={iconClass} />
+            )}
           </button>
         </div>
         <div className="[html.dark_&]:hidden light">{lightToggle()}</div>

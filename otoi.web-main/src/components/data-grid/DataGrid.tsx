@@ -62,6 +62,7 @@ export interface TDataGridProps<TData extends object> {
   onDelete?: (data: TData) => void;
   onDetails?: (id: string) => void;
   children?: ReactNode;
+  refreshKey?: number;
 }
 
 export const DataGrid = <TData extends object>(props: TDataGridProps<TData>) => {

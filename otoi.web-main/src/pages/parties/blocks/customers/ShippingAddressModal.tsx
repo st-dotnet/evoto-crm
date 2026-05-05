@@ -197,7 +197,7 @@ const ShippingAddressModal = ({
     <Fragment>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {/* <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-50"> */}
-        <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-[99] max-h-[90vh] flex flex-col">
+        <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg max-h-[90vh] flex flex-col" zIndex="z-[10001]">
           <DialogHeader className="bg-gray-50 p-6 border-b">
             <DialogTitle className="text-lg font-semibold text-gray-800">
               {title ||

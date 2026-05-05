@@ -70,7 +70,7 @@ def create_item_category():
                 name:
                   type: string
       400:
-        description: Missing required field 'name'.
+        description: Missing required field name.
     """
     data = request.json or {}
     if not data.get("name"):
@@ -144,29 +144,29 @@ def update_item_category(category_id):
                 name:
                   type: string
       400:
-        description: Missing required field 'name'.
+        description: Missing required field name.
       404:
         description: Category not found.
     """
     data = request.json or {}
-    if not data.get('name'):
-        return jsonify({'error': 'Name is required'}), 400
+    if not data.get("name"):
+        return jsonify({"error": "Name is required"}), 400
 
     try:
         category = ItemCategory.query.get_or_404(category_id)
-        category.name = data['name'].strip()
+        category.name = data["name"].strip()
         set_updated_fields(category)
         db.session.commit()
 
         return jsonify({
-            'message': 'Item category updated successfully',
-            'uuid': str(category.uuid),
-            'name': category.name
+            "message": "Item category updated successfully",
+            "uuid": str(category.uuid),
+            "name": category.name
         })
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @item_category_blueprint.route("/<uuid:category_id>", methods=["DELETE"])
@@ -194,8 +194,8 @@ def delete_item_category(category_id):
         category = ItemCategory.query.get_or_404(category_id)
         db.session.delete(category)
         db.session.commit()
-        return jsonify({'message': 'Item category deleted successfully'})
+        return jsonify({"message": "Item category deleted successfully"})
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500

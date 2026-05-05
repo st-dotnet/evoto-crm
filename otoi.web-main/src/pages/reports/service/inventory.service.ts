@@ -287,13 +287,19 @@ export const printInventoryPDF = async (params?: {
       },
     );
 
-    // Open PDF in new tab
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    window.open(url, '_blank');
+    // Download PDF file
+    const downloadUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const downloadLink = document.createElement('a');
+    downloadLink.href = downloadUrl;
+    downloadLink.setAttribute('download', `inventory_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.URL.revokeObjectURL(downloadUrl);
 
     return {
       success: true,
-      data: "PDF opened successfully",
+      data: "PDF downloaded successfully",
       status: response.status,
     };
   } catch (error: any) {
@@ -329,13 +335,19 @@ export const printInventoryForPrint = async (params?: {
       },
     );
 
-    // Open PDF in new tab only
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    window.open(url, '_blank');
+    // Download PDF file
+    const downloadUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const downloadLink = document.createElement('a');
+    downloadLink.href = downloadUrl;
+    downloadLink.setAttribute('download', `inventory_print_version_${new Date().toISOString().split('T')[0]}.pdf`);
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.URL.revokeObjectURL(downloadUrl);
 
     return {
       success: true,
-      data: "PDF opened in new tab",
+      data: "PDF downloaded successfully",
       status: response.status,
     };
   } catch (error: any) {

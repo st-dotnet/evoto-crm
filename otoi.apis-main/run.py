@@ -5,6 +5,10 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from app import create_app
 from app.seed import seed_data, create_database
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create the Flask app via factory
 app = create_app()   

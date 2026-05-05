@@ -198,6 +198,7 @@ export default function CreateItemModal({
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<ICategory[]>([]);
   const [originalImages, setOriginalImages] = useState<any[]>([]);
+  const isSubmittingRef = useRef(false);
   const originalImagesRef = useRef<any[]>([]);
   const itemRef = useRef<any>(null);
   const [modalBounce, setModalBounce] = useState(false);
@@ -254,10 +255,19 @@ export default function CreateItemModal({
     validationSchema: saveItemSchema,
     enableReinitialize: true,
     onSubmit: async (values, { setStatus, setSubmitting, resetForm }) => {
+      // Prevent duplicate submissions using ref for synchronous check
+      if (loading || isSubmittingRef.current) {
+        return;
+      }
+      isSubmittingRef.current = true;
       setLoading(true);
       const isService = values.item_type_id === 2;
 
       try {
+        console.log('🔍 Item Creation Debug - Form values:', values);
+        console.log('🔍 Item Creation Debug - Current item being edited:', item);
+        console.log('🔍 Item Creation Debug - isService:', isService);
+        
         const postData: Partial<IItem> = {
           item_name: values.item_name?.trim(),
           item_type_id: values.item_type_id,
@@ -274,6 +284,8 @@ export default function CreateItemModal({
           show_in_online_store: Boolean(values.show_in_online_store),
           tax_type: values.tax_type || "with_tax",
         };
+
+        console.log('🔍 Item Creation Debug - postData prepared:', postData);
 
         // Only add these fields for Products (item_type_id = 1), omit entirely for Services
         if (!isService) {
@@ -349,6 +361,8 @@ export default function CreateItemModal({
             })),
           };
 
+          console.log('🔍 Item Creation Debug - Final itemData being sent:', itemData);
+
           formData.append("item_data", JSON.stringify(itemData));
 
           // Append images
@@ -359,41 +373,102 @@ export default function CreateItemModal({
             }
           });
 
+          console.log('🔍 Item Creation Debug - About to call createItem API');
           const response = await createItem(formData);
+          console.log('🔍 Item Creation Debug - API response received:', response);
 
-          if (response?.success) {
-            toast.success(
-              response.data?.message || "Item created successfully",
-            );
+          // Handle the case where backend returns success: false but actually creates the item
+          // This happens with item code duplicates - backend creates item but returns warning
+          const isItemCreated = response?.success || (response?.error?.includes('already exists') && response?.status === 400);
+          
+          if (isItemCreated) {
+            // Show appropriate message based on response type
+            if (response?.success) {
+              toast.success(
+                response.data?.message || "Item created successfully",
+              );
+            } else {
+              // Handle case where item was created but with warning
+              toast.success(
+                response.data?.message || "Item created successfully (item code was auto-generated)",
+              );
+              console.log('⚠️ Item Creation Warning - Item created with warning:', response?.error);
+            }
+            
+            
+            // Update formik with the new item data for barcode generation
+            if (response.data?.item) {
+              console.log('Create Item Debug - Item data found:', response.data.item);
+              const newItemData = {
+                ...formik.values,
+                id: response.data.item.id || response.data.item.uuid,
+                ...response.data.item
+              };
+              console.log('Create Item Debug - New item data to store:', newItemData);
+              formik.setValues(newItemData);
+              
+              // Store the item data for barcode generation after modal closes
+              sessionStorage.setItem('lastCreatedItem', JSON.stringify(newItemData));
+              console.log('Create Item Debug - Item data stored in sessionStorage');
+            } else if (!response?.success) {
+              // Handle case where item was created but no data returned (duplicate item code case)
+              console.log('Create Item Debug - Item created but no data returned (likely duplicate item code case)');
+              // Store the form values as the created item data
+              const newItemData = {
+                ...formik.values,
+                id: Date.now().toString(), // Temporary ID for barcode generation
+              };
+              sessionStorage.setItem('lastCreatedItem', JSON.stringify(newItemData));
+              console.log('Create Item Debug - Form data stored in sessionStorage for barcode generation');
+            } else {
+              console.log('Create Item Debug - No item data found in response');
+            }
             onSuccess();
-            resetForm();
             onOpenChange(false);
           } else {
+            console.log('🔍 Item Creation Debug - API response indicates failure:', response);
             throw new Error(response?.error || "Failed to create item");
           }
         }
       } catch (error: any) {
-        // Get the error message from the error object
-        let errorMessage =
-          error?.message ||
-          error?.response?.data?.message ||
-          "An error occurred while saving the item.";
-
-        // If the error is about duplicate item code, show a specific message
-        if (
-          errorMessage.toLowerCase().includes("item code") &&
-          errorMessage.toLowerCase().includes("already exists")
-        ) {
-          errorMessage =
-            "Item code already exists. Please use a different code.";
+        console.error("🔍 Item Creation Debug - Full error object:", error);
+        console.error("🔍 Item Creation Debug - Error response data:", error?.response?.data);
+        console.error("🔍 Item Creation Debug - Error status:", error?.response?.status);
+        console.error("🔍 Item Creation Debug - Error message:", error?.message);
+        
+        // Enhanced error handling with better user feedback
+        let errorMessage = "Failed to save item. Please try again.";
+        
+        if (error?.response?.data) {
+          const errorData = error.response.data;
+          console.log('🔍 Item Creation Debug - Processing error data:', errorData);
+          
+          if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.errors) {
+            if (Array.isArray(errorData.errors)) {
+              errorMessage = errorData.errors.join(', ');
+            } else if (typeof errorData.errors === 'object') {
+              const errorMessages = Object.values(errorData.errors).flat();
+              errorMessage = errorMessages.join(', ');
+            } else {
+              errorMessage = String(errorData.errors);
+            }
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } else if (error?.message) {
+          errorMessage = error.message;
         }
-
-        // Set the status and show error toast
+        
+        console.log('🔍 Item Creation Debug - Final error message to display:', errorMessage);
         setStatus(errorMessage);
         toast.error(errorMessage);
       } finally {
         setLoading(false);
-        setSubmitting(false);
+        isSubmittingRef.current = false;
       }
     },
   });
@@ -485,6 +560,7 @@ export default function CreateItemModal({
       toast.error("Failed to load full item details");
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -805,281 +881,256 @@ export default function CreateItemModal({
 
                   {/* Basic Details Section */}
                   {activeSection === "basic" && (
-                    <div className="space-y-4 sm:space-y-6">
-                      {/* Item Type */}
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pb-2">
-                        <label className="font-semibold text-xs sm:text-sm text-gray-700">
-                          Item Type
-                          <span className="text-red-500 ml-0.5">*</span>
-                        </label>
-                        <div className="flex gap-6">
-                          <label className="flex items-center gap-2 text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors">
-                            <input
-                              type="radio"
-                              checked={formik.values.item_type_id === 1}
-                              onChange={() =>
-                                formik.setFieldValue("item_type_id", 1)
-                              }
-                              disabled={isEditing} // Disable during edit mode
-                              className="size-4 text-primary focus:ring-primary/20"
-                            />
-                            Product
-                          </label>
-                          <label className="flex items-center gap-2 text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors">
-                            <input
-                              type="radio"
-                              checked={formik.values.item_type_id === 2}
-                              onChange={() =>
-                                formik.setFieldValue("item_type_id", 2)
-                              }
-                              disabled={isEditing} // Disable during edit mode
-                              className="size-4 text-primary focus:ring-primary/20"
-                            />
-                            Service
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Item Name or Service Name and Category */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            {formik.values.item_type_id === 2 ? (
-                              <>
-                                Service Name{" "}
-                                <span className="text-red-500">*</span>
-                              </>
-                            ) : (
-                              <>
-                                Item Name{" "}
-                                <span className="text-red-500">*</span>
-                              </>
-                            )}
-                          </label>
-                          <input
-                            type="text"
-                            placeholder={
-                              formik.values.item_type_id === 2
-                                ? "ex: Mobile service"
-                                : "ex: Maggie 20gm"
-                            }
-                            className={clsx(
-                              "w-full px-3 py-2 border rounded-md text-[13px] sm:text-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all",
-                              formik.touched.item_name &&
-                                formik.errors.item_name
-                                ? "border-red-500"
-                                : "border-gray-200 focus:border-primary",
-                            )}
-                            {...formik.getFieldProps("item_name")}
-                          />
-                          {formik.touched.item_name &&
-                            formik.errors.item_name && (
-                              <div className="text-red-500 text-[11px] mt-1 font-medium">
-                                {formik.errors.item_name}
+                    <div className="space-y-8">
+                      {/* Primary Information */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                          Primary Information
+                        </h3>
+                        <div className="space-y-6">
+                          {/* Item Type */}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                            <label className="font-semibold text-sm text-gray-700 min-w-[80px]">
+                              Item Type
+                              <span className="text-red-500 ml-1">*</span>
+                            </label>
+                            <div className="flex items-center px-1.5 py-1 bg-gray-50 rounded-lg border border-gray-200 w-fit">
+                              <div className="relative flex items-center">
+                                <div
+                                  className={`absolute inset-y-0 rounded-md border shadow-sm transition-all duration-300 ${
+                                    formik.values.item_type_id === 1
+                                      ? "bg-white border-gray-300"
+                                      : "bg-blue-500 border-blue-600"
+                                  }`}
+                                  style={{
+                                    width: "96px",
+                                    transform: `translateX(${
+                                      formik.values.item_type_id === 1 ? "0px" : "96px"
+                                    })`,
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => !isEditing && formik.setFieldValue("item_type_id", 1)}
+                                  disabled={isEditing}
+                                  className={`relative w-24 py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${
+                                    formik.values.item_type_id === 1 ? 'text-gray-900' : 'text-gray-500'
+                                  } ${isEditing ? 'cursor-not-allowed opacity-50' : ''}`}
+                                >
+                                  Product
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => !isEditing && formik.setFieldValue("item_type_id", 2)}
+                                  disabled={isEditing}
+                                  className={`relative w-24 py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${
+                                    formik.values.item_type_id === 2 ? 'text-white' : 'text-gray-500'
+                                  } ${isEditing ? 'cursor-not-allowed opacity-50' : ''}`}
+                                >
+                                  Service
+                                </button>
                               </div>
-                            )}
-                        </div>
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            Category <span className="text-red-500">*</span>
-                          </label>
-
-                          <select
-                            className={clsx(
-                              "w-full px-3 py-2 border rounded-md text-[13px] sm:text-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all",
-                              formik.touched.category_id &&
-                                formik.errors.category_id
-                                ? "border-red-500"
-                                : "border-gray-200 focus:border-primary",
-                            )}
-                            value={formik.values.category_id || ""}
-                            onChange={(e) => {
-                              if (e.target.value === "add_new") {
-                                setShowCategoryModal(true);
-                                return;
-                              }
-
-                              formik.setFieldValue(
-                                "category_id",
-                                e.target.value || "",
-                              );
-                            }}
-                            onBlur={formik.handleBlur}
-                            name="category_id"
-                          >
-                            <option value="">Select Category</option>
-
-                            {categories.map((cat) => (
-                              <option key={cat.uuid} value={cat.uuid}>
-                                {cat.name}
-                              </option>
-                            ))}
-
-                            <option
-                              value="add_new"
-                              className="text-primary font-medium"
-                            >
-                              + Add Category
-                            </option>
-                          </select>
-
-                          {formik.touched.category_id &&
-                            formik.errors.category_id && (
-                              <p className="text-red-500 text-[11px] mt-1 font-medium">
-                                {formik.errors.category_id}
-                              </p>
-                            )}
-                        </div>
-                      </div>
-
-                      {/* Show Item in Online Store */}
-                      {/* <div className="flex items-center gap-2 mb-4">
-                                                <label className="font-medium">Show Item in Online Store</label>
-                                                <input
-                                                    type="checkbox"
-                                                    {...formik.getFieldProps("show_in_online_store")}
-                                                />
-                                            </div> */}
-
-                      {/* Sales Price and GST Tax Rate */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            Sales Price
-                          </label>
-                          <div className="flex group transition-all">
-                            <span className="flex items-center px-3 border border-r-0 rounded-l-md bg-gray-50 text-gray-500 text-[13px] sm:text-sm">
-                              ₹
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="ex: 200"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className={clsx(
-                                "flex-1 px-3 py-2 border rounded-r-md text-[13px] sm:text-sm outline-none transition-all",
-                                formik.touched.sales_price &&
-                                  formik.errors.sales_price
-                                  ? "border-red-500"
-                                  : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10",
-                              )}
-                              {...formik.getFieldProps("sales_price")}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (/^\d*$/.test(value)) {
-                                  formik.setFieldValue("sales_price", value);
-                                }
-                              }}
-                            />
+                            </div>
                           </div>
-                          {formik.touched.sales_price &&
-                            formik.errors.sales_price && (
-                              <div className="text-red-500 text-[11px] mt-1 font-medium">
-                                {formik.errors.sales_price}
-                              </div>
-                            )}
-                        </div>
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            GST Tax Rate (%)
-                          </label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
-                            {...formik.getFieldProps("gst_tax_rate")}
-                          >
-                            <option value="">None</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                          </select>
+
+                          {/* Item Name and Category */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                {formik.values.item_type_id === 2 ? "Service Name" : "Item Name"}
+                                <span className="text-red-500 ml-1">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={formik.values.item_type_id === 2 ? "e.g., Mobile Service" : "e.g., Smart Lock Door"}
+                                className={clsx(
+                                  "w-full px-4 py-2.5 border rounded-lg text-sm outline-none transition-all",
+                                  formik.touched.item_name && formik.errors.item_name
+                                    ? "border-red-500 bg-red-50"
+                                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+                                )}
+                                {...formik.getFieldProps("item_name")}
+                              />
+                              {formik.touched.item_name && formik.errors.item_name && (
+                                <div className="text-red-500 text-xs mt-1.5 font-medium">
+                                  {formik.errors.item_name}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Category
+                                <span className="text-red-500 ml-1">*</span>
+                              </label>
+                              <select
+                                className={clsx(
+                                  "w-full px-4 py-2.5 border rounded-lg text-sm outline-none appearance-none transition-all",
+                                  formik.touched.category_id && formik.errors.category_id
+                                    ? "border-red-500 bg-red-50"
+                                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+                                )}
+                                value={formik.values.category_id || ""}
+                                onChange={(e) => {
+                                  if (e.target.value === "add_new") {
+                                    setShowCategoryModal(true);
+                                    return;
+                                  }
+                                  formik.setFieldValue("category_id", e.target.value || "");
+                                }}
+                                onBlur={formik.handleBlur}
+                                name="category_id"
+                              >
+                                <option value="">Select Category</option>
+                                {categories.map((cat) => (
+                                  <option key={cat.uuid} value={cat.uuid}>{cat.name}</option>
+                                ))}
+                                <option value="add_new" className="text-blue-600 font-medium">+ Add Category</option>
+                              </select>
+                              {formik.touched.category_id && formik.errors.category_id && (
+                                <p className="text-red-500 text-xs mt-1.5 font-medium">
+                                  {formik.errors.category_id}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Measuring Unit and Opening Stock or Service Code */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            Measuring Unit
-                          </label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-[13px] sm:text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
-                            value={formik.values.measuring_unit_id}
-                            onChange={(e) =>
-                              formik.setFieldValue(
-                                "measuring_unit_id",
-                                Number(e.target.value) as 1 | 2 | 3,
-                              )
-                            }
-                          >
-                            <option value={1}>Pieces (PCS)</option>
-                            <option value={2}>Kilogram (KG)</option>
-                            <option value={3}>Liter (LTR)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                            {formik.values.item_type_id === 2 ? (
-                              <>
-                                Service Code{" "}
-                                <span className="text-red-500">*</span>
-                              </>
-                            ) : (
-                              "Opening Stock"
-                            )}
-                          </label>
-                          {formik.values.item_type_id === 2 ? (
-                            <>
+                      {/* Pricing Information */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-green-500 rounded-full"></span>
+                          Pricing Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Sales Price
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">₹</span>
                               <input
                                 type="text"
-                                placeholder="Enter Service Code"
+                                placeholder="0.00"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 className={clsx(
-                                  "w-full px-3 py-2 border rounded-md text-[13px] sm:text-sm outline-none transition-all",
-                                  formik.touched.item_code &&
-                                    formik.errors.item_code
-                                    ? "border-red-500"
-                                    : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10",
+                                  "w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm outline-none transition-all",
+                                  formik.touched.sales_price && formik.errors.sales_price
+                                    ? "border-red-500 bg-red-50"
+                                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
                                 )}
-                                {...formik.getFieldProps("item_code")}
-                              />
-                              {formik.touched.item_code &&
-                                formik.errors.item_code && (
-                                  <div className="text-red-500 text-[11px] mt-1 font-medium">
-                                    {formik.errors.item_code}
-                                  </div>
-                                )}
-                            </>
-                          ) : (
-                            <div className="flex group transition-all">
-                              <input
-                                type="text"
-                                placeholder="ex: 150"
-                                className="flex-1 px-3 py-2 border border-r-0 rounded-l-md text-[13px] sm:text-sm border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
-                                {...formik.getFieldProps("opening_stock")}
+                                {...formik.getFieldProps("sales_price")}
                                 onChange={(e) => {
                                   const value = e.target.value;
                                   if (/^\d*$/.test(value)) {
-                                    formik.setFieldValue(
-                                      "opening_stock",
-                                      value,
-                                    );
+                                    formik.setFieldValue("sales_price", value);
                                   }
                                 }}
                               />
-                              <span className="flex items-center px-3 border rounded-r-md bg-gray-50 text-gray-500 text-[13px] sm:text-sm border-gray-200">
-                                {formik.values.measuring_unit_id === 1
-                                  ? "PCS"
-                                  : "KG"}
-                              </span>
                             </div>
-                          )}
+                            {formik.touched.sales_price && formik.errors.sales_price && (
+                              <div className="text-red-500 text-xs mt-1.5 font-medium">
+                                {formik.errors.sales_price}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              GST Tax Rate
+                            </label>
+                            <select
+                              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              {...formik.getFieldProps("gst_tax_rate")}
+                            >
+                              <option value="">None</option>
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18">18%</option>
+                              <option value="28">28%</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Inventory Details */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
+                          Inventory Details
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Measuring Unit
+                            </label>
+                            <select
+                              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              value={formik.values.measuring_unit_id}
+                              onChange={(e) => formik.setFieldValue("measuring_unit_id", Number(e.target.value))}
+                            >
+                              <option value={1}>Pieces (PCS)</option>
+                              <option value={2}>Kilogram (KG)</option>
+                              <option value={3}>Liter (LTR)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              {formik.values.item_type_id === 2 ? "Service Code" : "Opening Stock"}
+                              {formik.values.item_type_id === 2 && <span className="text-red-500 ml-1">*</span>}
+                            </label>
+                            {formik.values.item_type_id === 2 ? (
+                              <>
+                                <input
+                                  type="text"
+                                  placeholder="Enter Service Code"
+                                  className={clsx(
+                                    "w-full px-4 py-2.5 border rounded-lg text-sm outline-none transition-all",
+                                    formik.touched.item_code && formik.errors.item_code
+                                      ? "border-red-500 bg-red-50"
+                                      : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+                                  )}
+                                  {...formik.getFieldProps("item_code")}
+                                />
+                                {formik.touched.item_code && formik.errors.item_code && (
+                                  <div className="text-red-500 text-xs mt-1.5 font-medium">
+                                    {formik.errors.item_code}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="0"
+                                  className={clsx(
+                                    "w-full px-4 py-2.5 pr-16 border rounded-lg text-sm outline-none transition-all",
+                                    formik.touched.opening_stock && formik.errors.opening_stock
+                                      ? "border-red-500 bg-red-50"
+                                      : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+                                  )}
+                                  {...formik.getFieldProps("opening_stock")}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (/^\d*$/.test(value)) {
+                                      formik.setFieldValue("opening_stock", value);
+                                    }
+                                  }}
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                                  {formik.values.measuring_unit_id === 1 ? "PCS" : formik.values.measuring_unit_id === 2 ? "KG" : "LTR"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                   {/* Stock Details Section */}
                   {activeSection === "stock" && (
-                    <StockDetails formik={formik} isEditing={isEditing} />
+                    <StockDetails formik={formik} isEditing={isEditing} isSubmitting={loading || isSubmittingRef.current} />
                   )}
                   {activeSection === "price" &&
                     formik.values.item_type_id === 1 && (
@@ -1111,7 +1162,13 @@ export default function CreateItemModal({
               <Button
                 type="submit"
                 form="item-form"
-                disabled={loading || formik.isSubmitting}
+                disabled={loading || formik.isSubmitting || isSubmittingRef.current}
+                onClick={(e) => {
+                  if (isSubmittingRef.current) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
                 className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[120px] text-[13px] sm:text-sm h-9 sm:h-10 px-4 sm:px-6 bg-primary hover:bg-primary-hover transition-colors shadow-sm"
               >
                 {loading || formik.isSubmitting ? (

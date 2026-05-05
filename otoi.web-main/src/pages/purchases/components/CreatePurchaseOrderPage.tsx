@@ -1111,7 +1111,7 @@ const CreatePurchaseOrderPage = () => {
                 name="poDate"
                 value={formData.poDate}
                 onChange={handleChange}
-                className="h-8 text-sm"
+                className="h-8 text-sm block w-full [&::-webkit-calendar-picker-indicator]:ml-auto"
               />
             </div>
             <div className="space-y-1.5 col-span-2">
@@ -1123,21 +1123,8 @@ const CreatePurchaseOrderPage = () => {
                 name="deliveryDate"
                 value={formData.deliveryDate}
                 onChange={handleChange}
-                className="h-8 text-sm"
+                className="h-8 text-sm block w-full [&::-webkit-calendar-picker-indicator]:ml-auto"
               />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <label className="text-xs text-gray-600">Status</label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full h-8 text-sm px-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300"
-              >
-                <option value="open">Open</option>
-                <option value="closed">Closed</option>
-                <option value="received">Received</option>
-              </select>
             </div>
           </div>
         </div>
