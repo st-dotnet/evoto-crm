@@ -5,14 +5,6 @@ import {
 } from "./lead-models";
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-import {
   DataGrid,
   DataGridColumnHeader,
   TDataGridRequestParams,
@@ -28,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle, X, Check } from "lucide-react";
+import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle, X, Check, Filter, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
@@ -74,171 +66,6 @@ interface ActivityLead {
 import { debounce } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 
-const Toolbar = ({
-  defaultSearch,
-  setSearch,
-  defaultStatusType,
-  setDefaultStatusType,
-}: {
-  defaultSearch: string;
-  setSearch: (query: string) => void;
-  defaultStatusType: string;
-  setDefaultStatusType: (query: string) => void;
-}) => {
-  const [searchInput, setSearchInput] = useState(defaultSearch);
-  const [searchStatusType, setStatusType] = useState(defaultStatusType);
-
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((query: string) => {
-        setSearch(query);
-      }, 500),
-    [setSearch]
-  );
-
-  useEffect(() => {
-    return () => {
-      debouncedSearch.cancel?.();
-    };
-  }, [debouncedSearch]);
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      debouncedSearch.cancel?.();
-      setSearch(searchInput);
-    }
-  };
-
-  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const value = e.target.value;
-  //   setSearchInput(value);
-  //   debouncedSearch(value);
-  // };
-
-  const [open, setOpen] = useState(false);
-  const [leads, setLeads] = useState<{ uuid: string; name: string }[]>([]);
-
-  useEffect(() => {
-    const fetchAllLeads = async () => {
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/?dropdown=true`);
-        setLeads(response.data);
-      } catch (error) {
-        console.error("Failed to fetch all leads dropdown", error);
-      }
-    };
-    fetchAllLeads();
-  }, []);
-
-  // Handle input change and trigger debounced search
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchInput(value);
-    setOpen(true); // Keep dropdown open while typing
-  };
-  const filteredLeads = useMemo(() => {
-    if (!searchInput) return leads;
-    return leads.filter((c) =>
-      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
-    );
-  }, [leads, searchInput]);
-
-  return (
-    <div className="card-header flex flex-col lg:flex-row lg:justify-between gap-5 border-b-0 px-5 py-4">
-      <div className="flex flex-col md:flex-row md:items-center gap-5 w-full lg:w-auto">
-        <div className="flex grow w-full md:w-64 lg:w-72">
-          <Popover open={open} onOpenChange={setOpen}>
-            <div className="relative w-full">
-              <PopoverTrigger asChild>
-                <div className="relative">
-                  <KeenIcon
-                    icon="magnifier"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
-                  />
-                  <Input
-                    placeholder="Search lead"
-                    value={searchInput}
-                    onChange={handleInputChange}
-                    onClick={() => setOpen(true)} // Added to ensure popover opens on click
-                    className="pl-9 pr-9 h-9 text-xs w-full"
-                  />
-                  {searchInput && (
-                    <X
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
-                      onClick={() => {
-                        setSearchInput("");
-                        setSearch("");
-                      }}
-                    />
-                  )}
-                </div>
-              </PopoverTrigger>
-            </div>
-
-            <PopoverContent
-              className="p-0 w-[var(--radix-popover-trigger-width)]"
-              align="start"
-              onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
-            >
-              <Command>
-                <CommandList>
-                  {filteredLeads.length === 0 && (
-                    <CommandEmpty>No lead found.</CommandEmpty>
-                  )}
-                  <CommandGroup>
-                    {filteredLeads?.map((lead) => (
-                      <CommandItem
-                        key={lead?.uuid}
-                        value={lead?.name}
-                        onSelect={() => {
-                          setSearchInput(lead?.name);
-                          setSearch(lead?.name); // Hit the API with exact selection
-                          setOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            searchInput === lead?.name ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {lead?.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-        {/* Status Filter */}
-        <div className="flex items-center gap-2.5">
-          <label className="text-sm font-medium text-gray-700 shrink-0"> Status </label>
-          <Select
-            defaultValue=""
-            value={searchStatusType}
-            onValueChange={(value) => {
-              setStatusType(value);
-              setDefaultStatusType(value);
-            }}
-          >
-            <SelectTrigger className="w-full md:w-32 lg:w-36" size="sm">
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent className="w-36">
-              <SelectItem value="-1">All</SelectItem>
-              <SelectItem value="1">New</SelectItem>
-              <SelectItem value="2">In-Progress</SelectItem>
-              <SelectItem value="3">Quote Given</SelectItem>
-              <SelectItem value="4">Win</SelectItem>
-              <SelectItem value="5">Lose</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 import { useDataGrid } from "@/components";
 
@@ -257,43 +84,67 @@ const MobileView = ({
   if (loading && rows.length === 0) return null;
 
   return (
-    <div className="flex flex-col lg:hidden border-t border-gray-100">
-      {rows.map((row) => {
+    <div className="flex flex-col lg:hidden border-t border-gray-100 bg-white">
+      {rows.map((row, index) => {
         const lead = row.original as Lead;
+        const initials = `${lead.first_name?.[0] || ""}${lead.last_name?.[0] || ""}`.toUpperCase();
+
         return (
-          <div  
+          <div
             key={lead.uuid}
-            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/30 transition-all animate-in fade-in slide-in-from-bottom-2"
+            style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
           >
             <div
-              className="flex flex-col cursor-pointer grow pr-4"
+              className="flex items-center gap-3 cursor-pointer grow pr-4"
               onClick={() => onDetails(lead.uuid)}
             >
-              <span className="font-semibold text-gray-900 text-sm mb-0.5">{lead.first_name} {lead.last_name}</span>
-              <span className="text-xs text-gray-400 font-medium truncate max-w-[200px] sm:max-w-none">
-                {lead.email || ""}
-              </span>
+              <div className="size-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0 border border-gray-200 shadow-sm">
+                {initials}
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="font-bold text-gray-900 text-sm mb-0.5 truncate">{lead.first_name} {lead.last_name}</span>
+                <span className="text-[11px] text-gray-500 font-medium truncate">
+                  {lead.email || lead.mobile || "No contact info"}
+                </span>
+              </div>
             </div>
 
-            <DropdownMenu>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${lead.status === "New" ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800" :
+                  lead.status === "In-Progress" ? "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-800" :
+                    lead.status === "Win" ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-100 dark:border-green-800" :
+                      lead.status === "Lose" ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800" :
+                        "bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-800"
+                }`}>
+                <span className={`size-1.5 rounded-full ${lead.status === "New" ? "bg-blue-500" :
+                    lead.status === "In-Progress" ? "bg-orange-500" :
+                      lead.status === "Win" ? "bg-green-500" :
+                        lead.status === "Lose" ? "bg-red-500" :
+                          "bg-gray-400"
+                  }`} />
+                {lead.status}
+              </span>
+
+              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
-                  <MoreVertical className="h-4.5 w-4.5" />
+                <button className="flex items-center justify-center size-9 text-primary hover:text-primary-active transition-all shrink-0">
+                  <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
+              <DropdownMenuContent align="end" className="w-32 p-1 shadow-lg border-gray-200">
                 <DropdownMenuItem
                   className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                   onClick={() => onEdit(lead)}
                 >
-                  <Edit className="mr-1 h-4 w-4 text-gray-500" />
+                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                   onClick={() => onDetails(lead.uuid)}
                 >
-                  <Eye className="mr-1 h-4 w-4 text-gray-500" />
+                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
                   Details
                 </DropdownMenuItem>
                 <div className="my-1 border-t border-gray-100"></div>
@@ -301,19 +152,23 @@ const MobileView = ({
                   className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
                   onClick={() => onDelete(lead)}
                 >
-                  <Trash2 className="mr-1 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         );
       })}
       {rows.length === 0 && !loading && (
-        <div className="p-16 text-center">
-          <div className="flex flex-col items-center gap-2">
-            <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
-            <span className="text-gray-400 text-sm font-medium">No leads found matching your criteria.</span>
+        <div className="p-20 text-center bg-gray-50/30 animate-in fade-in duration-700">
+          <div className="flex flex-col items-center gap-3">
+            <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300 mb-2">
+              <KeenIcon icon="folder-search" className="text-3xl" />
+            </div>
+            <span className="text-gray-500 text-sm font-bold uppercase tracking-wider">No Leads Found</span>
+            <p className="text-xs text-gray-400 max-w-[200px] mx-auto">Try adjusting your filters or search criteria.</p>
           </div>
         </div>
       )}
@@ -335,6 +190,45 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
   const [fetchingLead, setFetchingLead] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Toolbar related state
+  const [searchInput, setSearchInput] = useState("");
+  const [allLeads, setAllLeads] = useState<{ uuid: string; name: string }[]>([]);
+  const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+
+  // Debounced search handler
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery(query);
+      }, 500),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const fetchAllLeads = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/leads/?dropdown=true`);
+        setAllLeads(response.data);
+      } catch (error) {
+        console.error("Failed to fetch all leads dropdown", error);
+      }
+    };
+    fetchAllLeads();
+  }, []);
+
+  const filteredLeads = useMemo(() => {
+    if (!searchInput) return allLeads;
+    return allLeads.filter((c) =>
+      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+    );
+  }, [allLeads, searchInput]);
 
   const navigate = useNavigate();
 
@@ -438,36 +332,38 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         id: "name",
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Name"
+            title="Lead Information"
             filter={<ColumnInputFilter column={column} />}
             column={column}
           />
         ),
         enableSorting: true,
-        cell: (info: any) => (
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col">
-              <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${info.row.original.uuid}`);
-                }}
-              >
-                {info.row.original.first_name} {info.row.original.last_name}
-              </a>
-              <a
-                className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/lead/${info.row.original.uuid}`);
-                }}
-              >
-                {info.row.original.email || "\u00A0"}
-              </a>
+        cell: (info: any) => {
+          const lead = info.row.original;
+          const initials = `${lead.first_name?.[0] || ""}${lead.last_name?.[0] || ""}`.toUpperCase();
+
+          return (
+            <div className="flex items-center gap-4 py-1 animate-in fade-in slide-in-from-left-4 duration-500">
+              <div className="size-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm group-hover:bg-white transition-colors uppercase tracking-wider">
+                {initials}
+              </div>
+              <div className="flex flex-col">
+                <a
+                  className="font-bold text-sm text-gray-900 hover:text-primary transition-colors mb-0.5 cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/lead/${lead.uuid}`);
+                  }}
+                >
+                  {lead.first_name} {lead.last_name}
+                </a>
+                <span className="text-[11px] text-gray-500 font-medium tracking-tight">
+                  {lead.email || "No email provided"}
+                </span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
         meta: { headerClassName: "min-w-[300px]" },
       },
       {
@@ -487,13 +383,33 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
         accessorFn: (row: Lead) => row.status,
         id: "status",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" column={column} />
+          <DataGridColumnHeader title="Current Status" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => info.row.original.status,
+        cell: (info: any) => {
+          const status = info.row.original.status;
+          return (
+            <div className="flex items-center animate-in fade-in slide-in-from-bottom-2 duration-700">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status === "New" ? "bg-blue-50 text-blue-700 border-blue-100" :
+                  status === "In-Progress" ? "bg-orange-50 text-orange-700 border-orange-100" :
+                    status === "Win" ? "bg-green-50 text-green-700 border-green-100" :
+                      status === "Lose" ? "bg-red-50 text-red-700 border-red-100" :
+                        "bg-gray-50 text-gray-700 border-gray-100"
+                }`}>
+                <span className={`size-1.5 rounded-full ${status === "New" ? "bg-blue-500" :
+                    status === "In-Progress" ? "bg-orange-500" :
+                      status === "Win" ? "bg-green-500" :
+                        status === "Lose" ? "bg-red-500" :
+                          "bg-gray-400"
+                  }`} />
+                {status || "No Status"}
+              </span>
+            </div>
+          );
+        },
         meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
+          headerClassName: "min-w-[150px]",
+          cellClassName: "text-gray-800",
         },
       },
       {
@@ -504,13 +420,13 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
           <div className="flex justify-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active transition-all">
                   <MoreVertical className="h-4 w-4" />
                 </button>
-
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-32 p-1 shadow-lg border-gray-200 dark:border-gray-600">
                 <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                   onClick={async () => {
                     const leadData = await fetchLeadDetails(row.original.uuid);
                     if (leadData) {
@@ -518,33 +434,21 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                     }
                   }}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                   onClick={() => {
                     navigate(`/lead/${row.original.uuid}`);
                   }}
                 >
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Details
                 </DropdownMenuItem>
-                {/* <DropdownMenuItem
-                onClick={() => {
-                  setSelectedLeadForActivity({
-                    id: row.original.uuid,
-                    status: row.original.status,
-                    address: row.original.address,
-                    created_at: row.original.created_at,
-                    activity_type: row.original.activity_type,
-                  });
-                  setActivityModalOpen(true);
-                }}
-              >
-               <PlusCircle className="mr-2 h-4 w-4" />
-                <span>Create Activity</span>
-              </DropdownMenuItem> */}
+                <div className="my-1 border-t border-gray-100 dark:border-gray-700"></div>
                 <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm text-red-500 dark:text-red-400 rounded-md cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20"
                   onClick={async () => {
                     const userData = await fetchLeadDetails(row.original.uuid!);
                     if (userData) {
@@ -552,8 +456,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
                     }
                   }}
                 >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -632,7 +536,8 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
 
   // search
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
+    setSearchInput(query);
+    debouncedSearch(query);
   };
   const handleStatusTypeSearch = (query: string) => {
     setStatusTypeQuery(query);
@@ -657,48 +562,211 @@ const LeadsContent = ({ refreshStatus }: ILeadsContentProps) => {
           </div>
         </div>
       )}
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={true}
-        onFetchData={fetchLeads}
-        loading={loading}
-        rowSelection={true}
-        rowSelectionState={rowSelection}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultStatusType={searchStatusTypeQuery}
-            setDefaultStatusType={handleStatusTypeSearch}
+      <div className="card p-0 overflow-hidden">
+        <div className="card-header flex flex-col lg:flex-row lg:justify-between gap-5 border-b-0 px-5 py-4">
+          <div className="flex w-full md:w-56 lg:w-64">
+            <Popover open={isSearchPopoverOpen} onOpenChange={setIsSearchPopoverOpen}>
+              <div className="relative w-full">
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <KeenIcon
+                      icon="magnifier"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                    />
+                    <Input
+                      placeholder="Search lead"
+                      value={searchInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchInput(value);
+                        setIsSearchPopoverOpen(true);
+                        // Trigger debounced search
+                        debouncedSearch(value);
+                      }}
+                      onClick={() => setIsSearchPopoverOpen(true)}
+                      className="pl-9 pr-9 h-9 text-xs w-full"
+                    />
+                    {searchInput && (
+                      <X
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                        onClick={() => {
+                          setSearchInput("");
+                          handleSearch("");
+                        }}
+                      />
+                    )}
+                  </div>
+                </PopoverTrigger>
+              </div>
+
+              <PopoverContent
+                className="p-0 w-[var(--radix-popover-trigger-width)]"
+                align="start"
+                onOpenAutoFocus={(e) => e?.preventDefault()}
+              >
+                <Command>
+                  <CommandList>
+                    {filteredLeads.length === 0 && (
+                      <CommandEmpty>No lead found.</CommandEmpty>
+                    )}
+                    <CommandGroup>
+                      {filteredLeads?.map((lead) => (
+                        <CommandItem
+                          key={lead?.uuid}
+                          value={lead?.name}
+                          onSelect={() => {
+                            setSearchInput(lead?.name);
+                            handleSearch(lead?.name);
+                            setIsSearchPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              searchInput === lead?.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {lead?.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Desktop Segmented Control */}
+          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
+            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900 dark:text-gray-100">Filters</span>
+            </div>
+            <div className="relative flex items-center">
+              {/* Animated Slider Background with Glow */}
+              <div
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${searchStatusTypeQuery === "-1" ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-gray-200/50 dark:shadow-gray-700/50" :
+                  searchStatusTypeQuery === "1" ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 shadow-blue-200/50 dark:shadow-blue-700/50" :
+                    searchStatusTypeQuery === "2" ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700 shadow-orange-200/50 dark:shadow-orange-700/50" :
+                      searchStatusTypeQuery === "3" ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700 shadow-indigo-200/50 dark:shadow-indigo-700/50" :
+                        searchStatusTypeQuery === "4" ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 shadow-green-200/50 dark:shadow-green-700/50" :
+                          searchStatusTypeQuery === "5" ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 shadow-red-200/50 dark:shadow-red-700/50" :
+                            "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-gray-200/50 dark:shadow-gray-700/50"
+                  }`}
+                style={{
+                  width: "100px",
+                  transform: `translateX(${searchStatusTypeQuery === "-1" ? "0px" :
+                    searchStatusTypeQuery === "1" ? "100px" :
+                      searchStatusTypeQuery === "2" ? "200px" :
+                        searchStatusTypeQuery === "3" ? "300px" :
+                          searchStatusTypeQuery === "4" ? "400px" :
+                            "500px"
+                    })`,
+                }}
+              />
+
+              {[
+                { id: "-1", label: "All" },
+                { id: "1", label: "New" },
+                { id: "2", label: "In-Progress" },
+                { id: "3", label: "Quote Given" },
+                { id: "4", label: "Win" },
+                { id: "5", label: "Lose" },
+              ].map((status) => (
+                <button
+                  key={status.id}
+                  onClick={() => {
+                    handleStatusTypeSearch(status.id);
+                  }}
+                  className={`relative w-[100px] py-1.5 text-xs font-bold rounded-md transition-all duration-300 z-10 ${searchStatusTypeQuery === status.id ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    }`}
+                >
+                  {status.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Dropdown Fallback */}
+          <div className="w-full sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-10 w-full justify-between bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-600 shadow-sm transition-all">
+                  <div className="flex items-center overflow-hidden">
+                    <Filter className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span className="truncate ml-2 font-medium text-gray-700 dark:text-gray-200">
+                      {searchStatusTypeQuery === "-1" && "All Leads"}
+                      {searchStatusTypeQuery === "1" && "New"}
+                      {searchStatusTypeQuery === "2" && "In-Progress"}
+                      {searchStatusTypeQuery === "3" && "Quote Given"}
+                      {searchStatusTypeQuery === "4" && "Win"}
+                      {searchStatusTypeQuery === "5" && "Lose"}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                {[
+                  { id: "-1", label: "All Leads" },
+                  { id: "1", label: "New" },
+                  { id: "2", label: "In-Progress" },
+                  { id: "3", label: "Quote Given" },
+                  { id: "4", label: "Win" },
+                  { id: "5", label: "Lose" },
+                ].map((status) => (
+                  <DropdownMenuItem
+                    key={status.id}
+                    onClick={() => {
+                      handleStatusTypeSearch(status.id);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Circle className="h-4 w-4 text-gray-500" />
+                    <span>{status.label}</span>
+                    {searchStatusTypeQuery === status.id && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={true}
+          onFetchData={fetchLeads}
+          loading={loading}
+          rowSelection={true}
+          rowSelectionState={rowSelection}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          layout={{
+            card: false,
+            classes: {
+              container: 'hidden lg:block'
+            }
+          }}
+        >
+          <MobileView
+            onEdit={async (lead) => {
+              const leadData = await fetchLeadDetails(lead.uuid);
+              if (leadData) {
+                setLeadModalOpen(true);
+              }
+            }}
+            onDetails={(uuid) => navigate(`/lead/${uuid}`)}
+            onDelete={async (lead) => {
+              const leadData = await fetchLeadDetails(lead.uuid!);
+              if (leadData) {
+                setShowDeleteDialog(true);
+              }
+            }}
           />
-        }
-        layout={{
-          card: true,
-          classes: {
-            container: 'hidden lg:block'
-          }
-        }}
-      >
-        <MobileView
-          onEdit={async (lead) => {
-            const leadData = await fetchLeadDetails(lead.uuid);
-            if (leadData) {
-              setLeadModalOpen(true);
-            }
-          }}
-          onDetails={(uuid) => navigate(`/lead/${uuid}`)}
-          onDelete={async (lead) => {
-            const leadData = await fetchLeadDetails(lead.uuid!);
-            if (leadData) {
-              setShowDeleteDialog(true);
-            }
-          }}
-        />
-      </DataGrid>
+        </DataGrid>
+      </div>
       <ModalLead
         open={leadModalOpen}
         onOpenChange={handleClose}

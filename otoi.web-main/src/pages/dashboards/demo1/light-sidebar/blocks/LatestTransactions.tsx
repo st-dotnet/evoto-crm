@@ -101,7 +101,7 @@ const LatestTransactions = () => {
                     onClick={() => setActiveTab(tab)}
                     className={`px-5 py-3 text-xs font-semibold border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === tab
                       ? 'border-primary text-primary bg-primary/[0.02]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      : 'border-transparent text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:text-green-400 dark:hover:bg-green-900/20'
                       }`}
                   >
                     {tab}
@@ -176,7 +176,7 @@ const LatestTransactions = () => {
                     <tr
                       key={index}
                       onClick={() => txn.route_path && navigate(txn.route_path)}
-                      className={txn.route_path ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""}
+                      className={txn.route_path ? "cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" : ""}
                     >
                       <td>
                         <span className="text-sm text-gray-800">

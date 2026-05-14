@@ -82,8 +82,29 @@ const SidebarMenu = () => {
               linkPy
             )}
           >
-            <MenuIcon className={clsx('items-start text-gray-500 dark:text-gray-400', iconWidth)}>
-              {item.icon && <KeenIcon icon={item.icon} className={iconSize} />}
+            <MenuIcon className={clsx('items-start', iconWidth)}>
+              {item.icon && <KeenIcon icon={item.icon} className={clsx(iconSize, 
+                item.icon === 'element-11' ? 'text-blue-500 dark:text-blue-400' :
+                item.icon === 'users' ? 'text-purple-500 dark:text-purple-400' :
+                item.icon === 'archive' ? 'text-orange-500 dark:text-orange-400' :
+                item.icon === 'chart' ? 'text-green-500 dark:text-green-400' :
+                item.icon === 'basket' ? 'text-yellow-500 dark:text-yellow-400' :
+                item.icon === 'graph' ? 'text-pink-500 dark:text-pink-400' :
+                item.icon === 'purchase' ? 'text-indigo-500 dark:text-indigo-400' :
+                item.icon === 'money-bag' ? 'text-emerald-500 dark:text-emerald-400' :
+                item.icon === 'bank' ? 'text-cyan-500 dark:text-cyan-400' :
+                item.icon === 'wallet' ? 'text-amber-500 dark:text-amber-400' :
+                item.icon === 'two-wallet' ? 'text-lime-500 dark:text-lime-400' :
+                item.icon === 'verify' ? 'text-teal-500 dark:text-teal-400' :
+                item.icon === 'questionnaire-tablet' ? 'text-orange-500 dark:text-orange-400' :
+                item.icon === 'handcart' ? 'text-purple-500 dark:text-purple-400' :
+                item.icon === 'home' ? 'text-blue-500 dark:text-blue-400' :
+                item.icon === 'shop' ? 'text-green-500 dark:text-green-400' :
+                item.icon === 'dollar-square' ? 'text-yellow-500 dark:text-yellow-400' :
+                item.icon === 'document' ? 'text-red-500 dark:text-red-400' :
+                item.icon === 'setting-3' ? 'text-slate-600 dark:text-slate-400' :
+                'text-zinc-600 dark:text-zinc-400'
+              )} />}
             </MenuIcon>
             <MenuTitle className="text-sm font-medium text-gray-800 menu-item-active:text-primary menu-link-hover:!text-primary">
               {item.title}
@@ -117,11 +138,32 @@ const SidebarMenu = () => {
           >
             <MenuIcon
               className={clsx(
-                'items-start text-gray-600 dark:text-gray-500 menu-item-active:text-primary menu-link-hover:!text-primary',
+                'items-start menu-item-active:text-primary menu-link-hover:!text-primary',
                 iconWidth
               )}
             >
-              {item.icon && <KeenIcon icon={item.icon} className={iconSize} />}
+              {item.icon && <KeenIcon icon={item.icon} className={clsx(iconSize, 
+                item.icon === 'element-11' ? 'text-blue-500 dark:text-blue-400' :
+                item.icon === 'users' ? 'text-purple-500 dark:text-purple-400' :
+                item.icon === 'archive' ? 'text-orange-500 dark:text-orange-400' :
+                item.icon === 'chart' ? 'text-green-500 dark:text-green-400' :
+                item.icon === 'basket' ? 'text-yellow-500 dark:text-yellow-400' :
+                item.icon === 'graph' ? 'text-pink-500 dark:text-pink-400' :
+                item.icon === 'purchase' ? 'text-indigo-500 dark:text-indigo-400' :
+                item.icon === 'money-bag' ? 'text-emerald-500 dark:text-emerald-400' :
+                item.icon === 'bank' ? 'text-cyan-500 dark:text-cyan-400' :
+                item.icon === 'wallet' ? 'text-amber-500 dark:text-amber-400' :
+                item.icon === 'two-wallet' ? 'text-lime-500 dark:text-lime-400' :
+                item.icon === 'verify' ? 'text-teal-500 dark:text-teal-400' :
+                item.icon === 'questionnaire-tablet' ? 'text-orange-500 dark:text-orange-400' :
+                item.icon === 'handcart' ? 'text-purple-500 dark:text-purple-400' :
+                item.icon === 'home' ? 'text-blue-500 dark:text-blue-400' :
+                item.icon === 'shop' ? 'text-green-500 dark:text-green-400' :
+                item.icon === 'dollar-square' ? 'text-yellow-500 dark:text-yellow-400' :
+                item.icon === 'document' ? 'text-red-500 dark:text-red-400' :
+                item.icon === 'setting-3' ? 'text-slate-600 dark:text-slate-400' :
+                'text-zinc-600 dark:text-zinc-400'
+              )} />}
             </MenuIcon>
             <MenuTitle className="text-sm font-medium text-gray-800 menu-item-active:text-primary menu-link-hover:!text-primary">
               {item.title}
@@ -138,8 +180,16 @@ const SidebarMenu = () => {
         <MenuLabel
           className={clsx('border border-transparent', accordionLinkGap[0], linkPy, linkPl, linkPr)}
         >
-          <MenuIcon className={clsx('items-start text-gray-500 dark:text-gray-400', iconWidth)}>
-            {item.icon && <KeenIcon icon={item.icon} className={iconSize} />}
+          <MenuIcon className={clsx('items-start', iconWidth)}>
+            {item.icon && <KeenIcon icon={item.icon} className={clsx(iconSize, 
+              item.icon === 'home' ? 'text-blue-500 dark:text-blue-400' :
+              item.icon === 'shop' ? 'text-green-500 dark:text-green-400' :
+              item.icon === 'dollar-square' ? 'text-yellow-500 dark:text-yellow-400' :
+              item.icon === 'users' ? 'text-purple-500 dark:text-purple-400' :
+              item.icon === 'document' ? 'text-red-500 dark:text-red-400' :
+              item.icon === 'setting-3' ? 'text-gray-500 dark:text-gray-400' :
+              'text-gray-500 dark:text-gray-400'
+            )} />}
           </MenuIcon>
           <MenuTitle className="text-sm font-medium text-gray-800">{item.title}</MenuTitle>
 

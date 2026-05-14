@@ -14,6 +14,7 @@ import { Lead } from "../parties/blocks/leads/lead-models";
 import axios from "axios";
 import { toast } from "sonner";
 import { SpinnerDotted } from 'spinners-react';
+import { Upload, Download, Plus } from "lucide-react";
 
 export interface ILeadModalContentProps {
   state: boolean;
@@ -134,40 +135,46 @@ const LeadsPage = () => {
               <ToolbarPageTitle />
               <ToolbarDescription>
                 <div className="flex items-center flex-wrap gap-1.5 font-medium">
-                  <span className="text-md text-gray-600">All Leads:</span>
+                  <span className="text-md text-gray-600 dark:text-gray-300">All Leads:</span>
                 </div>
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              {/* Import CSV Button */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                accept=".csv"
-                onChange={handleImportCSV}
-              />
-              <button
-                className="btn btn-sm btn-light grow md:grow-0 justify-center"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Import Leads CSV
-              </button>
-              {/* Download Template Button */}
-              <button
-                className="btn btn-sm btn-success grow md:grow-0 justify-center"
-                onClick={handleDownloadTemplate}
-              >
-                Download Lead Template
-              </button>
-              {/* Add Lead Button */}
-              <a
-                className="btn btn-sm btn-primary grow md:grow-0 justify-center"
-                onClick={(e) => openLeadModal(e)}
-                href="#"
-              >
-                Add Lead
-              </a>
+              <div className="flex items-center gap-2">
+                {/* Import CSV Button */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                />
+                <button
+                  className="group flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500 transition-all duration-300"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="size-3.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 group-hover:-translate-y-0.5 transition-all duration-300 ease-in-out" />
+                  <span>Import</span>
+                </button>
+
+                {/* Download Template Button */}
+                <button
+                  className="group flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-white bg-green-500 rounded-lg hover:bg-lime-700 shadow-sm hover:shadow transition-all duration-300"
+                  onClick={handleDownloadTemplate}
+                >
+                  <Download className="size-3.5 group-hover:translate-y-0.5 transition-all duration-300 ease-in-out" />
+                  <span>Download Template</span>
+                </button>
+
+                {/* Add Lead Button */}
+                <button
+                  className="group flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-300"
+                  onClick={(e) => openLeadModal(e as any)}
+                >
+                  <Plus className="size-4 group-hover:rotate-90 transition-all duration-400 ease-in-out" />
+                  <span>Add Lead</span>
+                </button>
+              </div>
             </ToolbarActions>
           </Toolbar>
         </Container>

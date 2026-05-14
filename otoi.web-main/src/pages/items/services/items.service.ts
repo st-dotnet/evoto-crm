@@ -53,9 +53,9 @@ export const getItems = async (
   limit = 10,
 ): Promise<ItemsApiResponse> => {
   const params = new URLSearchParams({
-    search,
+    query: search,
     page: String(page),
-    limit: String(limit),
+    items_per_page: String(limit),
   });
 
   const token = getAuthToken();

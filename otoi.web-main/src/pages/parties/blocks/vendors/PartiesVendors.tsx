@@ -12,6 +12,7 @@ import {
 import { useLayout } from "@/providers";
 import { PartiesVendorsContent } from "./PartiesVendorsContent";
 import { KeenIcon } from "@/components";
+import { Plus } from "lucide-react";
 // import { useNavigate } from "react-router-dom";
 // import { toast } from "sonner";
 // import axios from "axios";
@@ -54,6 +55,10 @@ const PartiesVendorsPage = () => {
   };
   return (
     <Fragment>
+      <style>{`
+        .vendor-add-btn:hover .size-4 { transform: rotate(90deg) !important; transition: transform 0.2s ease-in-out !important; }
+        .vendor-add-btn:hover svg { transform: rotate(90deg) !important; transition: transform 0.2s ease-in-out !important; }
+      `}</style>
       {currentLayout?.name === "demo1-layout" && (
         <Container>
           <Toolbar>
@@ -66,9 +71,15 @@ const PartiesVendorsPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <button className="btn btn-sm btn-primary w-full md:w-auto" onClick={openPersonModal}>
-                <KeenIcon icon="plus" /> Add Vendor
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="vendor-add-btn flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-300"
+                  onClick={openPersonModal}
+                >
+                  <Plus className="size-4" />
+                  <span>Add Vendor</span>
+                </button>
+              </div>
             </ToolbarActions>
           </Toolbar>
         </Container>

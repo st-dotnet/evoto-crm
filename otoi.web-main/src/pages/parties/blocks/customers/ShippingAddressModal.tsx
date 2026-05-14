@@ -105,6 +105,10 @@ const ShippingAddressModal = ({
   title,
 }: IShippingAddressModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [showSaveChangesModal, setShowSaveChangesModal] = useState(false);
+  const [pendingClose, setPendingClose] = useState(false);
 
   const formik = useFormik({
     initialValues: address ? { ...address } : {
@@ -193,33 +197,76 @@ const ShippingAddressModal = ({
     }
   }, [open, address, existingAddresses]);
 
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = () => {
+    const currentValues = formik.values;
+    const originalValues = address ? { ...address } : {
+      ...initialAddressValues,
+      address_type: getDefaultAddressType(existingAddresses)
+    };
+
+    // Remove timestamp fields from comparison as they change automatically
+    const { created_at: _, updated_at: __, ...currentClean } = currentValues;
+    const { created_at: ___, updated_at: ____, ...originalClean } = originalValues;
+
+    return JSON.stringify(currentClean) !== JSON.stringify(originalClean);
+  };
+
+  // Handle modal close with unsaved changes check
+  const handleModalClose = (shouldClose: boolean) => {
+    if (shouldClose) {
+      setShowSaveChangesModal(false);
+      onOpenChange(false);
+      setPendingClose(false);
+      formik.resetForm();
+    } else {
+      setShowSaveChangesModal(false);
+      setPendingClose(false);
+    }
+  };
+
+  // Handle dialog open change
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && hasUnsavedChanges() && !pendingClose) {
+      setShowSaveChangesModal(true);
+      setPendingClose(true);
+    } else if (isOpen) {
+      onOpenChange(true);
+    } else {
+      onOpenChange(false);
+    }
+  };
+
   return (
     <Fragment>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         {/* <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg z-50"> */}
-        <DialogContent className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg max-h-[90vh] flex flex-col" zIndex="z-[10001]">
-          <DialogHeader className="bg-gray-50 p-6 border-b">
-            <DialogTitle className="text-lg font-semibold text-gray-800">
+        <DialogContent
+          className="container-fixed max-w-[600px] p-0 rounded-lg shadow-lg max-h-[90vh] flex flex-col bg-white dark:bg-black border dark:border-zinc-800"
+          zIndex="z-[10001]"
+        >
+          <DialogHeader className="bg-gray-50 dark:bg-zinc-950 p-6 border-b dark:border-zinc-800">
+            <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
               {title ||
                 (address ? "Edit Shipping Address" : "Add Shipping Address")}
             </DialogTitle>
             <DialogClose
-              onClick={() => onOpenChange(false)}
-              className="right-2 top-1 rounded-sm opacity-70"
+              onClick={() => handleOpenChange(false)}
+              className="right-2 top-1 rounded-sm opacity-70 text-gray-500 dark:text-zinc-400"
             />
           </DialogHeader>
-          <DialogBody className="p-3 sm:p-6 flex-1 overflow-y-auto">
+          <DialogBody className="p-3 sm:p-6 flex-1 overflow-y-auto dark:bg-black">
             <form
               noValidate
               onSubmit={formik.handleSubmit}
               className="space-y-3 sm:space-y-4"
             >
               {formik.status && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
                   <div className="flex">
                     <div className="flex-shrink-0">
                       <svg
-                        className="h-5 w-5 text-red-400"
+                        className="h-5 w-5 text-red-400 dark:text-red-500"
                         viewBox="0 0 20 20"
                         fill="currentColor"
                       >
@@ -231,7 +278,7 @@ const ShippingAddressModal = ({
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm text-red-800">{formik.status}</p>
+                      <p className="text-sm text-red-800 dark:text-red-400">{formik.status}</p>
                     </div>
                   </div>
                 </div>
@@ -251,7 +298,7 @@ const ShippingAddressModal = ({
                         className={`relative flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border cursor-pointer transition-all duration-200
                         ${isSelected
                             ? "bg-blue-600 text-white border-blue-600 z-10"
-                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                            : "dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-800 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100"
                           }
                         ${type === "home" ? "rounded-l-md" : ""}
                         ${type === "other" ? "rounded-r-md" : ""}
@@ -298,7 +345,7 @@ const ShippingAddressModal = ({
                             <path d="M3 13.5h8v8H3z" />
                           </svg>
                         )}
-                        <span className="capitalize">
+                        <span className="capitalize text-gray-700 dark:text-zinc-300">
                           {type === "other" ? "Others" : type}
                         </span>
                       </label>
@@ -318,13 +365,13 @@ const ShippingAddressModal = ({
               {/* Address Fields */}
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                     Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     {...formik.getFieldProps("address1")}
-                    className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
+                    className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white", {
                       "border-red-500 focus:ring-red-500 focus:border-red-500":
                         formik.touched.address1 && formik.errors.address1,
                     })}
@@ -339,7 +386,7 @@ const ShippingAddressModal = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                       Country <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -349,7 +396,7 @@ const ShippingAddressModal = ({
                         formik.setFieldValue("state", "");
                         formik.setFieldValue("city", "");
                       }}
-                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.country && formik.errors.country,
                       })}
@@ -369,7 +416,7 @@ const ShippingAddressModal = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                       State <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -379,7 +426,7 @@ const ShippingAddressModal = ({
                         formik.setFieldValue("city", "");
                       }}
                       disabled={!formik.values.country}
-                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm disabled:bg-gray-100", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white disabled:bg-gray-100 dark:disabled:bg-zinc-800", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.state && formik.errors.state,
                       })}
@@ -404,13 +451,13 @@ const ShippingAddressModal = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                       City <span className="text-red-500">*</span>
                     </label>
                     <select
                       {...formik.getFieldProps("city")}
                       disabled={!formik.values.state}
-                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm disabled:bg-gray-100", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white disabled:bg-gray-100 dark:disabled:bg-zinc-800", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.city && formik.errors.city,
                       })}
@@ -435,13 +482,13 @@ const ShippingAddressModal = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                       Pin Code <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       {...formik.getFieldProps("pin")}
-                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
+                      className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white", {
                         "border-red-500 focus:ring-red-500 focus:border-red-500":
                           formik.touched.pin && formik.errors.pin,
                       })}
@@ -460,11 +507,11 @@ const ShippingAddressModal = ({
                     type="checkbox"
                     id="is_default"
                     {...formik.getFieldProps("is_default")}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 dark:border-zinc-800 text-blue-600 focus:ring-blue-500 dark:bg-zinc-900"
                   />
                   <label
                     htmlFor="is_default"
-                    className="text-xs sm:text-sm font-medium text-gray-700"
+                    className="text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300"
                   >
                     Set as default shipping address
                   </label>
@@ -473,11 +520,11 @@ const ShippingAddressModal = ({
 
               {/* Form Actions */}
               {/* <div className="flex justify-end gap-2 pt-4 border-t"> */}
-              <div className="border-t bg-white p-3 sm:px-6 sm:py-4 flex justify-end gap-2 sticky bottom-0 z-10">
+              <div className="border-t dark:border-zinc-800 p-3 sm:px-6 sm:py-4 flex justify-end gap-2 sticky bottom-0 z-10 bg-white dark:bg-zinc-950">
                 <button
                   type="button"
-                  onClick={() => onOpenChange(false)}
-                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
+                  onClick={() => handleOpenChange(false)}
+                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 dark:bg-zinc-900 text-gray-800 dark:text-zinc-300 border dark:border-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-800 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                 >
                   Cancel
                 </button>

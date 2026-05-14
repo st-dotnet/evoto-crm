@@ -557,6 +557,12 @@ const ModalCustomer = ({
 
     const addressToDelete = shippingAddresses[addressIndex];
     removeShippingAddress(uuid);
+
+    // Update original addresses after successful deletion
+    setTimeout(() => {
+      setOriginalShippingAddresses(JSON.parse(JSON.stringify(shippingAddresses.filter(addr => addr.uuid !== uuid))));
+    }, 100);
+
     toast.success("Shipping address deleted successfully");
   };
 
@@ -567,9 +573,10 @@ const ModalCustomer = ({
 
   // Handle save address from modal
   const handleSaveAddress = (address: ShippingAddress) => {
+    let updatedAddresses;
     if (editingAddress) {
       // Update existing address
-      const updatedAddresses = shippingAddresses.map((addr) =>
+      updatedAddresses = shippingAddresses.map((addr) =>
         addr.uuid === editingAddress.uuid
           ? { ...address, updated_at: new Date().toISOString() }
           : addr,
@@ -583,8 +590,15 @@ const ModalCustomer = ({
         created_at: address.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setShippingAddresses([...shippingAddresses, newAddress]);
+      updatedAddresses = [...shippingAddresses, newAddress];
+      setShippingAddresses(updatedAddresses);
     }
+
+    // Update original addresses after successful save
+    setTimeout(() => {
+      setOriginalShippingAddresses(JSON.parse(JSON.stringify(updatedAddresses)));
+    }, 100);
+
     setEditingAddress(null);
   };
 
@@ -924,17 +938,17 @@ const ModalCustomer = ({
   return (
     <Fragment>
       <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg max-h-[95vh] flex flex-col" zIndex={zIndex}>
-          <DialogHeader className="bg-gray-50 p-3 sm:p-6 border-b rounded-t-lg">
-            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800">
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg max-h-[95vh] flex flex-col bg-white dark:bg-black border dark:border-zinc-800" zIndex={zIndex}>
+          <DialogHeader className="bg-gray-50 dark:bg-zinc-950 p-3 sm:p-6 border-b dark:border-zinc-800 rounded-t-lg">
+            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-zinc-100">
               {title || (customer ? "Edit Customer" : "Add Customer")}
             </DialogTitle>
             <DialogClose
               onClick={() => handleDialogClose(false)}
-              className="right-2 top-1 rounded-sm opacity-70"
+              className="right-2 top-1 rounded-sm opacity-70 text-gray-500 dark:text-zinc-400"
             />
           </DialogHeader>
-          <DialogBody className="p-3 sm:p-6 flex-1">
+          <DialogBody className="p-3 sm:p-6 flex-1 dark:bg-black">
             <form
               noValidate
               onSubmit={formik.handleSubmit}
@@ -947,12 +961,12 @@ const ModalCustomer = ({
               )}
               {/* First Name */}
               <div className="flex flex-col gap-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                  First Name<span style={{ color: "red" }}>*</span>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                  First Name<span className="text-red-500">*</span>
                 </label>
                 <input
                   {...formik.getFieldProps("first_name")}
-                  className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                  className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                 />
                 {formik.touched.first_name && formik.errors.first_name && (
                   <span role="alert" className="text-xs text-red-500">
@@ -962,12 +976,12 @@ const ModalCustomer = ({
               </div>
               {/* Last Name */}
               <div className="flex flex-col gap-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                  Last Name<span style={{ color: "red" }}>*</span>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                  Last Name<span className="text-red-500">*</span>
                 </label>
                 <input
                   {...formik.getFieldProps("last_name")}
-                  className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                  className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                 />
                 {formik.touched.last_name && formik.errors.last_name && (
                   <span role="alert" className="text-xs text-red-500">
@@ -977,12 +991,12 @@ const ModalCustomer = ({
               </div>
               {/* Mobile */}
               <div className="flex flex-col gap-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                   Mobile
                 </label>
                 <input
                   {...formik.getFieldProps("mobile")}
-                  className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm", {
+                  className={clsx("flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100", {
                     "border-red-500 focus:ring-red-500 focus:border-red-500":
                       formik.touched.mobile && formik.errors.mobile,
                   })}
@@ -1031,10 +1045,10 @@ const ModalCustomer = ({
 
               {/* Email */}
               <div className="flex flex-col gap-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                   Email
                 </label>
-                <input {...formik.getFieldProps("email")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm" />
+                <input {...formik.getFieldProps("email")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100" />
                 {formik.touched.email && formik.errors.email && (
                   <span role="alert" className="text-xs text-red-500">
                     {formik.errors.email}
@@ -1043,10 +1057,10 @@ const ModalCustomer = ({
               </div>
               {/* GST */}
               <div className="flex flex-col gap-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                  GST<span style={{ color: "red" }}>*</span>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                  GST<span className="text-red-500">*</span>
                 </label>
-                <input {...formik.getFieldProps("gst")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                <input {...formik.getFieldProps("gst")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                   onInput={(e) => {
                     const input = e.target as HTMLInputElement;
                     if (input.value.length > 15) {
@@ -1062,10 +1076,10 @@ const ModalCustomer = ({
               {/* Status */}
               {!hideStatusField && (
                 <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                     Status
                   </label>
-                  <select {...formik.getFieldProps("status")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm">
+                  <select {...formik.getFieldProps("status")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100">
                     {statusList.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
@@ -1084,28 +1098,27 @@ const ModalCustomer = ({
                     <>
                       {/* Billing Address Fields */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                          Billing Address 1{" "}
-                          <span style={{ color: "red" }}>*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          Billing Address 1<span className="text-red-500">*</span>
                         </label>
                         <input
                           {...formik.getFieldProps("address1")}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
                           Billing Address 2
                         </label>
                         <input
                           {...formik.getFieldProps("address2")}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                         />
                       </div>
                       {/* Country */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                          Country<span style={{ color: "red" }}>*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          Country<span className="text-red-500">*</span>
                         </label>
                         <select
                           {...formik.getFieldProps("country")}
@@ -1114,7 +1127,7 @@ const ModalCustomer = ({
                             formik.setFieldValue("state", "");
                             formik.setFieldValue("city", "");
                           }}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                         >
                           <option value="">--Select Country--</option>
                           {Country.getAllCountries().map((c) => (
@@ -1126,8 +1139,8 @@ const ModalCustomer = ({
                       </div>
                       {/* State */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                          State<span style={{ color: "red" }}>*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          State<span className="text-red-500">*</span>
                         </label>
                         <select
                           {...formik.getFieldProps("state")}
@@ -1136,7 +1149,7 @@ const ModalCustomer = ({
                             formik.setFieldValue("city", "");
                           }}
                           disabled={!formik.values.country}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100 disabled:bg-gray-100 dark:disabled:bg-zinc-800"
                         >
                           <option value="">--Select State--</option>
                           {formik.values.country &&
@@ -1151,13 +1164,13 @@ const ModalCustomer = ({
                       </div>
                       {/* City */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                          City<span style={{ color: "red" }}>*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          City<span className="text-red-500">*</span>
                         </label>
                         <select
                           {...formik.getFieldProps("city")}
                           disabled={!formik.values.state}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100 disabled:bg-gray-100 dark:disabled:bg-zinc-800"
                         >
                           <option value="">--Select City--</option>
                           {formik.values.country &&
@@ -1174,12 +1187,12 @@ const ModalCustomer = ({
                       </div>
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                          Pin Code <span style={{ color: "red" }}>*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          Pin Code <span className="text-red-500">*</span>
                         </label>
                         <input
                           {...formik.getFieldProps("pin")}
-                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+                          className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 dark:text-zinc-100"
                         />
                         {formik.touched.pin && formik.errors.pin && (
                           <span role="alert" className="text-xs text-red-500">
@@ -1198,7 +1211,7 @@ const ModalCustomer = ({
                           />
                           <label
                             htmlFor="sameAsBilling"
-                            className="text-sm font-medium text-gray-700"
+                            className="text-sm font-medium text-gray-700 dark:text-zinc-300"
                           >
                             Shipping Address is same as Billing Address
                           </label>
@@ -1206,9 +1219,9 @@ const ModalCustomer = ({
                       )}
                       {/* Shipping Address Section */}
                       {(!sameAsBilling || hideSameAsBilling) && (
-                        <div className="col-span-full mt-4">
+                        <div className="col-span-full mt-4 dark:bg-transparent">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-md font-semibold text-gray-900">
+                            <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100">
                               Shipping Addresses
                             </h3>
                             {shippingAddresses.length < 3 && (
@@ -1255,14 +1268,14 @@ const ModalCustomer = ({
                 if (selectedStatus === "5" || selectedStatus === "Lose") {
                   return (
                     <div className="flex flex-col gap-1 col-span-full">
-                      <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                        Reason<span style={{ color: "red" }}>*</span>
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300">
+                        Reason<span className="text-red-500">*</span>
                       </label>
                       <textarea
                         placeholder="Reason"
                         autoComplete="off"
                         {...formik.getFieldProps("reason")}
-                        className="flex w-full rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm min-h-[80px] sm:min-h-[100px]"
+                        className="flex w-full rounded-md border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm min-h-[80px] sm:min-h-[100px] text-gray-900 dark:text-zinc-100"
                       />
                       {formik.touched.reason && formik.errors.reason && (
                         <span role="alert" className="text-xs text-red-500">
@@ -1278,7 +1291,7 @@ const ModalCustomer = ({
                 <button
                   type="button"
                   onClick={() => handleDialogClose(false)}
-                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
+                  className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 dark:bg-zinc-900 text-gray-800 dark:text-zinc-300 border dark:border-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-800 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
                 >
                   Cancel
                 </button>
@@ -1304,72 +1317,6 @@ const ModalCustomer = ({
         existingAddresses={shippingAddresses}
       />
 
-      {/* Unsaved Changes Confirmation Dialog */}
-      <Dialog
-        open={showUnsavedChangesDialog}
-        onOpenChange={setShowUnsavedChangesDialog}
-      >
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col rounded-2xl p-0 overflow-hidden">
-          {/* Header */}
-          <div className="px-6 py-4 border-b sticky top-0 bg-white z-10">
-            <DialogTitle className="text-base font-semibold text-gray-900">
-              Unsaved Changes
-            </DialogTitle>
-          </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {/* <p className="text-sm text-gray-700 leading-relaxed">
-                            You have unsaved shipping address changes.  <br />
-                            Would you like to save these changes before closing?
-                        </p> */}
-            <p className="text-sm text-gray-500 mt-1">
-              You have unsaved changes in the shipping address.
-            </p>
-
-            <div className="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-yellow-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-yellow-700">
-                    Your changes will be lost if you don't save them. <br /> Click on save before leaving the page.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sticky Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 sticky bottom-0 z-10">
-            <button
-              type="button"
-              onClick={handleCancelClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none"
-            >
-              Keep Editing
-            </button>
-            <button
-              type="button"
-              onClick={handleDiscardChanges}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none"
-            >
-              Leave Changes
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Fragment>
   );
 };

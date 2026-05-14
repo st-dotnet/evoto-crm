@@ -251,43 +251,43 @@ export const PaymentInPage = () => {
     onRowClick: (payment: any) => void;
   }) => {
     return (
-      <div className="flex flex-col lg:hidden border-t border-gray-100">
+      <div className="flex flex-col lg:hidden border-t border-gray-100 dark:border-gray-100/10">
         {payments.map((payment) => (
           <div
             key={payment.id || payment.payment_number}
-            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 dark:border-gray-100/10 last:border-b-0 hover:bg-gray-50/50 dark:hover:bg-gray-200/50 transition-all active:bg-gray-50 dark:active:bg-gray-200/50"
             onClick={() => onRowClick(payment)}
           >
             <div className="flex flex-col grow pr-4 cursor-pointer">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-blue-600 text-sm">#{payment.payment_number}</span>
-                <span className="text-[11px] text-gray-400 font-medium">
+                <span className="font-semibold text-blue-600 dark:text-blue-500 text-sm">#{payment.payment_number}</span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
                   {new Date(payment.date).toLocaleDateString()}
                 </span>
               </div>
-              <span className="text-sm font-medium text-gray-700 mb-1">{payment.party_name}</span>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-900 mb-1">{payment.party_name}</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-500">
                 <span className="flex items-center gap-1">
-                  <Wallet className="h-3 w-3 text-gray-400" />
+                  <Wallet className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                   {payment.payment_mode}
                 </span>
                 {payment.payment_discount > 0 && (
-                  <span className="text-red-500 font-medium">
+                  <span className="text-red-500 dark:text-red-400 font-medium">
                     Disc: ₹{payment.payment_discount.toLocaleString("en-IN")}
                   </span>
                 )}
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-400 uppercase font-medium">Received</span>
-                  <span className="font-bold text-blue-600 text-sm">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-medium">Received</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-500 text-sm">
                     ₹{payment.amount_received?.toLocaleString('en-IN') || '0.00'}
                   </span>
                 </div>
                 {(payment.total_amount_settled ?? 0) > 0 && (
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-gray-400 uppercase font-medium">Settled</span>
-                    <span className="font-semibold text-gray-700 text-sm">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-medium">Settled</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-900 text-sm">
                       ₹{payment.total_amount_settled?.toLocaleString('en-IN') || '0.00'}
                     </span>
                   </div>
@@ -297,11 +297,11 @@ export const PaymentInPage = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                <button className="flex items-center justify-center size-9 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-200 rounded-full transition-all shrink-0">
                   <MoreVertical className="h-4.5 w-4.5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 p-1 shadow-lg border-gray-200">
+              <DropdownMenuContent align="end" className="w-40 p-1 shadow-lg bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                 <DropdownMenuItem
                   className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                   onClick={(e) => onEdit(payment.id, e)}
@@ -361,7 +361,7 @@ export const PaymentInPage = () => {
         />
       ),
       cell: (info) => (
-        <div className="text-sm text-gray-900 text-center">
+        <div className="text-sm text-gray-900 dark:text-gray-900 text-center">
           {new Date(info.getValue() as string).toLocaleDateString()}
         </div>
       ),
@@ -376,7 +376,7 @@ export const PaymentInPage = () => {
         />
       ),
       cell: (info) => (
-        <div className="text-sm font-medium text-center text-blue-500">
+        <div className="text-sm font-medium text-center text-blue-500 dark:text-blue-400">
           #{info.getValue() as string}
         </div>
       ),
@@ -391,7 +391,7 @@ export const PaymentInPage = () => {
         />
       ),
       cell: (info) => (
-        <div className="text-sm text-gray-900 text-center">
+        <div className="text-sm text-gray-900 dark:text-gray-900 text-center">
           {info.getValue() as string}
         </div>
       ),
@@ -406,7 +406,7 @@ export const PaymentInPage = () => {
         />
       ),
       cell: (info) => (
-        <div className="text-sm font-medium text-center">
+        <div className="text-sm font-medium text-center text-gray-900 dark:text-gray-900">
           ₹{(info.getValue() as number)?.toLocaleString("en-IN", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -429,13 +429,13 @@ export const PaymentInPage = () => {
         const discount = row.payment_discount || 0;
 
         return (
-          <div className="text-sm font-medium text-center text-black-600">
+          <div className="text-sm font-medium text-center text-gray-900 dark:text-gray-900">
             ₹{amountReceived.toLocaleString("en-IN", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             })}
             {discount > 0 && (
-              <div className="text-xs text-red-500">
+              <div className="text-xs text-red-500 dark:text-red-400">
                 - ₹{discount.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
@@ -461,7 +461,7 @@ export const PaymentInPage = () => {
         const discount = row.payment_discount || 0;
 
         return (
-          <div className="text-sm text-gray-900 text-center">
+          <div className="text-sm text-gray-900 dark:text-gray-900 text-center">
             {discount > 0 ? `${paymentMode} + discount` : paymentMode}
           </div>
         );
@@ -472,7 +472,7 @@ export const PaymentInPage = () => {
       header: "Actions",
       enableSorting: false,
       meta: {
-        headerClassName: "w-28",
+        headerClassName: "w-28 text-center",
         cellClassName: "text-gray-800 font-medium pointer-events-auto",
       },
       cell: ({ row }) => {
@@ -491,7 +491,7 @@ export const PaymentInPage = () => {
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
@@ -579,19 +579,18 @@ export const PaymentInPage = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Desktop Status Segmented Filter */}
-          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
-            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
-              <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
-              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Filters</span>
+          <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 dark:bg-gray-200/5 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-100 shadow-sm w-fit">
+            <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 dark:border-gray-100/50 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 dark:text-gray-900 mr-2" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900 dark:text-gray-900">Filters</span>
             </div>
             <div className="relative flex items-center">
               {/* Animated Slider Background with Glow */}
               <div
-                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
-                  selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
-                  selectedStatus === 'paid' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
-                  'bg-yellow-50 border-yellow-200 shadow-yellow-200/50'
-                }`}
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_12px_-2px_rgba(59,130,246,0.15)] dark:shadow-[0_2px_15px_-3px_rgba(59,130,246,0.3)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white dark:bg-blue-500/20 border-gray-200 dark:border-blue-500/50 shadow-gray-200/50' :
+                  selectedStatus === 'paid' ? 'bg-green-50 dark:bg-green-500/20 border-green-200 dark:border-green-500/50 shadow-green-200/50' :
+                    'bg-blue-50 dark:bg-blue-500/20 border-blue-200 dark:border-blue-500/50 shadow-blue-200/50'
+                  }`}
                 style={{
                   width: '90px',
                   transform: `translateX(${selectedStatus === 'all' ? '0px' :
@@ -602,19 +601,19 @@ export const PaymentInPage = () => {
 
               <button
                 onClick={() => setSelectedStatus('all')}
-                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative w-[90px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900 dark:text-gray-900 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               >
                 All
               </button>
               <button
                 onClick={() => setSelectedStatus('paid')}
-                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'paid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative w-[90px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'paid' ? 'text-gray-900 dark:text-gray-900 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               >
                 Done
               </button>
               <button
                 onClick={() => setSelectedStatus('partially paid')}
-                className={`relative w-[90px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'partially paid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative w-[90px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'partially paid' ? 'text-gray-900 dark:text-gray-900 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               >
                 Pending
               </button>
@@ -625,10 +624,10 @@ export const PaymentInPage = () => {
           <div className="w-full sm:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                <Button variant="outline" size="sm" className="h-9 w-full justify-between bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                   <div className="flex items-center overflow-hidden">
-                    <Filter className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate ml-1">
+                    <Filter className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span className="truncate ml-1 text-gray-700 dark:text-gray-900 font-medium">
                       {selectedStatus === 'all' && 'All Payments'}
                       {selectedStatus === 'paid' && 'Done'}
                       {selectedStatus === 'partially paid' && 'Pending'}
@@ -663,9 +662,9 @@ export const PaymentInPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
+                  className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 dark:bg-gray-200/5 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-100 shadow-sm text-gray-900 dark:text-gray-900 font-bold hover:bg-gray-100/50 dark:hover:bg-gray-100 transition-all"
                 >
-                  <Calendar className="h-4 w-4 text-gray-900" />
+                  <Calendar className="h-4 w-4 text-gray-900 dark:text-gray-900" />
                   <span className="truncate">
                     {selectedDateFilter === 'all' && 'All Dates'}
                     {selectedDateFilter === 'today' && 'Today'}
@@ -733,25 +732,25 @@ export const PaymentInPage = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white dark:bg-gray-100 border border-gray-200 dark:border-gray-100 rounded-xl shadow-sm overflow-hidden transition-all">
         {/* Search Bar */}
-        <div className="p-4 border-b w-full">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-100/10 w-full bg-white dark:bg-transparent">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
             <div className="relative w-full sm:w-80">
               <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-10 w-full justify-start px-3 py-2 text-sm" disabled={isDropdownLoading}>
+                  <Button variant="outline" className="h-10 w-full justify-start px-3 bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-200 hover:border-gray-300 dark:hover:border-gray-100 shadow-sm transition-all rounded-xl" disabled={isDropdownLoading}>
                     {isDropdownLoading ? (
-                      <span className="flex items-center">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                      <span className="flex items-center text-xs">
+                        <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
                         Loading...
                       </span>
                     ) : (
-                      <span className="truncate">
-                        {searchTerm || (searchType === 'party_name' ? 'Search by party...' : 'Search by payment #...')}
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-900">
+                        {searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by payment number...')}
                       </span>
                     )}
-                    {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0" />}
+                    {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
@@ -790,24 +789,16 @@ export const PaymentInPage = () => {
             </div>
 
             {/* Desktop Segmented Filter Type */}
-            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
-              <div
-                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
-                  }`}
-                style={{
-                  width: '100px',
-                  transform: `translateX(${searchType === 'party_name' ? '0px' : '100px'})`
-                }}
-              />
+            <div className="hidden sm:flex relative p-0.5 bg-gray-100 dark:bg-gray-200 rounded-lg border border-gray-200/60 dark:border-gray-100 shadow-inner w-fit items-center">
               <button
                 onClick={() => handleSearchTypeChange('party_name')}
-                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all z-10 uppercase tracking-wider ${searchType === 'party_name' ? 'bg-white dark:bg-gray-100 text-blue-600 shadow-sm' : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-800'}`}
               >
                 Party Name
               </button>
               <button
                 onClick={() => handleSearchTypeChange('payment_number')}
-                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'payment_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all z-10 uppercase tracking-wider ${searchType === 'payment_number' ? 'bg-white dark:bg-gray-100 text-blue-600 shadow-sm' : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-800'}`}
               >
                 Payment No.
               </button>
@@ -851,21 +842,20 @@ export const PaymentInPage = () => {
             </div>
 
             <div className="w-full sm:w-auto sm:ml-auto">
-              <Button
-                size="sm"
-                className="h-10 gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg shadow-md shadow-blue-100 transition-all active:scale-95"
+              <button
+                className="group flex items-center gap-2 px-5 h-10 text-xs font-bold text-blue-600 dark:text-blue-500 bg-white dark:bg-gray-100 border border-blue-100 dark:border-blue-900/30 rounded-xl shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:border-blue-200 dark:hover:border-blue-800 transition-all active:scale-95 w-full sm:w-auto"
                 onClick={() => navigate("/payment-in/create")}
               >
-                <Plus className="h-4 w-4" />
-                <span className="whitespace-nowrap">Create Payment In</span>
-              </Button>
+                <Plus className="size-4 text-blue-600 dark:text-blue-500 group-hover:rotate-90 transition-transform" />
+                <span className="whitespace-nowrap tracking-wider">Create Payment In</span>
+              </button>
             </div>
           </div>
         </div>
 
         <div className="overflow-auto relative">
           {isLoading && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-gray-100/80 backdrop-blur-sm">
               <SpinnerDotted
                 size={50}
                 thickness={100}
@@ -914,7 +904,7 @@ export const PaymentInPage = () => {
         >
           {/* Loading Overlay */}
           {modalLoading && (
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[10000]">
+            <div className="absolute inset-0 bg-white/80 dark:bg-gray-100/80 backdrop-blur-sm flex items-center justify-center z-[10000]">
               <div className="flex flex-col items-center">
                 <SpinnerDotted
                   size={40}
@@ -922,7 +912,7 @@ export const PaymentInPage = () => {
                   speed={100}
                   color="#1B84FF"
                 />
-                <p className="mt-3 text-sm font-medium text-gray-600">
+                <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-900">
                   Loading payment details...
                 </p>
               </div>
@@ -1005,11 +995,11 @@ export const PaymentInPage = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                        <DollarSign className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-500">
                           Balance Due:
                         </span>
-                        <span className="text-sm font-medium text-red-600">
+                        <span className="text-sm font-medium text-red-600 dark:text-red-500">
                           ₹
                           {selectedPayment.balance_due?.toLocaleString(
                             "en-IN",
@@ -1023,29 +1013,29 @@ export const PaymentInPage = () => {
                     </div>
                     <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                        <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-500">
                           Payment Date:
                         </span>
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm text-gray-900 dark:text-gray-900">
                           {new Date(selectedPayment.date).toLocaleDateString()}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                        <FileText className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-500">
                           Payment Number:
                         </span>
-                        <span className="text-sm text-blue-600 font-medium">
+                        <span className="text-sm text-blue-600 dark:text-blue-500 font-medium">
                           #{selectedPayment.payment_number}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                        <Wallet className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-500">
                           Amount Received:
                         </span>
-                        <span className="text-sm font-medium text-blue-600">
+                        <span className="text-sm font-medium text-blue-600 dark:text-blue-500">
                           ₹
                           {selectedPayment.amount_received?.toLocaleString(
                             "en-IN",
@@ -1057,18 +1047,18 @@ export const PaymentInPage = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
+                        <CheckCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-500">
                           Payment Status:
                         </span>
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${selectedPayment.payment_status === "paid"
-                            ? "bg-green-100 text-green-800"
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${selectedPayment.payment_status === "paid"
+                            ? "bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-500 border-green-200 dark:border-green-800"
                             : selectedPayment.payment_status ===
                               "partially paid" ||
                               selectedPayment.payment_status === "partial"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
+                              ? "bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-500 border-yellow-200 dark:border-yellow-800"
+                              : "bg-gray-100 dark:bg-gray-200/20 text-gray-800 dark:text-gray-500 border-gray-200 dark:border-gray-800"
                             }`}
                         >
                           {selectedPayment.payment_status === "partial"
@@ -1080,12 +1070,12 @@ export const PaymentInPage = () => {
                   </div>
 
                   {/* Discount Information */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-blue-800">
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-400">
                         Discount Applied:
                       </span>
-                      <span className="text-sm text-blue-600 font-medium">
+                      <span className="text-sm text-blue-600 dark:text-blue-500 font-medium">
                         ₹
                         {selectedPayment.payment_discount?.toLocaleString(
                           "en-IN",
@@ -1101,54 +1091,54 @@ export const PaymentInPage = () => {
                   {/* Related Invoices */}
                   {paymentInvoices.length > 0 && (
                     <div className="space-y-4">
-                      <h4 className="text-md font-semibold text-gray-800">
+                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-900">
                         Other Related Invoices with {selectedPayment.party_name}
                       </h4>
 
                       {/* Desktop Table View */}
-                      <div className="hidden sm:block bg-white rounded-lg border overflow-hidden">
-                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200">
+                      <div className="hidden sm:block bg-white dark:bg-gray-100 rounded-lg border border-gray-200 dark:border-gray-100 overflow-hidden">
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
                           <table className="w-full text-sm min-w-[600px]">
-                            <thead className="bg-gray-50 border-b">
+                            <thead className="bg-gray-50/50 dark:bg-gray-200/5 border-b border-gray-200 dark:border-gray-100">
                               <tr>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Date
                                 </th>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Invoice Number
                                 </th>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Amount
                                 </th>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Paid
                                 </th>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Balance
                                 </th>
-                                <th className="px-3 py-3 text-center font-medium text-gray-700 whitespace-nowrap">
+                                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-900 whitespace-nowrap">
                                   Status
                                 </th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y">
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-100/10">
                               {paymentInvoices.map((invoice) => (
                                 <tr
                                   key={invoice.id}
-                                  className="hover:bg-gray-50 cursor-pointer"
+                                  className="hover:bg-gray-50 dark:hover:bg-gray-200/10 transition-colors cursor-pointer"
                                   onClick={() => {
                                     /* Invoice click logic */
                                   }}
                                 >
-                                  <td className="px-3 py-4 text-center text-gray-900 whitespace-nowrap">
+                                  <td className="px-3 py-4 text-center text-gray-900 dark:text-gray-900 whitespace-nowrap">
                                     {new Date(
                                       invoice.date,
                                     ).toLocaleDateString()}
                                   </td>
-                                  <td className="px-3 py-4 text-center font-medium text-blue-600 whitespace-nowrap">
+                                  <td className="px-3 py-4 text-center font-medium text-blue-600 dark:text-blue-500 whitespace-nowrap">
                                     {invoice.invoice_number}
                                   </td>
-                                  <td className="px-3 py-4 text-center font-medium whitespace-nowrap">
+                                  <td className="px-3 py-4 text-center font-medium text-gray-900 dark:text-gray-900 whitespace-nowrap">
                                     ₹{invoice.invoice_amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                   </td>
                                   <td className="px-3 py-4 text-center font-medium text-green-600 whitespace-nowrap">

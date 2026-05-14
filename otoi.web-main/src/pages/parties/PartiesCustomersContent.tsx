@@ -331,36 +331,38 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         id: "name",
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Name"
+            title="Customer Information"
             filter={<ColumnInputFilter column={column} />}
             column={column}
           />
         ),
         enableSorting: true,
-        cell: (info: any) => (
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col">
-              <a
-                className="font-medium text-sm text-gray-900 hover:text-primary-active mb-px cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/customer/${info.row.original?.id ?? ''}`);
-                }}
-              >
-                {info.row.original.first_name} {info.row.original.last_name}
-              </a>
-              <a
-                className="text-2sm text-gray-700 font-normal hover:text-primary-active cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/customer/${info.row.original?.id ?? ''}`);
-                }}
-              >
-                {info.row.original.email || "\u00A0"}
-              </a>
+        cell: (info: any) => {
+          const customer = info.row.original;
+          const initials = `${customer.first_name?.[0] || ""}${customer.last_name?.[0] || ""}`.toUpperCase();
+
+          return (
+            <div className="flex items-center gap-4 py-1 animate-in fade-in slide-in-from-left-4 duration-500">
+              <div className="size-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm group-hover:bg-white transition-colors uppercase tracking-wider">
+                {initials}
+              </div>
+              <div className="flex flex-col">
+                <a
+                  className="font-bold text-sm text-gray-900 hover:text-primary transition-colors mb-0.5 cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/customer/${customer.id}`);
+                  }}
+                >
+                  {customer.first_name} {customer.last_name}
+                </a>
+                <span className="text-[11px] text-gray-500 font-medium tracking-tight">
+                  {customer.email || "No email provided"}
+                </span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
         meta: {
           headerClassName: "min-w-[300px]",
         },
@@ -369,15 +371,18 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         accessorFn: (row: Customer) => row.gst,
         id: "gst",
         header: ({ column }) => (
-          <DataGridColumnHeader title="GST" column={column} />
+          <DataGridColumnHeader title="GSTIN" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => {
-          return info.row.original.gst;
-        },
+        cell: (info: any) => (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-600">
+            <span className="text-xs font-bold text-gray-700 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+              {info.row.original.gst || "N/A"}
+            </span>
+          </div>
+        ),
         meta: {
-          headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
+          headerClassName: "min-w-[150px]",
         },
       },
       {
@@ -387,12 +392,15 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           <DataGridColumnHeader title="Mobile" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => {
-          return info.row.original.mobile;
-        },
+        cell: (info: any) => (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-700">
+            <span className="text-sm font-bold text-gray-800">
+              {info.row.original.mobile || "N/A"}
+            </span>
+          </div>
+        ),
         meta: {
           headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
         },
       },
       {
@@ -402,12 +410,15 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
           <DataGridColumnHeader title="City" column={column} />
         ),
         enableSorting: true,
-        cell: (info: any) => {
-          return info.row.original.city;
-        },
+        cell: (info: any) => (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-800">
+            <span className="text-sm font-medium text-gray-600">
+              {info.row.original.city || "N/A"}
+            </span>
+          </div>
+        ),
         meta: {
           headerClassName: "min-w-[137px]",
-          cellClassName: "text-gray-800 font-medium",
         },
       },
       {
@@ -510,7 +521,80 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
         </div>
       )}
       {!loading && (
-        <>
+        <div className="flex flex-col lg:hidden border-t border-gray-100 bg-white rounded-xl overflow-hidden shadow-sm">
+          {filteredItems.map((customer, index) => {
+            const initials = `${customer.first_name?.[0] || ""}${customer.last_name?.[0] || ""}`.toUpperCase();
+
+            return (
+              <div
+                key={customer.uuid}
+                className="flex justify-between items-center py-4 px-5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/30 transition-all animate-in fade-in slide-in-from-bottom-2"
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
+              >
+                <div
+                  className="flex items-center gap-3 cursor-pointer grow pr-4"
+                  onClick={() => navigate(`/customer/${customer.id}`)}
+                >
+                  <div className="size-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0 border border-gray-200 shadow-sm uppercase">
+                    {initials}
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="font-bold text-gray-900 text-sm mb-0.5 truncate">{customer.first_name} {customer.last_name}</span>
+                    <span className="text-[11px] text-gray-500 font-medium truncate">
+                      {customer.city ? `${customer.city} • ` : ""}{customer.mobile || customer.email || "No contact info"}
+                    </span>
+                  </div>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center justify-center size-9 text-primary hover:text-primary-active transition-all shrink-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32 p-1 shadow-lg border-gray-200">
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                      onClick={() => openPersonModal({ preventDefault: () => { } } as any, customer)}
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-gray-500" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                      onClick={() => navigate(`/customer/${customer.id}`)}
+                    >
+                      <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                      Details
+                    </DropdownMenuItem>
+                    <div className="my-1 border-t border-gray-100"></div>
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                      onClick={() => handleDeleteClick(customer.uuid)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            );
+          })}
+          {filteredItems.length === 0 && (
+            <div className="p-20 text-center bg-gray-50/30 animate-in fade-in duration-700">
+              <div className="flex flex-col items-center gap-3">
+                <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300 mb-2">
+                  <KeenIcon icon="folder-search" className="text-3xl" />
+                </div>
+                <span className="text-gray-500 text-sm font-bold uppercase tracking-wider">No Customers Found</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="hidden lg:block">
           <DataGrid
             columns={columns}
             serverSide={true}
@@ -543,7 +627,7 @@ const PartiesCustomerContent = ({ refreshStatus }: IPartiesCustomerContentProps)
             pagination={{ size: 5 }}
             layout={{ card: true }}
           />
-        </>
+        </div>
       )}
       <ModalCustomer
         open={personModalOpen}

@@ -157,29 +157,41 @@ def get_items():
            
         query = Item.query.filter_by(is_deleted=False)
 
-        # Filter by item_type_id first (for frontend compatibility)
-        # if "item_type_id" in request.args:
-        #     item_type_id_value = request.args.get("item_type_id", "").strip()
-        #     if item_type_id_value:
-        #         try:
-        #             item_type_id = int(item_type_id_value)
-        #             query = query.filter(Item.item_type_id == item_type_id)
-        #         except ValueError:
-        #             pass
-        
-        # # Filter by item_type if provided (alternative by name)
-        # elif "item_type" in request.args:
-        #     item_type_value = request.args.get("item_type", "").strip().lower()
-        #     if item_type_value:
-        #         # Use subquery approach to filter by item type name
-        #         matching_type = ItemType.query.filter(ItemType.name.ilike(item_type_value)).first()
-        #         if matching_type:
-        #             query = query.filter(Item.item_type_id == matching_type.id)
-        #         else:
-        #             # If no matching type found, return empty result
-        #             query = query.filter(Item.item_type_id == -1) 
+        # Filter by item_type_id
+        item_type_id = request.args.get("item_type_id")
+        if item_type_id:
+            try:
+                query = query.filter(Item.item_type_id == int(item_type_id))
+            except ValueError:
+                pass
 
-        # Search query filter
+        # Filter by category_id (UUID)
+        category_id = request.args.get("category_id")
+        if category_id:
+            try:
+                query = query.filter(Item.category_id == UUID(category_id))
+            except ValueError:
+                pass
+
+        # Handle generic filters from DataGrid (filter[key]=value)
+        for arg_key, arg_value in request.args.items():
+            if arg_key.startswith("filter[") and arg_key.endswith("]"):
+                filter_key = arg_key[7:-1]
+                if not arg_value:
+                    continue
+                
+                if filter_key == "category":
+                    # Filter by category name
+                    query = query.outerjoin(ItemCategory).filter(ItemCategory.name.ilike(f"%{arg_value}%"))
+                elif filter_key == "item_name":
+                    query = query.filter(Item.item_name.ilike(f"%{arg_value}%"))
+                elif filter_key == "item_code":
+                    query = query.filter(Item.item_code.ilike(f"%{arg_value}%"))
+                elif hasattr(Item, filter_key):
+                    # Basic exact match for other fields if they exist on Item model
+                    query = query.filter(getattr(Item, filter_key) == arg_value)
+
+        # Search query filter (already handles item_name, item_code, etc. but keep for compatibility)
         if "query" in request.args:
             query_value = request.args.get("query", "").strip()
             if query_value:

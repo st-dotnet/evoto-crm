@@ -44,10 +44,10 @@ const PartiesPurchaseEntry = () => {
             </ToolbarHeading>
             <ToolbarActions>
               <button
-                className="btn btn-sm btn-primary w-full md:w-auto"
+                className="btn btn-sm btn-primary w-full md:w-auto group"
                 onClick={openAddModal}
               >
-                <KeenIcon icon="plus" /> Add Purchase Entry
+                <KeenIcon icon="plus" className="group-hover:rotate-90 transition-transform" /> Add Purchase Entry
               </button>
             </ToolbarActions>
           </Toolbar>

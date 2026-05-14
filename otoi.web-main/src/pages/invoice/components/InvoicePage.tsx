@@ -37,6 +37,8 @@ import { checkCreditNoteExistsForInvoice } from "../../creditIn/service/creditIn
 import { toast } from "sonner";
 import { TDataGridRequestParams } from "@/components";
 import { SpinnerDotted } from 'spinners-react';
+import { cn } from "@/lib/utils";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 interface Invoice {
     id: string;
@@ -56,7 +58,7 @@ const InvoicePage = () => {
     const [invoicesWithCreditNotes, setInvoicesWithCreditNotes] = useState<Set<string>>(new Set());
     const [isCheckingCreditNote, setIsCheckingCreditNote] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial' | 'refunded'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [searchType, setSearchType] = useState<'party_name' | 'invoice_number'>('party_name');
@@ -237,24 +239,24 @@ const InvoicePage = () => {
         onDelete: (id: string) => void;
     }) => {
         return (
-            <div className="flex flex-col lg:hidden border-t border-gray-100">
+            <div className="flex flex-col lg:hidden border-t border-gray-100 dark:border-gray-100/10">
                 {invoices.map((invoice) => (
                     <div
                         key={invoice.id}
-                        className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+                        className="flex justify-between items-center py-4 px-5 border-b border-gray-100 dark:border-gray-100/10 last:border-b-0 hover:bg-gray-50/50 dark:hover:bg-gray-200/50 transition-all active:bg-gray-50 dark:active:bg-gray-200/50"
                     >
                         <div
                             className="flex flex-col cursor-pointer grow pr-4"
                             onClick={() => onDetails(invoice.id)}
                         >
                             <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-gray-900 text-sm">{invoice.invoice_number}</span>
-                                <span className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${getPaymentStatusBadge(invoice.payment_status)}`}>
+                                <span className="font-semibold text-gray-900 dark:text-white text-sm">{invoice.invoice_number}</span>
+                                <span className={`px-2 py-0.5 text-[10px] rounded-full font-medium border ${getPaymentStatusBadge(invoice.payment_status)}`}>
                                     {invoice.payment_status.charAt(0).toUpperCase() + invoice.payment_status.slice(1)}
                                 </span>
                             </div>
-                            <span className="text-sm font-medium text-gray-700 mb-0.5">{invoice.party_name}</span>
-                            <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                            <span className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-0.5">{invoice.party_name}</span>
+                            <div className="flex items-center gap-3 text-[11px] text-gray-400 dark:text-zinc-500">
                                 <span className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
                                     {new Date(invoice.date).toLocaleDateString()}
@@ -278,11 +280,11 @@ const InvoicePage = () => {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
+                                <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-all shrink-0">
                                     <MoreVertical className="h-4.5 w-4.5" />
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40 p-1 shadow-lg border-gray-200">
+                            <DropdownMenuContent align="end" className="w-40 p-1 shadow-lg bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                                 <DropdownMenuItem
                                     className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                                     onClick={() => onEdit(invoice.id)}
@@ -294,10 +296,9 @@ const InvoicePage = () => {
                                     className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
                                     onClick={() => onDetails(invoice.id)}
                                 >
-                                    <Eye className="mr-2 h-4 w-4 text-gray-500" />
                                     View Details
                                 </DropdownMenuItem>
-                                <div className="my-1 border-t border-gray-100"></div>
+                                <div className="my-1 border-t border-gray-100 dark:border-zinc-800"></div>
                                 <DropdownMenuItem
                                     className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
                                     onClick={() => onDelete(invoice.id)}
@@ -378,22 +379,23 @@ const InvoicePage = () => {
 
     const getPaymentStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            paid: 'bg-green-100 text-green-800',
-            partial: 'bg-yellow-100 text-yellow-800',
-            unpaid: 'bg-red-100 text-red-800',
+            paid: 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-500 border-green-200 dark:border-green-800',
+            partial: 'bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-500 border-yellow-200 dark:border-yellow-800',
+            unpaid: 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-500 border-red-200 dark:border-red-800',
+            refunded: 'bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/50',
         };
-        return styles[status] || 'bg-gray-100 text-gray-800';
+        return styles[status.toLowerCase()] || 'bg-gray-50 dark:bg-gray-200/20 text-gray-700 dark:text-gray-500 border-gray-200 dark:border-gray-800';
     };
 
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            draft: 'bg-gray-100 text-gray-800',
-            sent: 'bg-blue-100 text-blue-800',
-            paid: 'bg-green-100 text-green-800',
-            overdue: 'bg-red-100 text-red-800',
+            draft: 'bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-300',
+            sent: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
+            paid: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
+            overdue: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400',
         };
-        return styles[status] || 'bg-gray-100 text-gray-800';
+        return styles[status] || 'bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-300';
     };
 
     const columns = useMemo<ColumnDef<Invoice>[]>(() => [
@@ -422,7 +424,7 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900">
+                <div className="text-sm text-gray-900 dark:text-zinc-100">
                     {new Date(info.getValue() as string).toLocaleDateString()}
                 </div>
             ),
@@ -458,7 +460,7 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900">
+                <div className="text-sm text-gray-900 dark:text-zinc-100">
                     {info.getValue() as string}
                 </div>
             ),
@@ -479,7 +481,7 @@ const InvoicePage = () => {
                 const dueDate = new Date(info.getValue() as string);
                 const isOverdue = dueDate < new Date();
                 return (
-                    <div className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                    <div className={`text-sm ${isOverdue ? 'text-red-600 dark:text-red-500 font-medium' : 'text-gray-900 dark:text-zinc-100'}`}>
                         {dueDate.toLocaleDateString()}
                     </div>
                 );
@@ -498,7 +500,7 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm font-medium text-right">
+                <div className="text-sm font-medium text-right text-gray-900 dark:text-zinc-100">
                     ₹{(info.getValue() as number)?.toLocaleString('en-IN') || '0'}
                 </div>
             ),
@@ -517,12 +519,22 @@ const InvoicePage = () => {
                 />
             ),
             cell: (info) => {
-                const invoice = info.row.original;
+                const status = (info.getValue() as string).toLowerCase();
+                const colorMap: Record<string, string> = {
+                    paid: "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-500 border-green-200 dark:border-green-800",
+                    unpaid: "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-500 border-red-200 dark:border-red-800",
+                    partial: "bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-500 border-yellow-200 dark:border-yellow-800",
+                    refunded: "bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/50",
+                };
                 return (
                     <div className="flex items-center justify-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.payment_status)}`}>
-                            {invoice.payment_status.charAt(0).toUpperCase() + invoice.payment_status.slice(1)}
-                        </span>
+                        <div className={cn(
+                            "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border",
+                            colorMap[status] || "bg-gray-50 dark:bg-gray-200/50 text-gray-700 dark:text-gray-800 border-gray-200 dark:border-gray-100"
+                        )}>
+                            <span className="w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse bg-current" />
+                            {status.toUpperCase()}
+                        </div>
                     </div>
                 );
             },
@@ -561,7 +573,7 @@ const InvoicePage = () => {
                                 </button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                                 <DropdownMenuItem
                                     onSelect={(e) => {
                                         e.preventDefault();
@@ -676,58 +688,73 @@ const InvoicePage = () => {
                 </div>
             )}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-black text-gray-800 tracking-tight">Invoices</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage and track your customer invoices</p>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Invoices</h1>
+                    <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 rounded-md text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-zinc-700">
+                            Voucher Management
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium italic">
+                            Manage and track your customer invoices
+                        </span>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                     {/* Desktop Segmented Control */}
-                    <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm w-fit">
-                        <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 mr-1">
-                            <Filter className="h-3.5 w-3.5 text-gray-900 mr-2" />
-                            <span className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Filters</span>
+                    <div className="hidden sm:flex items-center px-1.5 py-1 bg-gray-50/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-zinc-800 shadow-sm w-fit">
+                        <div className="flex items-center pl-2 pr-3 border-r border-gray-200/80 dark:border-gray-100/20 mr-1">
+                            <Filter className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 mr-2" />
+                            <span className="text-[10px] uppercase tracking-widest font-extrabold text-gray-900 dark:text-white">Filters</span>
                         </div>
                         <div className="relative flex items-center">
                             {/* Animated Slider Background with Glow */}
                             <div
-                                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
-                                    selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
-                                    selectedStatus === 'paid' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
-                                    selectedStatus === 'unpaid' ? 'bg-red-50 border-red-200 shadow-red-200/50' :
-                                    'bg-yellow-50 border-yellow-200 shadow-yellow-200/50'
-                                }`}
+                                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_12px_-2px_rgba(59,130,246,0.15)] dark:shadow-[0_2px_15px_-3px_rgba(59,130,246,0.3)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white dark:bg-blue-500/20 border-gray-200 dark:border-blue-500/50 shadow-gray-200/50' :
+                                    selectedStatus === 'paid' ? 'bg-green-50 dark:bg-green-500/20 border-green-200 dark:border-green-500/50 shadow-green-200/50' :
+                                        selectedStatus === 'unpaid' ? 'bg-red-50 dark:bg-red-500/20 border-red-200 dark:border-red-500/50 shadow-red-200/50' :
+                                            selectedStatus === 'partial' ? 'bg-yellow-50 dark:bg-yellow-500/20 border-yellow-200 dark:border-yellow-500/50 shadow-yellow-200/50' :
+                                                'bg-purple-50 dark:bg-purple-500/20 border-purple-200 dark:border-purple-500/50 shadow-purple-200/50'
+                                    }`}
                                 style={{
-                                    width: '72px',
+                                    width: '86px',
                                     transform: `translateX(${selectedStatus === 'all' ? '0px' :
-                                        selectedStatus === 'paid' ? '72px' :
-                                            selectedStatus === 'unpaid' ? '144px' : '216px'
+                                        selectedStatus === 'paid' ? '86px' :
+                                            selectedStatus === 'unpaid' ? '172px' :
+                                                selectedStatus === 'partial' ? '258px' :
+                                                    '340px'
                                         })`
                                 }}
                             />
 
                             <button
                                 onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative w-[72px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[86px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'all' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 All
                             </button>
                             <button
                                 onClick={() => { setSelectedStatus('paid'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative w-[72px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'paid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[86px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'paid' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 Paid
                             </button>
                             <button
                                 onClick={() => { setSelectedStatus('unpaid'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative w-[72px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'unpaid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[86px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'unpaid' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 Unpaid
                             </button>
                             <button
                                 onClick={() => { setSelectedStatus('partial'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative w-[72px] py-1.5 text-sm font-bold rounded-md transition-all duration-300 z-10 ${selectedStatus === 'partial' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[86px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'partial' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 Partial
+                            </button>
+                            <button
+                                onClick={() => { setSelectedStatus('refunded'); setRefreshKey(prev => prev + 1); }}
+                                className={`relative w-[86px] py-1.5 text-sm font-medium rounded-md transition-all duration-300 z-10 ${selectedStatus === 'refunded' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
+                            >
+                                Refunded
                             </button>
                         </div>
                     </div>
@@ -736,20 +763,21 @@ const InvoicePage = () => {
                     <div className="w-full sm:hidden">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-10 w-full justify-between bg-white hover:bg-gray-50 border-gray-200 shadow-sm transition-all">
+                                <Button variant="outline" size="sm" className="h-10 w-full justify-between bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 border-gray-200 dark:border-zinc-800 shadow-sm transition-all">
                                     <div className="flex items-center overflow-hidden">
-                                        <Filter className="h-4 w-4 shrink-0 text-gray-400" />
-                                        <span className="truncate ml-2 font-medium text-gray-700">
+                                        <Filter className="h-4 w-4 shrink-0 text-gray-400 dark:text-zinc-500" />
+                                        <span className="truncate ml-2 font-medium text-gray-700 dark:text-zinc-300">
                                             {selectedStatus === 'all' && 'All Invoices'}
                                             {selectedStatus === 'paid' && 'Paid'}
                                             {selectedStatus === 'unpaid' && 'Unpaid'}
                                             {selectedStatus === 'partial' && 'Partial'}
+                                            {selectedStatus === 'refunded' && 'Refunded'}
                                         </span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[200px]">
+                            <DropdownMenuContent align="end" className="w-[200px] bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                                 <DropdownMenuItem onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }} className="flex items-center gap-2">
                                     <Circle className="h-4 w-4 text-gray-500" />
                                     <span>All Invoices</span>
@@ -770,6 +798,11 @@ const InvoicePage = () => {
                                     <span>Partial</span>
                                     {selectedStatus === 'partial' && <Check className="h-4 w-4 ml-auto" />}
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setSelectedStatus('refunded'); setRefreshKey(prev => prev + 1); }} className="flex items-center gap-2">
+                                    <Circle className="h-4 w-4 text-gray-500" />
+                                    <span>Refunded</span>
+                                    {selectedStatus === 'refunded' && <Check className="h-4 w-4 ml-auto" />}
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -778,25 +811,27 @@ const InvoicePage = () => {
                 </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-gray-100 bg-gray-50/50 w-full">
+            <div className="bg-white dark:bg-gray-100 border border-gray-200 dark:border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-200 w-full">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
                         <div className="relative w-full sm:w-80">
                             <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-10 w-full justify-start px-3 bg-white border-gray-200 hover:border-gray-300 shadow-sm transition-all" disabled={isDropdownLoading}>
+                                    <Button variant="outline" className="h-10 w-full justify-start px-3 bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-200 hover:border-blue-300 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/5 backdrop-blur-sm shadow-sm transition-all rounded-xl" disabled={isDropdownLoading}>
                                         {isDropdownLoading ? (
-                                            <span className="flex items-center">
-                                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                            <span className="flex items-center text-xs">
+                                                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
                                                 Loading...
                                             </span>
                                         ) : (
-                                            searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by invoice number...')
+                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-900">
+                                                {searchTerm || (searchType === 'party_name' ? 'Select by party name...' : 'Select by invoice number...')}
+                                            </span>
                                         )}
-                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0" />}
+                                        {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />}
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
+                                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                                     <DropdownMenuItem onClick={() => { setSearchTerm(''); setRefreshKey(prev => prev + 1); }} className={!searchTerm ? "bg-blue-50 text-blue-600" : ""}>
                                         <span className="text-gray-500">Show All {searchType === 'party_name' ? 'Parties' : 'Invoices'}</span>
                                     </DropdownMenuItem>
@@ -819,24 +854,22 @@ const InvoicePage = () => {
                         </div>
 
                         {/* Desktop Segmented Filter Type */}
-                        <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
-                            <div
-                                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
-                                    }`}
-                                style={{
-                                    width: '100px',
-                                    transform: `translateX(${searchType === 'party_name' ? '0px' : '100px'})`
-                                }}
-                            />
+                        <div className="hidden sm:flex relative p-0.5 bg-gray-100 dark:bg-gray-200 rounded-lg border border-gray-200/60 dark:border-gray-100 shadow-inner w-fit items-center">
                             <button
                                 onClick={() => handleSearchTypeChange('party_name')}
-                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={cn(
+                                    "px-4 py-1.5 text-[10px] font-bold rounded-md transition-all z-10 uppercase tracking-wider",
+                                    searchType === 'party_name' ? "bg-white dark:bg-gray-100 text-blue-600 shadow-sm" : "text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-800"
+                                )}
                             >
                                 Party Name
                             </button>
                             <button
                                 onClick={() => handleSearchTypeChange('invoice_number')}
-                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'invoice_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={cn(
+                                    "px-4 py-1.5 text-[10px] font-bold rounded-md transition-all z-10 uppercase tracking-wider",
+                                    searchType === 'invoice_number' ? "bg-white dark:bg-gray-100 text-blue-600 shadow-sm" : "text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-800"
+                                )}
                             >
                                 Invoice No.
                             </button>
@@ -846,7 +879,7 @@ const InvoicePage = () => {
                         <div className="sm:hidden">
                             <DropdownMenu open={showFilterDropdown} onOpenChange={setShowFilterDropdown}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-10 rounded-md px-3 text-sm text-gray-600 w-full sm:w-auto">
+                                    <Button variant="outline" size="sm" className="h-10 rounded-md px-3 text-sm text-gray-600 dark:text-gray-800 bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-200 w-full sm:w-auto">
                                         <Filter className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
                                         <span className="truncate max-w-[150px]">
                                             {searchTerm ? `${searchType === 'party_name' ? 'Party' : 'Invoice'}: ${searchTerm}` : 'Filter by'}
@@ -854,7 +887,7 @@ const InvoicePage = () => {
                                         <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-48">
+                                <DropdownMenuContent className="w-48 bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                                     <DropdownMenuItem onClick={() => { handleSearchTypeChange('party_name'); setShowFilterDropdown(false); }} className={searchType === 'party_name' ? "bg-blue-50 text-blue-600" : ""}>
                                         <Filter className="h-3.5 w-3.5 mr-2" />
                                         Party Name
@@ -868,14 +901,13 @@ const InvoicePage = () => {
                         </div>
 
                         <div className="w-full sm:w-auto sm:ml-auto">
-                            <Button
-                                size="sm"
-                                className="h-10 gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg shadow-md shadow-blue-100 transition-all active:scale-95"
+                            <button
+                                className="group flex items-center gap-2 px-5 h-10 text-xs font-bold text-blue-600 bg-white dark:bg-gray-100 border border-blue-100 dark:border-blue-900/30 rounded-xl shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:border-blue-200 dark:hover:border-blue-800 transition-all active:scale-95"
                                 onClick={() => navigate('/invoices/new-invoice')}
                             >
-                                <Plus className="h-4 w-4" />
-                                <span className="whitespace-nowrap">Create Invoice</span>
-                            </Button>
+                                <Plus className="size-4 text-blue-500 group-hover:rotate-90 transition-transform" />
+                                <span className="whitespace-nowrap captialize tracking-wider">Create Invoice</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -902,7 +934,6 @@ const InvoicePage = () => {
                             card: true,
                             classes: {
                                 container: 'hidden lg:block',
-                                table: "cursor-pointer [&_tr:hover]:bg-gray-50/80 transition-colors [&_th]:bg-gray-50/50 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-gray-500 border-b-0"
                             }
                         }}
                     >
@@ -919,46 +950,17 @@ const InvoicePage = () => {
             </div>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
-                    <div className="p-6 text-center">
-                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                            <Trash2 className="h-6 w-6 text-red-600" />
-                        </div>
-                        <DialogTitle className="text-lg font-semibold text-gray-900 mb-4">
-                            Delete Invoice
-                        </DialogTitle>
-                        <DialogDescription className="text-sm text-gray-600">
-                            Are you sure you want to delete this invoice? This action will permanently remove all the data.
-                        </DialogDescription>
-                    </div>
-                    <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3">
-                        <Button
-                            variant="outline"
-                            onClick={handleDeleteCancel}
-                            disabled={isDeleting}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDeleteConfirm}
-                            disabled={isDeleting}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isDeleting ? (
-                                <div className="flex items-center">
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                                    Deleting...
-                                </div>
-                            ) : (
-                                'Delete'
-                            )}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <ConfirmationDialog
+                open={showDeleteDialog}
+                onOpenChange={setShowDeleteDialog}
+                title="Delete Invoice"
+                message="Are you sure you want to delete this invoice? This action will permanently remove all the data and cannot be undone."
+                confirmText={isDeleting ? "Deleting..." : "Delete"}
+                cancelText="Cancel"
+                onConfirm={handleDeleteConfirm}
+                onCancel={handleDeleteCancel}
+                variant="danger"
+            />
         </div>
 
     );

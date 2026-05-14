@@ -384,11 +384,11 @@ const DebitNotePage = () => {
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            unpaid: 'bg-red-100 text-red-800',
-            credited: 'bg-green-100 text-green-800',
-            partial: 'bg-yellow-100 text-yellow-800',
+            unpaid: 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800',
+            credited: 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800',
+            partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400 dark:border-yellow-800',
         };
-        return styles[status] || 'bg-gray-100 text-gray-800';
+        return styles[status] || 'bg-gray-100 text-gray-800 dark:bg-zinc-800 dark:text-zinc-400';
     };
 
     const columns = useMemo<ColumnDef<DebitNote>[]>(() => [
@@ -417,7 +417,7 @@ const DebitNotePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900">
+                <div className="text-sm text-gray-900 dark:text-zinc-100">
                     {new Date(info.getValue() as string).toLocaleDateString()}
                 </div>
             ),
@@ -435,7 +435,7 @@ const DebitNotePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm font-medium text-primary hover:underline text-center">
+                <div className="text-sm font-medium text-primary dark:text-blue-400 hover:underline text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -453,7 +453,7 @@ const DebitNotePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900 text-center">
+                <div className="text-sm text-gray-900 dark:text-zinc-100 text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -471,7 +471,7 @@ const DebitNotePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm text-gray-900 text-center">
+                <div className="text-sm text-gray-900 dark:text-zinc-100 text-center">
                     {info.getValue() as string}
                 </div>
             ),
@@ -489,7 +489,7 @@ const DebitNotePage = () => {
                 />
             ),
             cell: (info) => (
-                <div className="text-sm font-medium text-center">
+                <div className="text-sm font-medium text-center dark:text-zinc-100">
                     ₹{(info.getValue() as number)?.toLocaleString('en-IN') || '0'}
                 </div>
             ),
@@ -544,7 +544,7 @@ const DebitNotePage = () => {
                                 </button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                                 <DropdownMenuItem
                                     onSelect={(e) => {
                                         e.preventDefault();
@@ -599,112 +599,112 @@ const DebitNotePage = () => {
     ], []);
 
     return (
-        <div className="container-fluid p-6">            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold">Debit Notes</h1>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    {/* Floating Glass Status Filter */}
-                    <div className="relative bg-gray-50/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 shadow-sm flex items-center min-w-fit">
-                        {/* Integrated Label */}
-                        <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 mr-1">
-                            <Filter className="h-3.5 w-3.5 text-gray-900" />
-                            <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Filters</span>
-                        </div>
-
-                        <div className="relative flex items-center">
-                            {/* Animated Slider Background with Glow */}
-                            <div
-                                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${
-                                    selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
-                                    selectedStatus === 'unpaid' ? 'bg-orange-50 border-orange-200 shadow-orange-200/50' :
-                                    'bg-blue-50 border-blue-200 shadow-blue-200/50'
-                                }`}
-                                style={{
-                                    width: '90px',
-                                    transform: `translateX(${selectedStatus === 'all' ? '0px' :
-                                        selectedStatus === 'unpaid' ? '90px' : '180px'
-                                        })`
-                                }}
-                            />
-
-                            {/* Status Buttons */}
-                            <button
-                                onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                All
-                            </button>
-                            <button
-                                onClick={() => { setSelectedStatus('unpaid'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'unpaid' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                Unpaid
-                            </button>
-                            <button
-                                onClick={() => { setSelectedStatus('credited'); setRefreshKey(prev => prev + 1); }}
-                                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'credited' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                Credited
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Date Filter Dropdown */}
-                    <div className="w-full sm:w-auto">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 backdrop-blur-sm rounded-xl border border-gray-200/80 shadow-sm text-gray-900 font-bold hover:bg-gray-100/50 transition-all"
-                                >
-                                    <Calendar className="h-4 w-4 text-gray-900" />
-                                    <span className="truncate">
-                                        {selectedDateFilter === 'today' && 'Today'}
-                                        {selectedDateFilter === 'this_week' && 'This Week'}
-                                        {selectedDateFilter === 'last_week' && 'Last Week'}
-                                        {selectedDateFilter === 'this_month' && 'This Month'}
-                                        {selectedDateFilter === 'last_month' && 'Last Month'}
-                                        {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
-                                        {!selectedDateFilter && 'All Time'}
-                                    </span>
-                                    <ChevronDown className="h-4 w-4 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[180px]">
-                                {[
-                                    { val: 'today', label: 'Today' },
-                                    { val: 'this_week', label: 'This Week' },
-                                    { val: 'last_week', label: 'Last Week' },
-                                    { val: 'this_month', label: 'This Month' },
-                                    { val: 'last_month', label: 'Last Month' },
-                                    { val: 'last_365_days', label: 'Last 365 Days' },
-                                ].map(({ val, label }) => (
-                                    <DropdownMenuItem key={val} onClick={() => { setSelectedDateFilter(val); setRefreshKey(prev => prev + 1); }}>
-                                        {label}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    <div className="flex-grow md:block hidden" />
-                </div>
+        <div className="w-full px-4 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Debit Notes</h1>
             </div>
-            <div className="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-gray-100/50 bg-gray-50/30">
+
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                {/* Floating Glass Status Filter */}
+                <div className="relative bg-gray-50/50 dark:bg-zinc-900/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 dark:border-zinc-800 shadow-sm flex items-center min-w-fit">
+                    {/* Integrated Label */}
+                    <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 dark:border-gray-100/10 mr-1">
+                        <Filter className="h-3.5 w-3.5 text-gray-900 dark:text-zinc-400" />
+                        <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">Filters</span>
+                    </div>
+
+                    <div className="relative flex items-center">
+                        {/* Animated Slider Background with Glow */}
+                        <div
+                            className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 shadow-gray-200/50 dark:shadow-none' :
+                                    selectedStatus === 'unpaid' ? 'bg-orange-50 dark:bg-orange-500/20 border-orange-200 dark:border-orange-500/50 shadow-orange-200/50 dark:shadow-none' :
+                                        'bg-blue-50 dark:bg-blue-500/20 border-blue-200 dark:border-blue-500/50 shadow-blue-200/50 dark:shadow-none'
+                                }`}
+                            style={{
+                                width: '90px',
+                                transform: `translateX(${selectedStatus === 'all' ? '0px' :
+                                    selectedStatus === 'unpaid' ? '90px' : '180px'
+                                    })`
+                            }}
+                        />
+
+                        {/* Status Buttons */}
+                        <button
+                            onClick={() => { setSelectedStatus('all'); setRefreshKey(prev => prev + 1); }}
+                            className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
+                        >
+                            All
+                        </button>
+                        <button
+                            onClick={() => { setSelectedStatus('unpaid'); setRefreshKey(prev => prev + 1); }}
+                            className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'unpaid' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
+                        >
+                            Unpaid
+                        </button>
+                        <button
+                            onClick={() => { setSelectedStatus('credited'); setRefreshKey(prev => prev + 1); }}
+                            className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'credited' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
+                        >
+                            Credited
+                        </button>
+                    </div>
+                </div>
+
+                {/* Date Filter Dropdown */}
+                <div className="w-full sm:w-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-10 w-full md:w-fit px-4 gap-2 bg-gray-50/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-zinc-800 shadow-sm text-gray-900 dark:text-white font-bold hover:bg-gray-100/50 dark:hover:bg-zinc-800 transition-all"
+                            >
+                                <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="truncate">
+                                    {selectedDateFilter === 'today' && 'Today'}
+                                    {selectedDateFilter === 'this_week' && 'This Week'}
+                                    {selectedDateFilter === 'last_week' && 'Last Week'}
+                                    {selectedDateFilter === 'this_month' && 'This Month'}
+                                    {selectedDateFilter === 'last_month' && 'Last Month'}
+                                    {selectedDateFilter === 'last_365_days' && 'Last 365 Days'}
+                                    {!selectedDateFilter && 'All Time'}
+                                </span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[180px] bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
+                            {[
+                                { val: 'today', label: 'Today' },
+                                { val: 'this_week', label: 'This Week' },
+                                { val: 'last_week', label: 'Last Week' },
+                                { val: 'this_month', label: 'This Month' },
+                                { val: 'last_month', label: 'Last Month' },
+                                { val: 'last_365_days', label: 'Last 365 Days' },
+                            ].map(({ val, label }) => (
+                                <DropdownMenuItem key={val} onClick={() => { setSelectedDateFilter(val); setRefreshKey(prev => prev + 1); }} className="text-gray-700 dark:text-zinc-300">
+                                    {label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                <div className="flex-grow md:block hidden" />
+            </div>
+        </div>
+            <div className="bg-white/80 dark:bg-zinc-950 backdrop-blur-md border border-gray-200/80 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-gray-100/50 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-900/20">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         <div className="relative w-full sm:w-80">
                             <DropdownMenu open={showSuggestions} onOpenChange={setShowSuggestions}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button 
-                                        variant="outline" 
-                                        className="h-10 w-full justify-start px-3 bg-white/50 backdrop-blur-sm rounded-xl border-gray-200 shadow-sm text-gray-900 font-medium hover:bg-white transition-all" 
+                                    <Button
+                                        variant="outline"
+                                        className="h-10 w-full justify-start px-3 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-xl border-gray-200 dark:border-zinc-800 shadow-sm text-gray-900 dark:text-zinc-100 font-medium hover:bg-white dark:hover:bg-zinc-900 transition-all"
                                         disabled={isDropdownLoading}
                                     >
-                                        <Search className="h-4 w-4 mr-2 text-gray-400" />
+                                        <Search className="h-4 w-4 mr-2 text-gray-400 dark:text-zinc-500" />
                                         {isDropdownLoading ? (
                                             <span className="flex items-center">
                                                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -718,18 +718,18 @@ const DebitNotePage = () => {
                                         {!isDropdownLoading && <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />}
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto rounded-xl shadow-xl">
+                                <DropdownMenuContent className="w-80 max-h-60 overflow-y-auto rounded-xl shadow-xl bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSearchTerm('');
                                             setRefreshKey(prev => prev + 1);
                                         }}
-                                        className="text-gray-500 italic"
+                                        className="text-gray-500 dark:text-zinc-500 italic"
                                     >
                                         Clear search
                                     </DropdownMenuItem>
                                     {isDropdownLoading ? (
-                                        <div className="p-4 text-center text-sm text-gray-500">Loading suggestions...</div>
+                                        <div className="p-4 text-center text-sm text-gray-500 dark:text-zinc-500">Loading suggestions...</div>
                                     ) : (
                                         <>
                                             {searchType === 'party_name' ?
@@ -740,7 +740,7 @@ const DebitNotePage = () => {
                                                             setSearchTerm(item.name);
                                                             setRefreshKey(prev => prev + 1);
                                                         }}
-                                                        className={`py-2 ${searchTerm === item.name ? "bg-blue-50 text-blue-600 font-medium" : ""}`}
+                                                        className={`py-2 px-3 rounded-lg mx-1 my-0.5 transition-colors ${searchTerm === item.name ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold" : "text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-900"}`}
                                                     >
                                                         {item.name}
                                                     </DropdownMenuItem>
@@ -752,14 +752,14 @@ const DebitNotePage = () => {
                                                             setSearchTerm(item);
                                                             setRefreshKey(prev => prev + 1);
                                                         }}
-                                                        className={`py-2 ${searchTerm === item ? "bg-blue-50 text-blue-600 font-medium" : ""}`}
+                                                        className={`py-2 px-3 rounded-lg mx-1 my-0.5 transition-colors ${searchTerm === item ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold" : "text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-900"}`}
                                                     >
                                                         {item}
                                                     </DropdownMenuItem>
                                                 ))
                                             }
                                             {((searchType === 'party_name' ? allCustomerNames : allDebitNoteNumbers).length === 0) && (
-                                                <div className="p-4 text-center text-sm text-gray-500">No suggestions found</div>
+                                                <div className="p-4 text-center text-sm text-gray-500 dark:text-zinc-500">No suggestions found</div>
                                             )}
                                         </>
                                     )}
@@ -768,9 +768,9 @@ const DebitNotePage = () => {
                         </div>
 
                         {/* Desktop Segmented Filter Type */}
-                        <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center gap-1">
+                        <div className="hidden sm:flex relative p-1 bg-gray-100 dark:bg-zinc-900 rounded-lg border border-gray-200/60 dark:border-zinc-800 shadow-inner w-fit h-10 items-center gap-1">
                             <div
-                                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === 'party_name' ? 'bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50'
                                     }`}
                                 style={{
                                     width: '100px',
@@ -779,13 +779,13 @@ const DebitNotePage = () => {
                             />
                             <button
                                 onClick={() => handleSearchTypeChange('party_name')}
-                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'party_name' ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 Party Name
                             </button>
                             <button
                                 onClick={() => handleSearchTypeChange('debit_note_number')}
-                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'debit_note_number' ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === 'debit_note_number' ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
                             >
                                 Debit Note No.
                             </button>
@@ -797,35 +797,34 @@ const DebitNotePage = () => {
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 bg-white shadow-sm border-gray-200 hover:bg-gray-50 gap-2"
+                                        className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 dark:text-white bg-white dark:bg-zinc-900 shadow-sm border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 gap-2"
                                     >
-                                        <Filter className="h-4 w-4 text-blue-500" />
+                                        <Filter className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                                         {searchType === 'party_name' ? 'Party Name' : 'Debit Note Number'}
                                         <ChevronDown className="h-4 w-4 opacity-50" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-48 rounded-xl shadow-xl">
-                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('party_name')}>
-                                        <User className="h-4 w-4 mr-2 text-gray-400" /> Party Name
+                                <DropdownMenuContent className="w-48 rounded-xl shadow-xl bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
+                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('party_name')} className="text-gray-700 dark:text-zinc-300">
+                                        <User className="h-4 w-4 mr-2 text-gray-400 dark:text-zinc-500" /> Party Name
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('debit_note_number')}>
-                                        <FileText className="h-4 w-4 mr-2 text-gray-400" /> Debit Note Number
+                                    <DropdownMenuItem onClick={() => handleSearchTypeChange('debit_note_number')} className="text-gray-700 dark:text-zinc-300">
+                                        <FileText className="h-4 w-4 mr-2 text-gray-400 dark:text-zinc-500" /> Debit Note Number
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
 
-                    <div className="w-full sm:w-auto sm:ml-auto">
-                        <Button
-                            size="sm"
-                            className="h-10 gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200/50 transition-all active:scale-95 w-full sm:w-auto"
-                            onClick={() => navigate('/debit-note/create')}
-                        >
-                            <Plus className="h-4 w-4" />
-                            <span className="font-bold">Create Debit Note</span>
-                        </Button>
+                        <div className="w-full sm:w-auto sm:ml-auto">
+                            <button
+                                className="group flex items-center gap-2 px-5 h-10 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800 transition-all active:scale-95 w-full sm:w-auto"
+                                onClick={() => navigate('/debit-note/create')}
+                            >
+                                <Plus className="size-4 text-blue-500 dark:text-blue-400 group-hover:rotate-90 transition-transform" />
+                                <span className="whitespace-nowrap captialize tracking-wider">Create Debit Note</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
                 </div>
 
                 <div className="overflow-auto relative w-full">
@@ -836,23 +835,29 @@ const DebitNotePage = () => {
                         getRowId={(row) => row.id}
                         onFetchData={fetchDebitNotes}
                         onRowClick={(row) => navigate(`/debit-note/view/${row.original.id}`)}
+                        layout={{
+                            card: true,
+                            classes: {
+                                table: "cursor-pointer [&_tr:hover]:bg-gray-50 dark:[&_tr:hover]:bg-zinc-900/80 [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-gray-500 dark:[&_th]:text-zinc-500",
+                            }
+                        }}
                     />
                 </div>
             </div>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                     <div className="text-center pt-6 pb-4">
-                        <h2 className="text-xl font-semibold text-foreground whitespace-nowrap">
+                        <h2 className="text-xl font-semibold text-foreground dark:text-white whitespace-nowrap">
                             Delete Debit Note
                         </h2>
-                        <p className="text-sm text-muted-foreground mt-3 px-4">
+                        <p className="text-sm text-muted-foreground dark:text-zinc-400 mt-3 px-4">
                             Are you sure you want to delete this debit note? This action cannot be undone.
                         </p>
                     </div>
                     <div className="flex justify-center gap-3 pb-6">
-                        <Button variant="outline" onClick={handleDeleteCancel}>
+                        <Button variant="outline" onClick={handleDeleteCancel} className="bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-800 text-gray-700 dark:text-zinc-300">
                             Cancel
                         </Button>
                         <Button

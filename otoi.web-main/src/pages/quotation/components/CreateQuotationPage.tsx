@@ -671,20 +671,20 @@ const CreateQuotationPage = () => {
         }
       } else {
         toast.error("Failed to load quotation details");
-        navigate("/quotes/list");                                                                                                                                                               
-      }                                                                                                                                                               
-    } catch (error) {                                                                                                                                                               
-      toast.error("Failed to load quotation details");                                                                                                                                                               
-    } finally {                                                                                                                                                               
-      setIsLoading(false);                                                                                                                                                               
-    }                                                                                                                                                               
-  };                                                                                                                                                               
-                                                                                                                                                               
-  useEffect(() => {                                                                                                                                                               
-    if (isEditMode && id) {                                                                                                                                                               
-      handleFetchQuotation(id);                                                                                                                                                               
-    }                                                                                                                                                               
-  }, [id, isEditMode]);                                                                                                                                                                                                                                                                                           
+        navigate("/quotes/list");
+      }
+    } catch (error) {
+      toast.error("Failed to load quotation details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      handleFetchQuotation(id);
+    }
+  }, [id, isEditMode]);
 
   // Handle duplicate mode data loading
   useEffect(() => {
@@ -1395,9 +1395,9 @@ const CreateQuotationPage = () => {
   };
 
   return (
-    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen space-y-4 sm:space-y-6 relative w-full max-w-[100vw] overflow-x-hidden">
+    <div className="p-3 sm:p-6 bg-gray-50 dark:bg-black min-h-screen space-y-4 sm:space-y-6 relative w-full max-w-[100vw] overflow-x-hidden">
       {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/80">
           <SpinnerDotted
             size={50}
             thickness={100}
@@ -1407,7 +1407,7 @@ const CreateQuotationPage = () => {
         </div>
       )}
       {isAddressLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/80">
           <SpinnerDotted
             size={50}
             thickness={100}
@@ -1417,7 +1417,7 @@ const CreateQuotationPage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="sticky rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm gap-3 md:gap-0 flex-wrap">
+      <div className="sticky rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between bg-white dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 px-4 py-3 shadow-sm gap-3 md:gap-0 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Button
             type="button"
@@ -1428,7 +1428,7 @@ const CreateQuotationPage = () => {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white truncate">
             {isEditMode ? "Edit Quotation" : "Create Quotation"}
           </h1>
         </div>
@@ -1502,19 +1502,19 @@ const CreateQuotationPage = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 pb-4">
-        <div className="xl:col-span-4 bg-white border rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5 min-w-0">
+        <div className="xl:col-span-4 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5 min-w-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
             <div className="space-y-3 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-700">Bill To</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Bill To</h3>
               {selectedCustomer ? (
-                <div className="border rounded-xl min-h-[180px] p-3 sm:p-4 bg-white overflow-hidden">
+                <div className="border dark:border-zinc-800 rounded-xl min-h-[180px] p-3 sm:p-4 bg-white dark:bg-zinc-950 overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                     <div className="min-w-0 w-full">
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 dark:text-zinc-100">
                         {selectedCustomer.first_name}{" "}
                         {selectedCustomer.last_name}
                       </h4>
-                      <div className="mt-2 text-sm text-gray-700 space-y-1">
+                      <div className="mt-2 text-sm text-gray-700 dark:text-zinc-300 space-y-1">
                         {selectedCustomer.company_name && (
                           <p className="font-medium">
                             {selectedCustomer.company_name}
@@ -1525,26 +1525,26 @@ const CreateQuotationPage = () => {
                         )}
                         <div className="mt-2 space-y-1">
                           {selectedCustomer.mobile && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Phone:</span>{" "}
                               {selectedCustomer.mobile}
                             </p>
                           )}
                           {selectedCustomer.email && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Email:</span>{" "}
                               {selectedCustomer.email}
                             </p>
                           )}
                           {selectedCustomer.gst && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">GST:</span>{" "}
                               {selectedCustomer.gst}
                             </p>
                           )}
                           <div className="mt-2 space-y-1">
                             {selectedCustomer.address1 && (
-                              <p className="text-gray-600">
+                              <p className="text-gray-600 dark:text-zinc-400">
                                 <span className="font-medium">
                                   Billing Address 1:
                                 </span>{" "}
@@ -1552,14 +1552,14 @@ const CreateQuotationPage = () => {
                               </p>
                             )}
                             {selectedCustomer.address2 && (
-                              <p className="text-gray-600">
+                              <p className="text-gray-600 dark:text-zinc-400">
                                 <span className="font-medium">
                                   Billing Address 2:
                                 </span>{" "}
                                 {selectedCustomer.address2}
                               </p>
                             )}
-                            <div className="mt-2 text-sm text-gray-600 space-y-1">
+                            <div className="mt-2 text-sm text-gray-600 dark:text-zinc-400 space-y-1">
                               <p>
                                 {selectedCustomer.city && (
                                   <span>
@@ -1605,17 +1605,17 @@ const CreateQuotationPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded-xl min-h-[180px] flex flex-col items-center justify-center bg-gray-50 p-4">
+                <div className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-xl min-h-[180px] flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900/50 p-4">
                   <Button
                     type="button"
                     onClick={() => setIsPartyDialogOpen(true)}
                     variant="outline"
-                    className="gap-2 border-dashed text-indigo-600 hover:bg-indigo-50"
+                    className="gap-2 border-dashed text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                   >
                     <Plus className="h-4 w-4" />
                     Add Party
                   </Button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-2">
                     Search and select a party
                   </p>
                 </div>
@@ -1623,21 +1623,21 @@ const CreateQuotationPage = () => {
             </div>
 
             <div className="space-y-3 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Ship To</h3>
               {selectedCustomer ? (
-                <div className="border rounded-xl min-h-[180px] p-3 sm:p-4 bg-white overflow-hidden">
+                <div className="border dark:border-zinc-800 rounded-xl min-h-[180px] p-3 sm:p-4 bg-white dark:bg-zinc-950 overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                     <div className="h-auto sm:h-[150px] overflow-hidden flex-1 min-w-0 w-full">
                       {!selectedAddress && shippingAddresses.length === 0 ? (
                         <div>
-                          <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                          <h4 className="font-medium text-gray-900 dark:text-zinc-100 flex items-center gap-2">
                             {selectedCustomer.first_name}{" "}
                             {selectedCustomer.last_name}
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            <span className="text-xs text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
                               Same as Billing
                             </span>
                           </h4>
-                          <div className="mt-2 text-sm text-gray-700 space-y-1">
+                          <div className="mt-2 text-sm text-gray-700 dark:text-zinc-300 space-y-1">
                             {selectedCustomer.company_name && (
                               <p className="font-medium">
                                 {selectedCustomer.company_name}
@@ -1655,7 +1655,7 @@ const CreateQuotationPage = () => {
                               )}
                               {selectedCustomer.email && (
                                 <p className="text-gray-600">
-                                  <span className="font-medium">Email:</span>{" "}                                                                
+                                  <span className="font-medium">Email:</span>{" "}
                                   {selectedCustomer.email}
                                 </p>
                               )}
@@ -1725,14 +1725,14 @@ const CreateQuotationPage = () => {
                         </div>
                       ) : !selectedAddress ? (
                         <div>
-                          <h4 className="font-medium text-gray-900">
+                          <h4 className="font-medium text-gray-900 dark:text-zinc-100">
                             {selectedCustomer.first_name}{" "}
                             {selectedCustomer.last_name}
                           </h4>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
                             No shipping address found
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-zinc-400">
                             Click on "Add Address" to add a shipping address
                           </p>
                         </div>
@@ -1743,11 +1743,11 @@ const CreateQuotationPage = () => {
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">
+                              <h4 className="font-medium text-gray-900 dark:text-zinc-100">
                                 {selectedCustomer.first_name}{" "}
                                 {selectedCustomer.last_name}
                               </h4>
-                              <div className="mt-2 text-sm text-gray-700 space-y-1">
+                              <div className="mt-2 text-sm text-gray-700 dark:text-zinc-300 space-y-1">
                                 {selectedCustomer.company_name && (
                                   <p className="font-medium">
                                     {selectedCustomer.company_name}
@@ -1758,7 +1758,7 @@ const CreateQuotationPage = () => {
                                 )}
                                 <div className="mt-2 space-y-1">
                                   {selectedCustomer.mobile && (
-                                    <p className="text-gray-600">
+                                    <p className="text-gray-600 dark:text-zinc-400">
                                       <span className="font-medium">
                                         Phone:
                                       </span>{" "}
@@ -1766,7 +1766,7 @@ const CreateQuotationPage = () => {
                                     </p>
                                   )}
                                   {selectedCustomer.email && (
-                                    <p className="text-gray-600">
+                                    <p className="text-gray-600 dark:text-zinc-400">
                                       <span className="font-medium">
                                         Email:
                                       </span>{" "}
@@ -1774,14 +1774,14 @@ const CreateQuotationPage = () => {
                                     </p>
                                   )}
                                   {selectedCustomer.gst && (
-                                    <p className="text-gray-600"> 
+                                    <p className="text-gray-600 dark:text-zinc-400">
                                       <span className="font-medium">GST:</span>{" "}
                                       {selectedCustomer.gst}
                                     </p>
-                                  )}  
+                                  )}
                                   <div className="mt-2 space-y-1">
                                     {selectedAddress.address1 && (
-                                      <p className="text-gray-600">
+                                      <p className="text-gray-600 dark:text-zinc-400">
                                         <span className="font-medium">
                                           Shipping Address 1:
                                         </span>{" "}
@@ -1789,14 +1789,14 @@ const CreateQuotationPage = () => {
                                       </p>
                                     )}
                                     {selectedAddress.address2 && (
-                                      <p className="text-gray-600">
+                                      <p className="text-gray-600 dark:text-zinc-400">
                                         <span className="font-medium">
                                           Shipping Address 2:
                                         </span>{" "}
                                         {selectedAddress.address2}
                                       </p>
                                     )}
-                                    <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                    <div className="mt-2 text-sm text-gray-600 dark:text-zinc-400 space-y-1">
                                       <p>
                                         {selectedAddress.city && (
                                           <span>
@@ -1866,8 +1866,8 @@ const CreateQuotationPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded-xl min-h-[180px] bg-gray-50 flex items-center justify-center p-4">
-                  <p className="text-sm text-gray-400">
+                <div className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-xl min-h-[180px] bg-gray-50 dark:bg-zinc-900/50 flex items-center justify-center p-4">
+                  <p className="text-sm text-gray-400 dark:text-zinc-500">
                     Shipping address will appear here
                   </p>
                 </div>
@@ -1876,57 +1876,57 @@ const CreateQuotationPage = () => {
           </div>
         </div>
 
-        <div className="xl:col-span-1 bg-white border rounded-xl p-4 sm:p-5 shadow-sm min-w-0">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+        <div className="xl:col-span-1 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl p-4 sm:p-5 shadow-sm min-w-0">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-4">
             Quotation Details
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             {isEditMode && (
               <div className="space-y-1.5">
-                <label className="text-xs text-gray-600">Quotation No.</label>
+                <label className="text-xs text-gray-600 dark:text-zinc-400">Quotation No.</label>
                 <Input
                   name="quotationNo"
                   value={formData.quotationNo}
                   onChange={handleChange}
-                  className="h-8 text-sm"
+                  className="h-8 text-sm dark:bg-slate-800 dark:border-zinc-800"
                   readOnly
                   disabled={true}
                 />
               </div>
             )}
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Valid For (Days)</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Valid For (Days)</label>
               <Input
                 type="number"
                 name="validFor"
                 value={formData.validFor}
                 onChange={handleChange}
-                className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-8 text-sm dark:bg-slate-800 dark:border-zinc-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="0"
                 disabled={formData.status === "closed"}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Quotation Date</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Quotation Date</label>
               <Input
                 type="date"
                 name="quotationDate"
                 value={formData.quotationDate}
                 onChange={handleChange}
                 min={today}
-                className="h-8 text-sm"
+                className="h-8 text-sm dark:bg-slate-800 dark:border-zinc-800"
                 disabled={formData.status === "closed"}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Validity Date</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Validity Date</label>
               <Input
                 type="date"
                 name="validityDate"
                 value={formData.validityDate}
                 onChange={handleChange}
                 min={today}
-                className="h-8 text-sm"
+                className="h-8 text-sm dark:bg-slate-800 dark:border-zinc-800"
                 disabled={formData.status === "closed"}
               />
             </div>
@@ -1935,41 +1935,31 @@ const CreateQuotationPage = () => {
 
         {/* Party Selection Dialog */}
         <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg w-[95vw] sm:w-full max-h-[90vh]">
-            <DialogHeader className="bg-white px-4 sm:px-6 py-4 border-b">
-              <DialogTitle className="text-lg font-semibold text-gray-800">
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 shadow-lg w-[95vw] sm:w-full max-h-[90vh] bg-white dark:bg-black">
+            <DialogHeader className="bg-white dark:bg-zinc-950 px-4 sm:px-6 py-4 border-b dark:border-zinc-800">
+              <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
                 Create Parties
               </DialogTitle>
             </DialogHeader>
 
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 dark:bg-black">
               {/* Search Bar */}
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-zinc-500" />
                 <Input
-                  placeholder="Search Parties by name or mobile..."
-                  className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+                  placeholder="Search by name or mobile..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
               </div>
 
               {/* Party List */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+              <div className="border dark:border-zinc-800 rounded-lg overflow-hidden">
                 {isCreatingParty ? (
                   <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
+                      <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
                         Customer Name
                       </label>
                       <Input
@@ -1977,7 +1967,7 @@ const CreateQuotationPage = () => {
                         value={newPartyName}
                         onChange={(e) => setNewPartyName(e.target.value)}
                         autoFocus
-                        className="h-11 rounded-lg border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        className="h-11 rounded-lg border-gray-300 dark:bg-zinc-950 dark:border-zinc-800 focus-visible:ring-2 focus-visible:ring-indigo-500"
                       />
                     </div>
                     <div className="flex justify-end space-x-3 pt-2">
@@ -1985,7 +1975,7 @@ const CreateQuotationPage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setIsCreatingParty(false)}
-                        className="h-9 px-4 rounded-lg border-gray-300 hover:bg-gray-50"
+                        className="h-9 px-4 rounded-lg border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-900"
                       >
                         Cancel
                       </Button>
@@ -1993,57 +1983,57 @@ const CreateQuotationPage = () => {
                         size="sm"
                         onClick={handleAddParty}
                         disabled={!newPartyName.trim()}
-                        className="h-9 px-4 rounded-md bg-gray-900 hover:bg-gray-800 text-white"
+                        className="h-9 px-4 rounded-md bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-zinc-200 text-white dark:text-black"
                       >
                         Add Party
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="max-h-[300px] overflow-y-auto bg-white dark:bg-black [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {isPartiesLoading ? (
-                      <div className="p-8 text-center">
-                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                      <div className="p-8 text-center bg-white dark:bg-black">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-900">
                           <SpinnerDotted size={20} />
                         </div>
-                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                        <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">
                           Loading Parties...
                         </h3>
                       </div>
                     ) : filteredParties.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                          <UserPlus className="h-5 w-5 text-gray-600" />
+                      <div className="p-8 text-center bg-white dark:bg-black">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-900">
+                          <UserPlus className="h-5 w-5 text-gray-600 dark:text-zinc-400" />
                         </div>
-                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                        <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">
                           No Party found
                         </h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
                           Get started by creating a new Party.
                         </p>
                       </div>
                     ) : (
-                      <ul className="divide-y divide-gray-100">
+                      <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
                         {filteredParties.map((party) => (
                           <li
                             key={party.id}
-                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
-                              ? "bg-gray-100"
-                              : ""
+                            className={`group relative p-4 hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors ${selectedParty?.id === party.id
+                              ? "bg-gray-100 dark:bg-zinc-900/50"
+                              : "bg-white dark:bg-black"
                               }`}
                             onClick={() => handleSelectParty(party)}
                           >
                             <div className="flex items-center">
                               <div
                                 className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
-                                  ? "bg-green-100"
-                                  : "bg-gray-100"
+                                  ? "bg-green-100 dark:bg-zinc-900/30"
+                                  : "bg-gray-100 dark:bg-zinc-900"
                                   }`}
                               >
                                 <span
                                   className={`font-medium text-sm ${selectedParty?.id === party.id
-                                    ? "text-green-700"
-                                    : "text-gray-600"
+                                    ? "text-green-700 dark:text-green-400"
+                                    : "text-gray-600 dark:text-zinc-400"
                                     }`}
                                 >
                                   {party.name
@@ -2054,12 +2044,12 @@ const CreateQuotationPage = () => {
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                                <div className="font-medium text-gray-900 dark:text-zinc-100 group-hover:text-gray-700 dark:group-hover:text-white transition-colors">
                                   {party.name}
                                 </div>
                                 {party.mobile && (
-                                  <div className="text-sm text-gray-500 flex items-center mt-1">
-                                    <span className="text-gray-400 mr-1.5">
+                                  <div className="text-sm text-gray-500 dark:text-zinc-500 flex items-center mt-1">
+                                    <span className="text-gray-400 dark:text-zinc-600 mr-1.5">
                                       <svg
                                         className="h-3.5 w-3.5"
                                         fill="currentColor"
@@ -2080,21 +2070,6 @@ const CreateQuotationPage = () => {
                   </div>
                 )}
               </div>
-
-              {/* Create New Button */}
-              {/* {!isCreatingParty && (
-                <Button
-                  variant="outline"
-                  className="w-full h-10 bg-white hover:bg-gray-50 border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-colors flex items-center justify-center"
-                  onClick={() => {
-                    setIsCustomerModalOpen(true);
-                    setIsPartyDialogOpen(false);
-                  }}
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Create New Party
-                </Button>
-              )} */}
             </div>
           </DialogContent>
         </Dialog>
@@ -2134,11 +2109,11 @@ const CreateQuotationPage = () => {
         />
 
         <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-          <DialogContent className="sm:max-w-[400px] p-4 sm:p-6 w-[90vw] sm:w-full rounded-xl">
+          <DialogContent className="sm:max-w-[400px] p-4 sm:p-6 w-[90vw] sm:w-full rounded-xl bg-white dark:bg-black border dark:border-zinc-800">
             <div className="text-center space-y-4">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-zinc-900/30">
                 <svg
-                  className="h-6 w-6 text-red-600"
+                  className="h-6 w-6 text-red-600 dark:text-red-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -2151,10 +2126,10 @@ const CreateQuotationPage = () => {
                   />
                 </svg>
               </div>
-              <DialogTitle className="text-lg font-semibold text-gray-900">
+              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
                 Unsaved Changes
               </DialogTitle>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">
                 You have unsaved changes. Are you sure you want to leave this
                 page?
               </p>
@@ -2164,7 +2139,7 @@ const CreateQuotationPage = () => {
                 type="button"
                 variant="outline"
                 onClick={handleCancelLeave}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-white dark:bg-black border-gray-300 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
               >
                 Cancel
               </Button>
@@ -2185,23 +2160,23 @@ const CreateQuotationPage = () => {
           open={isShippingModalOpen}
           onOpenChange={setIsShippingModalOpen}
         >
-          <DialogContent className="sm:max-w-[500px] w-[90vw] rounded-xl sm:w-full max-h-[85vh] overflow-hidden p-0">
-            <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-gray-100">
-              <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
+          <DialogContent className="sm:max-w-[500px] w-[90vw] rounded-xl sm:w-full max-h-[85vh] overflow-hidden p-0 bg-white dark:bg-black border dark:border-zinc-800">
+            <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-gray-100 dark:border-zinc-800">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Select Shipping Address
               </DialogTitle>
             </DialogHeader>
 
-            <div className="px-4 sm:px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(85vh-130px)]">
+            <div className="px-4 sm:px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(85vh-130px)] bg-white dark:bg-black">
               {/* Existing Addresses */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px bg-gray-200 flex-1"></div>
-                  <h3 className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
+                  <div className="h-px bg-gray-200 dark:bg-zinc-800 flex-1"></div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 px-3 whitespace-nowrap">
                     Saved Shipping Addresses
                   </h3>
-                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <div className="h-px bg-gray-200 dark:bg-zinc-800 flex-1"></div>
                 </div>
 
                 <div className="space-y-3">
@@ -2214,16 +2189,16 @@ const CreateQuotationPage = () => {
                           <div
                             key={address.uuid || index}
                             className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                              : "border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-900"
                               }`}
                             onClick={() => setSelectedAddress(address)}
                           >
                             <div className="flex items-start gap-3">
                               <div
                                 className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
-                                  ? "bg-blue-100"
-                                  : "bg-gray-100 group-hover:bg-gray-200"
+                                  ? "bg-blue-100 dark:bg-blue-900/30"
+                                  : "bg-gray-100 dark:bg-zinc-900 group-hover:bg-gray-200 dark:group-hover:bg-zinc-800"
                                   }`}
                               >
                                 {address.address_type === "home" ? (
@@ -2236,16 +2211,16 @@ const CreateQuotationPage = () => {
                                   />
                                 ) : (
                                   <MapPinIcon
-                                    className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
+                                    className={`h-4 w-4 ${isSelected ? "text-red-600 dark:text-red-400" : "text-red-500 dark:text-red-600"}`}
                                   />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-900 dark:text-zinc-100 capitalize flex items-center gap-2">
                                     {address.address_type}
                                     {address.is_default && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-zinc-900/30 text-green-800 dark:text-green-400">
                                         Default
                                       </span>
                                     )}
@@ -2287,14 +2262,14 @@ const CreateQuotationPage = () => {
                                           setActiveDropdownUuid(uuid);
                                         }
                                       }}
-                                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+                                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
                                       aria-label="Address actions"
                                     >
                                       <MoreVertical className="w-4 h-4" />
                                     </button>
 
                                     {activeDropdownUuid === address.uuid && (
-                                      <div className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200">
+                                      <div className="absolute right-full mr-2 top-0 w-48 bg-white dark:bg-zinc-900 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200 border dark:border-zinc-800">
                                         <div className="py-1" role="menu">
                                           {!address.is_default && (
                                             <button
@@ -2303,9 +2278,9 @@ const CreateQuotationPage = () => {
                                                 e.stopPropagation();
                                                 handleSetDefaultAddress();
                                               }}
-                                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center gap-2"
                                             >
-                                              <MapPin className="w-4 h-4 text-green-500" />
+                                              <MapPin className="w-4 h-4 text-green-500 dark:text-green-400" />
                                               <span>Set as Default</span>
                                             </button>
                                           )}
@@ -2316,7 +2291,7 @@ const CreateQuotationPage = () => {
                                               e.stopPropagation();
                                               handleEditAddress();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2 transition-colors duration-150"
                                           >
                                             <Edit className="w-4 h-4" />
                                             <span>Edit</span>
@@ -2328,7 +2303,7 @@ const CreateQuotationPage = () => {
                                               e.stopPropagation();
                                               handleDeleteAddress();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-2 transition-colors duration-150"
                                           >
                                             <Trash2 className="w-4 h-4" />
                                             <span>Delete</span>
@@ -2339,31 +2314,31 @@ const CreateQuotationPage = () => {
                                   </div>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">
+                                  <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
+                                    <span className="font-medium text-gray-500 dark:text-zinc-500">
                                       Address:
                                     </span>{" "}
                                     {[address.address1, address.address2]
                                       .filter(Boolean)
                                       .join(", ")}
                                     ,
-                                    <span className="font-medium text-gray-500">
+                                    <span className="font-medium text-gray-500 dark:text-zinc-500">
                                       {" "}
                                       State:
                                     </span>{" "}
                                     {address.state},
-                                    <span className="font-medium text-gray-500">
+                                    <span className="font-medium text-gray-500 dark:text-zinc-500">
                                       {" "}
                                       Country:
                                     </span>{" "}
                                     {address.country}
                                   </p>
-                                  <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">
+                                  <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
+                                    <span className="font-medium text-gray-500 dark:text-zinc-500">
                                       City:
                                     </span>{" "}
                                     {address.city},
-                                    <span className="font-medium text-gray-500">
+                                    <span className="font-medium text-gray-500 dark:text-zinc-500">
                                       {" "}
                                       Pin:
                                     </span>{" "}
@@ -2377,14 +2352,14 @@ const CreateQuotationPage = () => {
                       })}
                     </div>
                   ) : (
-                    <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
-                      <div className="fixed top-0 left-0 right-0 bg-white px-6 py-4 z-40 shadow-sm flex items-center justify-between">
-                        <MapPinIcon className="h-5 w-5 text-red-400" />
+                    <div className="text-center py-8 px-3 bg-gray-50 dark:bg-zinc-900/50 rounded-lg">
+                      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-black px-6 py-4 z-40 shadow-sm flex items-center justify-between">
+                        <MapPinIcon className="h-5 w-5 text-red-400 dark:text-red-500" />
                       </div>
-                      <p className="text-xs font-medium text-gray-600 mb-1">
+                      <p className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">
                         No saved addresses found
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-zinc-500">
                         No shipping addresses available for this customer
                       </p>
                     </div>
@@ -2393,12 +2368,12 @@ const CreateQuotationPage = () => {
               </div>
             </div>
 
-            <DialogFooter className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50 m-0">
+            <DialogFooter className="px-4 sm:px-6 py-3 border-t border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 m-0">
               <div className="flex gap-2 ml-auto">
                 <Button
                   variant="outline"
                   onClick={() => setIsShippingModalOpen(false)}
-                  className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
+                  className="h-9 px-3 rounded-md border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 bg-white dark:bg-zinc-950 text-gray-700 dark:text-zinc-300 text-sm"
                 >
                   Cancel
                 </Button>
@@ -2459,7 +2434,7 @@ const CreateQuotationPage = () => {
                     }
                   }}
                   disabled={!selectedAddress}
-                  className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm"
                 >
                   Confirm Selection
                 </Button>
@@ -2470,12 +2445,12 @@ const CreateQuotationPage = () => {
       </div>
 
       {/* Items/Services Table - Professional Dashboard Style */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-4">
+      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden mb-4">
         {/* Table Header */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gradient-to-r from-gray-50 to-white dark:from-zinc-900 dark:to-zinc-950">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
             <div>
-              <h3 className="text-lg font-semibold text-gray-800">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
                 Items/Services
               </h3>
             </div>
@@ -2493,48 +2468,48 @@ const CreateQuotationPage = () => {
         {/* Table Container - Desktop View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
+            <thead className="bg-gray-50 dark:bg-zinc-900 border-b-2 border-gray-200 dark:border-zinc-800">
               <tr>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-12">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-12">
                   No.
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-16">
                   Image
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-[200px] min-w-[150px]">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-[200px] min-w-[150px]">
                   Item/Service Details
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-24">
                   HSN/SAC
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-24">
                   Quantity
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-28">
                   PRICE/ITEM (₹)
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-28">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-28">
                   Discount
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-24">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-24">
                   Tax
                 </th>
-                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-32">
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-32">
                   AMOUNT (₹)
                 </th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-12">
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 dark:text-zinc-300 uppercase tracking-wider w-12">
                   Action
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-zinc-800">
               {quotationItems.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-20">
                     <div className="flex flex-col items-center justify-center gap-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-900 rounded-full flex items-center justify-center">
                         <svg
-                          className="w-8 h-8 text-gray-400"
+                          className="w-8 h-8 text-gray-400 dark:text-zinc-600"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -2548,10 +2523,10 @@ const CreateQuotationPage = () => {
                         </svg>
                       </div>
                       <div className="text-center">
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-zinc-100 mb-1">
                           No items added yet
                         </h4>
-                        <p className="text-xs text-gray-500 mb-4">
+                        <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4">
                           Get started by adding your first item to the quotation
                         </p>
                         <button
@@ -2569,17 +2544,17 @@ const CreateQuotationPage = () => {
                 quotationItems.map((item, index) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-gray-50/70 transition-colors group"
+                    className="hover:bg-gray-50/70 dark:hover:bg-zinc-900 transition-colors group"
                   >
                     {/* Serial Number */}
-                    <td className="px-3 py-2 text-sm font-medium text-gray-600 border-r border-gray-200">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-zinc-400 border-r border-gray-200 dark:border-zinc-800">
                       {index + 1}
                     </td>
 
                     {/* Image Column */}
-                    <td className="px-3 py-2 text-center border-r border-gray-200">
+                    <td className="px-3 py-2 text-center border-r border-gray-200 dark:border-zinc-800">
                       {item.image ? (
-                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
+                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm">
                           <img
                             src={resolveImageUrl(item.image)}
                             alt={item.item_name}
@@ -2590,8 +2565,8 @@ const CreateQuotationPage = () => {
                           />
                         </div>
                       ) : (
-                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
-                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="w-10 h-10 mx-auto bg-gray-50 dark:bg-zinc-900 rounded-md flex items-center justify-center border border-gray-100 dark:border-zinc-800">
+                          <svg className="w-5 h-5 text-gray-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
@@ -2599,13 +2574,13 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Item Details */}
-                    <td className="px-3 py-2 border-r border-gray-200">
+                    <td className="px-3 py-2 border-r border-gray-200 dark:border-zinc-800">
                       <div
                         className="space-y-1"
                         style={{ marginTop: "0.7rem" }}
                       >
                         <div
-                          className="text-sm text-gray-900 truncate max-w-[250px]"
+                          className="text-sm text-gray-900 dark:text-zinc-100 truncate max-w-[250px]"
                           title={item.item_name}
                         >
                           {item.item_name}
@@ -2646,11 +2621,11 @@ const CreateQuotationPage = () => {
                               }
                             }}
                             placeholder="Add item description..."
-                            className="w-full px-2 py-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-transparent focus:bg-white transition-colors"
+                            className="w-full px-2 py-1.5 text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-zinc-900 transition-colors"
                             rows={1}
                           />
                           {item.descriptionError && (
-                            <div className="absolute -bottom-3 left-0 text-xs text-red-600 bg-white z-10">
+                            <div className="absolute -bottom-3 left-0 text-xs text-red-600 dark:text-red-400 bg-white dark:bg-zinc-950 z-10">
                               {item.descriptionError}
                             </div>
                           )}
@@ -2659,9 +2634,9 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* HSN/SAC */}
-                    <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-200 text-center">
+                    <td className="px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 border-r border-gray-200 dark:border-zinc-800 text-center">
                       <span
-                        className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs"
+                        className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 font-mono text-xs"
                         style={{ marginTop: "-0.2rem" }}
                       >
                         {item.hsn_sac || "N/A"}
@@ -2669,9 +2644,9 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Quantity */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
+                    <td className="px-3 py-2 border-r border-gray-200 dark:border-zinc-800 align-top">
                       <div
-                        className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200"
+                        className="flex items-center gap-1 bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500"
                         style={{ marginTop: "0.7rem" }}
                       >
                         <input
@@ -2689,18 +2664,18 @@ const CreateQuotationPage = () => {
                               parseInt(e.target.value) || 1,
                             )
                           }
-                          className="w-full px-2 py-1.5 text-sm text-center text-gray-900 border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-full px-2 py-1.5 text-sm text-center text-gray-900 dark:text-zinc-100 dark:bg-zinc-950 border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
-                        <span className="px-2 py-1.5 bg-gray-100 text-xs font-semibold text-gray-600 border-l border-gray-300">
+                        <span className="px-2 py-1.5 bg-gray-100 dark:bg-zinc-900 text-xs font-semibold text-gray-600 dark:text-zinc-400 border-l border-gray-300 dark:border-zinc-700">
                           {getMeasuringUnit(item.measuring_unit_id)}
                         </span>
                       </div>
                     </td>
 
                     {/* Price */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
+                    <td className="px-3 py-2 border-r border-gray-200 dark:border-zinc-800 align-top">
                       <div className="relative" style={{ marginTop: "0.7rem" }}>
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 dark:text-zinc-400">
                           ₹
                         </span>
                         <input
@@ -2718,13 +2693,13 @@ const CreateQuotationPage = () => {
                               parseFloat(e.target.value),
                             )
                           }
-                          className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-full pl-5 pr-2 py-1.5 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
                     </td>
 
                     {/* Discount */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
+                    <td className="px-3 py-2 border-r border-gray-200 dark:border-zinc-800 align-top">
                       <div
                         className="flex flex-col items-start"
                         style={{ marginTop: "0.7rem" }}
@@ -2749,13 +2724,13 @@ const CreateQuotationPage = () => {
                                   : Math.min(100, parseFloat(value)),
                               );
                             }}
-                            className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 dark:text-zinc-400">
                             %
                           </span>
                         </div>
-                        <div className="min-h-3 text-[10px] font-medium text-red-600 text-right leading-tight mt-0.5 w-full">
+                        <div className="min-h-3 text-[10px] font-medium text-red-600 dark:text-red-400 text-right leading-tight mt-0.5 w-full">
                           {item.discount > 0
                             ? `-₹${((item.quantity * item.price_per_item * item.discount) / 100).toFixed(2)}`
                             : ""}
@@ -2764,7 +2739,7 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Tax */}
-                    <td className="px-3 py-2 border-r border-gray-200 align-top">
+                    <td className="px-3 py-2 border-r border-gray-200 dark:border-zinc-800 align-top">
                       <div
                         className="flex flex-col items-start"
                         style={{ marginTop: "0.7rem" }}
@@ -2777,7 +2752,7 @@ const CreateQuotationPage = () => {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200"
+                          className="w-full px-2 py-1.5 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">None</option>
                           <option value="5">5%</option>
@@ -2785,7 +2760,7 @@ const CreateQuotationPage = () => {
                           <option value="18">18%</option>
                           <option value="28">28%</option>
                         </select>
-                        <div className="min-h-3 text-[10px] font-medium text-green-600 text-right leading-tight mt-0.5 w-full">
+                        <div className="min-h-3 text-[10px] font-medium text-green-600 dark:text-green-400 text-right leading-tight mt-0.5 w-full">
                           {item.tax > 0
                             ? `+₹${((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(2)}`
                             : ""}
@@ -2794,9 +2769,9 @@ const CreateQuotationPage = () => {
                     </td>
 
                     {/* Amount */}
-                    <td className="px-3 py-2 text-right border-r border-gray-200">
+                    <td className="px-3 py-2 text-right border-r border-gray-200 dark:border-zinc-800">
                       <div
-                        className="text-sm text-gray-900"
+                        className="text-sm text-gray-900 dark:text-zinc-100"
                         style={{ marginTop: "-0.2rem" }}
                       >
                         ₹
@@ -2811,7 +2786,7 @@ const CreateQuotationPage = () => {
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => handleRemoveItem(item.id)}
-                        className="inline-flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        className="inline-flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                         title="Remove item"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -2821,24 +2796,24 @@ const CreateQuotationPage = () => {
                 ))
               )}
             </tbody>
-            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+            <tfoot className="bg-gray-50 dark:bg-zinc-900 border-t-2 border-gray-200 dark:border-zinc-800">
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-4 border-r border-gray-200"
+                  className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800"
                 ></td>
-                <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
+                <td className="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-zinc-100 text-right border-r border-gray-200 dark:border-zinc-800">
                   Subtotal
                 </td>
-                <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
+                <td className="px-4 py-4 text-right text-sm font-medium text-red-600 dark:text-red-400 border-r border-gray-200 dark:border-zinc-800">
                   {calculateDiscount() > 0 &&
                     `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
-                <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
+                <td className="px-4 py-4 text-right text-sm font-medium text-green-600 dark:text-green-400 border-r border-gray-200 dark:border-zinc-800">
                   {calculateTax() > 0 &&
                     `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
-                <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
+                <td className="px-4 py-4 text-sm text-gray-900 dark:text-zinc-100 text-right border-r border-gray-200 dark:border-zinc-800">
                   ₹
                   {calculateTotal().toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -2851,12 +2826,12 @@ const CreateQuotationPage = () => {
         </div>
 
         {/* Mobile View - Card-based list */}
-        <div className="md:hidden divide-y divide-gray-200">
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-zinc-800">
           {quotationItems.length === 0 ? (
             <div className="px-4 py-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg
-                  className="w-8 h-8 text-gray-400"
+                  className="w-8 h-8 text-gray-400 dark:text-zinc-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -2869,10 +2844,10 @@ const CreateQuotationPage = () => {
                   />
                 </svg>
               </div>
-              <h4 className="text-sm font-medium text-gray-900 mb-1">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-zinc-100 mb-1">
                 No items added yet
               </h4>
-              <p className="text-xs text-gray-500 mb-6">
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-6">
                 Get started by adding your first item
               </p>
               <Button
@@ -2884,20 +2859,20 @@ const CreateQuotationPage = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4 p-4 bg-gray-50">
+            <div className="space-y-4 p-4 bg-gray-50 dark:bg-black">
               {quotationItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                  className="bg-white dark:bg-zinc-950 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden"
                 >
                   {/* Card Header */}
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-500 uppercase">
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase">
                       Item #{index + 1}
                     </span>
                     <button
                       onClick={() => handleRemoveItem(item.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -2909,7 +2884,7 @@ const CreateQuotationPage = () => {
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex gap-3 min-w-0 flex-1">
                         {/* Mobile Image Small Thumbnail */}
-                        <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                        <div className="flex-shrink-0 w-12 h-12 bg-gray-50 dark:bg-zinc-900 rounded-lg overflow-hidden border border-gray-200 dark:border-zinc-800">
                           {item.image ? (
                             <img
                               src={resolveImageUrl(item.image)}
@@ -2921,26 +2896,26 @@ const CreateQuotationPage = () => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-5 h-5 text-gray-300 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-semibold text-gray-900 truncate">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">
                             {item.item_name}
                           </h4>
                           <div className="mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-zinc-400">
                               HSN: {item.hsn_sac || "N/A"}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-gray-500 mb-1">Amount</div>
-                        <div className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        <div className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Amount</div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap">
                           ₹
                           {item.amount.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
@@ -2974,11 +2949,11 @@ const CreateQuotationPage = () => {
                           }
                         }}
                         placeholder="Add description..."
-                        className="w-full px-3 py-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
+                        className="w-full px-3 py-2 text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 dark:bg-zinc-950 transition-all"
                         rows={2}
                       />
                       {item.descriptionError && (
-                        <span className="text-[10px] text-red-600 mt-1">
+                        <span className="text-[10px] text-red-600 dark:text-red-400 mt-1">
                           {item.descriptionError}
                         </span>
                       )}
@@ -2988,10 +2963,10 @@ const CreateQuotationPage = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {/* Quantity */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                           Quantity
                         </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden">
+                        <div className="flex items-center bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-700 rounded-lg overflow-hidden">
                           <input
                             type="number"
                             min="1"
@@ -3002,9 +2977,9 @@ const CreateQuotationPage = () => {
                                 parseInt(e.target.value) || 1,
                               )
                             }
-                            className="w-full px-2 py-1.5 text-sm text-center focus:outline-none"
+                            className="w-full px-2 py-1.5 text-sm text-center bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 focus:outline-none"
                           />
-                          <span className="px-2 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-500 border-l border-gray-300">
+                          <span className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 text-[10px] font-bold text-gray-500 dark:text-zinc-400 border-l border-gray-300 dark:border-zinc-700">
                             {getMeasuringUnit(item.measuring_unit_id)}
                           </span>
                         </div>
@@ -3012,11 +2987,11 @@ const CreateQuotationPage = () => {
 
                       {/* Price */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                           Price/Item
                         </label>
                         <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-zinc-500">
                             ₹
                           </span>
                           <input
@@ -3029,24 +3004,24 @@ const CreateQuotationPage = () => {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 border border-gray-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </div>
                       </div>
 
                       {/* Discount */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider flex justify-between">
                           Discount
                           {item.discount > 0 && (
-                            <span className="text-red-600">
+                            <span className="text-red-600 dark:text-red-400">
                               -₹
                               {((item.quantity * item.price_per_item * item.discount) / 100).toFixed(0)}
                             </span>
                           )}
                         </label>
                         <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-zinc-500">
                             %
                           </span>
                           <input
@@ -3060,17 +3035,17 @@ const CreateQuotationPage = () => {
                                 Math.min(100, parseFloat(e.target.value) || 0),
                               )
                             }
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 border border-gray-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </div>
                       </div>
 
                       {/* Tax */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider flex justify-between">
                           Tax
                           {item.tax > 0 && (
-                            <span className="text-green-600">
+                            <span className="text-green-600 dark:text-green-400">
                               +₹
                               {((item.quantity * item.price_per_item * (1 - item.discount / 100) * item.tax) / 100).toFixed(0)}
                             </span>
@@ -3084,7 +3059,7 @@ const CreateQuotationPage = () => {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 border border-gray-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                           <option value="">None</option>
                           <option value="5">5%</option>
@@ -3099,15 +3074,15 @@ const CreateQuotationPage = () => {
               ))}
 
               {/* Mobile Summary Card */}
-              <div className="bg-white rounded-xl border-t-4 border-t-blue-600 p-4 shadow-md space-y-3">
-                <div className="flex justify-between text-sm text-gray-600">
+              <div className="bg-white dark:bg-zinc-950 rounded-xl border-t-4 border-t-blue-600 p-4 shadow-md space-y-3">
+                <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400">
                   <span>Subtotal</span>
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-gray-900 dark:text-zinc-100">
                     ₹{calculateTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 {calculateDiscount() > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
+                  <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
                     <span>Total Discount</span>
                     <span className="font-medium">
                       -₹{calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -3115,16 +3090,16 @@ const CreateQuotationPage = () => {
                   </div>
                 )}
                 {calculateTax() > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                     <span>Total Tax</span>
                     <span className="font-medium">
                       +₹{calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
-                <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-base font-bold text-gray-900">Total Amount</span>
-                  <span className="text-lg font-black text-blue-600">
+                <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 flex justify-between items-center">
+                  <span className="text-base font-bold text-gray-900 dark:text-zinc-100">Total Amount</span>
+                  <span className="text-lg font-black text-blue-600 dark:text-blue-400">
                     ₹{calculateTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -3147,9 +3122,9 @@ const CreateQuotationPage = () => {
                   Add Notes
                 </button>
               ) : (
-                <div className="space-y-2 bg-white border rounded-lg p-4">
+                <div className="space-y-2 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-gray-700">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                       Notes
                     </label>
                     <button
@@ -3166,7 +3141,7 @@ const CreateQuotationPage = () => {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add any notes here..."
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 dark:border-zinc-800 rounded-lg p-3 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                   />
                 </div>
@@ -3183,9 +3158,9 @@ const CreateQuotationPage = () => {
                   Add Terms and Conditions
                 </button>
               ) : (
-                <div className="space-y-2 bg-white border rounded-lg p-4">
+                <div className="space-y-2 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-gray-700">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                       Terms and Conditions
                     </label>
                     <button
@@ -3202,7 +3177,7 @@ const CreateQuotationPage = () => {
                     value={termsAndConditions}
                     onChange={(e) => setTermsAndConditions(e.target.value)}
                     placeholder="Enter terms and conditions..."
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 dark:border-zinc-800 rounded-lg p-3 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                   />
                 </div>
@@ -3219,7 +3194,7 @@ const CreateQuotationPage = () => {
 
           <div className="space-y-4 sm:space-y-5 m-5">
             {quotationItems.length > 0 && (
-              <div className="bg-white border rounded-lg p-5 space-y-3">
+              <div className="bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-5 space-y-3">
                 <div className="space-y-2">
                   {!showAdditionalChargesField ? (
                     <button
@@ -3237,10 +3212,10 @@ const CreateQuotationPage = () => {
                           placeholder="Charge name"
                           value={newChargeName}
                           onChange={(e) => setNewChargeName(e.target.value)}
-                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <div className="relative w-28">
-                          <span className="absolute left-3 top-2.5 text-sm text-gray-500">
+                          <span className="absolute left-3 top-2.5 text-sm text-gray-500 dark:text-zinc-400">
                             ₹
                           </span>
                           <input
@@ -3252,7 +3227,7 @@ const CreateQuotationPage = () => {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                            className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                           />
                         </div>
                         <Button
@@ -3287,7 +3262,7 @@ const CreateQuotationPage = () => {
                       className="flex justify-between items-center text-sm py-1.5"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-700">{charge.name}</span>
+                        <span className="text-gray-700 dark:text-zinc-300">{charge.name}</span>
                         <button
                           onClick={() => handleRemoveAdditionalCharge(index)}
                           className="text-red-500 hover:text-red-700"
@@ -3295,18 +3270,18 @@ const CreateQuotationPage = () => {
                           <X className="h-3 w-3" />
                         </button>
                       </div>
-                      <span className="font-medium">
+                      <span className="font-medium text-gray-900 dark:text-zinc-100">
                         ₹ {charge.amount.toLocaleString("en-IN")}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200">
-                  <span className="text-gray-700 font-medium">
+                <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200 dark:border-zinc-800">
+                  <span className="text-gray-700 dark:text-zinc-300 font-medium">
                     Taxable Amount
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold text-gray-900 dark:text-zinc-100">
                     ₹{" "}
                     {(calculateSubtotal() - calculateDiscount()).toLocaleString(
                       "en-IN",
@@ -3316,15 +3291,15 @@ const CreateQuotationPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">{currentUser?.isUT ? 'UTGST' : 'SGST'}</span>
-                  <span className="font-medium">
+                  <span className="text-gray-700 dark:text-zinc-300">{currentUser?.isUT ? 'UTGST' : 'SGST'}</span>
+                  <span className="font-medium text-gray-900 dark:text-zinc-100">
                     ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm py-2">
-                  <span className="text-gray-700">CGST</span>
-                  <span className="font-medium">
+                  <span className="text-gray-700 dark:text-zinc-300">CGST</span>
+                  <span className="font-medium text-gray-900 dark:text-zinc-100">
                     ₹ {(calculateTax() / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -3337,9 +3312,9 @@ const CreateQuotationPage = () => {
                     Add Discount
                   </button>
                 ) : (
-                  <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                  <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-zinc-800">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-700">Discount:</span>
+                      <span className="text-sm text-gray-700 dark:text-zinc-300">Discount:</span>
                       <select
                         value={discount.type}
                         onChange={(e) =>
@@ -3348,7 +3323,7 @@ const CreateQuotationPage = () => {
                             type: e.target.value as "percentage" | "amount",
                           })
                         }
-                        className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-2 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="percentage">%</option>
                         <option value="amount">₹</option>
@@ -3362,7 +3337,7 @@ const CreateQuotationPage = () => {
                             value: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                        className="w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                       />
                       <button
                         onClick={() => {
@@ -3374,7 +3349,7 @@ const CreateQuotationPage = () => {
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <span className="text-sm font-medium text-red-600">
+                    <span className="text-sm font-medium text-red-600 dark:text-red-400">
                       - ₹{" "}
                       {calculateOverallDiscount().toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
@@ -3412,11 +3387,11 @@ const CreateQuotationPage = () => {
                   </div>
                 </div> */}
 
-                <div className="flex justify-between items-center pt-3 border-t-2 border-gray-300">
-                  <span className="text-base font-bold text-gray-800">
+                <div className="flex justify-between items-center pt-3 border-t-2 border-gray-300 dark:border-zinc-800">
+                  <span className="text-base font-bold text-gray-800 dark:text-zinc-100">
                     Total Amount
                   </span>
-                  <span className="text-xl font-bold text-gray-900">
+                  <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">
                     ₹{" "}
                     {calculateFinalTotal().toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
@@ -3460,27 +3435,27 @@ const CreateQuotationPage = () => {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden w-[95vw] sm:w-full">
+        <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden w-[95vw] sm:w-full bg-white dark:bg-zinc-950 border dark:border-zinc-800">
           {/* Header */}
-          <div className="px-4 sm:px-6 py-4 border-b bg-white">
-            <DialogTitle className="text-base font-semibold text-gray-900">
+          <div className="px-4 sm:px-6 py-4 border-b dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-zinc-100">
               Delete Shipping Address
             </DialogTitle>
           </div>
 
           {/* Content */}
-          <div className="px-4 sm:px-6 py-4 bg-white">
-            <DialogDescription className="text-sm text-gray-700">
+          <div className="px-4 sm:px-6 py-4 bg-white dark:bg-zinc-950">
+            <DialogDescription className="text-sm text-gray-700 dark:text-zinc-300">
               Are you sure you want to delete this shipping address?
             </DialogDescription>
           </div>
 
           {/* Footer */}
-          <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
+          <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-zinc-900/50 border-t dark:border-zinc-800 flex justify-end gap-3">
             <button
               type="button"
               onClick={handleCancelDelete}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-950 border border-gray-300 dark:border-zinc-800 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-900 focus:outline-none transition-colors"
             >
               Cancel
             </button>

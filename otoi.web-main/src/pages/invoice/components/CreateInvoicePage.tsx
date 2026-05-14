@@ -1097,7 +1097,7 @@ const CreateInvoicePage = () => {
           // Still allow update if check fails, but show warning
           toast.warning('Unable to verify credit note status. Proceed with caution.');
         }
-        
+
         response = await updateInvoice(id, submissionData);
       } else {
         response = await createInvoice(submissionData);
@@ -1202,9 +1202,9 @@ const CreateInvoicePage = () => {
   };
 
   return (
-    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen space-y-4 sm:space-y-6 relative w-full max-w-[100vw] overflow-x-hidden">
+    <div className="p-3 sm:p-6 bg-gray-50 dark:bg-black min-h-screen space-y-4 sm:space-y-6 relative w-full max-w-[100vw] overflow-x-hidden">
       {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/80">
           <SpinnerDotted
             size={50}
             thickness={100}
@@ -1214,7 +1214,7 @@ const CreateInvoicePage = () => {
         </div>
       )}
       {isAddressLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/80">
           <SpinnerDotted
             size={50}
             thickness={100}
@@ -1224,7 +1224,7 @@ const CreateInvoicePage = () => {
         </div>
       )}
       {/* Header */}
-      <div className="sticky rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm gap-3 md:gap-0 flex-wrap">
+      <div className="sticky rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between bg-white dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 px-4 py-3 shadow-sm gap-3 md:gap-0 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto overflow-hidden">
           <Button
             type="button"
@@ -1234,7 +1234,7 @@ const CreateInvoicePage = () => {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-zinc-100 truncate">
             {isEditMode ? "Edit Invoice" : "Create Invoice"}
           </h1>
         </div>
@@ -1290,15 +1290,15 @@ const CreateInvoicePage = () => {
 
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 pb-4">
-        <div className="xl:col-span-4 bg-white border rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5">
+        <div className="xl:col-span-4 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4 sm:space-y-5">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Bill To</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Bill To</h3>
               {selectedCustomer ? (
-                <div className="border rounded-xl min-h-[180px] p-3 sm:p-4 bg-white">
+                <div className="border dark:border-zinc-800 rounded-xl min-h-[180px] p-3 sm:p-4 bg-white dark:bg-zinc-950">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 dark:text-zinc-100">
                         {selectedCustomer.first_name}{" "}
                         {selectedCustomer.last_name}
                       </h4>
@@ -1313,25 +1313,25 @@ const CreateInvoicePage = () => {
                         )}
                         <div className="mt-2 space-y-1">
                           {selectedCustomer.mobile && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Phone:</span>{" "}
                               {selectedCustomer.mobile}
                             </p>
                           )}
                           {selectedCustomer.email && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Email:</span>{" "}
                               {selectedCustomer.email}
                             </p>
                           )}
                           {selectedCustomer.gst && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">GST:</span>{" "}
                               {selectedCustomer.gst}
                             </p>
                           )}
                           {formatAddressLines(getCustomerAddress(selectedCustomer, "billing"), "billing").map((line, index) => (
-                            <p key={index} className="text-gray-600">{line}</p>
+                            <p key={index} className="text-gray-600 dark:text-zinc-400">{line}</p>
                           ))}
                         </div>
                       </div>
@@ -1347,7 +1347,7 @@ const CreateInvoicePage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded-xl min-h-[180px] flex flex-col items-center justify-center bg-gray-50 p-4">
+                <div className="border-2 border-dashed dark:border-zinc-800 rounded-xl min-h-[180px] flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900/50 p-4">
                   <Button
                     type="button"
                     onClick={() => setIsPartyDialogOpen(true)}
@@ -1362,12 +1362,12 @@ const CreateInvoicePage = () => {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Ship To</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Ship To</h3>
               {selectedCustomer ? (
-                <div className="border rounded-xl min-h-[180px] p-3 sm:p-4 bg-white overflow-hidden">
+                <div className="border dark:border-zinc-800 rounded-xl min-h-[180px] p-3 sm:p-4 bg-white dark:bg-zinc-950 overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 dark:text-zinc-100">
                         {selectedCustomer.first_name} {selectedCustomer.last_name}
                       </h4>
                       <div className="mt-2 text-sm text-gray-700 space-y-1">
@@ -1381,34 +1381,34 @@ const CreateInvoicePage = () => {
                         )}
                         <div className="mt-2 space-y-1">
                           {selectedCustomer.mobile && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Phone:</span>{" "}
                               {selectedCustomer.mobile}
                             </p>
                           )}
                           {selectedCustomer.email && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">Email:</span>{" "}
                               {selectedCustomer.email}
                             </p>
                           )}
                           {selectedCustomer.gst && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-zinc-400">
                               <span className="font-medium">GST:</span>{" "}
                               {selectedCustomer.gst}
                             </p>
                           )}
                           {selectedAddress ? (
                             <>
-                              <p className="text-gray-600">
+                              <p className="text-gray-600 dark:text-zinc-400">
                                 <span className="font-medium">Shipping Address:</span> {selectedAddress.address1}
                               </p>
                               {selectedAddress.address2 && (
-                                <p className="text-gray-600">
+                                <p className="text-gray-600 dark:text-zinc-400">
                                   <span className="font-medium">Shipping Address 2:</span> {selectedAddress.address2}
                                 </p>
                               )}
-                              <div className="mt-2 text-sm text-gray-600 space-y-1">
+                              <div className="mt-2 text-sm text-gray-600 dark:text-zinc-400 space-y-1">
                                 <p>
                                   {selectedAddress.city && (
                                     <span>
@@ -1435,7 +1435,7 @@ const CreateInvoicePage = () => {
                             </>
                           ) : (
                             formatAddressLines(getCustomerAddress(selectedCustomer, "shipping"), "shipping").map((line, index) => (
-                              <p key={index} className="text-gray-600">{line}</p>
+                              <p key={index} className="text-gray-600 dark:text-zinc-400">{line}</p>
                             ))
                           )}
                         </div>
@@ -1455,8 +1455,8 @@ const CreateInvoicePage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded-xl min-h-[180px] bg-gray-50 flex items-center justify-center p-4">
-                  <p className="text-sm text-gray-400">
+                <div className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-xl min-h-[180px] bg-gray-50/50 dark:bg-zinc-900/50 flex items-center justify-center p-4">
+                  <p className="text-sm font-medium text-gray-400 dark:text-zinc-500">
                     Shipping address will appear here
                   </p>
                 </div>
@@ -1465,40 +1465,40 @@ const CreateInvoicePage = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-1 bg-white border rounded-xl p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+        <div className="lg:col-span-1 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-4">
             Invoice Details
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Invoice No.</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Invoice No.</label>
               <Input
                 name="invoiceNo"
                 value={formData.invoiceNo}
                 onChange={handleChange}
                 placeholder="Auto"
-                className="h-8 text-sm"
+                className="h-8 text-sm dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-600">Invoice Date</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Invoice Date</label>
               <Input
                 type="date"
                 name="invoiceDate"
                 value={formData.invoiceDate}
                 onChange={handleChange}
-                className="h-8 text-sm"
+                className="h-8 text-sm dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100"
               />
             </div>
             <div className="space-y-1.5 col-span-2">
-              <label className="text-xs text-gray-600">Due Date</label>
+              <label className="text-xs text-gray-600 dark:text-zinc-400">Due Date</label>
               <Input
                 type="date"
                 name="dueDate"
                 value={formData.dueDate}
                 onChange={handleChange}
                 min={formData.invoiceDate}
-                className="h-8 text-sm w-full"
+                className="h-8 text-sm w-full dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100"
               />
             </div>
           </div>
@@ -1506,22 +1506,22 @@ const CreateInvoicePage = () => {
 
         {/* Party Selection Dialog */}
         <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg w-[95vw] sm:w-full max-h-[90vh]">
-            <DialogHeader className="bg-white px-4 sm:px-6 py-4 border-b">
-              <DialogTitle className="text-lg font-semibold text-gray-800">
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 shadow-lg w-[95vw] sm:w-full max-h-[90vh] bg-white dark:bg-black">
+            <DialogHeader className="bg-white dark:bg-zinc-950 px-4 sm:px-6 py-4 border-b dark:border-zinc-800">
+              <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
                 Search Parties
               </DialogTitle>
             </DialogHeader>
 
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 dark:bg-black">
               {/* Search Bar */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
                 </div>
                 <Input
                   placeholder="Search Parties by name or mobile..."
-                  className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+                  className="pl-10 h-10 rounded-md border-gray-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -1536,11 +1536,11 @@ const CreateInvoicePage = () => {
               </div>
 
               {/* Party List */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+              <div className="border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] dark:bg-black">
                 {isCreatingParty ? (
                   <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
+                      <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
                         Customer Name
                       </label>
                       <Input
@@ -1548,7 +1548,7 @@ const CreateInvoicePage = () => {
                         value={newPartyName}
                         onChange={(e) => setNewPartyName(e.target.value)}
                         autoFocus
-                        className="h-11 rounded-lg border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        className="h-11 rounded-lg border-gray-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
                       />
                     </div>
                     <div className="flex justify-end space-x-3 pt-2">
@@ -1571,50 +1571,50 @@ const CreateInvoicePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="max-h-[300px] overflow-y-auto bg-white dark:bg-black [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {isPartiesLoading ? (
-                      <div className="p-8 text-center">
-                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                      <div className="p-8 text-center bg-white dark:bg-black">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-900">
                           <SpinnerDotted size={20} />
                         </div>
-                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                        <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">
                           Loading Parties...
                         </h3>
                       </div>
                     ) : filteredParties.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                          <UserPlus className="h-5 w-5 text-gray-600" />
+                      <div className="p-8 text-center bg-white dark:bg-black">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-900">
+                          <UserPlus className="h-5 w-5 text-gray-600 dark:text-zinc-400" />
                         </div>
-                        <h3 className="mt-3 text-sm font-medium text-gray-900">
+                        <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">
                           No Party found
                         </h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
                           Get started by creating a new Party.
                         </p>
                       </div>
                     ) : (
-                      <ul className="divide-y divide-gray-100">
+                      <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
                         {filteredParties.map((party) => (
                           <li
                             key={party.id}
-                            className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
-                              ? "bg-gray-100"
-                              : ""
+                            className={`group relative p-4 hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors ${selectedParty?.id === party.id
+                              ? "bg-gray-100 dark:bg-zinc-900/50"
+                              : "bg-white dark:bg-black"
                               }`}
                             onClick={() => handleSelectParty(party)}
                           >
                             <div className="flex items-center">
                               <div
                                 className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
-                                  ? "bg-green-100"
-                                  : "bg-gray-100"
+                                  ? "bg-green-100 dark:bg-zinc-900/30"
+                                  : "bg-gray-100 dark:bg-zinc-900"
                                   }`}
                               >
                                 <span
                                   className={`font-medium text-sm ${selectedParty?.id === party.id
-                                    ? "text-green-700"
-                                    : "text-gray-600"
+                                    ? "text-green-700 dark:text-green-400"
+                                    : "text-gray-600 dark:text-zinc-400"
                                     }`}
                                 >
                                   {party.name
@@ -1625,7 +1625,7 @@ const CreateInvoicePage = () => {
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                                <div className="font-medium text-gray-900 dark:text-zinc-100 group-hover:text-gray-700 dark:group-hover:text-white transition-colors">
                                   {party.name}
                                 </div>
                                 {party.mobile && (
@@ -1691,11 +1691,11 @@ const CreateInvoicePage = () => {
         />
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-4 w-full max-w-full">
+      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden mb-4 w-full max-w-full">
         {/* Items Table Header */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gradient-to-r from-gray-50 to-white dark:from-zinc-900 dark:to-zinc-950">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-800">Items</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-gray-800 dark:text-zinc-100">Items</h3>
             <Button size="sm" onClick={() => setShowAddItemModal(true)} className="gap-2 h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Add Item
@@ -1706,9 +1706,9 @@ const CreateInvoicePage = () => {
         {/* Desktop Table Container */}
         <div className="hidden md:block overflow-x-auto w-full">
           <table className="min-w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
+            <thead className="bg-gray-50 dark:bg-zinc-900 border-b-2 border-gray-200 dark:border-zinc-800">
               <tr>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-12">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-700 dark:text-zinc-400 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-800 w-12">
                   No.
                 </th>
                 <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200 w-16">
@@ -1740,7 +1740,7 @@ const CreateInvoicePage = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-zinc-800">
               {invoiceItems.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-20">
@@ -1782,7 +1782,7 @@ const CreateInvoicePage = () => {
                 invoiceItems.map((item, index) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-gray-50/70 transition-colors group"
+                    className="hover:bg-gray-50/70 dark:hover:bg-zinc-900/50 transition-colors group"
                   >
                     {/* Serial Number */}
                     <td className="px-4 py-4 text-sm font-medium text-gray-600 border-r border-gray-200">
@@ -1790,9 +1790,9 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Image Column */}
-                    <td className="px-4 py-4 text-center border-r border-gray-200">
+                    <td className="px-4 py-4 text-center border-r border-gray-200 dark:border-zinc-800">
                       {item.image ? (
-                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 shadow-sm">
+                        <div className="w-10 h-10 mx-auto rounded-md overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm">
                           <img
                             src={resolveImageUrl(item.image)}
                             alt={item.item_name}
@@ -1803,8 +1803,8 @@ const CreateInvoicePage = () => {
                           />
                         </div>
                       ) : (
-                        <div className="w-10 h-10 mx-auto bg-gray-50 rounded-md flex items-center justify-center border border-gray-100">
-                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="w-10 h-10 mx-auto bg-gray-50 dark:bg-zinc-900 rounded-md flex items-center justify-center border border-gray-100 dark:border-zinc-800">
+                          <svg className="w-5 h-5 text-gray-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
@@ -1812,10 +1812,10 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Item Details */}
-                    <td className="px-4 py-4 border-r border-gray-200">
+                    <td className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800">
                       <div className="space-y-2">
                         <div
-                          className="text-sm text-gray-900 truncate max-w-[250px]"
+                          className="text-sm text-gray-900 dark:text-zinc-100 truncate max-w-[250px]"
                           title={item.item_name}
                         >
                           {item.item_name}
@@ -1856,7 +1856,7 @@ const CreateInvoicePage = () => {
                               }
                             }}
                             placeholder="Add item description..."
-                            className="w-full px-3 py-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-transparent focus:bg-white transition-colors"
+                            className="w-full px-3 py-2 text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-transparent focus:bg-white dark:focus:bg-zinc-900 transition-colors"
                             rows={2}
                           />
                           {item.descriptionError && (
@@ -1869,16 +1869,16 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* HSN/SAC */}
-                    <td className="px-4 py-4 text-sm text-gray-700 border-r border-gray-200">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 font-mono text-xs">
+                    <td className="px-4 py-4 text-sm text-gray-700 dark:text-zinc-300 border-r border-gray-200 dark:border-zinc-800">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 font-mono text-xs">
                         {item.hsn_sac || "N/A"}
                       </span>
                     </td>
 
                     {/* Quantity */}
-                    <td className="px-4 py-4 border-r border-gray-200">
+                    <td className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800">
                       <div className="flex flex-col">
-                        <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200">
+                        <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-200 focus-within:border-blue-200">
                           <input
                             type="number"
                             min="1"
@@ -1894,9 +1894,9 @@ const CreateInvoicePage = () => {
                                 parseInt(e.target.value) || 1,
                               )
                             }
-                            className="w-full px-2 py-2 text-sm text-center text-gray-900 border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full px-2 py-2 text-sm text-center text-gray-900 dark:text-zinc-100 bg-transparent border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="px-2.5 py-2 bg-gray-100 text-xs font-semibold text-gray-600 border-l border-gray-300">
+                          <span className="px-2.5 py-2 bg-gray-100 dark:bg-zinc-800 text-xs font-semibold text-gray-600 dark:text-zinc-400 border-l border-gray-300 dark:border-zinc-800">
                             {getMeasuringUnit(item.measuring_unit_id)}
                           </span>
                         </div>
@@ -1905,10 +1905,10 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Price */}
-                    <td className="px-4 py-4 border-r border-gray-200">
+                    <td className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800">
                       <div className="flex flex-col">
                         <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-xs font-medium text-gray-500">
+                          <span className="absolute left-3 top-2.5 text-xs font-medium text-gray-500 dark:text-zinc-500">
                             ₹
                           </span>
                           <input
@@ -1926,7 +1926,7 @@ const CreateInvoicePage = () => {
                                 parseFloat(e.target.value),
                               )
                             }
-                            className="w-full pl-6 pr-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full pl-6 pr-3 py-2 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </div>
                         <div className="mt-0.5 h-3"></div>
@@ -1934,7 +1934,7 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Discount */}
-                    <td className="px-4 py-4 border-r border-gray-200">
+                    <td className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800">
                       <div className="flex flex-col">
                         <div className="relative">
                           <input
@@ -1956,9 +1956,9 @@ const CreateInvoicePage = () => {
                                   : Math.min(100, parseFloat(value)),
                               );
                             }}
-                            className="w-full pl-8 pr-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full pl-8 pr-3 py-2 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-lg text-left focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="absolute left-3 top-2.5 text-xs font-semibold text-gray-500">
+                          <span className="absolute left-3 top-2.5 text-xs font-semibold text-gray-500 dark:text-zinc-500">
                             %
                           </span>
                         </div>
@@ -1971,7 +1971,7 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Tax */}
-                    <td className="px-4 py-4 border-r border-gray-200">
+                    <td className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800">
                       <div className="flex flex-col">
                         <select
                           value={item.tax}
@@ -1981,7 +1981,7 @@ const CreateInvoicePage = () => {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 h-[38px]"
+                          className="w-full px-3 py-2 text-sm text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-200 h-[38px]"
                         >
                           <option value="">None</option>
                           <option value="5">5%</option>
@@ -1998,8 +1998,8 @@ const CreateInvoicePage = () => {
                     </td>
 
                     {/* Amount */}
-                    <td className="px-4 py-4 text-right border-r border-gray-200">
-                      <div className="text-sm text-gray-900">
+                    <td className="px-4 py-4 text-right border-r border-gray-200 dark:border-zinc-800">
+                      <div className="text-sm text-gray-900 dark:text-zinc-100">
                         ₹
                         {item.amount.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
@@ -2022,24 +2022,24 @@ const CreateInvoicePage = () => {
                 ))
               )}
             </tbody>
-            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+            <tfoot className="bg-gray-50 dark:bg-zinc-900 border-t-2 border-gray-200 dark:border-zinc-800">
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-4 border-r border-gray-200"
+                  className="px-4 py-4 border-r border-gray-200 dark:border-zinc-800"
                 ></td>
-                <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right border-r border-gray-200">
+                <td className="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-zinc-100 text-right border-r border-gray-200 dark:border-zinc-800">
                   Subtotal
                 </td>
-                <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200">
+                <td className="px-4 py-4 text-right text-sm font-medium text-red-600 border-r border-gray-200 dark:border-zinc-800">
                   {calculateDiscount() > 0 &&
                     `-₹${calculateDiscount().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
-                <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200">
+                <td className="px-4 py-4 text-right text-sm font-medium text-green-600 border-r border-gray-200 dark:border-zinc-800">
                   {calculateTax() > 0 &&
                     `+₹${calculateTax().toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                 </td>
-                <td className="px-4 py-4 text-sm text-gray-900 text-right border-r border-gray-200">
+                <td className="px-4 py-4 text-sm text-gray-900 dark:text-zinc-100 text-right border-r border-gray-200 dark:border-zinc-800">
                   ₹
                   {calculateFinalTotal().toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -2052,7 +2052,7 @@ const CreateInvoicePage = () => {
         </div>
 
         {/* Mobile View - Card based list */}
-        <div className="md:hidden divide-y divide-gray-200">
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-zinc-800">
           {invoiceItems.length === 0 ? (
             <div className="px-4 py-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2089,11 +2089,11 @@ const CreateInvoicePage = () => {
               {invoiceItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                  className="bg-white dark:bg-zinc-950 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden"
                 >
                   {/* Card Header */}
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-500 uppercase">
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase">
                       Item #{index + 1}
                     </span>
                     <button
@@ -2110,7 +2110,7 @@ const CreateInvoicePage = () => {
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex gap-3 min-w-0 flex-1">
                         {/* Mobile Image Small Thumbnail */}
-                        <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                        <div className="flex-shrink-0 w-12 h-12 bg-gray-50 dark:bg-zinc-900 rounded-lg overflow-hidden border border-gray-200 dark:border-zinc-800">
                           {item.image ? (
                             <img
                               src={resolveImageUrl(item.image)}
@@ -2129,19 +2129,19 @@ const CreateInvoicePage = () => {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-semibold text-gray-900 truncate">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">
                             {item.item_name}
                           </h4>
                           <div className="mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-zinc-900 text-gray-600 dark:text-zinc-400">
                               HSN: {item.hsn_sac || "N/A"}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-gray-500 mb-1">Amount</div>
-                        <div className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        <div className="text-xs text-gray-500 dark:text-zinc-500 mb-1">Amount</div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap">
                           ₹
                           {item.amount.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
@@ -2175,7 +2175,7 @@ const CreateInvoicePage = () => {
                           }
                         }}
                         placeholder="Add description..."
-                        className="w-full px-3 py-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
+                        className="w-full px-3 py-2 text-xs text-gray-600 dark:text-zinc-300 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
                         rows={2}
                       />
                       {item.descriptionError && (
@@ -2189,10 +2189,10 @@ const CreateInvoicePage = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {/* Quantity */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">
                           Quantity
                         </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden">
+                        <div className="flex items-center bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-lg overflow-hidden">
                           <input
                             type="number"
                             min="1"
@@ -2203,9 +2203,9 @@ const CreateInvoicePage = () => {
                                 parseInt(e.target.value) || 1,
                               )
                             }
-                            className="w-full px-2 py-1.5 text-sm text-center focus:outline-none"
+                            className="w-full px-2 py-1.5 text-sm text-center focus:outline-none bg-transparent text-gray-900 dark:text-zinc-100"
                           />
-                          <span className="px-2 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-500 border-l border-gray-300">
+                          <span className="px-2 py-1.5 bg-gray-50 dark:bg-zinc-800 text-[10px] font-bold text-gray-500 dark:text-zinc-400 border-l border-gray-300 dark:border-zinc-800">
                             {getMeasuringUnit(item.measuring_unit_id)}
                           </span>
                         </div>
@@ -2213,11 +2213,11 @@ const CreateInvoicePage = () => {
 
                       {/* Price */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">
                           Price/Item
                         </label>
                         <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-zinc-500">
                             ₹
                           </span>
                           <input
@@ -2230,14 +2230,14 @@ const CreateInvoicePage = () => {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
                           />
                         </div>
                       </div>
 
                       {/* Discount */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider flex justify-between">
                           Discount
                           {item.discount > 0 && (
                             <span className="text-red-600">
@@ -2247,7 +2247,7 @@ const CreateInvoicePage = () => {
                           )}
                         </label>
                         <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-zinc-500">
                             %
                           </span>
                           <input
@@ -2261,14 +2261,14 @@ const CreateInvoicePage = () => {
                                 Math.min(100, parseFloat(e.target.value) || 0),
                               )
                             }
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
                           />
                         </div>
                       </div>
 
                       {/* Tax */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <label className="text-[11px] font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider flex justify-between">
                           Tax
                           {item.tax > 0 && (
                             <span className="text-green-600">
@@ -2285,7 +2285,7 @@ const CreateInvoicePage = () => {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
                         >
                           <option value="">None</option>
                           <option value="5">5%</option>
@@ -2300,10 +2300,10 @@ const CreateInvoicePage = () => {
               ))}
 
               {/* Mobile Summary Card */}
-              <div className="bg-white rounded-xl border-t-4 border-t-blue-600 p-4 shadow-md space-y-3">
-                <div className="flex justify-between text-sm text-gray-600">
+              <div className="bg-white dark:bg-zinc-950 rounded-xl border-t-4 border-t-blue-600 p-4 shadow-md space-y-3">
+                <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400">
                   <span>Subtotal</span>
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-gray-900 dark:text-zinc-100">
                     ₹{calculateSubtotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -2323,8 +2323,8 @@ const CreateInvoicePage = () => {
                     </span>
                   </div>
                 )}
-                <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-base font-bold text-gray-900">Total Amount</span>
+                <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 flex justify-between items-center">
+                  <span className="text-base font-bold text-gray-900 dark:text-zinc-100">Total Amount</span>
                   <span className="text-lg font-black text-blue-600">
                     ₹{calculateFinalTotal().toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
@@ -2349,9 +2349,9 @@ const CreateInvoicePage = () => {
                 Add Notes
               </button>
             ) : (
-              <div className="space-y-2 bg-white border rounded-lg p-4">
+              <div className="space-y-2 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                     Notes
                   </label>
                   <button
@@ -2359,7 +2359,7 @@ const CreateInvoicePage = () => {
                       setShowNotesField(false);
                       setNotes("");
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -2368,7 +2368,7 @@ const CreateInvoicePage = () => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add any notes here..."
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg p-3 text-sm dark:text-zinc-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                 />
               </div>
@@ -2385,9 +2385,9 @@ const CreateInvoicePage = () => {
                 Add Terms and Conditions
               </button>
             ) : (
-              <div className="space-y-2 bg-white border rounded-lg p-4">
+              <div className="space-y-2 bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                     Terms and Conditions
                   </label>
                   <button
@@ -2395,7 +2395,7 @@ const CreateInvoicePage = () => {
                       setShowTermsField(false);
                       setTermsAndConditions("");
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -2404,7 +2404,7 @@ const CreateInvoicePage = () => {
                   value={termsAndConditions}
                   onChange={(e) => setTermsAndConditions(e.target.value)}
                   placeholder="Enter terms and conditions..."
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg p-3 text-sm dark:text-zinc-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                 />
               </div>
@@ -2421,7 +2421,7 @@ const CreateInvoicePage = () => {
 
         <div className="space-y-4 sm:space-y-5 m-5">
           {invoiceItems.length > 0 && (
-            <div className="bg-white border rounded-lg p-5 space-y-3">
+            <div className="bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-lg p-5 space-y-3 shadow-sm">
               <div className="space-y-2">
                 {!showAdditionalChargesField ? (
                   <button
@@ -2439,7 +2439,7 @@ const CreateInvoicePage = () => {
                         placeholder="Charge name"
                         value={newChargeName}
                         onChange={(e) => setNewChargeName(e.target.value)}
-                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <div className="relative w-28">
                         <span className="absolute left-3 top-2.5 text-sm text-gray-500">
@@ -2454,7 +2454,7 @@ const CreateInvoicePage = () => {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                          className="w-full pl-6 pr-2 py-2 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                         />
                       </div>
                       <Button
@@ -2489,7 +2489,7 @@ const CreateInvoicePage = () => {
                     className="flex justify-between items-center text-sm py-1.5"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-700">{charge.name}</span>
+                      <span className="text-gray-700 dark:text-zinc-300">{charge.name}</span>
                       <button
                         onClick={() => handleRemoveAdditionalCharge(index)}
                         className="text-red-500 hover:text-red-700"
@@ -2497,18 +2497,18 @@ const CreateInvoicePage = () => {
                         <X className="h-3 w-3" />
                       </button>
                     </div>
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900 dark:text-zinc-100">
                       ₹ {charge.amount.toLocaleString("en-IN")}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200">
-                <span className="text-gray-700 font-medium">
+              <div className="flex justify-between items-center text-sm py-2 border-t border-gray-200 dark:border-zinc-800">
+                <span className="text-gray-700 dark:text-zinc-400 font-medium">
                   Taxable Amount
                 </span>
-                <span className="font-semibold">
+                <span className="font-semibold text-gray-900 dark:text-zinc-100">
                   ₹{" "}
                   {(calculateSubtotal() - calculateDiscount()).toLocaleString(
                     "en-IN",
@@ -2518,8 +2518,8 @@ const CreateInvoicePage = () => {
               </div>
 
               <div className="flex justify-between items-center text-sm py-2">
-                <span className="text-gray-700">SGST</span>
-                <span className="font-medium">
+                <span className="text-gray-700 dark:text-zinc-400">SGST</span>
+                <span className="font-medium text-gray-900 dark:text-zinc-100">
                   ₹{" "}
                   {(calculateTax() / 2).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -2529,8 +2529,8 @@ const CreateInvoicePage = () => {
               </div>
 
               <div className="flex justify-between items-center text-sm py-2">
-                <span className="text-gray-700">CGST</span>
-                <span className="font-medium">
+                <span className="text-gray-700 dark:text-zinc-400">CGST</span>
+                <span className="font-medium text-gray-900 dark:text-zinc-100">
                   ₹{" "}
                   {(calculateTax() / 2).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -2547,9 +2547,9 @@ const CreateInvoicePage = () => {
                   Add Discount
                 </button>
               ) : (
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 border-t border-gray-200 gap-3 flex-wrap">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 border-t border-gray-200 dark:border-zinc-800 gap-3 flex-wrap">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <span className="text-sm text-gray-700">Discount:</span>
+                    <span className="text-sm text-gray-700 dark:text-zinc-400">Discount:</span>
                     <select
                       value={discount.type}
                       onChange={(e) =>
@@ -2558,7 +2558,7 @@ const CreateInvoicePage = () => {
                           type: e.target.value as "percentage" | "amount",
                         })
                       }
-                      className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-9"
+                      className="px-2 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-9"
                     >
                       <option value="percentage">%</option>
                       <option value="amount">₹</option>
@@ -2572,7 +2572,7 @@ const CreateInvoicePage = () => {
                           value: parseFloat(e.target.value) || 0,
                         })
                       }
-                      className="w-full sm:w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right h-9"
+                      className="w-full sm:w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right h-9"
                     />
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
@@ -2604,11 +2604,11 @@ const CreateInvoicePage = () => {
                     id="autoRoundOff"
                     checked={autoRoundOff}
                     // onChange={(e) => setAutoRoundOff(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-4 w-4 rounded border-gray-300 dark:border-zinc-800 dark:bg-zinc-900"
                   />
                   <label
                     htmlFor="autoRoundOff"
-                    className="text-sm text-gray-700"
+                    className="text-sm text-gray-700 dark:text-zinc-300"
                   >
                     Auto Round Off
                   </label>
@@ -2617,7 +2617,7 @@ const CreateInvoicePage = () => {
                   <button className="text-blue-600 text-sm font-medium">
                     + Add
                   </button>
-                  <select className="px-2 py-1 text-sm border border-gray-300 rounded-md w-14">
+                  <select className="px-2 py-1 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md w-14">
                     <option>₹</option>
                   </select>
                   <input
@@ -2627,16 +2627,16 @@ const CreateInvoicePage = () => {
                       setRoundOffAmount(parseFloat(e.target.value) || 0)
                     }
                     disabled={autoRoundOff}
-                    className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md text-right disabled:bg-gray-100"
+                    className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-md text-right disabled:bg-gray-100 dark:disabled:bg-zinc-800"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t-2 border-gray-200 gap-2 flex-wrap">
-                <span className="text-base font-bold text-gray-800">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t-2 border-gray-200 dark:border-zinc-800 gap-2 flex-wrap">
+                <span className="text-base font-bold text-gray-800 dark:text-zinc-100">
                   Total Amount
                 </span>
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">
                   ₹{" "}
                   {calculateFinalTotal().toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -2646,17 +2646,17 @@ const CreateInvoicePage = () => {
               </div>
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
                     Amount Received
                   </label>
                   <input
                     type="checkbox"
                     checked={isFullyPaid}
                     onChange={(e) => setIsFullyPaid(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-gray-300 dark:border-zinc-800 dark:bg-zinc-900"
                     id="paidFull"
                   />
-                  <label htmlFor="paidFull" className="text-xs text-gray-500">
+                  <label htmlFor="paidFull" className="text-xs text-gray-500 dark:text-zinc-500">
                     Mark as fully paid
                   </label>
                 </div>
@@ -2664,7 +2664,7 @@ const CreateInvoicePage = () => {
 
               <div className="flex gap-2 mb-3">
                 <div className="relative w-40 ml-auto">
-                  <span className="absolute left-3 top-2 text-gray-500">₹</span>
+                  <span className="absolute left-3 top-2 text-gray-500 dark:text-zinc-500">₹</span>
                   <input
                     type="number"
                     min="0"
@@ -2695,13 +2695,13 @@ const CreateInvoicePage = () => {
                       setAmountReceived(rawVal);
                       if (numVal !== Number(calculateFinalTotal().toFixed(2))) setIsFullyPaid(false);
                     }}
-                    className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
+                    className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-200"
                   />
                 </div>
                 <select
                   value={paymentMode}
                   onChange={e => setPaymentMode(e.target.value)}
-                  className="border rounded-md px-3 py-2 text-sm bg-gray-50 w-32"
+                  className="border dark:border-zinc-800 rounded-md px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 w-32"
                 >
                   <option value="Cash">Cash</option>
                   <option value="UPI">UPI</option>
@@ -2718,7 +2718,7 @@ const CreateInvoicePage = () => {
                                 /> */}
               </div>
 
-              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-zinc-800">
                 <span className="text-sm font-medium text-green-600">Balance Amount</span>
                 <span className="text-lg font-bold text-green-600">
                   ₹ {(calculateFinalTotal() - (Number(amountReceived) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2742,289 +2742,289 @@ const CreateInvoicePage = () => {
         item={null}
       />
       {/* Shipping Address Modal */}
-        <Dialog
-          open={isShippingModalOpen}
-          onOpenChange={setIsShippingModalOpen}
-        >
-          <DialogContent className="sm:max-w-[500px] w-[90vw] rounded-xl sm:w-full max-h-[85vh] overflow-hidden p-0">
-            <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-gray-100">
-              <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                Select Shipping Address
-              </DialogTitle>
-            </DialogHeader>
+      <Dialog
+        open={isShippingModalOpen}
+        onOpenChange={setIsShippingModalOpen}
+      >
+        <DialogContent className="sm:max-w-[500px] w-[90vw] rounded-xl sm:w-full max-h-[85vh] overflow-hidden p-0 bg-white dark:bg-black border dark:border-zinc-800">
+          <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Select Shipping Address
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="px-4 sm:px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(85vh-130px)]">
-              {/* Existing Addresses */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px bg-gray-200 flex-1"></div>
-                  <h3 className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
-                    Saved Shipping Addresses
-                  </h3>
-                  <div className="h-px bg-gray-200 flex-1"></div>
-                </div>
+          <div className="px-4 sm:px-6 py-4 space-y-6 overflow-y-auto max-h-[calc(85vh-130px)]">
+            {/* Existing Addresses */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-px bg-gray-200 dark:bg-zinc-800 flex-1"></div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-400 px-3 whitespace-nowrap">
+                  Saved Shipping Addresses
+                </h3>
+                <div className="h-px bg-gray-200 dark:bg-zinc-800 flex-1"></div>
+              </div>
 
-                <div className="space-y-3">
-                  {shippingAddresses.length > 0 ? (
-                    <div className="grid gap-3">
-                      {shippingAddresses.map((address, index) => {
-                        const isSelected =
-                          selectedAddress?.uuid === address.uuid;
-                        return (
-                          <div
-                            key={address.uuid || index}
-                            className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                              }`}
-                            onClick={() => setSelectedAddress(address)}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
-                                  ? "bg-blue-100"
-                                  : "bg-gray-100 group-hover:bg-gray-200"
-                                  }`}
-                              >
-                                {address.address_type === "home" ? (
-                                  <HomeIcon
-                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
-                                  />
-                                ) : address.address_type === "work" ? (
-                                  <BriefcaseIcon
-                                    className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
-                                  />
-                                ) : (
-                                  <MapPinIcon
-                                    className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
-                                  />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-900 capitalize flex items-center gap-2">
-                                    {address.address_type}
-                                    {address.is_default && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                        Default
-                                      </span>
-                                    )}
-                                  </span>
+              <div className="space-y-3">
+                {shippingAddresses.length > 0 ? (
+                  <div className="grid gap-3">
+                    {shippingAddresses.map((address, index) => {
+                      const isSelected =
+                        selectedAddress?.uuid === address.uuid;
+                      return (
+                        <div
+                          key={address.uuid || index}
+                          className={`group relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${isSelected
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                            : "border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-900/50"
+                            }`}
+                          onClick={() => setSelectedAddress(address)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${isSelected
+                                ? "bg-blue-100 dark:bg-blue-900/30"
+                                : "bg-gray-100 dark:bg-zinc-800 group-hover:bg-gray-200 dark:group-hover:bg-zinc-700"
+                                }`}
+                            >
+                              {address.address_type === "home" ? (
+                                <HomeIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                />
+                              ) : address.address_type === "work" ? (
+                                <BriefcaseIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-blue-600" : "text-gray-600"}`}
+                                />
+                              ) : (
+                                <MapPinIcon
+                                  className={`h-4 w-4 ${isSelected ? "text-red-600" : "text-red-500"}`}
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-gray-900 dark:text-zinc-100 capitalize flex items-center gap-2">
+                                  {address.address_type}
+                                  {address.is_default && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+                                      Default
+                                    </span>
+                                  )}
+                                </span>
 
-                                  {/* Action Button */}
-                                  <div
-                                    className="relative"
-                                    ref={
-                                      address.uuid === activeDropdownUuid
-                                        ? dropdownRef
-                                        : null
-                                    }
+                                {/* Action Button */}
+                                <div
+                                  className="relative"
+                                  ref={
+                                    address.uuid === activeDropdownUuid
+                                      ? dropdownRef
+                                      : null
+                                  }
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const uuid = address.uuid;
+
+                                      if (!uuid) {
+                                        console.error(
+                                          "Address UUID is missing:",
+                                          address,
+                                        );
+                                        return;
+                                      }
+
+                                      if (activeDropdownUuid === uuid) {
+                                        setActiveDropdownUuid(null);
+                                        setButtonPosition(null);
+                                      } else {
+                                        const rect =
+                                          e.currentTarget.getBoundingClientRect();
+                                        setButtonPosition({
+                                          top: rect.top,
+                                          left: rect.right + 8,
+                                        });
+                                        setActiveDropdownUuid(uuid);
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+                                    aria-label="Address actions"
                                   >
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const uuid = address.uuid;
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
 
-                                        if (!uuid) {
-                                          console.error(
-                                            "Address UUID is missing:",
-                                            address,
-                                          );
-                                          return;
-                                        }
-
-                                        if (activeDropdownUuid === uuid) {
-                                          setActiveDropdownUuid(null);
-                                          setButtonPosition(null);
-                                        } else {
-                                          const rect =
-                                            e.currentTarget.getBoundingClientRect();
-                                          setButtonPosition({
-                                            top: rect.top,
-                                            left: rect.right + 8,
-                                          });
-                                          setActiveDropdownUuid(uuid);
-                                        }
-                                      }}
-                                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
-                                      aria-label="Address actions"
-                                    >
-                                      <MoreVertical className="w-4 h-4" />
-                                    </button>
-
-                                    {activeDropdownUuid === address.uuid && (
-                                      <div className="absolute right-full mr-2 top-0 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200">
-                                        <div className="py-1" role="menu">
-                                          {!address.is_default && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSetDefaultAddress();
-                                              }}
-                                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                            >
-                                              <MapPin className="w-4 h-4 text-green-500" />
-                                              <span>Set as Default</span>
-                                            </button>
-                                          )}
-
+                                  {activeDropdownUuid === address.uuid && (
+                                    <div className="absolute right-full mr-2 top-0 w-48 bg-white dark:bg-zinc-950 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-right-2 fade-in-0 duration-200 border dark:border-zinc-800">
+                                      <div className="py-1" role="menu">
+                                        {!address.is_default && (
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleEditAddress();
+                                              handleSetDefaultAddress();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-900 flex items-center gap-2"
                                           >
-                                            <Edit className="w-4 h-4" />
-                                            <span>Edit</span>
+                                            <MapPin className="w-4 h-4 text-green-500" />
+                                            <span>Set as Default</span>
                                           </button>
+                                        )}
 
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteAddress();
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                            <span>Delete</span>
-                                          </button>
-                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditAddress();
+                                          }}
+                                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-900 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                          <span>Edit</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteAddress();
+                                          }}
+                                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          <span>Delete</span>
+                                        </button>
                                       </div>
-                                    )}
-                                  </div>
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="space-y-1">
-                                  <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">
-                                      Address:
-                                    </span>{" "}
-                                    {[address.address1, address.address2]
-                                      .filter(Boolean)
-                                      .join(", ")}
-                                    ,
-                                    <span className="font-medium text-gray-500">
-                                      {" "}
-                                      State:
-                                    </span>{" "}
-                                    {address.state},
-                                    <span className="font-medium text-gray-500">
-                                      {" "}
-                                      Country:
-                                    </span>{" "}
-                                    {address.country}
-                                  </p>
-                                  <p className="text-xs text-gray-700 leading-relaxed">
-                                    <span className="font-medium text-gray-500">
-                                      City:
-                                    </span>{" "}
-                                    {address.city},
-                                    <span className="font-medium text-gray-500">
-                                      {" "}
-                                      Pin:
-                                    </span>{" "}
-                                    {address.pin}
-                                  </p>
-                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
+                                  <span className="font-medium text-gray-500 dark:text-zinc-500">
+                                    Address:
+                                  </span>{" "}
+                                  {[address.address1, address.address2]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                  ,
+                                  <span className="font-medium text-gray-500 dark:text-zinc-500">
+                                    {" "}
+                                    State:
+                                  </span>{" "}
+                                  {address.state},
+                                  <span className="font-medium text-gray-500 dark:text-zinc-500">
+                                    {" "}
+                                    Country:
+                                  </span>{" "}
+                                  {address.country}
+                                </p>
+                                <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
+                                  <span className="font-medium text-gray-500 dark:text-zinc-500">
+                                    City:
+                                  </span>{" "}
+                                  {address.city},
+                                  <span className="font-medium text-gray-500 dark:text-zinc-500">
+                                    {" "}
+                                    Pin:
+                                  </span>{" "}
+                                  {address.pin}
+                                </p>
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 px-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs font-medium text-gray-600 mb-1">
-                        No saved addresses found
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        No shipping addresses available for this customer
-                      </p>
-                    </div>
-                  )}
-                </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 px-3 bg-gray-50 dark:bg-zinc-900 rounded-lg">
+                    <p className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">
+                      No saved addresses found
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-500">
+                      No shipping addresses available for this customer
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            <DialogFooter className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50 m-0">
-              <div className="flex gap-2 ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsShippingModalOpen(false)}
-                  className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (selectedAddress && selectedCustomer) {
-                      setIsAddressLoading(true);
-                      try {
-                        // Call the API to update the customer with the selected shipping address
-                        const payload = {
-                          shipping_addresses: shippingAddresses.map((addr) => ({
-                            uuid: addr.uuid,
-                            address1: addr.address1,
-                            address2: addr.address2 || null,
-                            city: addr.city,
-                            state: addr.state,
-                            country: addr.country,
-                            pin: addr.pin,
-                            address_type: addr.address_type,
-                            is_default: addr.is_default,
-                          })),
-                        };
+          <DialogFooter className="px-4 sm:px-6 py-3 border-t border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 m-0">
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => setIsShippingModalOpen(false)}
+                className="h-9 px-3 rounded-md border-gray-300 hover:bg-gray-50 text-sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (selectedAddress && selectedCustomer) {
+                    setIsAddressLoading(true);
+                    try {
+                      // Call the API to update the customer with the selected shipping address
+                      const payload = {
+                        shipping_addresses: shippingAddresses.map((addr) => ({
+                          uuid: addr.uuid,
+                          address1: addr.address1,
+                          address2: addr.address2 || null,
+                          city: addr.city,
+                          state: addr.state,
+                          country: addr.country,
+                          pin: addr.pin,
+                          address_type: addr.address_type,
+                          is_default: addr.is_default,
+                        })),
+                      };
 
-                        await axios.put(
-                          `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
-                          payload,
-                        );
+                      await axios.put(
+                        `${import.meta.env.VITE_APP_API_URL}/customers/${selectedCustomer.uuid}`,
+                        payload,
+                      );
 
-                        // Update the selected customer with the new shipping address
-                        const updatedCustomer: Customer = {
-                          ...selectedCustomer,
-                          shipping_address1: selectedAddress.address1,
-                          shipping_address2: selectedAddress.address2 || "",
-                          shipping_city: selectedAddress.city,
-                          shipping_state: selectedAddress.state,
-                          shipping_country: selectedAddress.country,
-                          shipping_pin: selectedAddress.pin,
-                        };
-                        setSelectedCustomer(updatedCustomer);
+                      // Update the selected customer with the new shipping address
+                      const updatedCustomer: Customer = {
+                        ...selectedCustomer,
+                        shipping_address1: selectedAddress.address1,
+                        shipping_address2: selectedAddress.address2 || "",
+                        shipping_city: selectedAddress.city,
+                        shipping_state: selectedAddress.state,
+                        shipping_country: selectedAddress.country,
+                        shipping_pin: selectedAddress.pin,
+                      };
+                      setSelectedCustomer(updatedCustomer);
 
-                        setIsShippingModalOpen(false);
-                        toast.success("Address changed successfully");
-                      } catch (error: any) {
-                        let errorMessage =
-                          "Failed to save shipping address. Please try again.";
+                      setIsShippingModalOpen(false);
+                      toast.success("Address changed successfully");
+                    } catch (error: any) {
+                      let errorMessage =
+                        "Failed to save shipping address. Please try again.";
 
-                        if (error.response?.data?.error) {
-                          errorMessage =
-                            error.response.data.error || errorMessage;
-                        }
-
-                        toast.error(errorMessage);
-                      } finally {
-                        setIsAddressLoading(false);
+                      if (error.response?.data?.error) {
+                        errorMessage =
+                          error.response.data.error || errorMessage;
                       }
-                    } else {
-                      toast.error("Please select a shipping address");
+
+                      toast.error(errorMessage);
+                    } finally {
+                      setIsAddressLoading(false);
                     }
-                  }}
-                  disabled={!selectedAddress}
-                  className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
-                >
-                  Confirm Selection
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                  } else {
+                    toast.error("Please select a shipping address");
+                  }
+                }}
+                disabled={!selectedAddress}
+                className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm"
+              >
+                Confirm Selection
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ShippingAddressModal
         open={addAddressModalOpen}
@@ -3038,10 +3038,10 @@ const CreateInvoicePage = () => {
       />
 
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[400px] p-6 text-center rounded-xl">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+        <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[400px] p-6 text-center rounded-xl bg-white dark:bg-black border dark:border-zinc-800">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
             <svg
-              className="h-6 w-6 text-red-600"
+              className="h-6 w-6 text-red-600 dark:text-red-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -3054,10 +3054,10 @@ const CreateInvoicePage = () => {
               />
             </svg>
           </div>
-          <DialogTitle className="text-lg font-semibold text-gray-900">
+          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
             Unsaved Changes
           </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500 mt-2">
+          <DialogDescription className="text-sm text-gray-500 dark:text-zinc-400 mt-2">
             You have unsaved changes. Are you sure you want to leave this page?
           </DialogDescription>
           <DialogFooter className="mt-6 flex justify-end gap-3">

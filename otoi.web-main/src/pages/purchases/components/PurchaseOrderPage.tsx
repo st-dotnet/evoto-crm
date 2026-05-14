@@ -374,7 +374,7 @@ const PurchaseOrderPage = () => {
           />
         ),
         cell: (info) => (
-          <div className="text-sm text-gray-900 text-center">
+          <div className="text-sm text-gray-900 dark:text-zinc-100 text-center">
             {new Date(info.getValue() as string).toLocaleDateString()}
           </div>
         ),
@@ -406,7 +406,7 @@ const PurchaseOrderPage = () => {
           />
         ),
         cell: (info) => (
-          <div className="text-sm text-gray-900 text-center">
+          <div className="text-sm text-gray-900 dark:text-zinc-100 text-center">
             {info.getValue() as string}
           </div>
         ),
@@ -431,13 +431,13 @@ const PurchaseOrderPage = () => {
           );
 
           return (
-            <div className="text-sm text-gray-900 text-center">
+            <div className="text-sm text-gray-900 dark:text-zinc-100 text-center">
               {daysRemaining < 0 ? (
-                <span className="text-red-600 font-medium">
+                <span className="text-red-600 dark:text-red-500 font-medium">
                   Overdue by {Math.abs(daysRemaining)} days
                 </span>
               ) : daysRemaining === 0 ? (
-                <span className="text-red-600 font-medium">Due Today</span>
+                <span className="text-red-600 dark:text-red-500 font-medium">Due Today</span>
               ) : (
                 `${daysRemaining} days`
               )}
@@ -467,7 +467,7 @@ const PurchaseOrderPage = () => {
           />
         ),
         cell: (info) => (
-          <div className="text-sm font-medium text-center">
+          <div className="text-sm font-medium text-gray-900 dark:text-zinc-100 text-center">
             ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
           </div>
         ),
@@ -489,13 +489,13 @@ const PurchaseOrderPage = () => {
           return (
             <div className="flex items-center justify-center">
               <span
-                className={`px-2 py-1 text-xs rounded-full ${status === "open"
-                  ? "bg-green-100 text-green-800"
+                className={`px-2 py-1 text-xs rounded-full border ${status === "open"
+                  ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-500 border-green-200 dark:border-green-800"
                   : status === "closed"
-                    ? "bg-red-100 text-red-800"
+                    ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-500 border-red-200 dark:border-red-800"
                     : status === "received"
-                      ? "bg-purple-100 text-purple-800"
-                      : "bg-gray-100 text-gray-800"
+                      ? "bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-500 border-purple-200 dark:border-purple-800"
+                      : "bg-gray-50 dark:bg-gray-200/50 text-gray-700 dark:text-gray-800 border-gray-200 dark:border-gray-100"
                   }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -606,7 +606,7 @@ const PurchaseOrderPage = () => {
                   </button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-100 border-gray-200 dark:border-gray-100">
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -614,7 +614,7 @@ const PurchaseOrderPage = () => {
                       handleEdit(row.original.id);
                     }}
                   >
-                    <Edit className="mr-2 h-4 w-4" />
+                    <Edit className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                     Edit
                   </DropdownMenuItem>
 
@@ -625,7 +625,7 @@ const PurchaseOrderPage = () => {
                       navigate(`/purchases/purchase-orders/${row.original.id}`);
                     }}
                   >
-                    <Eye className="mr-2 h-4 w-4" />
+                    <Eye className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                     View Details
                   </DropdownMenuItem>
 
@@ -636,7 +636,7 @@ const PurchaseOrderPage = () => {
                       handleDuplicate(row.original.id);
                     }}
                   >
-                    <Copy className="mr-2 h-4 w-4" />
+                    <Copy className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                     Duplicate
                   </DropdownMenuItem>
 
@@ -672,35 +672,35 @@ const PurchaseOrderPage = () => {
     onDelete: (id: string) => void;
   }) => {
     return (
-      <div className="flex flex-col md:hidden border-t border-gray-100">
+      <div className="flex flex-col md:hidden border-t border-gray-100 dark:border-gray-100/10">
         {purchaseOrders.map((po) => (
           <div
             key={po.id}
-            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+            className="flex justify-between items-center py-4 px-5 border-b border-gray-100 dark:border-gray-100/10 last:border-b-0 hover:bg-gray-50/50 dark:hover:bg-gray-200/50 transition-all active:bg-gray-50 dark:active:bg-gray-200/50"
           >
             <div
               className="flex flex-col cursor-pointer grow pr-4"
               onClick={() => onDetails(po.id)}
             >
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-gray-900 text-sm">
+                <span className="font-semibold text-gray-900 dark:text-white text-sm">
                   PO #{po.po_number}
                 </span>
                 <span
-                  className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${po.status === "open"
-                    ? "bg-green-100 text-green-800"
+                  className={`px-2 py-0.5 text-[10px] rounded-full font-medium border ${po.status === "open"
+                    ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-500 border-green-200 dark:border-green-800"
                     : po.status === "closed"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-purple-100 text-purple-800"
+                      ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-500 border-red-200 dark:border-red-800"
+                      : "bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-500 border-purple-200 dark:border-purple-800"
                     }`}
                 >
                   {po.status.charAt(0).toUpperCase() + po.status.slice(1)}
                 </span>
               </div>
-              <span className="text-sm font-medium text-gray-700 mb-0.5">
+              <span className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-0.5">
                 {po.vendor_name}
               </span>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400 dark:text-zinc-500">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   {new Date(po.date).toLocaleDateString("en-IN")}
@@ -710,12 +710,12 @@ const PurchaseOrderPage = () => {
                   Delivery:{" "}
                   {po.delivery_date === "N/A" ? "N/A" : (() => {
                     const days = Math.ceil((new Date(po.delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    return days < 0 ? `Overdue (${Math.abs(days)}d)` : days === 0 ? "Today" : `${days} days`;
+                    return days < 0 ? <span className="text-red-500">Overdue ({Math.abs(days)}d)</span> : days === 0 ? <span className="text-red-500">Today</span> : `${days} days`;
                   })()}
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <div className="font-bold text-primary text-sm">
+                <div className="font-bold text-primary text-sm dark:text-zinc-100">
                   ₹{po.amount?.toLocaleString("en-IN", { minimumFractionDigits: 2 }) || "0.00"}
                 </div>
               </div>
@@ -724,7 +724,7 @@ const PurchaseOrderPage = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0"
+                  className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-all shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MoreVertical className="h-4.5 w-4.5" />
@@ -732,7 +732,7 @@ const PurchaseOrderPage = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-40 p-1 shadow-lg border-gray-200"
+                className="w-40 p-1 shadow-lg bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800"
               >
                 <DropdownMenuItem
                   className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
@@ -741,7 +741,7 @@ const PurchaseOrderPage = () => {
                     onEdit(po.id, po.status);
                   }}
                 >
-                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
+                  <Edit className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -751,7 +751,7 @@ const PurchaseOrderPage = () => {
                     onDetails(po.id);
                   }}
                 >
-                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                  <Eye className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                   View Details
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -761,10 +761,10 @@ const PurchaseOrderPage = () => {
                     onDuplicate(po.id);
                   }}
                 >
-                  <Copy className="mr-2 h-4 w-4 text-gray-500" />
+                  <Copy className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-600" />
                   Duplicate
                 </DropdownMenuItem>
-                <div className="my-1 border-t border-gray-100"></div>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-100/10"></div>
                 <DropdownMenuItem
                   className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
                   onClick={(e) => {
@@ -800,25 +800,35 @@ const PurchaseOrderPage = () => {
     <div className="w-full px-4 py-6 sm:p-6 relative overflow-x-hidden">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold font-inter">Purchase Orders</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Purchase Orders</h1>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 rounded-md text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-zinc-700">
+              Procurement
+            </span>
+            <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium italic">
+              Manage and track your vendor purchase orders
+            </span>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Floating Glass Status Filter */}
-          <div className="relative bg-gray-50/50 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 shadow-sm flex items-center min-w-fit">
+          <div className="relative bg-gray-50/50 dark:bg-gray-200/5 backdrop-blur-md p-1 rounded-xl border border-gray-200/80 dark:border-gray-100 shadow-sm flex items-center min-w-fit">
             {/* Integrated Label */}
-            <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 mr-1">
-              <Filter className="h-3.5 w-3.5 text-gray-900" />
-              <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Filters</span>
+            <div className="flex items-center gap-2 px-3 border-r border-gray-200/50 dark:border-gray-100/50 mr-1">
+              <Filter className="h-3.5 w-3.5 text-gray-900 dark:text-gray-900" />
+              <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">Filters</span>
             </div>
 
             <div className="relative flex items-center">
               {/* Animated Slider Background with Glow */}
               <div
-                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white border-gray-200 shadow-gray-200/50' :
-                  selectedStatus === 'open' ? 'bg-green-50 border-green-200 shadow-green-200/50' :
-                    selectedStatus === 'closed' ? 'bg-red-50 border-red-200 shadow-red-200/50' :
-                      'bg-purple-50 border-purple-200 shadow-purple-200/50'
+                className={`absolute inset-y-0 rounded-lg border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.34,1.56,0.64,1) ${selectedStatus === 'all' ? 'bg-white dark:bg-blue-500/20 border-gray-200 dark:border-blue-500/50 shadow-gray-200/50' :
+                  selectedStatus === 'open' ? 'bg-green-50 dark:bg-green-500/20 border-green-200 dark:border-green-500/50 shadow-green-200/50' :
+                    selectedStatus === 'closed' ? 'bg-red-50 dark:bg-red-500/20 border-red-200 dark:border-red-500/50 shadow-red-200/50' :
+                      'bg-purple-50 dark:bg-purple-500/20 border-purple-200 dark:border-purple-500/50 shadow-purple-200/50'
                   }`}
                 style={{
                   width: '90px',
@@ -832,25 +842,25 @@ const PurchaseOrderPage = () => {
               {/* Status Buttons */}
               <button
                 onClick={() => { setSelectedStatus('all'); setRefreshKey((prev) => prev + 1); }}
-                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'all' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 All
               </button>
               <button
                 onClick={() => { setSelectedStatus('open'); setRefreshKey((prev) => prev + 1); }}
-                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'open' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'open' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 Open
               </button>
               <button
                 onClick={() => { setSelectedStatus('closed'); setRefreshKey((prev) => prev + 1); }}
-                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'closed' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'closed' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 Closed
               </button>
               <button
                 onClick={() => { setSelectedStatus('received'); setRefreshKey((prev) => prev + 1); }}
-                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'received' ? 'text-gray-900 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative z-10 w-[90px] h-8 text-[13px] font-medium transition-colors duration-300 ${selectedStatus === 'received' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 Received
               </button>
@@ -869,30 +879,33 @@ const PurchaseOrderPage = () => {
           if (!open) setPoToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-[420px] p-6">
-          <DialogHeader className="flex flex-col items-center text-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-            </div>
-            <DialogTitle className="text-lg font-semibold">
-              Delete Purchase Order
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete this purchase order?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex justify-end gap-3">
+        <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800 shadow-2xl">
+          <div className="p-6">
+            <DialogHeader className="flex flex-col items-center text-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
+                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-500" />
+              </div>
+              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                Delete Purchase Order
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 dark:text-zinc-400 leading-relaxed">
+                Are you sure you want to delete this purchase order? This action will permanently remove all data and cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <DialogFooter className="flex items-center justify-end gap-3 p-6 bg-gray-50/50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
+              className="h-11 px-6 bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all"
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
+              className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 dark:shadow-none transition-all active:scale-95"
               disabled={isDeleting || !poToDelete}
             >
               {isDeleting ? (
@@ -915,10 +928,10 @@ const PurchaseOrderPage = () => {
           if (!open) { setPaymentModal(null); }
         }}
       >
-        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="px-6 py-4 border-b border-gray-200">
-            <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2 text-left w-full">
-              <CreditCard className="h-5 w-5 text-gray-600" />
+        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
+          <DialogHeader className="px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
+            <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2 text-left w-full">
+              <CreditCard className="h-5 w-5 text-gray-600 dark:text-zinc-400" />
               Record Payment For Invoice #{paymentModal?.invoiceNumber}
             </DialogTitle>
           </DialogHeader>
@@ -929,7 +942,7 @@ const PurchaseOrderPage = () => {
               <div className="md:col-span-2 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Amount Paid <span className="text-red-500">*</span></label>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Amount Paid <span className="text-red-500">*</span></label>
                     <Input
                       type="number"
                       value={paymentForm.amount || ""}
@@ -940,7 +953,7 @@ const PurchaseOrderPage = () => {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-1">
-                      <label className="text-sm font-medium text-gray-700">Payment Discount</label>
+                      <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Payment Discount</label>
                       <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </div>
                     <Input
@@ -955,7 +968,7 @@ const PurchaseOrderPage = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Payment Date</label>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Payment Date</label>
                     <Input
                       type="date"
                       value={paymentForm.date.toISOString().split('T')[0]}
@@ -964,7 +977,7 @@ const PurchaseOrderPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Payment Mode</label>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Payment Mode</label>
                     <Select value={paymentForm.mode} onValueChange={(val) => setPaymentForm({ ...paymentForm, mode: val })}>
                       <SelectTrigger className="h-10">
                         <SelectValue placeholder="Select mode" />
@@ -979,7 +992,7 @@ const PurchaseOrderPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Notes</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Notes</label>
                   <textarea
                     value={paymentForm.notes}
                     onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
@@ -991,20 +1004,20 @@ const PurchaseOrderPage = () => {
 
               {/* Info & Calculation Section */}
               <div className="md:col-span-2 space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                <div className="bg-gray-50 dark:bg-zinc-900/50 rounded-lg p-4 border border-gray-200 dark:border-zinc-800">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-100 mb-3">
                     Invoice #{paymentModal?.invoiceNumber}
                   </h4>
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-sm text-gray-600 dark:text-zinc-400">
                     <div className="flex justify-between">
                       <span>Vendor Name</span>
-                      <span className="text-gray-900 font-medium">{searchTerm && searchType === 'vendor_name' ? searchTerm : 'N/A'}</span>
+                      <span className="text-gray-900 dark:text-zinc-100 font-medium">{searchTerm && searchType === 'vendor_name' ? searchTerm : 'N/A'}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                <div className="bg-white dark:bg-zinc-900/30 rounded-lg p-4 border border-gray-200 dark:border-zinc-800">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-100 mb-3">
                     Record Payment Calculation
                   </h4>
                   <div className="space-y-2">
@@ -1013,15 +1026,15 @@ const PurchaseOrderPage = () => {
                       <span className="text-red-600 font-semibold">₹{(paymentModal?.balanceDue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Amount Paid</span>
-                      <span className="text-gray-900 font-medium">₹{paymentForm.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-gray-600 dark:text-zinc-400">Amount Paid</span>
+                      <span className="text-gray-900 dark:text-zinc-100 font-medium">₹{paymentForm.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Payment Out Discount</span>
-                      <span className="text-gray-900 font-medium">₹{paymentForm.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-gray-600 dark:text-zinc-400">Payment Out Discount</span>
+                      <span className="text-gray-900 dark:text-zinc-100 font-medium">₹{paymentForm.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm font-semibold text-gray-800">Balance Amount</span>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-zinc-800">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-zinc-200">Balance Amount</span>
                       <span className="text-base font-bold text-blue-600">
                         ₹{Math.max(0, (paymentModal?.balanceDue || 0) - paymentForm.amount - paymentForm.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </span>
@@ -1032,9 +1045,9 @@ const PurchaseOrderPage = () => {
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setPaymentModal(null)} className="h-10 bg-white border-gray-300 font-medium">Close</Button>
-            <Button onClick={handleRecordPaymentSubmit} disabled={isRecordingPayment || paymentForm.amount <= 0} className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium px-6">
+          <DialogFooter className="px-6 py-4 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPaymentModal(null)} className="h-10 bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 font-medium">Close</Button>
+            <Button onClick={handleRecordPaymentSubmit} disabled={isRecordingPayment || paymentForm.amount <= 0} className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95">
               {isRecordingPayment ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -1043,8 +1056,8 @@ const PurchaseOrderPage = () => {
 
 
       {/* Table + Search */}
-      <div className="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-gray-100/50 bg-gray-50/30">
+      <div className="bg-white/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-gray-100/50 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-900/20">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="relative w-full sm:w-80">
               <DropdownMenu
@@ -1054,7 +1067,7 @@ const PurchaseOrderPage = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-10 w-full justify-start px-3 bg-white/50 backdrop-blur-sm rounded-xl border-gray-200 shadow-sm text-gray-900 font-medium hover:bg-white transition-all"
+                    className="h-10 w-full justify-start px-3 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-xl border-gray-200 dark:border-zinc-800 shadow-sm text-gray-900 dark:text-zinc-100 font-medium hover:bg-white dark:hover:bg-zinc-900 transition-all"
                     disabled={isDropdownLoading}
                   >
                     <Search className="h-4 w-4 mr-2 text-gray-400" />
@@ -1076,7 +1089,7 @@ const PurchaseOrderPage = () => {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto rounded-xl shadow-xl">
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto rounded-xl shadow-xl bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                   <DropdownMenuItem
                     onClick={() => {
                       setSearchTerm("");
@@ -1101,9 +1114,9 @@ const PurchaseOrderPage = () => {
                           setSearchTerm(item);
                           setRefreshKey((prev) => prev + 1);
                         }}
-                        className={`py-2 ${searchTerm === item
-                          ? "bg-blue-50 text-blue-600 font-medium"
-                          : ""
+                        className={`py-2 px-3 rounded-lg mx-1 my-0.5 transition-colors ${searchTerm === item
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold"
+                          : "text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-900"
                           }`}
                       >
                         {item}
@@ -1115,9 +1128,9 @@ const PurchaseOrderPage = () => {
             </div>
 
             {/* Desktop Segmented Filter Type */}
-            <div className="hidden sm:flex relative p-1 bg-gray-100 rounded-lg border border-gray-200/60 shadow-inner w-fit h-10 items-center">
+            <div className="hidden sm:flex relative p-1 bg-gray-100 dark:bg-zinc-900 rounded-lg border border-gray-200/60 dark:border-zinc-800 shadow-inner w-fit h-10 items-center">
               <div
-                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === "vendor_name" ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'
+                className={`absolute inset-y-1 rounded-md border shadow-sm transition-all duration-300 ease-out ${searchType === "vendor_name" ? 'bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50'
                   }`}
                 style={{
                   width: '100px',
@@ -1131,7 +1144,7 @@ const PurchaseOrderPage = () => {
                   e.stopPropagation();
                   handleSearchTypeChange("vendor_name");
                 }}
-                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "vendor_name" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "vendor_name" ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 Vendor Name
               </button>
@@ -1142,7 +1155,7 @@ const PurchaseOrderPage = () => {
                   e.stopPropagation();
                   handleSearchTypeChange("po_number");
                 }}
-                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "po_number" ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`relative w-[100px] py-1.5 text-sm font-medium rounded-md transition-colors duration-200 z-10 ${searchType === "po_number" ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
               >
                 PO No.
               </button>
@@ -1157,14 +1170,14 @@ const PurchaseOrderPage = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 bg-white shadow-sm border-gray-200 hover:bg-gray-50 gap-2"
+                    className="h-10 rounded-xl px-4 text-sm font-bold text-gray-900 dark:text-white bg-white dark:bg-zinc-900 shadow-sm border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 gap-2"
                   >
                     <Filter className="h-4 w-4 text-blue-500" />
                     {searchType === "vendor_name" ? "Vendor Name" : "PO Number"}
                     <ChevronDown className="h-4 w-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-48 rounded-xl shadow-xl">
+                <DropdownMenuContent className="w-48 rounded-xl shadow-xl bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800">
                   <DropdownMenuItem
                     onClick={() => handleSearchTypeChange("vendor_name")}
                   >
@@ -1180,14 +1193,13 @@ const PurchaseOrderPage = () => {
             </div>
 
             <div className="w-full sm:w-auto sm:ml-auto">
-              <Button
-                size="sm"
-                className="h-10 gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200/50 transition-all active:scale-95 w-full sm:w-auto"
+              <button
+                className="group flex items-center gap-2 px-5 h-10 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800 transition-all active:scale-95 w-full sm:w-auto"
                 onClick={() => navigate("/purchases/purchase-orders/new")}
               >
-                <Plus className="h-4 w-4" />
-                <span className="font-bold">Create Order</span>
-              </Button>
+                <Plus className="size-4 text-blue-500 dark:text-blue-400 group-hover:rotate-90 transition-transform" />
+                <span className="whitespace-nowrap captialize tracking-wider">Create Order</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1208,7 +1220,7 @@ const PurchaseOrderPage = () => {
             layout={{
               card: true,
               classes: {
-                table: "cursor-pointer [&_tr:hover]:bg-gray-50",
+                table: "cursor-pointer [&_tr:hover]:bg-gray-50 dark:[&_tr:hover]:bg-zinc-900/80 [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-gray-500 dark:[&_th]:text-zinc-500",
                 container: "hidden md:block"
               }
             }}

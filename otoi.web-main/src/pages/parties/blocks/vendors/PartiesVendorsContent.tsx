@@ -1,9 +1,38 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { debounce } from "@/lib/helpers";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { SpinnerDotted } from 'spinners-react';
+import { SpinnerDotted } from "spinners-react";
+import { useDataGrid } from "@/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  MoreVertical,
+  Settings,
+  Edit,
+  Trash2,
+  Eye,
+  PlusCircle,
+  AlertCircle,
+  X,
+  Check,
+} from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 import {
   DataGrid,
@@ -12,21 +41,9 @@ import {
   KeenIcon,
   DataGridRowSelectAll,
   DataGridRowSelect,
-  useDataGrid,
 } from "@/components";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreVertical, Settings, Edit, Trash2, Eye, PlusCircle, AlertCircle, X, Check } from "lucide-react";
 
-import {
-  ColumnDef,
-  Column,
-  RowSelectionState,
-} from "@tanstack/react-table";
+import { ColumnDef, Column, RowSelectionState } from "@tanstack/react-table";
 import {
   Select,
   SelectContent,
@@ -40,7 +57,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogHeader
+  DialogHeader,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -74,7 +91,7 @@ const ColumnInputFilter = <TData, TValue>({
   column,
 }: IColumnFilterProps<TData, TValue>) => {
   const [inputValue, setInputValue] = useState(
-    (column.getFilterValue() as string) ?? ""
+    (column.getFilterValue() as string) ?? "",
   );
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,71 +115,48 @@ const ColumnInputFilter = <TData, TValue>({
   );
 };
 
-// const Toolbar = ({
-//   defaultSearch,
-//   setSearch,
-//   defaultPersonType,
-//   setDefaultPersonType,
-// }: {
-//   defaultSearch: string;
-//   setSearch: (query: string) => void;
-//   defaultPersonType: string;
-//   setDefaultPersonType: (query: string) => void;
-// }) => {
-//   const [searchInput, setSearchInput] = useState(defaultSearch);
-//   const [searchPersonType, setPersonType] = useState(defaultPersonType);
+const PartiesVendorsContent = ({
+  refreshStatus,
+}: IPartiesVendorsContentProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [allVendors, setAllVendors] = useState<
+    { uuid: string; name: string }[]
+  >([]);
+  const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+  const [personModalOpen, setPersonModalOpen] = useState(false);
+  const [selectedVendors, setSelectedVendors] = useState<Vendor | null>(null);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [selectedCustomerForActivity, setSelectedCustomerForActivity] =
+    useState<ActivityLead | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-//   const debouncedSearch = useMemo(
-//     () =>
-//       debounce((query: string) => {
-//         setSearch(query);
-//       }, 500),
-//     [setSearch]
-//   );
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery(query);
+      }, 500),
+    [],
+  );
 
-//   useEffect(() => {
-//     return () => {
-//       debouncedSearch.cancel?.();
-//     };
-//   }, [debouncedSearch]);
-
-//   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-//     if (event.key === "Enter") {
-//       debouncedSearch.cancel?.();
-//       setSearch(searchInput);
-//     }
-//   };
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     const value = e.target.value;
-//     setSearchInput(value);
-//     debouncedSearch(value);
-//   };
-
-//   const handlePersonTypeChange = (personType: string) => {
-//     setPersonType(personType);
-//     setDefaultPersonType(personType);
-//   };
-const Toolbar = ({
-  defaultSearch,
-  setSearch,
-  defaultPersonType,
-  setDefaultPersonType,
-}: {
-  defaultSearch: string;
-  setSearch: (query: string) => void;
-  defaultPersonType: string;
-  setDefaultPersonType: (query: string) => void;
-}) => {
-  const [searchInput, setSearchInput] = useState(defaultSearch);
-  const [open, setOpen] = useState(false);
-  const [vendors, setVendors] = useState<{ uuid: string; name: string }[]>([]);
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
 
   useEffect(() => {
     const fetchAllVendors = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/vendors/?dropdown=true`);
-        setVendors(response.data);
+        const response = await axios.get(
+          `${import.meta.env.VITE_APP_API_URL}/vendors/?dropdown=true`,
+        );
+        setAllVendors(response.data);
       } catch (error) {
         console.error("Failed to fetch all vendors dropdown", error);
       }
@@ -170,186 +164,113 @@ const Toolbar = ({
     fetchAllVendors();
   }, []);
 
-  // Handle input change and trigger debounced search
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchInput(value);
-    setOpen(true); // Keep dropdown open while typing
-  };
-  const filteredVenders = useMemo(() => {
-    if (!searchInput) return vendors;
-    return vendors.filter((c) =>
-      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase())
+  const filteredVendors = useMemo(() => {
+    if (!searchInput) return allVendors;
+    return allVendors.filter((c) =>
+      c?.name?.toLowerCase()?.includes(searchInput?.toLowerCase()),
     );
-  }, [vendors, searchInput]);
-
-  return (
-    <div className="card-header flex justify-between items-center flex-wrap gap-4 border-b-0 px-5 py-4">
-      <div className="flex grow w-full md:w-auto">
-        <Popover open={open} onOpenChange={setOpen}>
-          <div className="relative w-full md:w-64 lg:w-72">
-            <PopoverTrigger asChild>
-              <div className="relative">
-                <KeenIcon
-                  icon="magnifier"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
-                />
-                <Input
-                  placeholder="Search vendors..."
-                  value={searchInput}
-                  onChange={handleInputChange}
-                  onClick={() => setOpen(true)} // Added to ensure popover opens on click
-                  className="pl-9 pr-9 h-9 text-xs"
-                />
-                {searchInput && (
-                  <X
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
-                    onClick={() => {
-                      setSearchInput("");
-                      setSearch("");
-                    }}
-                  />
-                )}
-              </div>
-            </PopoverTrigger>
-          </div>
-
-          <PopoverContent
-            className="p-0 w-[var(--radix-popover-trigger-width)]"
-            align="start"
-            onOpenAutoFocus={(e) => e?.preventDefault()} // Prevents focus jump
-          >
-            <Command>
-              <CommandList>
-                {filteredVenders.length === 0 && (
-                  <CommandEmpty>No vendor found.</CommandEmpty>
-                )}
-                <CommandGroup>
-                  {filteredVenders?.map((customer) => (
-                    <CommandItem
-                      key={customer?.uuid}
-                      value={customer?.name}
-                      onSelect={() => {
-                        setSearchInput(customer?.name);
-                        setSearch(customer?.name); // Hit the API with exact selection
-                        setOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          searchInput === customer?.name ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {customer?.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
-  );
-};
-
-const PartiesVendorsContent = ({
-  refreshStatus,
-}: IPartiesVendorsContentProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchPersonTypeQuery, setPersonTypeQuery] = useState("-1");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [personModalOpen, setPersonModalOpen] = useState(false);
-  const [selectedVendors, setSelectedVendors] = useState<Vendor | null>(null);
-  const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [selectedCustomerForActivity, setSelectedCustomerForActivity] = useState<
-    ActivityLead | null
-  >(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [fetchingDetails, setFetchingDetails] = useState(false);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  }, [allVendors, searchInput]);
 
   const navigate = useNavigate();
 
-  const MobileView = () => {
-    const { table, loading: gridLoading, props } = useDataGrid();
+  const MobileView = ({
+    onEdit,
+    onDetails,
+    onDelete,
+  }: {
+    onEdit: (vendor: Vendor) => void;
+    onDetails: (uuid: string) => void;
+    onDelete: (vendor: Vendor) => void;
+  }) => {
+    const { table, loading } = useDataGrid();
     const rows = table.getRowModel().rows;
-    const { onEdit, onDelete, onDetails } = props as any;
 
-    if (gridLoading && rows.length === 0) return null;
+    if (loading && rows.length === 0) return null;
 
     return (
-      <div className="flex flex-col lg:hidden border-t border-gray-100">
-        {(rows || []).map((row: any) => {
+      <div className="flex flex-col lg:hidden border-t border-gray-100 bg-white">
+        {rows.map((row, index) => {
           const vendor = row.original as Vendor;
+          const initials =
+            `${vendor.company_name?.[0] || ""}${vendor.vendor_name?.[0] || ""}`.toUpperCase();
+
           return (
             <div
               key={vendor.uuid}
-              className="flex justify-between items-center py-4 px-5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-all active:bg-gray-50"
+              className="flex justify-between items-center py-4 px-5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/30 transition-all animate-in fade-in slide-in-from-bottom-2"
+              style={{
+                animationDelay: `${index * 50}ms`,
+                animationFillMode: "both",
+              }}
             >
               <div
-                className="flex flex-col cursor-pointer grow pr-4"
-                onClick={() => {
-                  // navigation to details if available
-                  // navigate(`/vendor/${vendor.uuid}`)
-                }}
+                className="flex items-center gap-3 cursor-pointer grow pr-4"
+                onClick={() => onDetails(vendor.uuid)}
               >
-                <span className="font-semibold text-gray-900 text-sm mb-0.5">
-                  {vendor.company_name}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 font-medium truncate max-w-[150px]">
-                    {vendor.email || "No email"}
+                <div className="size-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0 border border-gray-200 shadow-sm">
+                  {initials}
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="font-bold text-gray-900 text-sm mb-0.5 truncate">
+                    {vendor.company_name}
                   </span>
-                  {vendor.city && (
-                    <span className="text-[10px] text-gray-300 font-medium whitespace-nowrap">
-                      • {vendor.city}
-                    </span>
-                  )}
+                  <span className="text-[11px] text-gray-500 font-medium truncate">
+                    {vendor.email || vendor.mobile || "No contact info"}
+                  </span>
                 </div>
               </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0">
-                    <MoreVertical className="h-4.5 w-4.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-30 p-1 shadow-lg border-gray-200">
-                  <DropdownMenuItem
-                    className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
-                    onClick={async () => {
-                      const details = await fetchVendorDetails(vendor.uuid!);
-                      if (details) openPersonModal(details);
-                    }}
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center justify-center size-9 text-primary hover:text-primary-active transition-all shrink-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-32 p-1 shadow-lg border-gray-200"
                   >
-                    <Edit className="mr-1 h-4 w-4 text-gray-500" />
-                    Edit
-                  </DropdownMenuItem>
-                  <div className="my-1 border-t border-gray-100"></div>
-                  <DropdownMenuItem
-                    className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
-                    onClick={async () => {
-                      const details = await fetchVendorDetails(vendor.uuid!);
-                      if (details) setShowDeleteDialog(true);
-                    }}
-                  >
-                    <Trash2 className="mr-1 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                      onClick={() => onEdit(vendor)}
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-gray-500" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                      onClick={() => onDetails(vendor.uuid)}
+                    >
+                      <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                      Details
+                    </DropdownMenuItem>
+                    <div className="my-1 border-t border-gray-100"></div>
+                    <DropdownMenuItem
+                      className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                      onClick={() => onDelete(vendor)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           );
         })}
-        {rows.length === 0 && !gridLoading && (
-          <div className="p-16 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <KeenIcon icon="folder-search" className="text-3xl text-gray-200" />
-              <span className="text-gray-400 text-sm font-medium">No vendors found matching your criteria.</span>
+        {rows.length === 0 && !loading && (
+          <div className="p-20 text-center bg-gray-50/30 animate-in fade-in duration-700">
+            <div className="flex flex-col items-center gap-3">
+              <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300 mb-2">
+                <KeenIcon icon="folder-search" className="text-3xl" />
+              </div>
+              <span className="text-gray-500 text-sm font-bold uppercase tracking-wider">
+                No Vendors Found
+              </span>
+              <p className="text-xs text-gray-400 max-w-[200px] mx-auto">
+                Try adjusting your filters or search criteria.
+              </p>
             </div>
           </div>
         )}
@@ -357,12 +278,13 @@ const PartiesVendorsContent = ({
     );
   };
 
-  // Fetch vendor details from server to ensure fresh data before actions
   const fetchVendorDetails = async (uuid?: string) => {
     try {
       setLoading(true);
       setFetchingDetails(true);
-      const response = await axios?.get(`${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`);
+      const response = await axios?.get(
+        `${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`,
+      );
       setSelectedVendors(response?.data);
       return response?.data;
     } catch (error: any) {
@@ -374,57 +296,26 @@ const PartiesVendorsContent = ({
     }
   };
 
-
-  useEffect(() => {
-    setRefreshKey((prev) => prev + 1);
-  }, [refreshStatus, searchQuery, searchPersonTypeQuery]);
-
-
-  // const openPersonModal = (event: { preventDefault: () => void }, rowData: Vendor | null = null) => {
-  //   event.preventDefault();
-  //   setSelectedVendors(rowData);
-  //   setPersonModalOpen(true);
-  // };
-  const openPersonModal = (rowData: Vendor | null = null) => {
-    setSelectedVendors(rowData);
-    setPersonModalOpen(true);
-  };
-
-  const handleClose = () => {
-    setPersonModalOpen(false);
-    setRefreshKey((prevKey) => prevKey + 1);
-  };
-
-
-  const deleteVendors = async (uuid: string) => {
-
-    if (!uuid) return;
-
-    try {
-      await axios.delete(
-        `${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`
-      );
-
-      toast.success("Vendor deleted successfully");
-      setShowDeleteDialog(false);
-      setRefreshKey((prev) => prev + 1); // Trigger grid refresh
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Delete failed"
-      );
-    }
-  };
-
   const columns = useMemo<ColumnDef<Vendor>[]>(
     () => [
       {
         accessorKey: "id",
-        header: () => <DataGridRowSelectAll />,
-        cell: ({ row }) => <DataGridRowSelect row={row} />,
+        header: () => (
+          <div className="w-full flex items-center justify-center h-full p-0 m-0">
+            <DataGridRowSelectAll />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="w-full flex items-center justify-center h-full p-0 m-0">
+            <DataGridRowSelect row={row} />
+          </div>
+        ),
         enableSorting: false,
         enableHiding: false,
         meta: {
-          headerClassName: "w-0",
+          headerClassName: "w-12 text-center align-middle p-0 m-0",
+          cellClassName: "text-center align-middle pointer-events-auto p-0 m-0",
+          disableRowClick: true,
         },
       },
       {
@@ -432,27 +323,40 @@ const PartiesVendorsContent = ({
         id: "name",
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Name"
+            title="Vendor Information"
             filter={<ColumnInputFilter column={column} />}
             column={column}
           />
         ),
         enableSorting: true,
-        cell: (info: any) => (
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col">
-              <div className="font-medium text-sm text-gray-900 mb-px">
-                {info.row.original.company_name}
+        cell: (info: any) => {
+          const vendor = info.row.original;
+          const initials =
+            `${vendor.company_name?.[0] || ""}${vendor.vendor_name?.[0] || ""}`.toUpperCase();
+
+          return (
+            <div className="flex items-center gap-4 py-1 animate-in fade-in slide-in-from-left-4 duration-500">
+              <div className="size-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm group-hover:bg-white transition-colors uppercase tracking-wider">
+                {initials}
               </div>
-              <div className="text-2sm text-gray-700 font-normal">
-                {info.row.original.email}
+              <div className="flex flex-col">
+                <a
+                  className="font-bold text-sm text-gray-900 hover:text-primary transition-colors mb-0.5 cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/vendor/${vendor.uuid}`);
+                  }}
+                >
+                  {vendor.company_name}
+                </a>
+                <span className="text-[11px] text-gray-500 font-medium tracking-tight">
+                  {vendor.email || "No email provided"}
+                </span>
               </div>
             </div>
-          </div>
-        ),
-        meta: {
-          headerClassName: "min-w-[300px]",
+          );
         },
+        meta: { headerClassName: "min-w-[300px]" },
       },
       {
         accessorFn: (row: Vendor) => row.gst,
@@ -487,59 +391,64 @@ const PartiesVendorsContent = ({
       {
         id: "actions",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Action" column={column} className="justify-center" />
+          <DataGridColumnHeader
+            title="Actions"
+            column={column}
+            className="justify-center"
+          />
         ),
         enableSorting: false,
         cell: ({ row }) => (
           <div className="flex justify-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active">
+                <button className="flex items-center gap-1 text-sm text-primary hover:text-primary-active transition-all">
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* <DropdownMenuItem onClick={(e) => {
-                  e.preventDefault();
-                  openPersonModal(e, row.original);
-                }}> */}
-                <DropdownMenuItem onClick={async () => {
-                  const details = await fetchVendorDetails(row?.original?.uuid!);
-                  if (details) openPersonModal(details);
-                }}>
-                  <Edit className="mr-2 h-4 w-4" />
+              <DropdownMenuContent
+                align="end"
+                className="w-32 p-1 shadow-lg border-gray-200"
+              >
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={async () => {
+                    const vendorData = await fetchVendorDetails(
+                      row.original.uuid,
+                    );
+                    if (vendorData) {
+                      openPersonModal(vendorData);
+                    }
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4 text-gray-500" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={async () => {
-                  const details = await fetchVendorDetails(row?.original?.uuid!);
-                  if (details) setShowDeleteDialog(true);
-                }}>
-                  <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Delete</span>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm rounded-md cursor-pointer"
+                  onClick={() => {
+                    navigate(`/vendor/${row.original.uuid}`);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4 text-gray-500" />
+                  Details
                 </DropdownMenuItem>
-                {/* <DropdownMenuItem onClick={(e) => {
-                e.preventDefault();
-                navigate(`/vendor/${row.original.uuid}`);
-              }}>
-                <Eye className="mr-2 h-4 w-4" />
-                Details
-              </DropdownMenuItem> */}
-                {/* <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSelectedCustomerForActivity({
-                    id: row.original.uuid,
-                    status: undefined,
-                    address: row.original.address1,
-                    created_at: undefined,
-                    activity_type: undefined,
-                  });
-                  setActivityModalOpen(true);
-                }}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Activity
-              </DropdownMenuItem> */}
+                <div className="my-1 border-t border-gray-100"></div>
+                <DropdownMenuItem
+                  className="flex items-center px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer focus:bg-red-50"
+                  onClick={async () => {
+                    const vendorData = await fetchVendorDetails(
+                      row.original.uuid!,
+                    );
+                    if (vendorData) {
+                      setSelectedVendors(vendorData);
+                      setShowDeleteDialog(true);
+                    }
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -550,7 +459,7 @@ const PartiesVendorsContent = ({
         },
       },
     ],
-    []
+    [],
   );
 
   const fetchVendors = async (params: TDataGridRequestParams) => {
@@ -569,33 +478,24 @@ const PartiesVendorsContent = ({
         queryParams.set("query", searchQuery);
       }
 
-      if (searchPersonTypeQuery != "-1") {
-        queryParams.set("person_type", searchPersonTypeQuery);
-      }
-
-      if (params.columnFilters) {
-        params.columnFilters.forEach(({ id, value }) => {
-          if (value !== undefined && value !== null) {
-            queryParams.set(`filter[${id}]`, String(value));
-          }
-        });
-      }
-
       const response = await axios.get<VendorsQueryApiResponse>(
         `${import.meta.env.VITE_APP_API_URL}/vendors/?${queryParams.toString()}`,
       );
-      // Support both envelope ({ data, pagination }) and plain array responses
       const payload: any = response.data as any;
       const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
-      const total = payload?.pagination?.total ?? (Array.isArray(payload) ? rows.length : 0);
+      const total =
+        payload?.pagination?.total ??
+        (Array.isArray(payload) ? rows.length : 0);
       setVendors(rows);
       return {
         data: rows,
         totalCount: total,
       };
     } catch (error: any) {
-      // console.log(error);
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || "An error occurred while fetching data. Please try again later";
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "An error occurred while fetching data. Please try again later";
       toast.error(errorMessage);
 
       return {
@@ -622,69 +522,151 @@ const PartiesVendorsContent = ({
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
+    setSearchInput(query);
+    debouncedSearch(query);
   };
 
-  const handlePersonTypeSearch = (query: string) => {
-    setPersonTypeQuery(query);
+  const handleClose = () => {
+    setPersonModalOpen(false);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
+  const openPersonModal = (rowData: Vendor | null = null) => {
+    setSelectedVendors(rowData);
+    setPersonModalOpen(true);
+  };
+
+  const deleteVendors = async (uuid: string) => {
+    if (!uuid) return;
+
+    try {
+      await axios.delete(`${import.meta.env.VITE_APP_API_URL}/vendors/${uuid}`);
+
+      toast.success("Vendor deleted successfully");
+      setShowDeleteDialog(false);
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Delete failed");
+    }
+  };
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
-      {/* {loading && vendors.length === 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 dark:bg-black/20">
-          <div className="text-primary">
-            <SpinnerDotted size={50} thickness={100} speed={100} color="currentColor" />
+      <div className="card p-0 overflow-hidden">
+        <div className="card-header flex justify-between items-center gap-4 border-b-0 px-5 py-4">
+          <div className="flex w-full md:w-56 lg:w-64">
+            <Popover
+              open={isSearchPopoverOpen}
+              onOpenChange={setIsSearchPopoverOpen}
+            >
+              <div className="relative w-full">
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <KeenIcon
+                      icon="magnifier"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500"
+                    />
+                    <Input
+                      placeholder="Search vendor"
+                      value={searchInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchInput(value);
+                        setIsSearchPopoverOpen(true);
+                        debouncedSearch(value);
+                      }}
+                      onClick={() => setIsSearchPopoverOpen(true)}
+                      className="pl-9 pr-9 h-9 text-xs w-full"
+                    />
+                    {searchInput && (
+                      <X
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-gray-600"
+                        onClick={() => {
+                          setSearchInput("");
+                          handleSearch("");
+                        }}
+                      />
+                    )}
+                  </div>
+                </PopoverTrigger>
+              </div>
+
+              <PopoverContent
+                className="p-0 w-[var(--radix-popover-trigger-width)]"
+                align="start"
+                onOpenAutoFocus={(e) => e?.preventDefault()}
+              >
+                <Command>
+                  <CommandList>
+                    {filteredVendors.length === 0 && (
+                      <CommandEmpty>No vendor found.</CommandEmpty>
+                    )}
+                    <CommandGroup>
+                      {filteredVendors?.map((vendor) => (
+                        <CommandItem
+                          key={vendor?.uuid}
+                          value={vendor?.name}
+                          onSelect={() => {
+                            setSearchInput(vendor?.name);
+                            handleSearch(vendor?.name);
+                            setIsSearchPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              searchInput === vendor?.name
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          {vendor?.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-      )} */}
 
-      {fetchingDetails && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 border">
-            <SpinnerDotted size={30} thickness={100} speed={100} color="currentColor" />
-            <span className="text-sm font-medium">Fetching details...</span>
-          </div>
-        </div>
-      )}
-
-      <DataGrid
-        key={refreshKey}
-        columns={columns}
-        serverSide={true}
-        onFetchData={fetchVendors}
-        loading={loading}
-        rowSelection={true}
-        rowSelectionState={rowSelection}
-        getRowId={(row: any) => row.id}
-        onRowSelectionChange={handleRowSelection}
-        pagination={{ size: 5 }}
-        toolbar={
-          <Toolbar
-            defaultSearch={searchQuery}
-            setSearch={handleSearch}
-            defaultPersonType={searchPersonTypeQuery}
-            setDefaultPersonType={handlePersonTypeSearch}
+        <DataGrid
+          key={refreshKey}
+          columns={columns}
+          serverSide={true}
+          onFetchData={fetchVendors}
+          loading={loading}
+          rowSelection={true}
+          rowSelectionState={rowSelection}
+          getRowId={(row: any) => row.id}
+          onRowSelectionChange={handleRowSelection}
+          pagination={{ size: 5 }}
+          layout={{
+            card: false,
+            classes: {
+              container: "hidden lg:block",
+            },
+          }}
+        >
+          <MobileView
+            onEdit={async (vendor) => {
+              const vendorData = await fetchVendorDetails(vendor.uuid);
+              if (vendorData) {
+                openPersonModal(vendorData);
+              }
+            }}
+            onDetails={(uuid) => navigate(`/vendor/${uuid}`)}
+            onDelete={async (vendor) => {
+              const vendorData = await fetchVendorDetails(vendor.uuid!);
+              if (vendorData) {
+                setSelectedVendors(vendorData);
+                setShowDeleteDialog(true);
+              }
+            }}
           />
-        }
-        layout={{
-          card: true,
-          classes: {
-            container: 'hidden lg:block'
-          }
-        }}
-        onEdit={async (vendor: Vendor) => {
-          const details = await fetchVendorDetails(vendor.uuid!);
-          if (details) openPersonModal(details);
-        }}
-        onDelete={(vendor: Vendor) => {
-          setSelectedVendors(vendor);
-          setShowDeleteDialog(true);
-        }}
-      >
-        <MobileView />
-      </DataGrid>
+        </DataGrid>
+      </div>
       <ModalVendor
         open={personModalOpen}
         onOpenChange={handleClose}
@@ -707,13 +689,12 @@ const PartiesVendorsContent = ({
             </DialogTitle>
 
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure you want to delete <strong>{selectedVendors?.company_name}</strong> this vendors?
+              Are you sure you want to delete{" "}
+              <strong>{selectedVendors?.company_name}</strong> this vendors?
             </DialogDescription>
-
           </DialogHeader>
 
           <DialogFooter className="flex flex-row gap-3 mt-2">
-
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
@@ -732,7 +713,7 @@ const PartiesVendorsContent = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   );
 };
 

@@ -606,7 +606,7 @@ export const CreatePaymentIn = () => {
         ),
         cell: (info) => (
           <TooltipCell row={info.row}>
-            <div className="text-sm text-gray-900 text-center">
+            <div className="text-sm text-zinc-900 dark:text-zinc-300 text-center">
               {new Date(info.getValue() as string).toLocaleDateString()}
             </div>
           </TooltipCell>
@@ -642,7 +642,7 @@ export const CreatePaymentIn = () => {
         ),
         cell: (info) => (
           <TooltipCell row={info.row}>
-            <div className="text-sm font-medium text-center">
+            <div className="text-sm font-medium text-center dark:text-zinc-100">
               ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
             </div>
           </TooltipCell>
@@ -663,7 +663,7 @@ export const CreatePaymentIn = () => {
         ),
         cell: (info) => (
           <TooltipCell row={info.row}>
-            <div className="text-sm font-medium text-center">
+            <div className="text-sm font-medium text-center dark:text-zinc-100">
               {""}
             </div>
           </TooltipCell>
@@ -684,7 +684,7 @@ export const CreatePaymentIn = () => {
         ),
         cell: (info) => (
           <TooltipCell row={info.row}>
-            <div className="text-sm font-medium text-center">
+            <div className="text-sm font-medium text-center dark:text-zinc-100">
               ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
             </div>
           </TooltipCell>
@@ -705,7 +705,7 @@ export const CreatePaymentIn = () => {
         ),
         cell: (info) => (
           <TooltipCell row={info.row}>
-            <div className="text-sm font-medium text-center">
+            <div className="text-sm font-medium text-center dark:text-zinc-100">
               ₹{(info.getValue() as number)?.toLocaleString("en-IN") || "0"}
             </div>
           </TooltipCell>
@@ -732,15 +732,15 @@ export const CreatePaymentIn = () => {
             <TooltipCell row={row}>
               <div className="flex justify-center">
                 {balanceAmount === 0 && status === "paid" ? (
-                  <span className="px-1.5 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded whitespace-nowrap">
+                  <span className="px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 rounded whitespace-nowrap">
                     paid
                   </span>
                 ) : status === "partially paid" ? (
-                  <span className="px-1.5 py-0.5 text-xs font-medium text-yellow-700 bg-yellow-100 rounded whitespace-nowrap">
+                  <span className="px-1.5 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 rounded whitespace-nowrap">
                     Partial
                   </span>
                 ) : status === "unpaid" ? (
-                  <span className="px-1.5 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded whitespace-nowrap">
+                  <span className="px-1.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded whitespace-nowrap">
                     Unpaid
                   </span>
                 ) : null}
@@ -761,7 +761,7 @@ export const CreatePaymentIn = () => {
   const renderInlinePartySearch = () => (
     <div className="space-y-4" ref={dropdownRef}>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
           Select Party
         </label>
         <Select value={selectedParty?.id || ""} onValueChange={(value) => {
@@ -777,8 +777,8 @@ export const CreatePaymentIn = () => {
             {isPartiesLoading ? (
               <div className="p-4 text-center">
                 <div className="flex items-center space-y-2">
-                  <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-                  <span className="text-sm text-slate-500">Loading parties...</span>
+                  <div className="w-4 h-4 border-2 border-zinc-200 border-t-blue-600 rounded-full animate-spin" />
+                  <span className="text-sm text-zinc-500">Loading parties...</span>
                 </div>
               </div>
             ) : parties.length > 0 ? (
@@ -786,12 +786,12 @@ export const CreatePaymentIn = () => {
                 <SelectItem key={party.id} value={party.id}>
                   <div className="flex flex-col">
                     <span className="font-medium">{party.name}</span>
-                    {party.mobile && <span className="text-xs text-slate-500">{party.mobile}</span>}
+                    {party.mobile && <span className="text-xs text-zinc-500">{party.mobile}</span>}
                   </div>
                 </SelectItem>
               ))
             ) : (
-              <div className="p-4 text-center text-slate-500">
+              <div className="p-4 text-center text-zinc-500">
                 <span className="text-sm font-medium">No parties available</span>
               </div>
             )}
@@ -805,26 +805,26 @@ export const CreatePaymentIn = () => {
   const renderSelectedParty = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
           Party Name
         </label>
         <input
           type="text"
           value={selectedParty?.name || ""}
-          className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-900 text-sm"
+          className="w-full h-10 px-3 border border-zinc-300 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm"
           readOnly
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Pending Amount
             {getTotalCreditNoteAmount() > 0 && (
-              <span className="text-xs text-green-600 ml-2">(after credit notes)</span>
+              <span className="text-xs text-green-600 dark:text-green-400 ml-2">(after credit notes)</span>
             )}
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm z-10">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 dark:text-zinc-500 text-sm z-10">
               ₹
             </span>
             <input
@@ -853,9 +853,9 @@ export const CreatePaymentIn = () => {
                   setPaymentError(`Total payment cannot exceed pending amount (after credit notes)`);
                 }
               }}
-              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none ${paymentError
-                ? "border-red-100 focus:ring-red-200 focus:border-red-400"
-                : "border-slate-100 focus:ring-blue-200 focus:border-blue-400"
+              className={`w-full h-10 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 text-sm disabled:bg-zinc-50 dark:disabled:bg-zinc-900 disabled:text-zinc-500 dark:disabled:text-zinc-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 ${paymentError
+                ? "border-red-100 dark:border-red-900/30 focus:ring-red-200 focus:border-red-400"
+                : "border-zinc-100 dark:border-zinc-800 focus:ring-blue-200 focus:border-blue-400"
                 }`}
               readOnly={isFullyPaid}
             />
@@ -865,11 +865,11 @@ export const CreatePaymentIn = () => {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Payment Discount
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 dark:text-zinc-500 text-sm">
               ₹
             </span>
             <input
@@ -895,7 +895,7 @@ export const CreatePaymentIn = () => {
                 setPaymentReceived(adjustedActualPayment.toString());
                 setPaymentError(""); // Clear error when user changes discount
               }}
-              className="w-full h-10 pl-8 pr-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 text-sm disabled:bg-slate-50 disabled:text-slate-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
+              className="w-full h-10 pl-8 pr-3 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 text-sm disabled:bg-zinc-50 dark:disabled:bg-zinc-900 disabled:text-zinc-500 dark:disabled:text-zinc-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
               readOnly={isFullyPaid}
             />
           </div>
@@ -904,41 +904,41 @@ export const CreatePaymentIn = () => {
 
       {/* Show payment breakdown */}
       {paymentReceived && (
-        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
           <div className="space-y-2">
             {getTotalCreditNoteAmount() > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-green-700">
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
                   Credit Note(s) Applied:
                 </span>
-                <span className="text-sm font-bold text-green-900">
+                <span className="text-sm font-bold text-green-900 dark:text-green-300">
                   -₹{getTotalCreditNoteAmount().toLocaleString("en-IN")}
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-700">
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
                 Actual Payment Amount:
               </span>
-              <span className="text-sm font-bold text-blue-900">
+              <span className="text-sm font-bold text-blue-900 dark:text-blue-300">
                 ₹
                 {(parseFloat(paymentReceived) || 0).toLocaleString("en-IN")}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-700">
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
                 Payment Discount:
               </span>
-              <span className="text-sm font-bold text-blue-900">
+              <span className="text-sm font-bold text-blue-900 dark:text-blue-300">
                 -₹
                 {(parseFloat(paymentDiscount) || 0).toLocaleString("en-IN")}
               </span>
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-blue-300">
-              <span className="text-sm font-semibold text-blue-800">
+            <div className="flex items-center justify-between pt-2 border-t border-blue-300 dark:border-blue-800/30">
+              <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
                 Total Applied to Invoice:
               </span>
-              <span className="text-base font-bold text-blue-900">
+              <span className="text-base font-bold text-blue-900 dark:text-blue-100">
                 ₹
                 {(
                   (parseFloat(paymentReceived) || 0) +
@@ -985,14 +985,14 @@ export const CreatePaymentIn = () => {
     <div className="flex flex-col items-center justify-center py-8 sm:py-12">
       <div className="text-center w-full max-w-sm px-4">
         <div className="mb-4 sm:mb-6">
-          <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 text-blue-600 mx-auto">
+          <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 mx-auto">
             <User className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
-        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
+        <h3 className="text-base sm:text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           No Party Selected
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6">
+        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mb-4 sm:mb-6">
           Select a party to record payment
         </p>
         <PartySelectionDropdown />
@@ -1008,35 +1008,35 @@ export const CreatePaymentIn = () => {
           handlePartySelect(party);
         }
       }}>
-        <SelectTrigger className="w-full h-12 px-4 bg-white border border-gray-300 rounded-xl shadow-sm hover:border-blue-400 hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-xl shadow-sm hover:border-blue-400 hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-400">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50">
-              <User className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/20 dark:to-blue-900/10">
+              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <SelectValue placeholder="Select a party..." className="text-sm font-medium text-gray-700" />
+            <SelectValue placeholder="Select a party..." className="text-sm font-medium text-zinc-700 dark:text-zinc-300" />
           </div>
         </SelectTrigger>
-        <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[280px] bg-white border border-gray-200 rounded-xl shadow-xl">
+        <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[280px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl">
           {isPartiesLoading ? (
             <div className="p-6 text-center">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
                 <SpinnerDotted size={24} className="text-blue-600" />
               </div>
-              <p className="mt-3 text-sm font-medium text-gray-600">Loading parties...</p>
+              <p className="mt-3 text-sm font-medium text-zinc-600">Loading parties...</p>
             </div>
           ) : filteredParties.length > 0 ? (
             <div className="py-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <div className="px-3 py-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 Available Parties ({filteredParties.length})
               </div>
               {filteredParties.map((party) => (
                 <SelectItem
                   key={party.id}
                   value={party.id}
-                  className="mx-2 my-1 px-3 py-3 rounded-lg cursor-pointer hover:bg-blue-50 focus:bg-blue-50 focus:text-blue-700 data-[state=checked]:bg-blue-100 data-[state=checked]:text-blue-700 transition-colors"
+                  className="mx-2 my-1 px-3 py-3 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-zinc-900 focus:bg-blue-50 dark:focus:bg-zinc-900 focus:text-blue-700 dark:focus:text-blue-400 data-[state=checked]:bg-blue-100 dark:data-[state=checked]:bg-zinc-900 data-[state=checked]:text-blue-700 dark:data-[state=checked]:text-blue-400 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-600 font-semibold text-sm">
+                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold text-sm">
                       {(party.name || "P")
                         .split(" ")
                         .map((n: string) => n[0])
@@ -1045,11 +1045,11 @@ export const CreatePaymentIn = () => {
                         .slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-gray-900 truncate">
+                      <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">
                         {party.name || "Unnamed Party"}
                       </div>
                       {party.mobile && (
-                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1 mt-0.5">
                           <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                           </svg>
@@ -1063,11 +1063,11 @@ export const CreatePaymentIn = () => {
             </div>
           ) : (
             <div className="p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                <User className="h-6 w-6 text-gray-400" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
+                <User className="h-6 w-6 text-zinc-400" />
               </div>
-              <p className="mt-3 text-sm font-medium text-gray-900">No parties found</p>
-              <p className="mt-1 text-xs text-gray-500">Try adjusting your search</p>
+              <p className="mt-3 text-sm font-medium text-zinc-900">No parties found</p>
+              <p className="mt-1 text-xs text-zinc-500">Try adjusting your search</p>
             </div>
           )}
         </SelectContent>
@@ -1078,9 +1078,9 @@ export const CreatePaymentIn = () => {
   // ─── Party Selection Modal ────────
   const PartySelectionModal = () => (
     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-      <DialogContent className="w-[95vw] max-w-[400px] sm:max-w-[450px] p-0 overflow-hidden rounded-lg border border-gray-200 shadow-lg">
-        <DialogHeader className="bg-white px-6 py-4 border-b">
-          <DialogTitle className="text-lg font-semibold text-gray-800">
+      <DialogContent className="w-[95vw] max-w-[400px] sm:max-w-[450px] p-0 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-lg bg-white dark:bg-zinc-950">
+        <DialogHeader className="bg-white dark:bg-zinc-950 px-6 py-4 border-b dark:border-zinc-800">
+          <DialogTitle className="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
             Select Vendor
           </DialogTitle>
         </DialogHeader>
@@ -1089,11 +1089,11 @@ export const CreatePaymentIn = () => {
           {/* Search Bar */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
+              <Search className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             </div>
             <Input
               placeholder="Search Customers by name or mobile..."
-              className="pl-10 h-10 rounded-md border-gray-300 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:ring-offset-0"
+              className="pl-10 h-10 rounded-md border-zinc-300 dark:border-zinc-800 focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-700 focus-visible:ring-offset-0 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setSearchQuery(e.target.value);
@@ -1102,7 +1102,7 @@ export const CreatePaymentIn = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1110,36 +1110,36 @@ export const CreatePaymentIn = () => {
           </div>
 
           {/* Customer List */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
             <div className="max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {isPartiesLoading ? (
                 <div className="p-8 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900">
                     <SpinnerDotted size={20} />
                   </div>
-                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                  <h3 className="mt-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Loading Customers...
                   </h3>
                 </div>
               ) : filteredParties.length === 0 ? (
                 <div className="p-8 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <User className="h-5 w-5 text-gray-600" />
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900">
+                    <User className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
                   </div>
-                  <h3 className="mt-3 text-sm font-medium text-gray-900">
+                  <h3 className="mt-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     No Customer found
                   </h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                     Try adjusting your search criteria.
                   </p>
                 </div>
               ) : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {filteredParties.map((party) => (
                     <li
                       key={party.id}
-                      className={`group relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedParty?.id === party.id
-                        ? "bg-gray-100"
+                      className={`group relative p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors ${selectedParty?.id === party.id
+                        ? "bg-zinc-100 dark:bg-zinc-900"
                         : ""
                         }`}
                       onClick={() => handlePartySelect(party)}
@@ -1147,14 +1147,14 @@ export const CreatePaymentIn = () => {
                       <div className="flex items-center">
                         <div
                           className={`h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center ${selectedParty?.id === party.id
-                            ? "bg-green-100"
-                            : "bg-gray-100"
+                            ? "bg-green-100 dark:bg-zinc-800"
+                            : "bg-zinc-100 dark:bg-zinc-900"
                             }`}
                         >
                           <span
                             className={`font-medium text-sm ${selectedParty?.id === party.id
                               ? "text-green-700"
-                              : "text-gray-600"
+                              : "text-zinc-600"
                               }`}
                           >
                             {(party.name || "Unknown")
@@ -1165,12 +1165,12 @@ export const CreatePaymentIn = () => {
                           </span>
                         </div>
                         <div className="ml-4">
-                          <div className="font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-zinc-700 dark:group-hover:text-white transition-colors">
                             {party.name || "Unknown Customer"}
                           </div>
                           {party.mobile && (
-                            <div className="text-sm text-gray-500 flex items-center mt-1">
-                              <span className="text-gray-400 mr-1.5">
+                            <div className="text-sm text-zinc-500 dark:text-zinc-500 flex items-center mt-1">
+                              <span className="text-zinc-400 dark:text-zinc-600 mr-1.5">
                                 <svg
                                   className="h-3.5 w-3.5"
                                   fill="currentColor"
@@ -1196,15 +1196,15 @@ export const CreatePaymentIn = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Global Loading Overlay */}
       {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-black/90 backdrop-blur-sm">
           <div className="flex flex-col items-center space-y-3">
             <div className="relative">
-              <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+              <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-blue-600 rounded-full animate-spin" />
             </div>
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Loading details...
             </p>
           </div>
@@ -1212,21 +1212,21 @@ export const CreatePaymentIn = () => {
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white dark:bg-black border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleBackClick}
-                className="flex-shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
+                className="flex-shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all duration-200"
               >
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">
+                <h1 className="text-lg sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
                   {isEditMode ? "Edit Payment" : "Record Payment In"}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">
+                <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                   {isEditMode
                     ? "Update payment information"
                     : "Create a new payment record"}
@@ -1258,21 +1258,21 @@ export const CreatePaymentIn = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* ── Party Selection Card ─────────────────────────────────── */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 text-blue-600">
+                  <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
                     <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
-                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Party Information
                   </h2>
                 </div>
                 {selectedParty && (
                   <button
                     onClick={handlePartyDeselect}
-                    className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
+                    className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all duration-200"
                   >
                     <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
@@ -1289,7 +1289,7 @@ export const CreatePaymentIn = () => {
                     speed={100}
                     color="#1B84FF"
                   />
-                  <span className="text-sm text-slate-500">
+                  <span className="text-sm text-zinc-500">
                     Loading invoices...
                   </span>
                 </div>
@@ -1306,13 +1306,13 @@ export const CreatePaymentIn = () => {
           </div>
 
           {/* ── Payment Details Card ─────────────────────────────────── */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 text-green-600">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400">
                   <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Payment Details
                 </h2>
               </div>
@@ -1322,25 +1322,25 @@ export const CreatePaymentIn = () => {
               {/* Date / Mode / Number */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                     Payment Date
                   </label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
+                    className="w-full h-9 sm:h-10 px-3 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 disabled:bg-zinc-50 dark:disabled:bg-zinc-950"
                     disabled={isFullyPaid}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                     Payment Mode
                   </label>
                   <select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm disabled:bg-slate-50"
+                    className="w-full h-9 sm:h-10 px-3 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 disabled:bg-zinc-50 dark:disabled:bg-zinc-950"
                     disabled={isFullyPaid}
                   >
                     <option value="cash">Cash</option>
@@ -1352,7 +1352,7 @@ export const CreatePaymentIn = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                     Choose Invoice
                   </label>
                   {(() => {
@@ -1377,9 +1377,9 @@ export const CreatePaymentIn = () => {
                             setInvoiceFieldError(false);
                             setIsShaking(false);
                           }}
-                          className={`w-full h-9 sm:h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm ${invoiceFieldError
-                            ? "border-red-500 bg-red-50"
-                            : "border-slate-300"
+                          className={`w-full h-9 sm:h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 ${invoiceFieldError
+                            ? "border-red-500 bg-red-50 dark:bg-red-900/10"
+                            : "border-zinc-300 dark:border-zinc-800"
                             } ${isShaking ? "animate-pulse" : ""}`}
                           disabled={
                             !selectedParty || partyInvoices.length === 0
@@ -1402,7 +1402,7 @@ export const CreatePaymentIn = () => {
                           type="text"
                           value={paidInvoices[0].invoice_number}
                           readOnly
-                          className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-xs sm:text-sm"
+                          className="w-full h-9 sm:h-10 px-3 border border-zinc-300 rounded-lg bg-zinc-50 text-zinc-600 text-xs sm:text-sm"
                           placeholder="No unpaid invoices"
                         />
                       );
@@ -1414,7 +1414,7 @@ export const CreatePaymentIn = () => {
                         type="text"
                         value=""
                         readOnly
-                        className="w-full h-9 sm:h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-400 text-xs sm:text-sm"
+                        className="w-full h-9 sm:h-10 px-3 border border-zinc-300 rounded-lg bg-zinc-50 text-zinc-400 text-xs sm:text-sm"
                         placeholder="No invoices found"
                       />
                     );
@@ -1424,7 +1424,7 @@ export const CreatePaymentIn = () => {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                   Notes
                 </label>
                 <textarea
@@ -1435,7 +1435,7 @@ export const CreatePaymentIn = () => {
                   }
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Enter notes..."
-                  className="w-full h-20 sm:h-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-xs sm:text-sm disabled:bg-slate-50"
+                  className="w-full h-20 sm:h-24 px-3 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-xs sm:text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 disabled:bg-zinc-50 dark:disabled:bg-zinc-950"
                   readOnly={isFullyPaid}
                 />
               </div>
@@ -1445,13 +1445,13 @@ export const CreatePaymentIn = () => {
 
         {/* ── Invoice Table Section */}
         {selectedParty && (
-          <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/60 bg-slate-50/50">
+          <div className="mt-6 sm:mt-8 bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-600">
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
                   <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Invoices for this Party
                 </h2>
               </div>
@@ -1466,12 +1466,12 @@ export const CreatePaymentIn = () => {
                     speed={100}
                     color="#1B84FF"
                   />
-                  <span className="text-sm text-slate-500">
+                  <span className="text-sm text-zinc-500">
                     Loading invoices...
                   </span>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-zinc-200 rounded-lg overflow-hidden">
                   {/* Desktop Table View (md and up) */}
                   <div className="hidden md:block overflow-x-auto">
                     <DataGrid
@@ -1492,14 +1492,14 @@ export const CreatePaymentIn = () => {
                       layout={{
                         classes: {
                           table:
-                            '[&_tr:hover]:bg-slate-50 [&_td]:py-3 [&_th]:py-3 [&_td]:text-center [&_th]:text-center w-full [&_tr[data-settled="true"]]:cursor-not-allowed [&_tr[data-settled="true"]]:hover:bg-gray-100',
+                            '[&_tr:hover]:bg-zinc-50 dark:[&_tr:hover]:bg-zinc-900 [&_td]:py-3 [&_th]:py-3 [&_td]:text-center [&_th]:text-center w-full [&_tr[data-settled="true"]]:cursor-not-allowed [&_tr[data-settled="true"]]:hover:bg-zinc-100 dark:[&_tr[data-settled="true"]]:hover:bg-zinc-900',
                         },
                       }}
                     />
                   </div>
 
                   {/* Mobile Card View (below md) */}
-                  <div className="block md:hidden divide-y divide-slate-100">
+                  <div className="block md:hidden divide-y divide-zinc-100 dark:divide-zinc-800">
                     {partyInvoices.length > 0 ? (
                       partyInvoices.map((invoice) => {
                         const isSettled =
@@ -1511,16 +1511,16 @@ export const CreatePaymentIn = () => {
                           <div
                             key={invoice.id}
                             className={`p-4 transition-colors cursor-not-allowed ${isSelected
-                              ? "bg-blue-50/50 border-l-4 border-blue-500"
-                              : "bg-white hover:bg-slate-50 active:bg-slate-100"
+                              ? "bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-blue-500"
+                              : "bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800"
                               } ${isSettled ? "opacity-75" : ""}`}
                           >
                             <div className="flex justify-between items-start mb-2">
                               <div>
-                                <h4 className="font-bold text-slate-900">
+                                <h4 className="font-bold text-zinc-900 dark:text-zinc-100">
                                   {invoice.invoice_number}
                                 </h4>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                   {new Date(
                                     invoice.date,
                                   ).toLocaleDateString()}
@@ -1529,23 +1529,23 @@ export const CreatePaymentIn = () => {
                               <div className="flex flex-col items-end gap-2">
                                 {invoice.balance_amount === 0 &&
                                   invoice.status === "paid" ? (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 rounded">
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 rounded">
                                     paid
                                   </span>
                                 ) : (invoice.status === "partially paid" || invoice.status === "partial") ? (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded">
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 rounded">
                                     Partial
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-100 rounded">
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded">
                                     Unpaid
                                   </span>
                                 )}
                                 <div className="text-right">
-                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                  <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                                     Balance
                                   </p>
-                                  <p className="text-sm font-bold text-blue-600">
+                                  <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
                                     ₹
                                     {(
                                       parseFloat(invoice.balance_amount) || 0
@@ -1555,12 +1555,12 @@ export const CreatePaymentIn = () => {
                               </div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                            <div className="flex justify-between items-center pt-2 border-t border-zinc-50 dark:border-zinc-800">
                               <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                                   Total Amount
                                 </p>
-                                <p className="text-sm font-semibold text-slate-700">
+                                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                                   ₹
                                   {(
                                     parseFloat(invoice.invoice_amount) || 0
@@ -1568,10 +1568,10 @@ export const CreatePaymentIn = () => {
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                                   Applied
                                 </p>
-                                <p className="text-sm font-semibold text-slate-700">
+                                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                                   ₹
                                   {(
                                     parseFloat(invoice.amount_received) || 0
@@ -1583,8 +1583,8 @@ export const CreatePaymentIn = () => {
                         );
                       })
                     ) : (
-                      <div className="p-8 text-center bg-slate-50/50">
-                        <p className="text-sm text-slate-500">
+                      <div className="p-8 text-center bg-zinc-50/50">
+                        <p className="text-sm text-zinc-500">
                           No invoices found for this party
                         </p>
                       </div>

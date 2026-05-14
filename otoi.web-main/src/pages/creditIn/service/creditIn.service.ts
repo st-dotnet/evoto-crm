@@ -536,13 +536,26 @@ export const getCreditNotes = async (params?: {
     });
 
     // Return the transformed data in the same structure
-    const transformedData = {
-      ...data,
-      data: {
-        ...data.data,
-        credit_notes: transformedCreditNotes,
-      },
-    };
+    let transformedData;
+    if (Array.isArray(data.data)) {
+      transformedData = {
+        ...data,
+        data: transformedCreditNotes
+      };
+    } else if (data.data && typeof data.data === 'object') {
+      transformedData = {
+        ...data,
+        data: {
+          ...data.data,
+          credit_notes: transformedCreditNotes,
+        },
+      };
+    } else {
+      transformedData = {
+        ...data,
+        data: transformedCreditNotes
+      };
+    }
 
     return {
       success: true,
@@ -580,7 +593,7 @@ export const getCustomerNamesDropdown = async (): Promise<ApiResponse> => {
 
     return {
       success: true,
-      data: response.data,
+      data: response.data.data || response.data.customers || response.data,
       status: response.status,
     };
   } catch (error: any) {
@@ -656,7 +669,7 @@ export const getCreditNoteNumbersDropdown = async (): Promise<ApiResponse> => {
 
     return {
       success: true,
-      data: response.data,
+      data: response.data.data || response.data.credit_notes || response.data,
       status: response.status,
     };
   } catch (error: any) {

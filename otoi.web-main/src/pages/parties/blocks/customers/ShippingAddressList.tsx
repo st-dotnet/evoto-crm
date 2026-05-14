@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogOverlay,
 } from "@/components/ui/dialog";
 
 /* TYPES */
@@ -116,11 +117,11 @@ const AddressItem: React.FC<{
   const Icon = typeIcon[address.address_type];
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-all duration-200 group hover:shadow-sm hover:border-l-4 hover:border-l-blue-500 border-l-4 border-l-transparent">
+    <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-all duration-200 group hover:shadow-sm hover:border-l-4 hover:border-l-blue-500 border-l-4 border-l-transparent">
       {/* Left */}
       <div className="flex items-start gap-3 min-w-0 flex-1">
         <div className="flex flex-col items-center mt-0.5">
-          <Icon className="w-4 h-4 text-gray-600" />
+          <Icon className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
           {address.is_default && (
             <Check className="w-3 h-3 text-green-600 mt-1" />
           )}
@@ -128,7 +129,7 @@ const AddressItem: React.FC<{
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center mb-2">
-            <span className="text-xs font-medium uppercase text-gray-500">
+            <span className="text-xs font-medium uppercase text-gray-500 dark:text-zinc-500">
               {address.address_type}
             </span>
             {address.is_default && (
@@ -139,23 +140,23 @@ const AddressItem: React.FC<{
           </div>
 
           {/* Main Address */}
-          <div className="text-sm text-gray-800 mb-2">
+          <div className="text-sm text-gray-800 dark:text-zinc-100 mb-2">
             <p className="font-medium">{address.address1}</p>
             {address.address2 && (
-              <p className="text-gray-600">{address.address2}</p>
+              <p className="text-gray-600 dark:text-zinc-400">{address.address2}</p>
             )}
           </div>
 
           {/* Location Details */}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-zinc-400">
             <div className="flex items-center gap-1">
-              <span className="font-medium">City:</span>
-              <span>{address.city}</span>
+              <span className="font-medium text-gray-700 dark:text-zinc-300">City:</span>
+              <span className="text-gray-600 dark:text-zinc-400">{address.city}</span>
             </div>
 
             <div className="flex items-center gap-1">
-              <span className="font-medium">State:</span>
-              <span>
+              <span className="font-medium text-gray-700 dark:text-zinc-300">State:</span>
+              <span className="text-gray-600 dark:text-zinc-400">
                 {(() => {
                   const state = State.getStateByCodeAndCountry(
                     address.state,
@@ -167,8 +168,8 @@ const AddressItem: React.FC<{
             </div>
 
             <div className="flex items-center gap-1">
-              <span className="font-medium">Country:</span>
-              <span>
+              <span className="font-medium text-gray-700 dark:text-zinc-300">Country:</span>
+              <span className="text-gray-600 dark:text-zinc-400">
                 {(() => {
                   const country = Country.getCountryByCode(address.country);
                   return country ? country.name : address.country;
@@ -177,8 +178,8 @@ const AddressItem: React.FC<{
             </div>
 
             <div className="flex items-center gap-1">
-              <span className="font-medium">Pin Code:</span>
-              <span>{address.pin}</span>
+              <span className="font-medium text-gray-700 dark:text-zinc-300">Pin Code:</span>
+              <span className="text-gray-600 dark:text-zinc-400">{address.pin}</span>
             </div>
           </div>
         </div>
@@ -192,20 +193,20 @@ const AddressItem: React.FC<{
             e.stopPropagation();
             setIsDropdownOpen(!isDropdownOpen);
           }}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100"
           aria-label="Address actions"
         >
           <MoreVertical className="w-4 h-4" />
         </button>
 
         {isDropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100] animate-in slide-in-from-top-2 fade-in-0 duration-200">
+          <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-950 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-zinc-800 z-[100] animate-in slide-in-from-top-2 fade-in-0 duration-200 border dark:border-zinc-800">
             <div className="py-1" role="menu">
               {!address.is_default && (
                 <button
                   type="button"
                   onClick={handleSetDefault}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-900 flex items-center gap-2"
                 >
                   <MapPin className="w-4 h-4 text-green-500" />
                   <span>Set as Default</span>
@@ -215,7 +216,7 @@ const AddressItem: React.FC<{
               <button
                 type="button"
                 onClick={handleEdit}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-900 hover:text-blue-600 flex items-center gap-2 transition-colors duration-150"
               >
                 <Edit className="w-4 h-4" />
                 <span>Edit</span>
@@ -223,8 +224,11 @@ const AddressItem: React.FC<{
 
               <button
                 type="button"
-                onClick={handleDelete}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 flex items-center gap-2 transition-colors duration-150"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete</span>
@@ -235,42 +239,38 @@ const AddressItem: React.FC<{
       </div>
 
       {/* Delete Confirmation Modal */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-[420px] p-4 sm:p-6 rounded-lg">
-          {/* Header */}
-          <div className="px-6 py-4 border-b bg-white">
-            <DialogTitle className="text-base font-semibold text-gray-900">
-              Delete Shipping Address
-            </DialogTitle>
-          </div>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white dark:bg-black rounded-lg p-6 max-w-md w-full mx-4 border dark:border-zinc-800">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">
+                Delete Shipping Address
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-zinc-400">
+                Are you sure you want to delete this shipping address?
+              </p>
+            </div>
+            
+            <div className="flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
 
-          {/* Content */}
-          <div className="px-6 py-4 bg-white">
-            <DialogDescription className="text-sm text-gray-700">
-              Are you sure you want to delete this shipping address?
-            </DialogDescription>
-
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCancelDelete}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmDelete}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 };
@@ -285,9 +285,9 @@ const ShippingAddressList: React.FC<ShippingAddressListProps> = ({
 }) => {
   if (addresses.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 border border-dashed rounded-xl text-gray-400">
+      <div className="flex flex-col items-center justify-center py-10 border border-dashed dark:border-zinc-800 rounded-xl text-gray-400">
         <MapPin className="w-10 h-10 mb-3 text-red-500" />
-        <p className="text-sm font-medium text-black-500">
+        <p className="text-sm font-medium text-gray-900 dark:text-zinc-300">
           No shipping addresses
         </p>
         <p className="text-xs">
@@ -298,18 +298,18 @@ const ShippingAddressList: React.FC<ShippingAddressListProps> = ({
   }
 
   return (
-    <div className="bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div className="border dark:border-zinc-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
       {/* Header */}
-      <div className="px-4 py-3 border-b text-sm font-semibold text-gray-700 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+      <div className="px-4 py-3 border-b dark:border-zinc-800 text-sm font-semibold text-gray-700 dark:text-zinc-200 flex justify-between items-center">
         <span className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-blue-500" />
-          Shipping Addresses
+          <span className="text-gray-700 dark:text-zinc-100">Shipping Addresses</span>
         </span>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full"><span className="text-red-500 font-semibold">{addresses.length}</span>/3</span>
+        <span className="text-xs text-gray-400 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-900 px-2 py-1 rounded-full"><span className="text-red-500 font-semibold">{addresses.length}</span>/3</span>
       </div>
 
       {/* List */}
-      <div className="divide-y">
+      <div className="divide-y dark:divide-zinc-800">
         {addresses.map((address) => (
           <AddressItem
             key={address.uuid}

@@ -141,7 +141,7 @@ const StatCards = () => {
             </div>
             <i className="ki-filled ki-arrow-right text-xs text-gray-400"></i>
           </div>
-          <span className="text-2xl font-bold text-gray-900 leading-tight">{card.amount}</span>
+          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100 hover:dark:text-gray-200 transition-colors">{card.amount}</span>
           {card.subText && <div className="mt-auto pt-2">{card.subText}</div>}
         </div>
       ))}

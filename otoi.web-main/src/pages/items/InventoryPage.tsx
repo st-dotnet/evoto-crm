@@ -204,8 +204,8 @@ const Toolbar = ({
           {defaultLowStock ? "Low Stock" : "Low Stock"}
         </button>
 
-        <button className="inv-create-btn" onClick={onCreateItem}>
-          <Plus className="w-4 h-4" />
+        <button className="inv-create-btn group" onClick={onCreateItem}>
+          <Plus className="w-4 h-4 group-hover:rotate-90 transition-all duration-400 ease-in-out" />
           New Item
         </button>
       </div>
@@ -253,7 +253,7 @@ const MobileView = ({
                   Qty: {item.opening_stock}
                 </span>
                 {item.purchase_price !== null && (
-                  <span className="text-[9px] text-gray-400 truncate leading-none"> 
+                  <span className="text-[9px] text-gray-400 truncate leading-none">
                     Purchase: ₹{item.purchase_price.toLocaleString("en-IN")}
                   </span>
                 )}
@@ -336,7 +336,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
       ? toNumber(item.purchase_price, 0) : null,
     type: item.item_type || item.type || "Product",
     item_type_id: item.item_type_id || (item.item_type === "Service" ? 2 : 1),
-    category: item.category || "Uncategorized",
+    category: ((typeof item.category === "object" ? item.category?.name : item.category) || item.category_name || "Uncategorized").trim(),
     business_id: item.business_id || null,
     description: item.description,
     hsn_code: item.hsn_code,
@@ -760,6 +760,7 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
         }
         .inv-create-btn:hover { background: #1e293b; }
         .inv-create-btn:active { transform: scale(0.97); }
+        .inv-create-btn:hover .w-4.h-4 { transform: rotate(90deg); transition: transform 0.2s ease-in-out; }
 
         /* ── Table cells ── */
         .inv-item-name {
@@ -770,11 +771,15 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           transition: color 0.15s;
           text-decoration: none;
           display: block;
-          line-height: 1.4;
+          line-height: 1.4; 
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           max-width: 200px;
+        }
+        /* Dark mode styles for item names */
+        .dark .inv-item-name {
+          color: #f3f4f6;
         }
         .inv-item-name:hover { color: #3b82f6; }
 
@@ -1137,11 +1142,53 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
             overflow-x: hidden;
           }
         }
+        
+        /* Dark mode styles */
+        .dark .inv-hero-title {
+          color: #f3f4f6 !important;
+        }
+        .dark .inv-hero-sub {
+          color: #9ca3af !important;
+        }
+        .dark .inv-stat {
+          background: #1f2937 !important;
+          border-color: #374151 !important;
+        }
+        .dark .inv-stat:hover {
+          background: #374151 !important;
+          border-color: #4b5563 !important;
+        }
+        .dark .inv-stat-label {
+          color: #9ca3af !important;
+        }
+        .dark .inv-stat-value {
+          color: #f3f4f6 !important;
+        }
+        
+        /* Search bar dark mode */
+        .dark .inv-search-input {
+          background: #1f2937 !important;
+          border-color: #374151 !important;
+          color: #f3f4f6 !important;
+        }
+        .dark .inv-search-input:focus {
+          background: #374151 !important;
+          border-color: #3b82f6 !important;
+        }
+        .dark .inv-search-icon {
+          color: #9ca3af !important;
+        }
+        .dark .inv-search-clear {
+          color: #9ca3af !important;
+        }
+        .dark .inv-search-clear:hover {
+          color: #d1d5db !important;
+        }
       `}</style>
 
       <div className="inv-page">
         {(loading || isDeleting || isEditing) && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-zinc-900/80">
             <SpinnerDotted size={48} thickness={100} speed={100} color="#3b82f6" />
           </div>
         )}
@@ -1225,13 +1272,13 @@ const InventoryPage = ({ refreshStatus = 0 }: IInventoryItemsProps) => {
           item={
             selectedItem
               ? {
-                  ...selectedItem,
-                  purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
-                  item_type_id: (selectedItem as any).item_type_id ?? 0,
-                  category_id: (selectedItem as any).category_id ?? 0,
-                  measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
-                  gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
-                }
+                ...selectedItem,
+                purchase_price: selectedItem.purchase_price ? Number(selectedItem.purchase_price) : null,
+                item_type_id: (selectedItem as any).item_type_id ?? 0,
+                category_id: (selectedItem as any).category_id ?? 0,
+                measuring_unit_id: (selectedItem as any).measuring_unit_id ?? 0,
+                gst_tax_rate: (selectedItem as any).gst_tax_rate ?? 0,
+              }
               : null
           }
         />
