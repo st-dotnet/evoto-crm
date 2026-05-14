@@ -246,6 +246,9 @@ export const getBarcodePreview = async (
       params.append("item_name", itemName);
     }
 
+    // Add cache buster to prevent browser from returning the old 'PREVIEW-ONLY' image
+    params.append("_t", Date.now().toString());
+
     const response = await axios.get(
       `${API_URL}/barcode/preview?${params.toString()}`,
       {

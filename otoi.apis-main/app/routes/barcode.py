@@ -15,10 +15,11 @@ def preview_barcode():
     DOES NOT generate or return item_code.
     """
     item_name = request.args.get("item_name", "Sample Item")
+    item_code = request.args.get("item_code", "PREVIEW-ONLY")
 
     try:
         barcode_image = generate_barcode(
-            item_code="PREVIEW-ONLY",
+            item_code=item_code,
             item_name=item_name,
         )
         return send_file(

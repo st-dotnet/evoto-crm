@@ -16,9 +16,121 @@ interface IStockDetailsProps {
 const inputBase =
   "w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-500 dark:placeholder-zinc-500 border";
 const inputNormal = `${inputBase} border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20`;
-const inputError  = `${inputBase} border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-500/60`;
-const selectBase  =
+const inputError = `${inputBase} border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-500/60`;
+const selectBase =
   "w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 border border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20 appearance-none";
+
+interface IBarcodeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  formik: any;
+  barcodeUrl: string | null;
+  barcodeError: string | null;
+  isLoadingBarcode: boolean;
+  imgError: boolean;
+  setImgError: (val: boolean) => void;
+  handleGetBarcode: (download?: boolean) => void;
+  setBarcodeError: (val: string | null) => void;
+}
+
+const BarcodeModal = ({
+  onClose,
+  formik,
+  barcodeUrl,
+  barcodeError,
+  isLoadingBarcode,
+  imgError,
+  setImgError,
+  handleGetBarcode,
+  setBarcodeError,
+}: IBarcodeModalProps) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onClose();
+        setBarcodeError(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose, setBarcodeError]);
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div ref={modalRef} className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-base font-semibold text-zinc-100">Barcode Preview</h3>
+          <button
+            onClick={() => { onClose(); setBarcodeError(null); }}
+            className="text-zinc-500 hover:text-zinc-200 transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="text-center">
+          <div className="mb-4">
+            <h4 className="font-semibold text-zinc-100 text-base">
+              {formik.values.item_name || "Item Name"}
+            </h4>
+            <p className="text-zinc-400 text-sm mt-0.5">
+              {formik.values.item_code || "Item Code"}
+            </p>
+          </div>
+
+          <div className="mb-6 min-h-[200px] flex items-center justify-center bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+            {barcodeError ? (
+              <div className="text-red-400 text-sm">{barcodeError}</div>
+            ) : isLoadingBarcode ? (
+              <div className="text-zinc-400 text-sm">Generating barcode…</div>
+            ) : barcodeUrl ? (
+              <img
+                src={barcodeUrl}
+                alt="Item Barcode"
+                className="max-w-full h-auto rounded"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="text-zinc-500 text-sm">No barcode available</div>
+            )}
+            {imgError && (
+              <div className="text-red-400 text-sm mt-2">
+                Failed to load barcode image. Please try downloading it.
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              onClick={() => handleGetBarcode(true)}
+              disabled={isLoadingBarcode}
+              className={clsx(
+                "px-5 py-2 rounded-lg text-sm font-medium transition-colors",
+                isLoadingBarcode
+                  ? "bg-zinc-700 text-zinc-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-500 text-white",
+              )}
+            >
+              {isLoadingBarcode ? "Generating…" : "Download Barcode"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Card = ({ accent, title, children }: { accent: string; title: string; children: React.ReactNode }) => (
+  <div className="bg-white dark:bg-zinc-800/60 border border-gray-200 dark:border-zinc-700/60 rounded-xl p-5">
+    <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-300 mb-4 flex items-center gap-2">
+      <span className={`w-1 h-4 rounded-full ${accent}`} />
+      {title}
+    </h3>
+    {children}
+  </div>
+);
 
 export default function StockDetails({
   formik,
@@ -36,7 +148,7 @@ export default function StockDetails({
   const handleGetBarcode = async (download: boolean = false) => {
     const itemName = formik.values.item_name;
     const itemCode = formik.values.item_code;
-    const itemId   = formik.values.id;
+    const itemId = formik.values.id;
 
     if (!itemCode) {
       setBarcodeError("Please enter an Item Code to generate barcode");
@@ -54,9 +166,9 @@ export default function StockDetails({
           : await getBarcodePreview(itemCode, itemName);
 
         if (response.success && response.data) {
-          const url  = URL.createObjectURL(response.data);
+          const url = URL.createObjectURL(response.data);
           const link = document.createElement("a");
-          link.href     = url;
+          link.href = url;
           link.download = `barcode-${itemCode}.png`;
           document.body.appendChild(link);
           link.click();
@@ -102,102 +214,23 @@ export default function StockDetails({
       formik.setFieldValue("conversion_unit", formik.values.secondary_unit);
   }, [formik.values.secondary_unit]);
 
-  // ── Barcode Modal ──────────────────────────────────────────────────────────
-  const BarcodeModal = () => {
-    const modalRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const handler = (e: MouseEvent) => {
-        if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-          setIsBarcodeModalOpen(false);
-          setBarcodeError(null);
-        }
-      };
-      document.addEventListener("mousedown", handler);
-      return () => document.removeEventListener("mousedown", handler);
-    }, []);
-
-    return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div ref={modalRef} className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
-          {/* Modal header */}
-          <div className="flex justify-between items-center mb-5">
-            <h3 className="text-base font-semibold text-zinc-100">Barcode Preview</h3>
-            <button
-              onClick={() => { setIsBarcodeModalOpen(false); setBarcodeError(null); }}
-              className="text-zinc-500 hover:text-zinc-200 transition-colors text-lg leading-none"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="text-center">
-            <div className="mb-4">
-              <h4 className="font-semibold text-zinc-100 text-base">
-                {formik.values.item_name || "Item Name"}
-              </h4>
-              <p className="text-zinc-400 text-sm mt-0.5">
-                {formik.values.item_code || "Item Code"}
-              </p>
-            </div>
-
-            {/* Barcode display area */}
-            <div className="mb-6 min-h-[200px] flex items-center justify-center bg-zinc-800 border border-zinc-700 rounded-xl p-4">
-              {barcodeError ? (
-                <div className="text-red-400 text-sm">{barcodeError}</div>
-              ) : isLoadingBarcode ? (
-                <div className="text-zinc-400 text-sm">Generating barcode…</div>
-              ) : barcodeUrl ? (
-                <img
-                  src={barcodeUrl}
-                  alt="Item Barcode"
-                  className="max-w-full h-auto rounded"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div className="text-zinc-500 text-sm">No barcode available</div>
-              )}
-              {imgError && (
-                <div className="text-red-400 text-sm mt-2">
-                  Failed to load barcode image. Please try downloading it.
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={() => handleGetBarcode(true)}
-                disabled={isLoadingBarcode}
-                className={clsx(
-                  "px-5 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isLoadingBarcode
-                    ? "bg-zinc-700 text-zinc-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-500 text-white",
-                )}
-              >
-                {isLoadingBarcode ? "Generating…" : "Download Barcode"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ── Section card wrapper ───────────────────────────────────────────────────
-  const Card = ({ accent, title, children }: { accent: string; title: string; children: React.ReactNode }) => (
-    <div className="bg-white dark:bg-zinc-800/60 border border-gray-200 dark:border-zinc-700/60 rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-300 mb-4 flex items-center gap-2">
-        <span className={`w-1 h-4 rounded-full ${accent}`} />
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
-
   return (
     <div ref={scrollContainerRef} className="space-y-5 animate-in fade-in duration-500">
-      {isBarcodeModalOpen && <BarcodeModal />}
+      {isBarcodeModalOpen && (
+        <BarcodeModal
+          isOpen={isBarcodeModalOpen}
+          onClose={() => setIsBarcodeModalOpen(false)}
+          formik={formik}
+          barcodeUrl={barcodeUrl}
+          barcodeError={barcodeError}
+          isLoadingBarcode={isLoadingBarcode}
+          imgError={imgError}
+          setImgError={setImgError}
+          handleGetBarcode={handleGetBarcode}
+          setBarcodeError={setBarcodeError}
+        />
+      )}
+
 
       {/* Item Identification */}
       <Card accent="bg-blue-400" title="Item Identification">
@@ -366,9 +399,9 @@ export default function StockDetails({
               onClick={() => {
                 const container = scrollContainerRef.current?.closest('.overflow-y-auto') as HTMLElement;
                 const scrollPosition = container?.scrollTop || window.pageYOffset;
-                
+
                 setShowAlternativeUnit(!showAlternativeUnit);
-                
+
                 // Restore scroll position after state update
                 setTimeout(() => {
                   if (container) {
@@ -390,15 +423,15 @@ export default function StockDetails({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2">Secondary Unit</label>
-                  <select 
-                    className={selectBase} 
+                  <select
+                    className={selectBase}
                     {...formik.getFieldProps("secondary_unit")}
                     onChange={(e) => {
                       const container = scrollContainerRef.current?.closest('.overflow-y-auto') as HTMLElement;
                       const scrollPosition = container?.scrollTop || window.pageYOffset;
-                      
+
                       formik.setFieldValue("secondary_unit", e.target.value);
-                      
+
                       // Restore scroll position after state update
                       setTimeout(() => {
                         if (container) {
