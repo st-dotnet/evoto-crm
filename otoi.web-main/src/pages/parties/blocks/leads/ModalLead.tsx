@@ -17,7 +17,8 @@ import { DialogClose } from "@radix-ui/react-dialog";
 import { Country, State, City } from "country-state-city";
 import { toast } from "sonner";
 
-// Props for the modal
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface IModalLeadProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,7 +55,8 @@ interface Lead {
   }>;
 }
 
-// Initial values for form
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const initialValues: Lead = {
   first_name: "",
   last_name: "",
@@ -71,7 +73,6 @@ const initialValues: Lead = {
   reason: "",
 };
 
-
 const STATUS_LABEL_TO_VALUE: Record<string, string> = {
   "New": "1",
   "In-Progress": "2",
@@ -80,8 +81,8 @@ const STATUS_LABEL_TO_VALUE: Record<string, string> = {
   "Lose": "5",
 };
 
+// ─── Validation ───────────────────────────────────────────────────────────────
 
-// Validation Schema
 const saveLeadSchema = Yup.object().shape({
   first_name: Yup.string()
     .trim()
@@ -126,10 +127,7 @@ const saveLeadSchema = Yup.object().shape({
       return !!(value || mobile);
     })
     .trim()
-    .matches(
-      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
-      "Invalid email format"
-    ),
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, "Invalid email format"),
   status: Yup.string().required("Status is required"),
   reason: Yup.string().when("status", {
     is: (val: string) => val === "5",
@@ -158,6 +156,55 @@ const saveLeadSchema = Yup.object().shape({
   }),
 }, [["status", "status"]]);
 
+// ─── Shared input/select class builder ────────────────────────────────────────
+
+const fieldClass = (hasError: boolean) =>
+  clsx(
+    // Base
+    "flex h-9 w-full rounded-md px-3 py-2 text-sm transition-colors duration-150",
+    // Light mode
+    "border border-gray-200 bg-white text-gray-900 placeholder-gray-400",
+    // Dark mode
+    "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500",
+    // Focus
+    "focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500",
+    "dark:focus:ring-blue-400/30 dark:focus:border-blue-400",
+    // Disabled
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    // Error
+    hasError && "border-red-400 dark:border-red-500 focus:ring-red-400/30 focus:border-red-400",
+  );
+
+const labelClass =
+  "block text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-1";
+
+const RequiredMark = () => (
+  <span className="text-red-500 ml-0.5">*</span>
+);
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p role="alert" className="mt-1 text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+      <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm-.75 3.5h1.5v5h-1.5v-5zm0 6h1.5v1.5h-1.5V10.5z" />
+      </svg>
+      {message}
+    </p>
+  ) : null;
+
+// ─── Section divider ──────────────────────────────────────────────────────────
+
+const SectionDivider = ({ label }: { label: string }) => (
+  <div className="col-span-full flex items-center gap-3 pt-2">
+    <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 dark:text-gray-500 whitespace-nowrap">
+      {label}
+    </span>
+    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+  </div>
+);
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -166,67 +213,39 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   const [duplicateInfo, setDuplicateInfo] = useState<any>(null);
   const [pendingSubmit, setPendingSubmit] = useState<any>(null);
 
-  // Check for duplicates before submission using the existing GET /leads/ API
   const checkDuplicates = async (values: any) => {
     try {
       const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-      const apiBaseLeads = baseUrl.endsWith("/")
-        ? `${baseUrl}leads/`
-        : `${baseUrl}/leads/`;
-
+      const apiBaseLeads = baseUrl.endsWith("/") ? `${baseUrl}leads/` : `${baseUrl}/leads/`;
       const params: any = {};
       if (values.mobile) params.exact_mobile = values.mobile;
       if (values.gst) params.exact_gst = values.gst;
       if (lead?.uuid) params.exclude_uuid = lead.uuid;
-
-      // If no criteria provided, no need to check
-      if (Object.keys(params).length === 0) {
-        return { has_duplicates: false, duplicates: [] };
-      }
+      if (Object.keys(params).length === 0) return { has_duplicates: false, duplicates: [] };
 
       const response = await axios.get(apiBaseLeads, { params });
       const foundLeads = response.data.data || [];
 
       if (foundLeads.length > 0) {
-        // Map found leads to the duplicate structure expected by the message generator
         const duplicates: any[] = [];
         foundLeads.forEach((l: any) => {
-          if (values.mobile && l.mobile === values.mobile) {
-            duplicates.push({
-              type: "mobile",
-              value: l.mobile,
-              existing_lead: l
-            });
-          }
-          if (values.gst && l.gst?.toUpperCase() === values.gst?.toUpperCase()) {
-            duplicates.push({
-              type: "gst",
-              value: l.gst,
-              existing_lead: l
-            });
-          }
+          if (values.mobile && l.mobile === values.mobile)
+            duplicates.push({ type: "mobile", value: l.mobile, existing_lead: l });
+          if (values.gst && l.gst?.toUpperCase() === values.gst?.toUpperCase())
+            duplicates.push({ type: "gst", value: l.gst, existing_lead: l });
         });
-
-        return {
-          has_duplicates: duplicates.length > 0,
-          duplicates
-        };
+        return { has_duplicates: duplicates.length > 0, duplicates };
       }
-
       return { has_duplicates: false, duplicates: [] };
-    } catch (error) {
-      console.error("Error checking duplicates:", error);
+    } catch {
       return { has_duplicates: false, duplicates: [] };
     }
   };
 
-  // Fetch status list
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_APP_API_URL}/status-list/`
-        );
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/status-list/`);
         setStatus(response.data);
       } catch (error) {
         console.error("Error fetching status types:", error);
@@ -235,20 +254,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     fetchStatus();
   }, []);
 
-  // Formik setup
   const formik = useFormik({
     initialValues,
     validationSchema: saveLeadSchema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
-
       try {
-        // Check for duplicates only when status is "Win" (4)
         if (values.status === "4") {
           const duplicateCheck = await checkDuplicates(values);
-
           if (duplicateCheck.has_duplicates) {
-            // Store pending submission data and show confirmation dialog
             setPendingSubmit(values);
             setDuplicateInfo(duplicateCheck);
             setShowDuplicateDialog(true);
@@ -257,11 +271,10 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
             return;
           }
         }
-
-        // No duplicates, proceed with submission
         await submitLead(values, { setStatus, setSubmitting });
       } catch (error: any) {
-        const errorMessage = error?.response?.data?.message ||
+        const errorMessage =
+          error?.response?.data?.message ||
           error?.response?.data?.error ||
           "Something went wrong. Please try again.";
         setStatus(errorMessage);
@@ -272,8 +285,6 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     },
   });
 
-
-  // Submit lead function (extracted from original onSubmit)
   const submitLead = async (values: any, { setStatus, setSubmitting }: any) => {
     try {
       const postData = {
@@ -286,50 +297,33 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
         city: values.city,
         state: values.state,
         country: values.country,
-        address1: values.address1?.trim() || '',
-        address2: values.address2?.trim() || '',
+        address1: values.address1?.trim() || "",
+        address2: values.address2?.trim() || "",
         pin: values.pin,
         reason: values.reason?.trim() || null,
-        bypass_duplicate: true, // Allow bypassing duplicate checks
+        bypass_duplicate: true,
       };
 
       const baseUrl = import.meta.env.VITE_APP_API_URL || "/api";
-      const apiBaseLeads = baseUrl.endsWith("/")
-        ? `${baseUrl}leads/`
-        : `${baseUrl}/leads/`;
+      const apiBaseLeads = baseUrl.endsWith("/") ? `${baseUrl}leads/` : `${baseUrl}/leads/`;
       let response;
 
       if (lead?.uuid) {
-        response = await axios.put(
-          `${apiBaseLeads}${lead.uuid}`,
-          postData
-        );
-
+        response = await axios.put(`${apiBaseLeads}${lead.uuid}`, postData);
         toast.success("Lead updated successfully");
       } else {
-        response = await axios.post(
-          `${apiBaseLeads}`,
-          postData
-        );
-
+        response = await axios.post(`${apiBaseLeads}`, postData);
         toast.success("Lead created successfully");
-
-        if (response.data?.customer_already_exists) {
+        if (response.data?.customer_already_exists)
           toast("Customer already exists. Linked this lead to the existing customer.");
-        }
-
-        // If API returns created lead
         const createdUuid = response.data?.uuid;
-        if (createdUuid) {
-          navigate(`/lead/${createdUuid}`);
-        } else {
-          onOpenChange(false);
-        }
+        if (createdUuid) navigate(`/lead/${createdUuid}`);
+        else onOpenChange(false);
       }
-
       onOpenChange(false);
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message ||
+      const errorMessage =
+        error?.response?.data?.message ||
         error?.response?.data?.error ||
         "Something went wrong. Please try again.";
       setStatus(errorMessage);
@@ -341,14 +335,11 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     }
   };
 
-  // Handle confirmation dialog
   const handleConfirmDuplicate = async () => {
     if (pendingSubmit) {
       try {
         await submitLead(pendingSubmit, { setStatus: () => { }, setSubmitting: () => { } });
-      } catch (error) {
-        // Error already handled in submitLead
-      }
+      } catch { }
     }
     setPendingSubmit(null);
     setDuplicateInfo(null);
@@ -359,21 +350,15 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
     setDuplicateInfo(null);
   };
 
-  // Generate duplicate message
   const getDuplicateMessage = () => {
     if (!duplicateInfo?.duplicates?.length) return "";
-
     const duplicateTypes = duplicateInfo.duplicates.map((d: any) => {
       const existingLead = d.existing_lead;
-      // return `${d.type.toUpperCase()}: ${d.value}`;
-      // return `${d.type.toUpperCase()}: ${d.value} (already used by ${existingLead.first_name} ${existingLead.last_name} - Status: ${existingLead.status})`;
       return `${d.type.toUpperCase()}: ${d.value} (by ${existingLead.first_name} ${existingLead.last_name})`;
     });
-    return `The following information already exists:\n${duplicateTypes.join('\n')}\nDo you want to create this lead anyway?`;
-    // return `The following information already exists:\n\n${duplicateTypes.join('\n\n')}\n\nDo you want to create this lead anyway?`;
+    return `The following information already exists:\n${duplicateTypes.join("\n")}\nDo you want to create this lead anyway?`;
   };
 
-  // Reset form when editing a lead
   useEffect(() => {
     if (open && lead) {
       const address = lead.addresses?.[0] || {};
@@ -398,417 +383,347 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
   }, [open, lead]);
 
   useEffect(() => {
-    if (!open) {
-      formik.resetForm();
-    }
+    if (!open) formik.resetForm();
   }, [open]);
+
+  const isWin = formik.values.status === "4";
+  const isLose = formik.values.status === "5";
 
   return (
     <Fragment>
-      <Dialog open={open} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          formik.resetForm();
-        }
-        onOpenChange(isOpen);
-      }}>
-        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[900px] p-0 rounded-lg shadow-lg">
-          <DialogHeader className="bg-gray-50 dark:bg-gray-800 p-3 sm:p-6 border-b dark:border-gray-700">
-            <DialogTitle className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100">
-              {lead ? "Edit Lead" : "Add Lead"}
-            </DialogTitle>
-            <DialogClose onClick={() => onOpenChange(false)} className="right-2 top-1 rounded-sm opacity-70" />
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) formik.resetForm();
+          onOpenChange(isOpen);
+        }}
+      >
+        <DialogContent className="container-fixed w-[calc(100%-2rem)] max-w-[920px] p-0 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-hidden">
+
+          {/* ── Header ─────────────────────────────────────────────────────── */}
+          <DialogHeader className="flex flex-row items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <div className="flex items-center gap-3">
+              {/* Accent dot */}
+              <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
+              <DialogTitle className="text-sm font-semibold text-gray-800 dark:text-gray-100 tracking-tight">
+                {lead ? "Edit Lead" : "Add New Lead"}
+              </DialogTitle>
+            </div>
+            <DialogClose
+              onClick={() => onOpenChange(false)}
+              className="rounded-md p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            />
           </DialogHeader>
-          <DialogBody className="p-3 sm:p-6">
-            <div className="max-w-[auto] w-full">
-              <form
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
-                noValidate
-                onSubmit={formik.handleSubmit}
-              >
-                {formik.status && (
-                  <Alert variant="danger" className="col-span-full mb-4">
-                    {formik.status}
-                  </Alert>
-                )}
 
-                {/* First Name */}
-                <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                    First Name<span style={{ color: "red" }}>*</span>
-                  </label>
-                  <input
-                    placeholder="First name"
-                    type="text"
-                    autoComplete="off"
-                    {...formik.getFieldProps("first_name")}
-                    className={clsx(
-                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                      {
-                        "border-red-500 ": formik.touched.first_name && formik.errors.first_name,
-                      }
-                    )}
-                  />
-                  {formik.touched.first_name && formik.errors.first_name && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.first_name}
-                    </span>
-                  )}
-                </div>
+          {/* ── Body ───────────────────────────────────────────────────────── */}
+          <DialogBody className="p-5 sm:p-6 overflow-y-auto max-h-[80vh]">
+            <form
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4"
+              noValidate
+              onSubmit={formik.handleSubmit}
+            >
+              {formik.status && (
+                <Alert variant="danger" className="col-span-full">
+                  {formik.status}
+                </Alert>
+              )}
 
-                {/* Last Name */}
-                <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                    Last Name<span style={{ color: "red" }}>*</span>
-                  </label>
-                  <input
-                    placeholder="Last name"
-                    type="text"
-                    autoComplete="off"
-                    {...formik.getFieldProps("last_name")}
-                    className={clsx(
-                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                      {
-                        "border-red-500 ": formik.touched.last_name && formik.errors.last_name,
-                      }
-                    )}
-                  />
-                  {formik.touched.last_name && formik.errors.last_name && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.last_name}
-                    </span>
-                  )}
-                </div>
+              {/* ── Basic Info ─────────────────────────────────────────────── */}
+              <SectionDivider label="Basic Info" />
 
-                {/* Mobile */}
-                <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Mobile
-                  </label>
-                  <input
-                    {...formik.getFieldProps("mobile")}
-                    className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white"
-                    type="text"
-                    inputMode="tel"
-                    onChange={(e) => {
-                      // Allow numbers and hyphens, but not more than one hyphen in a row
-                      let value = e.target.value.replace(/[^0-9-]/g, '');
-                      value = value.replace(/--+/g, '-');
-                      // Limit total length to 15 characters (including hyphens)
-                      value = value.slice(0, 10);
-                      formik.setFieldValue("mobile", value);
-                      // Mark as touched to show errors
-                      if (!formik.touched.mobile) {
-                        formik.setFieldTouched("mobile", true);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      // Prevent typing a hyphen at the start or after another hyphen
-                      if (e.key === '-' &&
-                        (formik.values.mobile.length === 0 ||
-                          formik.values.mobile.endsWith('-'))) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onInput={(e) => {
-                      const input = e.target as HTMLInputElement;
-                      if (input.value.length > 10) {
-                        input.value = input.value.slice(0, 10);
-                      }
-                    }}
-                  />
-                  {formik.touched.mobile && formik.errors.mobile && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.mobile}
-                    </span>
-                  )}
-                </div>
-                {/* Email */}
-                <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Email</label>
-                  <input {...formik.getFieldProps("email")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white" />
-                  {formik.touched.email && formik.errors.email && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.email}
-                    </span>
-                  )}
-                </div>
+              {/* First Name */}
+              <div className="flex flex-col">
+                <label className={labelClass}>
+                  First Name <RequiredMark />
+                </label>
+                <input
+                  placeholder="e.g. John"
+                  type="text"
+                  autoComplete="off"
+                  {...formik.getFieldProps("first_name")}
+                  className={fieldClass(!!(formik.touched.first_name && formik.errors.first_name))}
+                />
+                <FieldError message={formik.touched.first_name ? formik.errors.first_name : undefined} />
+              </div>
 
-                {/* Status */}
-                <div className="flex flex-col gap-1 col-span">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Status<span style={{ color: "red" }}>*</span></label>
-                  <select
-                    {...formik.getFieldProps("status")}
-                    className={clsx(
-                      "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                      {
-                        "border-red-500 ": formik.touched.status && formik.errors.status,
-                      }
-                    )}
-                  >
-                    <option value="">--Select Status--</option>
-                    {status.map((s: Status) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  {formik.touched.status && formik.errors.status && (
-                    <span role="alert" className="text-xs text-red-500">
-                      {formik.errors.status}
-                    </span>
-                  )}
-                </div>
+              {/* Last Name */}
+              <div className="flex flex-col">
+                <label className={labelClass}>
+                  Last Name <RequiredMark />
+                </label>
+                <input
+                  placeholder="e.g. Doe"
+                  type="text"
+                  autoComplete="off"
+                  {...formik.getFieldProps("last_name")}
+                  className={fieldClass(!!(formik.touched.last_name && formik.errors.last_name))}
+                />
+                <FieldError message={formik.touched.last_name ? formik.errors.last_name : undefined} />
+              </div>
 
-                {/* Extra fields for Win/Lose status */}
-                {formik.values.status === "4" && (
-                  <div className="col-span-full pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Mobile */}
+              <div className="flex flex-col">
+                <label className={labelClass}>Mobile</label>
+                <input
+                  {...formik.getFieldProps("mobile")}
+                  placeholder="10-digit number"
+                  type="text"
+                  inputMode="tel"
+                  className={fieldClass(!!(formik.touched.mobile && formik.errors.mobile))}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(/[^0-9-]/g, "");
+                    value = value.replace(/--+/g, "-").slice(0, 10);
+                    formik.setFieldValue("mobile", value);
+                    if (!formik.touched.mobile) formik.setFieldTouched("mobile", true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" && (formik.values.mobile.length === 0 || formik.values.mobile.endsWith("-")))
+                      e.preventDefault();
+                  }}
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    if (input.value.length > 10) input.value = input.value.slice(0, 10);
+                  }}
+                />
+                <FieldError message={formik.touched.mobile ? formik.errors.mobile : undefined} />
+              </div>
 
-                      {/* GST */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">GST<span style={{ color: "red" }}>*</span></label>
-                        <input
-                          placeholder="GST"
-                          type="text"
-                          autoComplete="off"
-                          {...formik.getFieldProps("gst")}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            { "border-red-500": formik.touched.gst && formik.errors.gst }
-                          )}
-                          onInput={(e) => {
-                            const input = e.target as HTMLInputElement;
-                            if (input.value.length > 15) {
-                              input.value = input.value.slice(0, 15);
-                            }
-                          }}
-                        />
-                        {formik.touched.gst && formik.errors.gst && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.gst}
-                          </span>
-                        )}
-                      </div>
+              {/* Email */}
+              <div className="flex flex-col">
+                <label className={labelClass}>Email</label>
+                <input
+                  {...formik.getFieldProps("email")}
+                  placeholder="email@example.com"
+                  type="email"
+                  className={fieldClass(!!(formik.touched.email && formik.errors.email))}
+                />
+                <FieldError message={formik.touched.email ? formik.errors.email : undefined} />
+              </div>
 
-                      {/* Address 1 */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                          Address 1{formik.values.status === "4" && <span style={{ color: "red" }}>*</span>}
-                        </label>
-                        <input
-                          placeholder="Address 1"
-                          type="text"
-                          autoComplete="off"
-                          {...formik.getFieldProps("address1")}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            { "border-red-500": formik.touched.address1 && formik.errors.address1 }
-                          )}
-                        />
-                        {formik.touched.address1 && formik.errors.address1 && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.address1}
-                          </span>
-                        )}
-                      </div>
+              {/* ── Lead Status ────────────────────────────────────────────── */}
+              <SectionDivider label="Lead Status" />
 
-                      {/* Address 2 */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Address 2</label>
-                        <input
-                          placeholder="Address 2"
-                          type="text"
-                          autoComplete="off"
-                          {...formik.getFieldProps("address2")}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            { "border-red-500": formik.touched.address2 && formik.errors.address2 }
-                          )}
-                        />
-                        {formik.touched.address2 && formik.errors.address2 && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.address2}
-                          </span>
-                        )}
-                      </div>
+              {/* Status */}
+              <div className="flex flex-col">
+                <label className={labelClass}>
+                  Status <RequiredMark />
+                </label>
+                <select
+                  {...formik.getFieldProps("status")}
+                  className={fieldClass(!!(formik.touched.status && formik.errors.status))}
+                >
+                  <option value="">Select status</option>
+                  {status.map((s: Status) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <FieldError message={formik.touched.status ? formik.errors.status : undefined} />
+              </div>
 
-                      {/* Country */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                          Country <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          {...formik.getFieldProps("country")}
-                          onChange={(e) => {
-                            formik.setFieldValue("country", e.target.value);
-                            formik.setFieldValue("state", "");
-                            formik.setFieldValue("city", "");
-                          }}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            {
-                              "border-red-500 ": formik.touched.country && formik.errors.country,
-                            }
-                          )}
-                        >
-                          <option value="">--Select Country--</option>
-                          {Country.getAllCountries().map((c) => (
-                            <option key={c.isoCode} value={c.isoCode}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                        {formik.touched.country && formik.errors.country && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.country}
-                          </span>
-                        )}
-                      </div>
+              {/* ── Win Fields ─────────────────────────────────────────────── */}
+              {isWin && (
+                <>
+                  <SectionDivider label="Win Details" />
 
-                      {/* State */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                          State <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          {...formik.getFieldProps("state")}
-                          onChange={(e) => {
-                            formik.setFieldValue("state", e.target.value);
-                            formik.setFieldValue("city", "");
-                          }}
-                          disabled={!formik.values.country}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            {
-                              "border-red-500 ": formik.touched.state && formik.errors.state,
-                            }
-                          )}
-                        >
-                          <option value="">--Select State--</option>
-                          {formik.values.country &&
-                            State.getStatesOfCountry(formik.values.country).map((s) => (
-                              <option key={s.isoCode} value={s.isoCode}>
-                                {s.name}
-                              </option>
-                            ))}
-                        </select>
-                        {formik.touched.state && formik.errors.state && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.state}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* City */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
-                          City <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          {...formik.getFieldProps("city")}
-                          disabled={!formik.values.state}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            {
-                              "border-red-500 ": formik.touched.city && formik.errors.city,
-                            }
-                          )}
-                        >
-                          <option value="">--Select City--</option>
-                          {formik.values.country &&
-                            formik.values.state &&
-                            City.getCitiesOfState(formik.values.country, formik.values.state).map((city) => (
-                              <option key={city.name} value={city.name}>
-                                {city.name}
-                              </option>
-                            ))}
-                        </select>
-                        {formik.touched.city && formik.errors.city && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.city}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Pin Code */}
-                      <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Pin Code <span className="text-red-500">*</span></label>
-                        <input
-                          placeholder="Pin Code"
-                          type="text"
-                          autoComplete="off"
-                          {...formik.getFieldProps("pin")}
-                          className={clsx(
-                            "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                            {
-                              "border-red-500 ": formik.touched.pin && formik.errors.pin,
-                            }
-                          )}
-                        />
-                        {formik.touched.pin && formik.errors.pin && (
-                          <span role="alert" className="text-xs text-red-500">
-                            {formik.errors.pin}
-                          </span>
-                        )}
-                      </div>
-
-                    </div>
-                  </div>
-                )}
-
-
-                {formik.values.status === "5" && (
-                  <div className="flex flex-col gap-1 col-span-full">
-                    <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Reason<span style={{ color: "red" }}>*</span></label>
-                    <textarea
-                      placeholder="Reason"
+                  {/* GST */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      GST <RequiredMark />
+                    </label>
+                    <input
+                      placeholder="15-character GST number"
+                      type="text"
                       autoComplete="off"
+                      {...formik.getFieldProps("gst")}
+                      className={fieldClass(!!(formik.touched.gst && formik.errors.gst))}
+                      onInput={(e) => {
+                        const input = e.target as HTMLInputElement;
+                        if (input.value.length > 15) input.value = input.value.slice(0, 15);
+                      }}
+                    />
+                    <FieldError message={formik.touched.gst ? formik.errors.gst : undefined} />
+                  </div>
+
+                  {/* Address 1 */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      Address Line 1 <RequiredMark />
+                    </label>
+                    <input
+                      placeholder="Street / building"
+                      type="text"
+                      autoComplete="off"
+                      {...formik.getFieldProps("address1")}
+                      className={fieldClass(!!(formik.touched.address1 && formik.errors.address1))}
+                    />
+                    <FieldError message={formik.touched.address1 ? formik.errors.address1 : undefined} />
+                  </div>
+
+                  {/* Address 2 */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>Address Line 2</label>
+                    <input
+                      placeholder="Landmark / suite (optional)"
+                      type="text"
+                      autoComplete="off"
+                      {...formik.getFieldProps("address2")}
+                      className={fieldClass(!!(formik.touched.address2 && formik.errors.address2))}
+                    />
+                    <FieldError message={formik.touched.address2 ? formik.errors.address2 : undefined} />
+                  </div>
+
+                  {/* Country */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      Country <RequiredMark />
+                    </label>
+                    <select
+                      {...formik.getFieldProps("country")}
+                      onChange={(e) => {
+                        formik.setFieldValue("country", e.target.value);
+                        formik.setFieldValue("state", "");
+                        formik.setFieldValue("city", "");
+                      }}
+                      className={fieldClass(!!(formik.touched.country && formik.errors.country))}
+                    >
+                      <option value="">Select country</option>
+                      {Country.getAllCountries().map((c) => (
+                        <option key={c.isoCode} value={c.isoCode}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={formik.touched.country ? formik.errors.country : undefined} />
+                  </div>
+
+                  {/* State */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      State <RequiredMark />
+                    </label>
+                    <select
+                      {...formik.getFieldProps("state")}
+                      onChange={(e) => {
+                        formik.setFieldValue("state", e.target.value);
+                        formik.setFieldValue("city", "");
+                      }}
+                      disabled={!formik.values.country}
+                      className={fieldClass(!!(formik.touched.state && formik.errors.state))}
+                    >
+                      <option value="">Select state</option>
+                      {formik.values.country &&
+                        State.getStatesOfCountry(formik.values.country).map((s) => (
+                          <option key={s.isoCode} value={s.isoCode}>
+                            {s.name}
+                          </option>
+                        ))}
+                    </select>
+                    <FieldError message={formik.touched.state ? formik.errors.state : undefined} />
+                  </div>
+
+                  {/* City */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      City <RequiredMark />
+                    </label>
+                    <select
+                      {...formik.getFieldProps("city")}
+                      disabled={!formik.values.state}
+                      className={fieldClass(!!(formik.touched.city && formik.errors.city))}
+                    >
+                      <option value="">Select city</option>
+                      {formik.values.country &&
+                        formik.values.state &&
+                        City.getCitiesOfState(formik.values.country, formik.values.state).map((city) => (
+                          <option key={city.name} value={city.name}>
+                            {city.name}
+                          </option>
+                        ))}
+                    </select>
+                    <FieldError message={formik.touched.city ? formik.errors.city : undefined} />
+                  </div>
+
+                  {/* Pin Code */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>
+                      Pin Code <RequiredMark />
+                    </label>
+                    <input
+                      placeholder="e.g. 110001"
+                      type="text"
+                      autoComplete="off"
+                      {...formik.getFieldProps("pin")}
+                      className={fieldClass(!!(formik.touched.pin && formik.errors.pin))}
+                    />
+                    <FieldError message={formik.touched.pin ? formik.errors.pin : undefined} />
+                  </div>
+                </>
+              )}
+
+              {/* ── Lose: Reason ───────────────────────────────────────────── */}
+              {isLose && (
+                <>
+                  <SectionDivider label="Reason for Loss" />
+                  <div className="flex flex-col col-span-full">
+                    <label className={labelClass}>
+                      Reason <RequiredMark />
+                    </label>
+                    <textarea
+                      placeholder="Briefly describe why the lead was lost…"
+                      autoComplete="off"
+                      rows={3}
                       {...formik.getFieldProps("reason")}
                       className={clsx(
-                        "flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white",
-                        {
-                          "border-red-500 ": formik.touched.reason && formik.errors.reason,
-                        }
+                        fieldClass(!!(formik.touched.reason && formik.errors.reason)),
+                        "h-auto resize-none"
                       )}
                     />
-                    {formik.touched.reason && formik.errors.reason && (
-                      <span role="alert" className="text-xs text-red-500">
-                        {formik.errors.reason}
-                      </span>
-                    )}
+                    <FieldError message={formik.touched.reason ? formik.errors.reason : undefined} />
                   </div>
-                )}
+                </>
+              )}
 
-                {/* Footer buttons */}
-                <div className="flex justify-end col-span-full pt-3 sm:pt-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onOpenChange(false)}
-                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-800 border hover:bg-gray-200 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white btn-primary hover:bg-blue-500 h-8 sm:h-10 px-3 sm:px-4 py-1.5 sm:py-2"
-                    disabled={loading || formik.isSubmitting}
-                  >
-                    {loading ? "Please wait..." : "Save"}
-                  </button>
-                </div>
-              </form>
-            </div>
+              {/* ── Footer ─────────────────────────────────────────────────── */}
+              <div className="col-span-full flex items-center justify-end gap-2 pt-4 mt-1 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="h-9 px-4 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || formik.isSubmitting}
+                  className="h-9 px-5 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a10 10 0 100 10h-4a8 8 0 01-8-8z" />
+                      </svg>
+                      Saving…
+                    </span>
+                  ) : (
+                    lead ? "Update Lead" : "Save Lead"
+                  )}
+                </button>
+              </div>
+            </form>
           </DialogBody>
         </DialogContent>
       </Dialog>
 
-      {/* Duplicate Confirmation Dialog */}
       <ConfirmationDialog
         open={showDuplicateDialog}
         onOpenChange={setShowDuplicateDialog}
         title="Duplicate Information Detected"
-        message={<div style={{ whiteSpace: "pre-line" }}>
-          {getDuplicateMessage()}
-        </div>}
+        message={
+          <div style={{ whiteSpace: "pre-line" }}>{getDuplicateMessage()}</div>
+        }
         confirmText="Yes, Create Lead"
         cancelText="No, Cancel"
         onConfirm={handleConfirmDuplicate}
