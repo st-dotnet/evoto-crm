@@ -433,7 +433,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {/* First Name */}
                 <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-white">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                     First Name<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -457,7 +457,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {/* Last Name */}
                 <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-white">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                     Last Name<span style={{ color: "red" }}>*</span>
                   </label>
                   <input
@@ -481,7 +481,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {/* Mobile */}
                 <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-white">Mobile
+                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Mobile
                   </label>
                   <input
                     {...formik.getFieldProps("mobile")}
@@ -523,7 +523,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
                 </div>
                 {/* Email */}
                 <div className="flex flex-col gap-1">
-                  <label className="block text-xs sm:text-sm font-medium text-white">Email</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Email</label>
                   <input {...formik.getFieldProps("email")} className="flex h-8 sm:h-10 w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm dark:text-white" />
                   {formik.touched.email && formik.errors.email && (
                     <span role="alert" className="text-xs text-red-500">
@@ -534,7 +534,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {/* Status */}
                 <div className="flex flex-col gap-1 col-span">
-                  <label className="block text-xs sm:text-sm font-medium text-white">Status<span style={{ color: "red" }}>*</span></label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Status<span style={{ color: "red" }}>*</span></label>
                   <select
                     {...formik.getFieldProps("status")}
                     className={clsx(
@@ -565,7 +565,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* GST */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">GST<span style={{ color: "red" }}>*</span></label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">GST<span style={{ color: "red" }}>*</span></label>
                         <input
                           placeholder="GST"
                           type="text"
@@ -591,7 +591,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Address 1 */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                           Address 1{formik.values.status === "4" && <span style={{ color: "red" }}>*</span>}
                         </label>
                         <input
@@ -613,7 +613,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Address 2 */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">Address 2</label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Address 2</label>
                         <input
                           placeholder="Address 2"
                           type="text"
@@ -633,7 +633,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Country */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                           Country <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -666,7 +666,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* State */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                           State <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -700,7 +700,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* City */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                           City <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -731,7 +731,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                       {/* Pin Code */}
                       <div className="flex flex-col gap-1">
-                        <label className="block text-xs sm:text-sm font-medium text-white">Pin Code <span className="text-red-500">*</span></label>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Pin Code <span className="text-red-500">*</span></label>
                         <input
                           placeholder="Pin Code"
                           type="text"
@@ -758,7 +758,7 @@ const ModalLead = ({ open, onOpenChange, lead }: IModalLeadProps) => {
 
                 {formik.values.status === "5" && (
                   <div className="flex flex-col gap-1 col-span-full">
-                    <label className="block text-xs sm:text-sm font-medium text-white">Reason<span style={{ color: "red" }}>*</span></label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Reason<span style={{ color: "red" }}>*</span></label>
                     <textarea
                       placeholder="Reason"
                       autoComplete="off"

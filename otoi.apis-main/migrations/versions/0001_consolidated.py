@@ -19,6 +19,7 @@ depends_on = None
 
 def upgrade():
     from flask import current_app
+    from sqlalchemy import inspect
     
     # Get the db instance from the current Flask app
     db = current_app.extensions['migrate'].db
@@ -26,9 +27,34 @@ def upgrade():
     # create_all with checkfirst=True (default) will:
     # - CREATE tables that don't exist
     # - SKIP tables that already exist
-    # This makes it safe for both fresh and existing databases
     bind = op.get_bind()
     db.metadata.create_all(bind=bind, checkfirst=True)
+    
+    # Now dynamically inspect existing tables to add any missing columns.
+    # This solves the issue of tables already existing but missing newly added columns.
+    inspector = inspect(bind)
+    
+    for table_name, table in db.metadata.tables.items():
+        if inspector.has_table(table_name):
+            # Get existing columns from the DB
+            existing_columns = [col['name'] for col in inspector.get_columns(table_name)]
+            
+            for column in table.columns:
+                if column.name not in existing_columns:
+                    # Column is missing in the database, add it!
+                    # For safety with existing data, we make the new column nullable=True
+                    # if it doesn't have a server_default.
+                    new_col = sa.Column(
+                        column.name, 
+                        column.type, 
+                        server_default=column.server_default,
+                        nullable=True
+                    )
+                    try:
+                        op.add_column(table_name, new_col)
+                        print(f"Added missing column '{column.name}' to table '{table_name}'")
+                    except Exception as e:
+                        print(f"Warning: Failed to add column '{column.name}' to '{table_name}': {e}")
 
 
 def downgrade():
