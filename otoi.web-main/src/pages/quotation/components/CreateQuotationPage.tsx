@@ -1938,7 +1938,7 @@ const CreateQuotationPage = () => {
           <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 shadow-lg w-[95vw] sm:w-full max-h-[90vh] bg-white dark:bg-black">
             <DialogHeader className="bg-white dark:bg-zinc-950 px-4 sm:px-6 py-4 border-b dark:border-zinc-800">
               <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
-                Create Parties
+                Search Parties
               </DialogTitle>
             </DialogHeader>
 
