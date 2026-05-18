@@ -96,9 +96,9 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
             ? Number(item.purchase_price)
             : null,
         type: item.item_type || item.type || "Product",
-        category: (
-          (item.category && typeof item.category === "object" ? item.category.name : item.category) || 
-          item.category_name || 
+        category: String(
+          (item.category && typeof item.category === "object" ? item.category.name : item.category) ||
+          item.category_name ||
           "Uncategorized"
         ).trim(),
         hsn_code: item.hsn_code || null,
@@ -246,32 +246,18 @@ const AdditemPage: React.FC<AddItemPageProps> = ({
 
               <div className="flex gap-2">
                 {/* Category Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex-1 sm:min-w-[200px] justify-between h-10 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300">
-                      <span className="truncate">
-                        {selectedCategory === "all"
-                          ? "Select Category"
-                          : selectedCategory}
-                      </span>
-                      <span className="ml-2 text-[10px]">▼</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[200px] bg-white dark:bg-zinc-900 border dark:border-zinc-800">
-                    <DropdownMenuItem onClick={() => setSelectedCategory("all")} className="dark:text-zinc-300 dark:hover:bg-zinc-800">
-                      All Categories
-                    </DropdownMenuItem>
-                    {categories.map((category) => (
-                      <DropdownMenuItem
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className="dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      >
-                        {category}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 sm:min-w-[200px] h-10 px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                >
+                  <option value="all">Select Category</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
 
                 {/* Create New Item Button */}
                 <Button
